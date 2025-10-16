@@ -80,17 +80,20 @@ export default function RoomPage() {
     // Get user from localStorage
     const savedUser = localStorage.getItem('chat-user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      
+      // Load initial messages
+      loadMessages();
+      
+      // Initialize WebSocket connection after user is set
+      setTimeout(() => {
+        initializeWebSocket(userData);
+      }, 100);
     } else {
       router.push('/');
       return;
     }
-
-    // Load initial messages
-    loadMessages();
-    
-    // Initialize WebSocket connection
-    initializeWebSocket();
     
     // Cleanup WebSocket on unmount
     return () => {
@@ -98,15 +101,16 @@ export default function RoomPage() {
     };
   }, [roomId, router]);
 
-  const initializeWebSocket = async () => {
-    if (!user) return;
+  const initializeWebSocket = async (userData?: User) => {
+    const currentUser = userData || user;
+    if (!currentUser) return;
     
     try {
       console.log('🔌 Attempting WebSocket connection...');
       setConnectionAttempts(prev => prev + 1);
       
       // Connect to WebSocket
-      socketManager.connect(roomId, user!.id);
+      socketManager.connect(roomId, currentUser.id);
       
       // Handle connection status
       socketManager.onConnect((connected: boolean) => {
@@ -150,7 +154,9 @@ export default function RoomPage() {
       
     } catch (error) {
       console.error('WebSocket connection failed:', error);
-      setIsConnected(true); // Fallback to demo mode
+      
+      // Always enable basic functionality even if WebSocket fails
+      setIsConnected(true);
       setWsConnected(false);
       
       if (connectionAttempts === 1) {
@@ -334,6 +340,8 @@ export default function RoomPage() {
   };
   
   const addLocalMessage = (content: string) => {
+    if (!user) return;
+    
     const newMessage: Message = {
       id: Date.now().toString(),
       room_id: roomId,
