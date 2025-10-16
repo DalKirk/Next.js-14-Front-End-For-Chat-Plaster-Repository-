@@ -7,21 +7,29 @@ class SocketManager {
 
   connect(roomId: string, userId: string): Socket {
     const WS_URL = process.env.NODE_ENV === 'production' 
-      ? 'wss://web-production-64adb.up.railway.app'
-      : process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
-    const wsUrl = `${WS_URL}/ws/${roomId}/${userId}`;
+      ? 'https://web-production-64adb.up.railway.app'
+      : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,
-      NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
       WS_URL,
-      wsUrl,
+      roomId,
+      userId,
       forced_production: process.env.NODE_ENV === 'production'
     });
     
-    this.socket = io(wsUrl, {
-      transports: ['websocket'],
-      upgrade: false,
+    this.socket = io(WS_URL, {
+      transports: ['websocket', 'polling'],
+      upgrade: true,
+      query: {
+        room_id: roomId,
+        user_id: userId
+      },
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 3,
+      timeout: 10000
     });
 
     this.socket.on('connect', () => {

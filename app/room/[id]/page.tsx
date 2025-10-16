@@ -11,6 +11,7 @@ import { VideoPlayer } from '@/components/video/video-player';
 import { useChat } from '@/hooks/use-chat';
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
+import { socketManager } from '@/lib/socket';
 import toast from 'react-hot-toast';
 import { 
   PaperAirplaneIcon, 
@@ -40,6 +41,8 @@ export default function RoomPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,9 +89,78 @@ export default function RoomPage() {
     // Load initial messages
     loadMessages();
     
-    // Set connected status for demo
-    setIsConnected(true);
+    // Initialize WebSocket connection
+    initializeWebSocket();
+    
+    // Cleanup WebSocket on unmount
+    return () => {
+      socketManager.disconnect();
+    };
   }, [roomId, router]);
+
+  const initializeWebSocket = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('🔌 Attempting WebSocket connection...');
+      setConnectionAttempts(prev => prev + 1);
+      
+      // Connect to WebSocket
+      socketManager.connect(roomId, user!.id);
+      
+      // Handle connection status
+      socketManager.onConnect((connected: boolean) => {
+        setWsConnected(connected);
+        setIsConnected(connected);
+        
+        if (connected) {
+          toast.success('Connected to real-time chat!');
+          console.log('✅ WebSocket connected - real-time messaging active');
+        } else {
+          console.log('❌ WebSocket disconnected - falling back to demo mode');
+          if (connectionAttempts < 3) {
+            toast.error('Connection lost. Using demo mode.');
+          }
+        }
+      });
+      
+      // Handle incoming messages
+      socketManager.onMessage((socketMessage: any) => {
+        console.log('📨 Received message:', socketMessage);
+        
+        const newMessage: Message = {
+          id: socketMessage.id || Date.now().toString(),
+          room_id: roomId,
+          user_id: socketMessage.user_id || 'unknown',
+          username: socketMessage.username || 'Unknown User',
+          content: socketMessage.content || socketMessage.message || '',
+          timestamp: socketMessage.timestamp || new Date().toISOString(),
+          type: socketMessage.type || 'message',
+          title: socketMessage.title,
+          playback_id: socketMessage.playback_id
+        };
+        
+        setMessages(prev => {
+          // Avoid duplicate messages
+          const exists = prev.some(msg => msg.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
+        });
+      });
+      
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+      setIsConnected(true); // Fallback to demo mode
+      setWsConnected(false);
+      
+      if (connectionAttempts === 1) {
+        toast('Using demo mode - messages won\'t sync between users', {
+          icon: '🔧',
+          duration: 4000
+        });
+      }
+    }
+  };
 
   const loadMessages = async () => {
     try {
@@ -243,7 +315,25 @@ export default function RoomPage() {
   const sendMessage = (content: string) => {
     if (!content.trim() || !user) return;
     
-    // Add message locally for immediate feedback
+    if (wsConnected && socketManager.isConnected()) {
+      // Real-time mode: Send via WebSocket
+      try {
+        socketManager.sendMessage(content);
+        console.log('📤 Message sent via WebSocket:', content);
+      } catch (error) {
+        console.error('Failed to send message via WebSocket:', error);
+        // Fallback to local message
+        addLocalMessage(content);
+        toast.error('Failed to send message. Added locally.');
+      }
+    } else {
+      // Demo mode: Add message locally
+      addLocalMessage(content);
+      toast('Message sent (demo mode)', { icon: '🔧' });
+    }
+  };
+  
+  const addLocalMessage = (content: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       room_id: roomId,
@@ -255,11 +345,6 @@ export default function RoomPage() {
     };
     
     setMessages(prev => [...prev, newMessage]);
-    
-    // Auto-scroll to new message will happen via useEffect
-    // In a real app, this would send via WebSocket
-    // For demo purposes, we'll just add it locally
-    toast.success('Message sent (demo mode)');
   };
 
   const handleSendMessage = () => {
@@ -498,9 +583,13 @@ export default function RoomPage() {
             <div>
               <h1 className="text-xl font-bold text-white">{roomName}</h1>
               <div className="flex items-center space-x-2 text-sm">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${
+                  wsConnected ? 'bg-green-400' : 
+                  isConnected ? 'bg-yellow-400' : 'bg-red-400'
+                }`}></div>
                 <span className="text-white/60">
-                  {isConnected ? 'Connected' : 'Disconnected'}
+                  {wsConnected ? 'Real-time' : 
+                   isConnected ? 'Demo Mode' : 'Disconnected'}
                 </span>
               </div>
             </div>
@@ -572,7 +661,7 @@ export default function RoomPage() {
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Input
-                  placeholder="Type your message..."
+                  placeholder={wsConnected ? "Type your message..." : "Type your message... (demo mode)"}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
