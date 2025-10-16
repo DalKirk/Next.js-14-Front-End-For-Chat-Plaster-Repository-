@@ -7,7 +7,7 @@ class SocketManager {
 
   connect(roomId: string, userId: string): Socket {
     const WS_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://web-production-64adb.up.railway.app'
+      ? 'https://natural-presence-production.up.railway.app'
       : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     console.log('🔧 WebSocket Configuration:', {

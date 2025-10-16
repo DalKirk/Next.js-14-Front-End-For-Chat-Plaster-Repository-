@@ -3,7 +3,7 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 
 // API configuration - Force Railway URL for production
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://web-production-64adb.up.railway.app'
+  ? 'https://natural-presence-production.up.railway.app'
   : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Debug logging for environment variables
