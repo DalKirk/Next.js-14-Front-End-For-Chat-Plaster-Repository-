@@ -4,6 +4,13 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 // API configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Debug logging for environment variables
+console.log('🔧 API Configuration:', {
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  API_BASE_URL,
+  NODE_ENV: process.env.NODE_ENV
+});
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {

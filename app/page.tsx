@@ -80,7 +80,7 @@ export default function HomePage() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="mt-2 text-white/60"
           >
-            Real-time messaging with live streaming
+            Real-time messaging with live streaming powered by Railway
           </motion.p>
         </div>
 
