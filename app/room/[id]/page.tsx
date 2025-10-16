@@ -678,7 +678,7 @@ export default function RoomPage() {
       {/* Video Upload Modal */}
       <Modal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={resetUploadModal}
         title="Upload Video"
       >
         <div className="space-y-4">
@@ -688,21 +688,58 @@ export default function RoomPage() {
             value={videoTitle}
             onChange={(e) => setVideoTitle(e.target.value)}
           />
+          
+          {/* File Selection */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/90">
+              Select Video File
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileSelect}
+              className="block w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-white/10 file:text-white hover:file:bg-white/20 file:backdrop-blur-sm transition-all"
+            />
+            {selectedFile && (
+              <p className="text-xs text-white/60">
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            )}
+          </div>
+          
+          {/* Upload Progress */}
+          {isLoading && uploadProgress > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-white/70">
+                <span>Uploading...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+          
           <div className="flex space-x-2">
             <Button
-              onClick={() => setShowUploadModal(false)}
+              onClick={resetUploadModal}
               variant="glass"
               className="flex-1"
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
               onClick={handleVideoUpload}
-              disabled={isLoading || !videoTitle.trim()}
+              disabled={isLoading || !videoTitle.trim() || !selectedFile}
               variant="primary"
               className="flex-1"
             >
-              {isLoading ? 'Creating...' : 'Create Upload'}
+              {isLoading ? `Uploading... ${uploadProgress}%` : 'Upload Video'}
             </Button>
           </div>
         </div>
