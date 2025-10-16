@@ -29,7 +29,7 @@ const handleApiError = (error: any, operation: string) => {
   console.error(`❌ ${operation} failed:`, error);
   
   if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
-    throw new Error(`Backend not available. Please check if your API server is running at ${API_BASE_URL}`);
+    throw new Error(`⚠️ Backend not available at ${API_BASE_URL}. The Railway server may be sleeping or offline. Please try again in a few moments.`);
   }
   
   if (error.response) {
@@ -37,23 +37,41 @@ const handleApiError = (error: any, operation: string) => {
     const status = error.response.status;
     const message = error.response.data?.message || error.response.data?.detail || error.message;
     
-    if (status === 404) {
-      throw new Error(`API endpoint not found. Check if ${API_BASE_URL} is the correct backend URL.`);
+    if (status === 502) {
+      throw new Error(`🔄 Backend server is currently unavailable (502 Bad Gateway). The Railway service may be sleeping or restarting. Please wait 30-60 seconds and try again.`);
+    } else if (status === 503) {
+      throw new Error(`⏳ Backend service is temporarily unavailable (503). Please try again shortly.`);
+    } else if (status === 404) {
+      throw new Error(`❌ API endpoint not found. Check if ${API_BASE_URL} is the correct backend URL.`);
     } else if (status === 500) {
-      throw new Error(`Backend server error: ${message}`);
+      throw new Error(`💥 Backend server error: ${message}`);
     } else if (status >= 400) {
-      throw new Error(`Request failed (${status}): ${message}`);
+      throw new Error(`⚠️ Request failed (${status}): ${message}`);
     }
   } else if (error.request) {
     // Network error or no response
-    throw new Error(`Network error: Unable to reach backend at ${API_BASE_URL}. Check CORS settings or network connectivity.`);
+    throw new Error(`🌐 Network error: Unable to reach backend at ${API_BASE_URL}. Please check your internet connection or CORS settings.`);
   }
   
   throw new Error(`${operation} failed: ${error.message}`);
 };
 
+// Health check endpoint
+export const checkServerHealth = async (): Promise<boolean> => {
+  try {
+    const response = await api.get('/health', { timeout: 5000 });
+    return response.status === 200;
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return false;
+  }
+};
+
 // API functions matching your FastAPI endpoints
 export const apiClient = {
+  // Health check
+  checkHealth: checkServerHealth,
+
   // User endpoints
   createUser: async (username: string): Promise<User> => {
     try {

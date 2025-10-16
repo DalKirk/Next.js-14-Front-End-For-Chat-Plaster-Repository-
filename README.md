@@ -4,6 +4,21 @@
 
 A beautiful, modern Next.js 14 frontend for real-time video chat with Mux streaming integration. Features glassmorphism design, live streaming capabilities, and seamless FastAPI backend integration.
 
+## ⚠️ **Current Backend Status**
+
+**Railway Backend:** The backend server may be temporarily unavailable due to Railway's free-tier sleep policy. 
+
+**Common Issues:**
+- **502 Bad Gateway**: The Railway service is sleeping. First request will wake it (takes 30-60 seconds)
+- **Connection Timeout**: Backend is starting up or restarting
+
+**Quick Fix:**
+1. Wait 30-60 seconds and retry
+2. Check the server status indicator (top-right corner)
+3. Visit the [Troubleshooting Page](/troubleshooting) for detailed diagnostics
+
+**Backend URL:** `https://natural-presence-production.up.railway.app`
+
 ## 🌐 **Live Demo - Test It Now!**
 
 ### 🚀 **[https://video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)**
@@ -19,27 +34,37 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 
 ### 🆕 **New to this app? Start here:**
 1. **🔗 Click**: [Live Demo Link](https://video-chat-frontend-ruby.vercel.app)
-2. **👤 Create User**: Enter any username (e.g., "TestUser123")
-3. **🏠 Join Room**: Click "Join Room" or enter room name (e.g., "general")
-4. **💬 Test Chat**: 
+2. **✅ Check Status**: Look for the server status indicator in the top-right corner
+   - 🟢 Green = Ready to use
+   - 🟡 Yellow = Checking connection
+   - 🔴 Red/Orange = Server sleeping (wait 30-60 seconds)
+3. **👤 Create User**: Enter any username (e.g., "TestUser123")
+4. **🏠 Join Room**: Click "Join Room" or enter room name (e.g., "general")
+5. **💬 Test Chat**: 
    - Scroll through existing demo messages
    - Send your own messages using the input at the bottom
    - Watch messages align left/right based on sender
-5. **🎛️ Try Features**:
+6. **🎛️ Try Features**:
    - **🔴 Live**: Test live streaming UI
    - **📹 Upload**: Test video upload interface
    - **📜 Scroll**: Navigate through chat history with custom scrollbar
 
 ### ✅ **What Works Right Now**
 - ✅ **User Creation**: Always functional (demo mode if backend unavailable)
+- ✅ **Server Status Indicator**: Real-time connection monitoring
 - ✅ **Chat Interface**: Real-time message UI with glassmorphism design  
 - ✅ **Scroll Functionality**: Custom purple scrollbar, smooth navigation
 - ✅ **Room Navigation**: Join different chat rooms
 - ✅ **Video UI**: Professional video upload and streaming interfaces
 - ✅ **Responsive Design**: Works perfectly on mobile, tablet, desktop
 - ✅ **Backend Integration**: Connected to Railway FastAPI backend
+- ✅ **Troubleshooting Page**: Built-in diagnostics for connection issues
 
 ### 🎨 **Latest Updates (Just Deployed!)**
+- 🏥 **Server Status Indicator**: Real-time backend health monitoring with detailed error messages
+- 🔧 **Troubleshooting Page**: Comprehensive guide for connection issues
+- 💬 **Enhanced Error Messages**: Clear, actionable feedback for server problems
+- ⏰ **Auto-reconnect**: Automatic retries when Railway wakes from sleep
 - 🎨 **Custom Scrollbar**: Beautiful purple-themed scrollbar matching the glassmorphism design
 - 📱 **Fixed Message Alignment**: Messages properly align left (others) and right (yours)  
 - 🗨️ **Enhanced Chat History**: 15 demo messages to fully test scrolling functionality
@@ -333,6 +358,10 @@ Customize in `globals.css`:
    npm install
    npm run dev
    ```
+
+### Detailed Connection Issues
+
+If you encounter issues connecting to the backend, visit the [Troubleshooting Page](/troubleshooting) for detailed diagnostics and solutions.
 
 ## 📚 Additional Resources
 

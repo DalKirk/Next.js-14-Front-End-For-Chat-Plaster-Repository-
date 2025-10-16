@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ServerStatus } from '@/components/ui/server-status';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -38,19 +40,16 @@ export default function HomePage() {
       let errorMessage = 'Failed to create user';
       
       if (error instanceof Error) {
+        // Use the enhanced error messages from the API client
         errorMessage = error.message;
-        
-        // Special handling for common issues
-        if (error.message.includes('CORS')) {
-          errorMessage = 'Backend connection blocked. CORS issue detected.';
-        } else if (error.message.includes('Network error')) {
-          errorMessage = 'Cannot connect to backend. Please check network connection.';
-        } else if (error.message.includes('404')) {
-          errorMessage = 'Backend API endpoint not found. Please check backend deployment.';
-        }
       }
       
-      toast.error(errorMessage);
+      toast.error(errorMessage, {
+        duration: 6000, // Show longer for server errors
+        style: {
+          maxWidth: '500px',
+        },
+      });
       console.error('Error creating user:', error);
     } finally {
       setIsLoading(false);
@@ -69,7 +68,16 @@ export default function HomePage() {
       toast.success(`Room "${roomName}" created!`);
       setRoomName('');
     } catch (error) {
-      toast.error('Failed to create room');
+      let errorMessage = 'Failed to create room';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast.error(errorMessage, {
+        duration: 6000,
+        style: {
+          maxWidth: '500px',
+        },
+      });
       console.error('Error creating room:', error);
     } finally {
       setIsLoading(false);
@@ -78,6 +86,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      {/* Server Status Indicator */}
+      <ServerStatus />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -184,6 +195,20 @@ export default function HomePage() {
             <div className="text-2xl mb-2">🎥</div>
             <div className="text-sm text-white/80">Video Upload</div>
           </div>
+        </motion.div>
+
+        {/* Help Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="text-center"
+        >
+          <Link href="/troubleshooting">
+            <span className="text-sm text-white/50 hover:text-white/80 transition-colors cursor-pointer">
+              🔧 Having connection issues? Click here for help
+            </span>
+          </Link>
         </motion.div>
       </motion.div>
     </div>
