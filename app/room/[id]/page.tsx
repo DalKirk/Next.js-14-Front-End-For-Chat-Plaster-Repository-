@@ -511,17 +511,21 @@ export default function RoomPage() {
               onClick={() => setShowVideoModal(true)}
               variant="secondary"
               size="sm"
+              className="text-xs sm:text-sm"
             >
-              <VideoCameraIcon className="w-4 h-4 mr-2" />
-              🔴 Live
+              <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">🔴 Live</span>
+              <span className="sm:hidden">🔴</span>
             </Button>
             <Button
               onClick={() => setShowUploadModal(true)}
               variant="secondary"
               size="sm"
+              className="text-xs sm:text-sm"
             >
-              <DocumentIcon className="w-4 h-4 mr-2" />
-              📹 Upload
+              <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">📹 Upload</span>
+              <span className="sm:hidden">📹</span>
             </Button>
           </div>
         </div>

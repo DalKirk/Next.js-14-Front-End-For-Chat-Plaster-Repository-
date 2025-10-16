@@ -69,11 +69,13 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             )}
             
             {/* Video player */}
-            {videoMessage.playback_id && (
+            {message.playback_id && (
               <VideoPlayer
-                playbackId={videoMessage.playback_id}
-                title={videoMessage.title}
+                playbackId={message.playback_id}
+                title={message.title}
                 className="w-full"
+                muted={true}
+                autoPlay={false}
               />
             )}
             
