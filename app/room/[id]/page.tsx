@@ -18,8 +18,7 @@ import {
   DocumentIcon,
   ArrowLeftIcon,
   ChevronUpIcon,
-  ChevronDownIcon,
-  MagnifyingGlassIcon
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
 export default function RoomPage() {
@@ -37,7 +36,6 @@ export default function RoomPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showScrollControls, setShowScrollControls] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,10 +61,7 @@ export default function RoomPage() {
   };
 
   // Filter messages based on search term
-  const filteredMessages = messages.filter(msg =>
-    msg.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    msg.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMessages = messages;
 
   useEffect(() => {
     // Only auto-scroll if user is at bottom (not browsing history)
@@ -345,33 +340,6 @@ export default function RoomPage() {
           transition={{ delay: 0.1 }}
           className="glass-card flex-1 flex flex-col min-h-0"
         >
-          {/* Search Bar */}
-          <div className="border-b border-white/10 p-4">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
-              <input
-                type="text"
-                placeholder="Search messages..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-400/50 focus:bg-white/10 transition-all"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            {searchTerm && (
-              <div className="mt-2 text-xs text-white/60">
-                {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''} found
-              </div>
-            )}
-          </div>
-
           {/* Messages List */}
           <div 
             ref={messagesContainerRef}
@@ -379,15 +347,13 @@ export default function RoomPage() {
             className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth" 
             id="messages-container"
           >
-            {(searchTerm ? filteredMessages : messages).length === 0 ? (
+            {messages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-white/60">
-                  {searchTerm ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
-                </div>
+                <div className="text-white/60">No messages yet. Start the conversation!</div>
               </div>
             ) : (
               <>
-                {(searchTerm ? filteredMessages : messages).map((msg, index) => (
+                {messages.map((msg, index) => (
                   <MessageBubble
                     key={index}
                     message={msg}
