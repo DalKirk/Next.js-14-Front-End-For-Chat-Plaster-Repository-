@@ -185,6 +185,51 @@ export default function RoomPage() {
           content: 'This is the most recent message. The auto-scroll feature works perfectly! 🚀',
           timestamp: new Date(Date.now() - 60000).toISOString(),
           type: 'message'
+        },
+        {
+          id: '11',
+          room_id: roomId,
+          user_id: 'demo-user-3',
+          username: 'Charlie',
+          content: 'Adding more messages to test scroll functionality. This should help demonstrate the scrolling!',
+          timestamp: new Date(Date.now() - 50000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '12',
+          room_id: roomId,
+          user_id: 'demo-user-4',
+          username: 'Diana',
+          content: 'The glassmorphism design looks fantastic with all these messages stacked up!',
+          timestamp: new Date(Date.now() - 40000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '13',
+          room_id: roomId,
+          user_id: 'demo-user-1',
+          username: 'Alice',
+          content: 'You should now be able to scroll up and down through all the message history.',
+          timestamp: new Date(Date.now() - 30000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '14',
+          room_id: roomId,
+          user_id: 'demo-user-2',
+          username: 'Bob',
+          content: 'The scroll controls help you navigate back to recent messages quickly.',
+          timestamp: new Date(Date.now() - 20000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '15',
+          room_id: roomId,
+          user_id: 'demo-user-3',
+          username: 'Charlie',
+          content: 'This is now the most recent message. Perfect for testing the scroll functionality! 🎉',
+          timestamp: new Date(Date.now() - 10000).toISOString(),
+          type: 'message'
         }
       ];
       
@@ -333,19 +378,21 @@ export default function RoomPage() {
       </motion.div>
 
       {/* Messages Area */}
-      <div className="flex-1 mx-4 mb-4 flex flex-col relative">
+      <div className="flex-1 mx-4 mb-4 flex flex-col relative min-h-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass-card flex-1 flex flex-col min-h-0"
+          style={{ maxHeight: 'calc(100vh - 160px)' }}
         >
           {/* Messages List */}
           <div 
             ref={messagesContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth" 
+            className="flex-1 overflow-y-auto p-4 scroll-smooth min-h-0 custom-scrollbar" 
             id="messages-container"
+            style={{ maxHeight: 'calc(100vh - 240px)' }}
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
