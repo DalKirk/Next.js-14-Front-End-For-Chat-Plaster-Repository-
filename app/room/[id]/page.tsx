@@ -121,10 +121,8 @@ export default function RoomPage() {
           toast.success('Connected to real-time chat!');
           console.log('✅ WebSocket connected - real-time messaging active');
         } else {
-          console.log('❌ WebSocket disconnected - falling back to demo mode');
-          if (connectionAttempts < 3) {
-            toast.error('Connection lost. Using demo mode.');
-          }
+          console.log('❌ WebSocket disconnected');
+          toast.error('Connection lost. Real-time messaging unavailable.');
         }
       });
       
@@ -153,18 +151,11 @@ export default function RoomPage() {
       });
       
     } catch (error) {
-      console.error('WebSocket connection failed:', error);
-      
-      // Always enable basic functionality even if WebSocket fails
-      setIsConnected(true);
+      console.error('❌ WebSocket connection failed:', error);
+      setIsConnected(false);
       setWsConnected(false);
       
-      if (connectionAttempts === 1) {
-        toast('Using demo mode - messages won\'t sync between users', {
-          icon: '🔧',
-          duration: 4000
-        });
-      }
+      toast.error('Failed to connect to real-time server. Please check your connection.');
     }
   };
 
@@ -172,149 +163,11 @@ export default function RoomPage() {
     try {
       const roomMessages = await apiClient.getRoomMessages(roomId);
       setMessages(roomMessages);
+      console.log('✅ Loaded real messages from backend:', roomMessages.length);
     } catch (error) {
-      console.error('Error loading messages:', error);
-      
-      // Demo mode: Add more sample messages to show scroll functionality
-      const demoMessages: Message[] = [
-        {
-          id: '1',
-          room_id: roomId,
-          user_id: 'demo-user-1',
-          username: 'Alice',
-          content: 'Welcome to the chat room! 👋',
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '2',
-          room_id: roomId,
-          user_id: 'demo-user-2',
-          username: 'Bob',
-          content: 'Great to see everyone here!',
-          timestamp: new Date(Date.now() - 540000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '3',
-          room_id: roomId,
-          user_id: 'demo-user-3',
-          username: 'Charlie',
-          content: 'This chat interface looks amazing with the glassmorphism design! ✨',
-          timestamp: new Date(Date.now() - 480000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '4',
-          room_id: roomId,
-          user_id: 'demo-user-4',
-          username: 'Diana',
-          content: 'The search functionality is really helpful for finding old messages',
-          timestamp: new Date(Date.now() - 420000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '5',
-          room_id: roomId,
-          user_id: 'demo-user-1',
-          username: 'Alice',
-          content: 'I love how the message input stays visible while scrolling through history',
-          timestamp: new Date(Date.now() - 360000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '6',
-          room_id: roomId,
-          user_id: 'demo-user-2',
-          username: 'Bob',
-          content: 'The scroll controls appear automatically when you scroll up - so intuitive!',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '7',
-          room_id: roomId,
-          user_id: 'demo-user-3',
-          username: 'Charlie',
-          content: 'And the "New messages" indicator helps you get back to recent conversations',
-          timestamp: new Date(Date.now() - 240000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '8',
-          room_id: roomId,
-          user_id: 'demo-user-4',
-          username: 'Diana',
-          content: 'Perfect for busy chat rooms with lots of message history! 📚',
-          timestamp: new Date(Date.now() - 180000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '9',
-          room_id: roomId,
-          user_id: 'demo-user-1',
-          username: 'Alice',
-          content: 'The real-time search works great too - try searching for "glassmorphism"',
-          timestamp: new Date(Date.now() - 120000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '10',
-          room_id: roomId,
-          user_id: 'demo-user-2',
-          username: 'Bob',
-          content: 'This is the most recent message. The auto-scroll feature works perfectly! 🚀',
-          timestamp: new Date(Date.now() - 60000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '11',
-          room_id: roomId,
-          user_id: 'demo-user-3',
-          username: 'Charlie',
-          content: 'Adding more messages to test scroll functionality. This should help demonstrate the scrolling!',
-          timestamp: new Date(Date.now() - 50000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '12',
-          room_id: roomId,
-          user_id: 'demo-user-4',
-          username: 'Diana',
-          content: 'The glassmorphism design looks fantastic with all these messages stacked up!',
-          timestamp: new Date(Date.now() - 40000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '13',
-          room_id: roomId,
-          user_id: 'demo-user-1',
-          username: 'Alice',
-          content: 'You should now be able to scroll up and down through all the message history.',
-          timestamp: new Date(Date.now() - 30000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '14',
-          room_id: roomId,
-          user_id: 'demo-user-2',
-          username: 'Bob',
-          content: 'The scroll controls help you navigate back to recent messages quickly.',
-          timestamp: new Date(Date.now() - 20000).toISOString(),
-          type: 'message'
-        },
-        {
-          id: '15',
-          room_id: roomId,
-          user_id: 'demo-user-3',
-          username: 'Charlie',
-          content: 'This is now the most recent message. Perfect for testing the scroll functionality! 🎉',
-          timestamp: new Date(Date.now() - 10000).toISOString(),
-          type: 'message'
-        }
-      ];
-      
-      setMessages(demoMessages);
+      console.error('❌ Failed to load messages from backend:', error);
+      toast.error('Failed to connect to server. Please check your connection.');
+      setMessages([]);
     }
   };
 
@@ -322,20 +175,17 @@ export default function RoomPage() {
     if (!content.trim() || !user) return;
     
     if (wsConnected && socketManager.isConnected()) {
-      // Real-time mode: Send via WebSocket
+      // Send via WebSocket
       try {
         socketManager.sendMessage(content);
         console.log('📤 Message sent via WebSocket:', content);
+        toast.success('Message sent!');
       } catch (error) {
         console.error('Failed to send message via WebSocket:', error);
-        // Fallback to local message
-        addLocalMessage(content);
-        toast.error('Failed to send message. Added locally.');
+        toast.error('Failed to send message. Check your connection.');
       }
     } else {
-      // Demo mode: Add message locally
-      addLocalMessage(content);
-      toast('Message sent (demo mode)', { icon: '🔧' });
+      toast.error('Not connected to server. Cannot send message.');
     }
   };
   
@@ -393,7 +243,11 @@ export default function RoomPage() {
         stream_key: stream.stream_key
       };
       
-      setMessages(prev => [...prev, streamMessage]);
+      // Send via WebSocket if connected
+      if (wsConnected) {
+        socketManager.sendMessage(JSON.stringify(streamMessage));
+      }
+      
       toast.success(`Live stream created! Stream key: ${stream.stream_key}`);
       
       // Show detailed stream info
@@ -407,34 +261,8 @@ export default function RoomPage() {
       setShowVideoModal(false);
       setVideoTitle('');
     } catch (error) {
-      console.error('Backend live stream failed, using demo mode:', error);
-      
-      // Demo mode: Create a mock live stream
-      const mockStreamMessage: Message = {
-        id: Date.now().toString(),
-        room_id: roomId,
-        user_id: user.id,
-        username: user.username,
-        content: `🔴 Started live stream: ${videoTitle} (Demo Mode)`,
-        timestamp: new Date().toISOString(),
-        type: 'live_stream_created',
-        title: videoTitle,
-        playback_id: 'demo-stream-' + Date.now(),
-        stream_key: 'demo-key-' + Math.random().toString(36).substr(2, 9)
-      };
-      
-      setMessages(prev => [...prev, mockStreamMessage]);
-      toast.success('Demo: Live stream created! This is a demonstration.');
-      
-      setTimeout(() => {
-        toast(
-          '📺 Demo Mode: In production, you would get real RTMP credentials for OBS streaming.',
-          { duration: 8000, icon: '🎬' }
-        );
-      }, 1000);
-      
-      setShowVideoModal(false);
-      setVideoTitle('');
+      toast.error('Failed to create live stream. Please check backend connection.');
+      console.error('Error creating live stream:', error);
     } finally {
       setIsLoading(false);
     }
@@ -476,55 +304,16 @@ export default function RoomPage() {
         playback_id: upload.playback_id
       };
       
-      setMessages(prev => [...prev, videoMessage]);
-      toast.success('Video uploaded successfully!');
+      // Send via WebSocket if connected
+      if (wsConnected) {
+        socketManager.sendMessage(JSON.stringify(videoMessage));
+      }
       
+      toast.success('Video uploaded successfully!');
       resetUploadModal();
     } catch (error) {
-      console.error('Backend video upload failed, using demo mode:', error);
-      
-      // Demo mode: Simulate video upload
-      const simulateUpload = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 0;
-          const interval = setInterval(() => {
-            progress += 20;
-            setUploadProgress(progress);
-            
-            if (progress >= 100) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 200);
-        });
-      };
-      
-      await simulateUpload();
-      
-      // Create mock video message
-      const mockVideoMessage: Message = {
-        id: Date.now().toString(),
-        room_id: roomId,
-        user_id: user.id,
-        username: user.username,
-        content: `📹 Shared video: ${videoTitle} (Demo Mode)`,
-        timestamp: new Date().toISOString(),
-        type: 'video_ready',
-        title: videoTitle,
-        playback_id: 'demo-video-' + Date.now()
-      };
-      
-      setMessages(prev => [...prev, mockVideoMessage]);
-      toast.success('Demo: Video uploaded! This is a demonstration.');
-      
-      setTimeout(() => {
-        toast(
-          '🎥 Demo Mode: In production, your video would be processed by Mux and playable immediately.',
-          { duration: 8000, icon: '📹' }
-        );
-      }, 1000);
-      
-      resetUploadModal();
+      toast.error('Failed to upload video. Please check backend connection.');
+      console.error('Error uploading video:', error);
     } finally {
       setIsLoading(false);
       setUploadProgress(0);
@@ -592,12 +381,10 @@ export default function RoomPage() {
               <h1 className="text-xl font-bold text-white">{roomName}</h1>
               <div className="flex items-center space-x-2 text-sm">
                 <div className={`w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-green-400' : 
-                  isConnected ? 'bg-yellow-400' : 'bg-red-400'
+                  wsConnected ? 'bg-green-400' : 'bg-red-400'
                 }`}></div>
                 <span className="text-white/60">
-                  {wsConnected ? 'Real-time' : 
-                   isConnected ? 'Demo Mode' : 'Disconnected'}
+                  {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
             </div>
@@ -647,7 +434,9 @@ export default function RoomPage() {
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-white/60">No messages yet. Start the conversation!</div>
+                <div className="text-white/60">
+                  {wsConnected ? 'No messages yet. Start the conversation!' : 'Connect to server to see messages and chat.'}
+                </div>
               </div>
             ) : (
               <>
@@ -669,18 +458,19 @@ export default function RoomPage() {
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Input
-                  placeholder={wsConnected ? "Type your message..." : "Type your message... (demo mode)"}
+                  placeholder={wsConnected ? "Type your message..." : "Connect to server to send messages"}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  disabled={!isConnected}
+                  disabled={!wsConnected}
                 />
               </div>
               <Button
                 onClick={handleSendMessage}
-                disabled={!message.trim() || !isConnected}
+                disabled={!message.trim() || !wsConnected}
                 variant="primary"
                 size="sm"
+                className="px-4"
               >
                 <PaperAirplaneIcon className="w-4 h-4" />
               </Button>

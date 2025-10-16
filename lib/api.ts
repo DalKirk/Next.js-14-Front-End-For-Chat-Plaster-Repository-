@@ -62,61 +62,87 @@ export const apiClient = {
       console.log('✅ User created successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ User creation failed, trying fallback:', error);
-      
-      // Fallback: Create a mock user locally for development/testing
-      const mockUser: User = {
-        id: `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        username: username,
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('🔄 Using fallback mock user:', mockUser);
-      return mockUser;
+      handleApiError(error, 'User creation');
+      throw error; // This will never be reached but satisfies TypeScript
     }
   },
 
   // Room endpoints
   getRooms: async (): Promise<Room[]> => {
-    const response = await api.get('/rooms');
-    return response.data;
+    try {
+      const response = await api.get('/rooms');
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Get rooms');
+      throw error;
+    }
   },
 
   createRoom: async (name: string): Promise<Room> => {
-    const response = await api.post('/rooms', { name });
-    return response.data;
+    try {
+      const response = await api.post('/rooms', { name });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Create room');
+      throw error;
+    }
   },
 
   joinRoom: async (roomId: string, userId: string): Promise<void> => {
-    await api.post(`/rooms/${roomId}/join`, { user_id: userId });
+    try {
+      await api.post(`/rooms/${roomId}/join`, { user_id: userId });
+    } catch (error) {
+      handleApiError(error, 'Join room');
+      throw error;
+    }
   },
 
   // Message endpoints
   getRoomMessages: async (roomId: string): Promise<Message[]> => {
-    const response = await api.get(`/rooms/${roomId}/messages`);
-    return response.data;
+    try {
+      const response = await api.get(`/rooms/${roomId}/messages`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Get room messages');
+      throw error;
+    }
   },
 
   // Video endpoints
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
-    const response = await api.post(`/rooms/${roomId}/live-stream`, { title });
-    return response.data;
+    try {
+      const response = await api.post(`/rooms/${roomId}/live-stream`, { title });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Create live stream');
+      throw error;
+    }
   },
 
   createVideoUpload: async (roomId: string, title: string, description?: string): Promise<VideoUpload> => {
-    const response = await api.post(`/rooms/${roomId}/video-upload`, { 
-      title, 
-      description 
-    });
-    return response.data;
+    try {
+      const response = await api.post(`/rooms/${roomId}/video-upload`, { 
+        title, 
+        description 
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Create video upload');
+      throw error;
+    }
   },
 
   uploadVideoFile: async (uploadUrl: string, file: File): Promise<void> => {
-    await axios.put(uploadUrl, file, {
-      headers: {
-        'Content-Type': file.type,
-      },
-    });
+    try {
+      await axios.put(uploadUrl, file, {
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+    } catch (error) {
+      handleApiError(error, 'Upload video file');
+      throw error;
+    }
   },
 };
 

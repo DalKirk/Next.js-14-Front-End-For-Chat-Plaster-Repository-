@@ -21,9 +21,6 @@ export function VideoPlayer({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Check if this is a demo/mock playback ID
-  const isDemoVideo = playbackId.startsWith('demo-');
-  
   const handleError = (error: any) => {
     console.error('Video player error:', error);
     setHasError(true);
@@ -39,26 +36,6 @@ export function VideoPlayer({
     setIsLoading(false);
   };
   
-  if (isDemoVideo) {
-    // Demo mode: Show a placeholder instead of trying to load non-existent video
-    return (
-      <div className={`relative rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-gray-800/50 ${className}`}>
-        <div className="aspect-video flex items-center justify-center">
-          <div className="text-center space-y-3">
-            <div className="text-4xl">{title?.includes('live') ? '🔴' : '🎥'}</div>
-            <div className="text-white/90 text-sm font-medium">{title}</div>
-            <div className="text-white/60 text-xs">
-              {title?.includes('live') ? 'Live Stream Demo' : 'Video Demo'}
-            </div>
-            <div className="text-white/40 text-xs">
-              In production, this would show the actual {title?.includes('live') ? 'live stream' : 'video'}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
   if (hasError) {
     // Error state: Show a user-friendly error message
     return (
@@ -68,7 +45,7 @@ export function VideoPlayer({
             <div className="text-red-400 text-2xl">⚠️</div>
             <div className="text-white/90 text-sm">{title || 'Video'}</div>
             <div className="text-red-300/80 text-xs">
-              Video temporarily unavailable
+              Backend connection required for video playback
             </div>
             <button 
               onClick={() => {
