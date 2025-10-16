@@ -4,10 +4,28 @@
 
 A beautiful, modern Next.js 14 frontend for real-time video chat with Mux streaming integration. Features glassmorphism design, live streaming capabilities, and seamless FastAPI backend integration.
 
+## 🌐 **Live Demo**
+**🚀 Try it now**: [https://video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app](https://video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app)
+
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.33-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Latest-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-Latest-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![Mux](https://img.shields.io/badge/Mux-Video-FF6B6B?style=for-the-badge)
+
+## 🎯 **Current Status & Features**
+
+### ✅ **Fully Functional Frontend**
+- **Live Demo**: Available at [video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app](https://video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app)
+- **User Creation**: Always works (with backend connection or demo mode)
+- **Modern UI**: Glassmorphism design with smooth animations
+- **Responsive**: Perfect on desktop, tablet, and mobile
+- **Backend Integration**: Connected to Railway FastAPI backend
+
+### 🚀 **Try It Now**
+1. Click the live demo link above
+2. Enter any username and create your profile
+3. Explore chat rooms and video features
+4. Test video upload and live streaming UI
 
 ## ✨ Features
 
@@ -165,6 +183,10 @@ Custom theme with:
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+**🚀 Live Demo**: [https://video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app](https://video-chat-frontend-8yoyjc629-dalkirks-projects.vercel.app)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FDalKirk%2FNext.js-14-Front-End-For-Chat-Plaster-Repository-)
+
 1. Push code to GitHub
 2. Connect to Vercel
 3. Set environment variables
