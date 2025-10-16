@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,17 @@ export default function RoomPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     // Get user from localStorage
@@ -58,7 +69,57 @@ export default function RoomPage() {
       setMessages(roomMessages);
     } catch (error) {
       console.error('Error loading messages:', error);
-      // Don't show error toast as this might be expected in demo mode
+      
+      // Demo mode: Add some sample messages to show functionality
+      const demoMessages: Message[] = [
+        {
+          id: '1',
+          room_id: roomId,
+          user_id: 'demo-user-1',
+          username: 'Alice',
+          content: 'Welcome to the chat room! 👋',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '2',
+          room_id: roomId,
+          user_id: 'demo-user-2',
+          username: 'Bob',
+          content: 'Great to see everyone here!',
+          timestamp: new Date(Date.now() - 240000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '3',
+          room_id: roomId,
+          user_id: 'demo-user-3',
+          username: 'Charlie',
+          content: 'This chat interface looks amazing with the glassmorphism design! ✨',
+          timestamp: new Date(Date.now() - 180000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '4',
+          room_id: roomId,
+          user_id: 'demo-user-1',
+          username: 'Alice',
+          content: 'The auto-scroll feature works perfectly! 🚀',
+          timestamp: new Date(Date.now() - 120000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '5',
+          room_id: roomId,
+          user_id: 'demo-user-2',
+          username: 'Bob',
+          content: 'And the input stays visible while scrolling - so convenient!',
+          timestamp: new Date(Date.now() - 60000).toISOString(),
+          type: 'message'
+        }
+      ];
+      
+      setMessages(demoMessages);
     }
   };
 
@@ -78,6 +139,7 @@ export default function RoomPage() {
     
     setMessages(prev => [...prev, newMessage]);
     
+    // Auto-scroll to new message will happen via useEffect
     // In a real app, this would send via WebSocket
     // For demo purposes, we'll just add it locally
     toast.success('Message sent (demo mode)');
@@ -152,7 +214,7 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col max-h-screen overflow-hidden">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -202,32 +264,40 @@ export default function RoomPage() {
       </motion.div>
 
       {/* Messages Area */}
-      <div className="flex-1 mx-4 mb-4">
+      <div className="flex-1 mx-4 mb-4 flex flex-col">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card h-full flex flex-col"
+          className="glass-card flex-1 flex flex-col min-h-0"
         >
           {/* Messages List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div 
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth" 
+            id="messages-container"
+          >
             {messages.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-white/60">No messages yet. Start the conversation!</div>
               </div>
             ) : (
-              messages.map((msg, index) => (
-                <MessageBubble
-                  key={index}
-                  message={msg}
-                  isOwn={msg.username === user.username}
-                />
-              ))
+              <>
+                {messages.map((msg, index) => (
+                  <MessageBubble
+                    key={index}
+                    message={msg}
+                    isOwn={msg.username === user.username}
+                  />
+                ))}
+                {/* Invisible element to scroll to */}
+                <div ref={messagesEndRef} />
+              </>
             )}
           </div>
 
-          {/* Message Input */}
-          <div className="border-t border-white/10 p-4">
+          {/* Sticky Message Input */}
+          <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0">
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Input
