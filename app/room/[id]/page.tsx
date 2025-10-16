@@ -122,7 +122,9 @@ export default function RoomPage() {
           console.log('✅ WebSocket connected - real-time messaging active');
         } else {
           console.log('❌ WebSocket disconnected');
-          toast.error('Connection lost. Real-time messaging unavailable.');
+          if (connectionAttempts === 1) {
+            toast.error('Could not connect to real-time server. Check if your backend is running.');
+          }
         }
       });
       
@@ -386,6 +388,16 @@ export default function RoomPage() {
                 <span className="text-white/60">
                   {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
+                {!wsConnected && (
+                  <Button
+                    onClick={() => initializeWebSocket()}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs px-2 py-1 h-6"
+                  >
+                    Retry
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -434,9 +446,14 @@ export default function RoomPage() {
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-white/60">
-                  {wsConnected ? 'No messages yet. Start the conversation!' : 'Connect to server to see messages and chat.'}
+                <div className="text-white/60 mb-4">
+                  {wsConnected ? 'No messages yet. Start the conversation!' : 'WebSocket connection required for real-time messaging.'}
                 </div>
+                {!wsConnected && (
+                  <div className="text-white/40 text-sm">
+                    Make sure your backend server is running with WebSocket support.
+                  </div>
+                )}
               </div>
             ) : (
               <>

@@ -19,6 +19,11 @@ class SocketManager {
       forced_production: process.env.NODE_ENV === 'production'
     });
     
+    // Disconnect existing connection
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    
     this.socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
       upgrade: true,
@@ -28,21 +33,34 @@ class SocketManager {
       },
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 3,
-      timeout: 10000
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 15000,
+      forceNew: true
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to WebSocket');
+      console.log('✅ Connected to WebSocket successfully');
       this.callbacks.get('connect')?.(true);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from WebSocket');
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from WebSocket:', reason);
+      this.callbacks.get('connect')?.(false);
+    });
+    
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ WebSocket connection error:', error);
       this.callbacks.get('connect')?.(false);
     });
 
     this.socket.on('message', (data: SocketMessage) => {
+      console.log('📨 Received WebSocket message:', data);
+      this.callbacks.get('message')?.(data);
+    });
+    
+    this.socket.on('new_message', (data: SocketMessage) => {
+      console.log('📨 Received new message:', data);
       this.callbacks.get('message')?.(data);
     });
 
@@ -58,7 +76,13 @@ class SocketManager {
 
   sendMessage(content: string): void {
     if (this.socket && this.socket.connected) {
+      console.log('📤 Sending message via WebSocket:', content);
+      this.socket.emit('send_message', { content });
+      // Also try the 'message' event for compatibility
       this.socket.emit('message', { content });
+    } else {
+      console.error('❌ Cannot send message - WebSocket not connected');
+      throw new Error('WebSocket not connected');
     }
   }
 
