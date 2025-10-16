@@ -24,7 +24,12 @@ export default function HomePage() {
     try {
       const user = await apiClient.createUser(username.trim());
       localStorage.setItem('chat-user', JSON.stringify(user));
-      toast.success(`Welcome, ${user.username}!`);
+      
+      if (user.id.startsWith('mock-')) {
+        toast.success(`Welcome, ${user.username}! (Demo mode - backend unavailable)`);
+      } else {
+        toast.success(`Welcome, ${user.username}!`);
+      }
       
       // Redirect to chat page
       router.push('/chat');
