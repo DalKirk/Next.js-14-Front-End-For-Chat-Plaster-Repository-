@@ -4,28 +4,46 @@
 
 A beautiful, modern Next.js 14 frontend for real-time video chat with Mux streaming integration. Features glassmorphism design, live streaming capabilities, and seamless FastAPI backend integration.
 
-## 🌐 **Live Demo**
-**🚀 Try it now**: [https://video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)
+## 🌐 **Live Demo - Test It Now!**
+
+### 🚀 **[https://video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)**
+
+**No installation required!** Jump straight into testing the full application:
 
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.33-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Latest-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-Latest-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![Mux](https://img.shields.io/badge/Mux-Video-FF6B6B?style=for-the-badge)
 
-## 🎯 **Current Status & Features**
+## 🎯 **Quick Test Guide**
 
-### ✅ **Fully Functional Frontend**
-- **Live Demo**: Available at [video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)
-- **User Creation**: Always works (with backend connection or demo mode)
-- **Modern UI**: Glassmorphism design with smooth animations
-- **Responsive**: Perfect on desktop, tablet, and mobile
-- **Backend Integration**: Connected to Railway FastAPI backend
+### 🆕 **New to this app? Start here:**
+1. **🔗 Click**: [Live Demo Link](https://video-chat-frontend-ruby.vercel.app)
+2. **👤 Create User**: Enter any username (e.g., "TestUser123")
+3. **🏠 Join Room**: Click "Join Room" or enter room name (e.g., "general")
+4. **💬 Test Chat**: 
+   - Scroll through existing demo messages
+   - Send your own messages using the input at the bottom
+   - Watch messages align left/right based on sender
+5. **🎛️ Try Features**:
+   - **🔴 Live**: Test live streaming UI
+   - **📹 Upload**: Test video upload interface
+   - **📜 Scroll**: Navigate through chat history with custom scrollbar
 
-### 🚀 **Try It Now**
-1. Click the live demo link above
-2. Enter any username and create your profile
-3. Explore chat rooms and video features
-4. Test video upload and live streaming UI
+### ✅ **What Works Right Now**
+- ✅ **User Creation**: Always functional (demo mode if backend unavailable)
+- ✅ **Chat Interface**: Real-time message UI with glassmorphism design  
+- ✅ **Scroll Functionality**: Custom purple scrollbar, smooth navigation
+- ✅ **Room Navigation**: Join different chat rooms
+- ✅ **Video UI**: Professional video upload and streaming interfaces
+- ✅ **Responsive Design**: Works perfectly on mobile, tablet, desktop
+- ✅ **Backend Integration**: Connected to Railway FastAPI backend
+
+### 🎨 **Latest Updates (Just Deployed!)**
+- 🎨 **Custom Scrollbar**: Beautiful purple-themed scrollbar matching the glassmorphism design
+- 📱 **Fixed Message Alignment**: Messages properly align left (others) and right (yours)  
+- 🗨️ **Enhanced Chat History**: 15 demo messages to fully test scrolling functionality
+- ⚡ **Improved Performance**: Optimized container layouts for smooth scrolling
 
 ## ✨ Features
 
@@ -40,11 +58,15 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 
 ## 🚀 Quick Start
 
-### Prerequisites
+> **👆 Prefer to test online?** Use the [Live Demo](https://video-chat-frontend-ruby.vercel.app) above - no setup required!
+
+### For Developers - Local Development
+
+#### Prerequisites
 
 - Node.js 18+ 
 - npm, yarn, or pnpm
-- Your FastAPI backend running (from the previous setup)
+- (Optional) Your FastAPI backend running for full features
 
 ### Installation
 
@@ -319,14 +341,47 @@ Customize in `globals.css`:
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [Framer Motion](https://www.framer.com/motion/)
 
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. **Test First**: Try the [live demo](https://video-chat-frontend-ruby.vercel.app) to understand the app
+2. **Fork the Repository**: Click the fork button on GitHub
+3. **Clone Your Fork**: 
+   ```bash
+   git clone https://github.com/your-username/Next.js-14-Front-End-For-Chat-Plaster-Repository-.git
+   cd Next.js-14-Front-End-For-Chat-Plaster-Repository-
+   ```
+4. **Install Dependencies**: `npm install`
+5. **Start Development**: `npm run dev`
+6. **Make Changes**: Focus on UI/UX improvements, bug fixes, or new features
+7. **Test Thoroughly**: Ensure scrolling, messaging, and responsive design work
+8. **Submit PR**: Create a pull request with clear description
+
+### 🐛 Found a Bug?
+- Test it on the [live demo](https://video-chat-frontend-ruby.vercel.app) first
+- Check if it's reproducible
+- Open an issue with screenshots and steps to reproduce
+
 ## 🎉 Next Steps
 
-Your modern video chat frontend is now ready! Here's what you can do:
+### 🧪 **For Testers**
+1. **🔗 Visit**: [Live Demo](https://video-chat-frontend-ruby.vercel.app)
+2. **📱 Test**: Try on different devices (mobile, tablet, desktop)
+3. **🐛 Report**: Found issues? Open a GitHub issue with details
 
-1. **Start Development**: Run `npm run dev` and start customizing
-2. **Connect Backend**: Ensure your FastAPI server is running on port 8000
-3. **Test Features**: Try creating users, rooms, and sharing videos
+### 👨‍💻 **For Developers**
+1. **Fork & Clone**: Get the code locally
+2. **Start Development**: Run `npm run dev` and start customizing
+3. **Connect Backend**: Optional FastAPI integration for full features
 4. **Deploy**: Push to Vercel for instant deployment
 5. **Customize**: Modify colors, animations, and layout to match your brand
+
+### 🚀 **For Contributors**
+1. **🎯 Focus Areas**: UI improvements, bug fixes, mobile optimization
+2. **🎨 Design**: Enhance the glassmorphism theme
+3. **⚡ Performance**: Optimize loading and animations
+4. **📱 Mobile**: Improve mobile experience
+5. **🧪 Testing**: Add tests for components and features
 
 **Happy coding! 🚀**
