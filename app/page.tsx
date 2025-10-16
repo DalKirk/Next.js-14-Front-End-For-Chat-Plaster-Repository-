@@ -29,7 +29,22 @@ export default function HomePage() {
       // Redirect to chat page
       router.push('/chat');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
+      console.error('❌ User creation error:', error);
+      let errorMessage = 'Failed to create user';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Special handling for common issues
+        if (error.message.includes('CORS')) {
+          errorMessage = 'Backend connection blocked. CORS issue detected.';
+        } else if (error.message.includes('Network error')) {
+          errorMessage = 'Cannot connect to backend. Please check network connection.';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Backend API endpoint not found. Please check backend deployment.';
+        }
+      }
+      
       toast.error(errorMessage);
       console.error('Error creating user:', error);
     } finally {

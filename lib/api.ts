@@ -24,10 +24,30 @@ const api = axios.create({
 
 // Error handler for development/missing backend
 const handleApiError = (error: any, operation: string) => {
+  console.error(`❌ ${operation} failed:`, error);
+  
   if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
     throw new Error(`Backend not available. Please check if your API server is running at ${API_BASE_URL}`);
   }
-  throw new Error(`${operation} failed: ${error.response?.data?.message || error.message}`);
+  
+  if (error.response) {
+    // Server responded with error status
+    const status = error.response.status;
+    const message = error.response.data?.message || error.response.data?.detail || error.message;
+    
+    if (status === 404) {
+      throw new Error(`API endpoint not found. Check if ${API_BASE_URL} is the correct backend URL.`);
+    } else if (status === 500) {
+      throw new Error(`Backend server error: ${message}`);
+    } else if (status >= 400) {
+      throw new Error(`Request failed (${status}): ${message}`);
+    }
+  } else if (error.request) {
+    // Network error or no response
+    throw new Error(`Network error: Unable to reach backend at ${API_BASE_URL}. Check CORS settings or network connectivity.`);
+  }
+  
+  throw new Error(`${operation} failed: ${error.message}`);
 };
 
 // API functions matching your FastAPI endpoints
@@ -35,9 +55,12 @@ export const apiClient = {
   // User endpoints
   createUser: async (username: string): Promise<User> => {
     try {
+      console.log(`🚀 Creating user "${username}" at ${API_BASE_URL}/users`);
       const response = await api.post('/users', { username });
+      console.log('✅ User created successfully:', response.data);
       return response.data;
     } catch (error) {
+      console.error('❌ User creation failed:', error);
       handleApiError(error, 'Create user');
       throw error; // This will never execute but satisfies TypeScript
     }
