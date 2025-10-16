@@ -6,8 +6,18 @@ class SocketManager {
   private callbacks: Map<string, Function> = new Map();
 
   connect(roomId: string, userId: string): Socket {
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+    const WS_URL = process.env.NODE_ENV === 'production' 
+      ? 'wss://web-production-64adb.up.railway.app'
+      : process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
     const wsUrl = `${WS_URL}/ws/${roomId}/${userId}`;
+    
+    console.log('🔧 WebSocket Configuration:', {
+      NODE_ENV: process.env.NODE_ENV,
+      NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+      WS_URL,
+      wsUrl,
+      forced_production: process.env.NODE_ENV === 'production'
+    });
     
     this.socket = io(wsUrl, {
       transports: ['websocket'],

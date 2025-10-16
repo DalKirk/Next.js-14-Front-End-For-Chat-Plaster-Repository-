@@ -1,14 +1,17 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload } from './types';
 
-// API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// API configuration - Force Railway URL for production
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://web-production-64adb.up.railway.app'
+  : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Debug logging for environment variables
 console.log('🔧 API Configuration:', {
+  NODE_ENV: process.env.NODE_ENV,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   API_BASE_URL,
-  NODE_ENV: process.env.NODE_ENV
+  forced_production: process.env.NODE_ENV === 'production'
 });
 
 const api = axios.create({
