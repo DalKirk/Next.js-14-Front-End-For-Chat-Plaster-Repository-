@@ -29,7 +29,8 @@ export default function HomePage() {
       // Redirect to chat page
       router.push('/chat');
     } catch (error) {
-      toast.error('Failed to create user');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
+      toast.error(errorMessage);
       console.error('Error creating user:', error);
     } finally {
       setIsLoading(false);

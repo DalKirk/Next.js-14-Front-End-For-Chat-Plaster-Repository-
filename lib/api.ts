@@ -9,14 +9,28 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
+
+// Error handler for development/missing backend
+const handleApiError = (error: any, operation: string) => {
+  if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+    throw new Error(`Backend not available. Please check if your API server is running at ${API_BASE_URL}`);
+  }
+  throw new Error(`${operation} failed: ${error.response?.data?.message || error.message}`);
+};
 
 // API functions matching your FastAPI endpoints
 export const apiClient = {
   // User endpoints
   createUser: async (username: string): Promise<User> => {
-    const response = await api.post('/users', { username });
-    return response.data;
+    try {
+      const response = await api.post('/users', { username });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'Create user');
+      throw error; // This will never execute but satisfies TypeScript
+    }
   },
 
   // Room endpoints
