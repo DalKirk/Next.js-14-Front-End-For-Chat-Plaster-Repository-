@@ -38,8 +38,11 @@ export default function RoomPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showScrollControls, setShowScrollControls] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -282,14 +285,36 @@ export default function RoomPage() {
     setIsLoading(true);
     try {
       const stream = await apiClient.createLiveStream(roomId, videoTitle.trim());
+      
+      // Create a video message with live stream info
+      const streamMessage: Message = {
+        id: Date.now().toString(),
+        room_id: roomId,
+        user_id: user.id,
+        username: user.username,
+        content: `🔴 Started live stream: ${videoTitle}`,
+        timestamp: new Date().toISOString(),
+        type: 'live_stream_created',
+        title: videoTitle,
+        playback_id: stream.playback_id,
+        stream_key: stream.stream_key
+      };
+      
+      setMessages(prev => [...prev, streamMessage]);
       toast.success(`Live stream created! Stream key: ${stream.stream_key}`);
+      
+      // Show detailed stream info
+      setTimeout(() => {
+        toast.success(
+          `RTMP URL: ${stream.rtmp_url || 'rtmp://global-live.mux.com:5222/live'}\nStream Key: ${stream.stream_key}`,
+          { duration: 15000 }
+        );
+      }, 1000);
+      
       setShowVideoModal(false);
       setVideoTitle('');
-      
-      // Send message about the stream
-      sendMessage(`🔴 Started live stream: ${videoTitle}`);
     } catch (error) {
-      toast.error('Failed to create live stream');
+      toast.error('Failed to create live stream. Please try again.');
       console.error('Error creating live stream:', error);
     } finally {
       setIsLoading(false);
@@ -302,20 +327,77 @@ export default function RoomPage() {
       return;
     }
 
+    if (!selectedFile) {
+      toast.error('Please select a video file');
+      return;
+    }
+
     setIsLoading(true);
+    setUploadProgress(0);
+    
     try {
+      // Step 1: Create video upload request
       const upload = await apiClient.createVideoUpload(roomId, videoTitle.trim());
-      toast.success('Video upload created! Check your files.');
-      setShowUploadModal(false);
-      setVideoTitle('');
+      setUploadProgress(25);
       
-      // Send message about the upload
-      sendMessage(`📹 Shared video: ${videoTitle}`);
+      // Step 2: Upload file directly to Mux
+      await apiClient.uploadVideoFile(upload.upload_url, selectedFile);
+      setUploadProgress(100);
+      
+      // Step 3: Create video message
+      const videoMessage: Message = {
+        id: Date.now().toString(),
+        room_id: roomId,
+        user_id: user.id,
+        username: user.username,
+        content: `📹 Shared video: ${videoTitle}`,
+        timestamp: new Date().toISOString(),
+        type: 'video_ready',
+        title: videoTitle,
+        playback_id: upload.playback_id
+      };
+      
+      setMessages(prev => [...prev, videoMessage]);
+      toast.success('Video uploaded successfully!');
+      
+      resetUploadModal();
     } catch (error) {
-      toast.error('Failed to create video upload');
-      console.error('Error creating video upload:', error);
+      toast.error('Failed to upload video. Please try again.');
+      console.error('Error uploading video:', error);
     } finally {
       setIsLoading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file type
+      if (!file.type.startsWith('video/')) {
+        toast.error('Please select a video file');
+        return;
+      }
+      
+      // Check file size (limit to 500MB)
+      const maxSize = 500 * 1024 * 1024; // 500MB
+      if (file.size > maxSize) {
+        toast.error('File size must be less than 500MB');
+        return;
+      }
+      
+      setSelectedFile(file);
+      toast.success(`Selected: ${file.name}`);
+    }
+  };
+
+  const resetUploadModal = () => {
+    setShowUploadModal(false);
+    setVideoTitle('');
+    setSelectedFile(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -492,7 +574,10 @@ export default function RoomPage() {
       {/* Live Stream Modal */}
       <Modal
         isOpen={showVideoModal}
-        onClose={() => setShowVideoModal(false)}
+        onClose={() => {
+          setShowVideoModal(false);
+          setVideoTitle('');
+        }}
         title="Create Live Stream"
       >
         <div className="space-y-4">

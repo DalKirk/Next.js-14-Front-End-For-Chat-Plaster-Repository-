@@ -19,6 +19,10 @@ export interface Message {
   content: string;
   timestamp: string;
   type: 'message' | 'system' | 'video_ready' | 'live_stream_created' | 'user_joined' | 'user_left';
+  // Optional video-related fields
+  title?: string;
+  playback_id?: string;
+  stream_key?: string;
 }
 
 export interface LiveStream {
@@ -27,12 +31,14 @@ export interface LiveStream {
   playback_id: string;
   title: string;
   status: string;
+  rtmp_url?: string;
 }
 
 export interface VideoUpload {
   id: string;
   upload_url: string;
   asset_id: string;
+  playback_id: string;
   title: string;
   description?: string;
 }
