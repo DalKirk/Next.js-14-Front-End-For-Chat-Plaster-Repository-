@@ -16,7 +16,10 @@ import {
   PaperAirplaneIcon, 
   VideoCameraIcon, 
   DocumentIcon,
-  ArrowLeftIcon 
+  ArrowLeftIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
 export default function RoomPage() {
@@ -34,6 +37,9 @@ export default function RoomPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showScrollControls, setShowScrollControls] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -42,9 +48,32 @@ export default function RoomPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const scrollToTop = () => {
+    messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isScrolledToBottom = scrollHeight - scrollTop <= clientHeight + 10;
+    
+    setIsAtBottom(isScrolledToBottom);
+    setShowScrollControls(scrollTop > 100); // Show controls when scrolled up
+  };
+
+  // Filter messages based on search term
+  const filteredMessages = messages.filter(msg =>
+    msg.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    msg.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only auto-scroll if user is at bottom (not browsing history)
+    if (isAtBottom) {
+      scrollToBottom();
+    }
+  }, [messages, isAtBottom]);
 
   useEffect(() => {
     // Get user from localStorage
@@ -70,7 +99,7 @@ export default function RoomPage() {
     } catch (error) {
       console.error('Error loading messages:', error);
       
-      // Demo mode: Add some sample messages to show functionality
+      // Demo mode: Add more sample messages to show scroll functionality
       const demoMessages: Message[] = [
         {
           id: '1',
@@ -78,7 +107,7 @@ export default function RoomPage() {
           user_id: 'demo-user-1',
           username: 'Alice',
           content: 'Welcome to the chat room! 👋',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
+          timestamp: new Date(Date.now() - 600000).toISOString(),
           type: 'message'
         },
         {
@@ -87,7 +116,7 @@ export default function RoomPage() {
           user_id: 'demo-user-2',
           username: 'Bob',
           content: 'Great to see everyone here!',
-          timestamp: new Date(Date.now() - 240000).toISOString(),
+          timestamp: new Date(Date.now() - 540000).toISOString(),
           type: 'message'
         },
         {
@@ -96,24 +125,69 @@ export default function RoomPage() {
           user_id: 'demo-user-3',
           username: 'Charlie',
           content: 'This chat interface looks amazing with the glassmorphism design! ✨',
-          timestamp: new Date(Date.now() - 180000).toISOString(),
+          timestamp: new Date(Date.now() - 480000).toISOString(),
           type: 'message'
         },
         {
           id: '4',
           room_id: roomId,
-          user_id: 'demo-user-1',
-          username: 'Alice',
-          content: 'The auto-scroll feature works perfectly! 🚀',
-          timestamp: new Date(Date.now() - 120000).toISOString(),
+          user_id: 'demo-user-4',
+          username: 'Diana',
+          content: 'The search functionality is really helpful for finding old messages',
+          timestamp: new Date(Date.now() - 420000).toISOString(),
           type: 'message'
         },
         {
           id: '5',
           room_id: roomId,
+          user_id: 'demo-user-1',
+          username: 'Alice',
+          content: 'I love how the message input stays visible while scrolling through history',
+          timestamp: new Date(Date.now() - 360000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '6',
+          room_id: roomId,
           user_id: 'demo-user-2',
           username: 'Bob',
-          content: 'And the input stays visible while scrolling - so convenient!',
+          content: 'The scroll controls appear automatically when you scroll up - so intuitive!',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '7',
+          room_id: roomId,
+          user_id: 'demo-user-3',
+          username: 'Charlie',
+          content: 'And the "New messages" indicator helps you get back to recent conversations',
+          timestamp: new Date(Date.now() - 240000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '8',
+          room_id: roomId,
+          user_id: 'demo-user-4',
+          username: 'Diana',
+          content: 'Perfect for busy chat rooms with lots of message history! 📚',
+          timestamp: new Date(Date.now() - 180000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '9',
+          room_id: roomId,
+          user_id: 'demo-user-1',
+          username: 'Alice',
+          content: 'The real-time search works great too - try searching for "glassmorphism"',
+          timestamp: new Date(Date.now() - 120000).toISOString(),
+          type: 'message'
+        },
+        {
+          id: '10',
+          room_id: roomId,
+          user_id: 'demo-user-2',
+          username: 'Bob',
+          content: 'This is the most recent message. The auto-scroll feature works perfectly! 🚀',
           timestamp: new Date(Date.now() - 60000).toISOString(),
           type: 'message'
         }
@@ -264,26 +338,56 @@ export default function RoomPage() {
       </motion.div>
 
       {/* Messages Area */}
-      <div className="flex-1 mx-4 mb-4 flex flex-col">
+      <div className="flex-1 mx-4 mb-4 flex flex-col relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass-card flex-1 flex flex-col min-h-0"
         >
+          {/* Search Bar */}
+          <div className="border-b border-white/10 p-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input
+                type="text"
+                placeholder="Search messages..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-400/50 focus:bg-white/10 transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {searchTerm && (
+              <div className="mt-2 text-xs text-white/60">
+                {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''} found
+              </div>
+            )}
+          </div>
+
           {/* Messages List */}
           <div 
             ref={messagesContainerRef}
+            onScroll={handleScroll}
             className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth" 
             id="messages-container"
           >
-            {messages.length === 0 ? (
+            {(searchTerm ? filteredMessages : messages).length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-white/60">No messages yet. Start the conversation!</div>
+                <div className="text-white/60">
+                  {searchTerm ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
+                </div>
               </div>
             ) : (
               <>
-                {messages.map((msg, index) => (
+                {(searchTerm ? filteredMessages : messages).map((msg, index) => (
                   <MessageBubble
                     key={index}
                     message={msg}
@@ -319,6 +423,57 @@ export default function RoomPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Floating Scroll Controls */}
+        {showScrollControls && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="absolute right-6 bottom-24 flex flex-col space-y-2 z-10"
+          >
+            <Button
+              onClick={scrollToTop}
+              variant="glass"
+              size="sm"
+              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-white/20 hover:bg-white/20"
+              title="Scroll to top"
+            >
+              <ChevronUpIcon className="w-4 h-4" />
+            </Button>
+            
+            {!isAtBottom && (
+              <Button
+                onClick={scrollToBottom}
+                variant="primary"
+                size="sm"
+                className="w-10 h-10 rounded-full p-0"
+                title="Scroll to bottom"
+              >
+                <ChevronDownIcon className="w-4 h-4" />
+              </Button>
+            )}
+          </motion.div>
+        )}
+
+        {/* New Messages Indicator */}
+        {!isAtBottom && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10"
+          >
+            <Button
+              onClick={scrollToBottom}
+              variant="primary"
+              size="sm"
+              className="bg-blue-500/90 backdrop-blur-sm border border-white/20 hover:bg-blue-400/90"
+            >
+              <ChevronDownIcon className="w-4 h-4 mr-1" />
+              New messages
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       {/* Live Stream Modal */}
