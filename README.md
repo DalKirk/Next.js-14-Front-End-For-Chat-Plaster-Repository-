@@ -69,6 +69,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 - 📱 **Fixed Message Alignment**: Messages properly align left (others) and right (yours)  
 - 🗨️ **Enhanced Chat History**: 15 demo messages to fully test scrolling functionality
 - ⚡ **Improved Performance**: Optimized container layouts for smooth scrolling
+- 🚫 **CORS Error Handling**: Better detection and guidance for CORS configuration issues
 
 ## ✨ Features
 
@@ -362,6 +363,29 @@ Customize in `globals.css`:
 ### Detailed Connection Issues
 
 If you encounter issues connecting to the backend, visit the [Troubleshooting Page](/troubleshooting) for detailed diagnostics and solutions.
+
+#### CORS Configuration Issues
+
+**Problem:** Getting CORS errors when uploading videos or making API calls?
+
+**Solution:** Your FastAPI backend needs CORS middleware configured:
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://video-chat-frontend-ruby.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+See [CORS_FIX_GUIDE.md](CORS_FIX_GUIDE.md) for complete setup instructions.
 
 ## 📚 Additional Resources
 

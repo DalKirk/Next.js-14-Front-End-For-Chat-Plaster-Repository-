@@ -121,6 +121,41 @@ export default function TroubleshootingPage() {
                 </ul>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-white">
+                CORS Policy Error
+              </h3>
+              <p className="text-white/70">
+                Browser is blocking requests due to CORS policy. This is a backend configuration issue.
+              </p>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-2">
+                <p className="text-blue-300 text-sm font-medium mb-2">Backend Fix Required:</p>
+                <ul className="text-white/70 text-sm space-y-1">
+                  <li>• Add CORS middleware to your FastAPI backend</li>
+                  <li>• Allow origin: <code className="bg-black/30 px-1 rounded">https://video-chat-frontend-ruby.vercel.app</code></li>
+                  <li>• Allow methods: GET, POST, PUT, DELETE, OPTIONS</li>
+                  <li>• Allow headers: Content-Type, Authorization, Accept</li>
+                </ul>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-2">
+                <p className="text-yellow-300 text-sm font-medium mb-2">FastAPI CORS Setup:</p>
+                <pre className="text-white/60 text-xs bg-black/30 p-2 rounded overflow-x-auto">
+{`from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://video-chat-frontend-ruby.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)`}
+                </pre>
+              </div>
+            </div>
           </div>
         </motion.div>
 

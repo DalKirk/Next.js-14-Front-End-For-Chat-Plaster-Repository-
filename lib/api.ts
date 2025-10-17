@@ -49,6 +49,10 @@ const handleApiError = (error: any, operation: string) => {
       throw new Error(`⚠️ Request failed (${status}): ${message}`);
     }
   } else if (error.request) {
+    // Network error or no response - check for CORS
+    if (error.message?.includes('CORS') || error.message?.includes('Access-Control')) {
+      throw new Error(`🚫 CORS Error: Backend at ${API_BASE_URL} doesn't allow requests from ${typeof window !== 'undefined' ? window.location.origin : 'this domain'}. Please configure CORS in your FastAPI backend.`);
+    }
     // Network error or no response
     throw new Error(`🌐 Network error: Unable to reach backend at ${API_BASE_URL}. Please check your internet connection or CORS settings.`);
   }
