@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ServerStatusProps {
@@ -12,7 +12,7 @@ export function ServerStatus({ apiUrl }: ServerStatusProps) {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showDetails, setShowDetails] = useState(false);
 
-  const checkServerStatus = async () => {
+  const checkServerStatus = useCallback(async () => {
     const url = apiUrl || process.env.NEXT_PUBLIC_API_URL || 'https://natural-presence-production.up.railway.app';
     
     try {
@@ -40,22 +40,22 @@ export function ServerStatus({ apiUrl }: ServerStatusProps) {
         setStatus('offline');
         setErrorMessage(`Server returned status: ${response.status}`);
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
         setStatus('offline');
         setErrorMessage('Connection timeout - server is not responding');
       } else {
         setStatus('offline');
-        setErrorMessage(error.message || 'Unable to connect to backend server');
+        setErrorMessage((error as Error)?.message || 'Unable to connect to backend server');
       }
     }
-  };
+  }, [apiUrl]);
 
   useEffect(() => {
     checkServerStatus();
     const interval = setInterval(checkServerStatus, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
-  }, [apiUrl]);
+  }, [apiUrl, checkServerStatus]);
 
   const getStatusConfig = () => {
     switch (status) {

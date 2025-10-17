@@ -123,7 +123,7 @@ class SocketManager {
     this.callbacks.set('message', callback);
   }
 
-  onNotification(callback: (notification: any) => void): void {
+  onNotification(callback: (notification: SocketMessage) => void): void {
     this.callbacks.set('notification', callback);
   }
 

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { socketManager } from '@/lib/socket';
 import { apiClient } from '@/lib/api';
-import toast from 'react-hot-toast';
 
 export default function DebugPage() {
   const [wsStatus, setWsStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');

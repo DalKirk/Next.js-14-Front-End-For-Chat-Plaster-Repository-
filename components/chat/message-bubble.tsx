@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Message, VideoMessage } from '@/lib/types';
@@ -11,7 +11,6 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
-  const [imageError, setImageError] = useState(false);
 
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;

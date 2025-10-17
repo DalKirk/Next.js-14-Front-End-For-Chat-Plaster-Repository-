@@ -21,7 +21,7 @@ export function VideoPlayer({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  const handleError = (error: any) => {
+  const handleError = (error: Error | Event) => {
     console.error('Video player error:', error);
     setHasError(true);
     setIsLoading(false);
