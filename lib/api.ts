@@ -6,13 +6,14 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://natural-presence-production.up.railway.app'
   : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Debug logging for environment variables
-console.log('🔧 API Configuration:', {
-  NODE_ENV: process.env.NODE_ENV,
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  API_BASE_URL,
-  forced_production: process.env.NODE_ENV === 'production'
-});
+// Debug logging for environment variables (only in development)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 API Configuration:', {
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    API_BASE_URL
+  });
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
