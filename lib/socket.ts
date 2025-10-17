@@ -48,14 +48,23 @@ class SocketManager {
         console.log('❌ Disconnected from WebSocket:', event.code, event.reason);
         this.callbacks.get('connect')?.(false);
         
+        // Check close codes
+        if (event.code === 4004) {
+          // Custom code: User/Room not found - don't reconnect
+          console.error('❌ Room or user not found on backend. Cannot reconnect.');
+          this.callbacks.get('error')?.(new Error('Room or user not found'));
+          return;
+        }
+
         // Auto-reconnect with exponential backoff
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
           console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-          setTimeout(() => this.connect(roomId, userId), delay);
+          setTimeout(() => this.connect(this.roomId, this.userId), delay);
         } else {
           console.error('❌ Max reconnection attempts reached');
+          this.callbacks.get('error')?.(new Error('Max reconnection attempts reached'));
         }
       };
       
@@ -116,6 +125,10 @@ class SocketManager {
 
   onNotification(callback: (notification: any) => void): void {
     this.callbacks.set('notification', callback);
+  }
+
+  onError(callback: (error: Error) => void): void {
+    this.callbacks.set('error', callback);
   }
 
   isConnected(): boolean {

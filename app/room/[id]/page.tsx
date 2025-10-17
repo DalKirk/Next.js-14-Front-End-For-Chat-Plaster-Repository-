@@ -97,7 +97,10 @@ export default function RoomPage() {
     
     // Cleanup WebSocket on unmount
     return () => {
+      console.log('🧹 Cleaning up room - disconnecting WebSocket');
       socketManager.disconnect();
+      setWsConnected(false);
+      setIsConnected(false);
     };
   }, [roomId, router]);
 
@@ -106,10 +109,22 @@ export default function RoomPage() {
     if (!currentUser) return;
     
     try {
-      console.log('🔌 Attempting WebSocket connection...');
-      setConnectionAttempts(prev => prev + 1);
+      console.log('🔌 Initializing chat connection...');
       
-      // Connect to WebSocket
+      // STEP 1: Join room on backend FIRST (this is critical!)
+      try {
+        await apiClient.joinRoom(roomId, currentUser.id);
+        console.log('✅ Joined room on backend successfully');
+      } catch (joinError) {
+        console.error('❌ Failed to join room on backend:', joinError);
+        toast.error('Could not join this room. It may not exist or the server is unavailable.');
+        setIsConnected(false);
+        setWsConnected(false);
+        return; // Stop here - don't attempt WebSocket if backend join fails
+      }
+
+      // STEP 2: NOW connect WebSocket (only after successful room join)
+      setConnectionAttempts(prev => prev + 1);
       socketManager.connect(roomId, currentUser.id);
       
       // Handle connection status
@@ -118,13 +133,18 @@ export default function RoomPage() {
         setIsConnected(connected);
         
         if (connected) {
-          toast.success('Connected to real-time chat!');
+          // Only show success toast on FIRST connection (not on reconnects)
+          if (!isConnected) {
+            toast.success('Connected to real-time chat!', { 
+              duration: 2000,
+              id: 'ws-connected' // Prevents duplicate toasts
+            });
+          }
           console.log('✅ WebSocket connected - real-time messaging active');
         } else {
-          console.log('❌ WebSocket disconnected');
-          if (connectionAttempts === 1) {
-            toast.error('Could not connect to real-time server. Check if your backend is running.');
-          }
+          console.log('⚠️ WebSocket disconnected - attempting to reconnect...');
+          // Don't show error toast here - reconnection is automatic
+          // Only show error if it's a first-time connection failure
         }
       });
       
