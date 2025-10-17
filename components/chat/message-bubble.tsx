@@ -69,7 +69,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             )}
             
             {/* Video player */}
-            {message.playback_id && (
+            {message.playback_id ? (
               <VideoPlayer
                 playbackId={message.playback_id}
                 title={message.title}
@@ -77,6 +77,11 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                 muted={true}
                 autoPlay={false}
               />
+            ) : (
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                <p className="text-red-300 text-xs">⚠️ No playback ID - backend may not have configured Mux correctly</p>
+                <p className="text-red-400/60 text-xs mt-1">Check backend logs for Mux token configuration</p>
+              </div>
             )}
             
             {/* Message text if any */}

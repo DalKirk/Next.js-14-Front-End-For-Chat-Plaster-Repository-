@@ -148,26 +148,36 @@ export default function RoomPage() {
         }
       });
       
-      // Handle incoming messages
+      // Handle incoming messages - IMPROVED VERSION
       socketManager.onMessage((socketMessage: any) => {
-        console.log('📨 Received message:', socketMessage);
+        console.log('📨 Received WebSocket message:', socketMessage);
+        
+        // Handle different message formats from backend
+        const messageContent = socketMessage.content || socketMessage.message || '';
+        const messageId = socketMessage.id || socketMessage.message_id || `msg-${Date.now()}-${Math.random()}`;
         
         const newMessage: Message = {
-          id: socketMessage.id || Date.now().toString(),
+          id: messageId,
           room_id: roomId,
-          user_id: socketMessage.user_id || 'unknown',
-          username: socketMessage.username || 'Unknown User',
-          content: socketMessage.content || socketMessage.message || '',
-          timestamp: socketMessage.timestamp || new Date().toISOString(),
-          type: socketMessage.type || 'message',
+          user_id: socketMessage.user_id || socketMessage.sender_id || 'unknown',
+          username: socketMessage.username || socketMessage.sender || 'Unknown User',
+          content: messageContent,
+          timestamp: socketMessage.timestamp || socketMessage.created_at || new Date().toISOString(),
+          type: socketMessage.type || socketMessage.message_type || 'message',
           title: socketMessage.title,
           playback_id: socketMessage.playback_id
         };
         
+        console.log('✅ Adding message to state:', newMessage);
+        
         setMessages(prev => {
-          // Avoid duplicate messages
+          // Avoid duplicate messages by ID
           const exists = prev.some(msg => msg.id === newMessage.id);
-          if (exists) return prev;
+          if (exists) {
+            console.log('⚠️ Duplicate message detected, skipping:', messageId);
+            return prev;
+          }
+          console.log(`📝 Total messages: ${prev.length + 1}`);
           return [...prev, newMessage];
         });
       });
@@ -197,13 +207,29 @@ export default function RoomPage() {
     if (!content.trim() || !user) return;
     
     if (wsConnected && socketManager.isConnected()) {
+      // Add optimistic update - show message immediately
+      const optimisticMessage: Message = {
+        id: `temp-${Date.now()}`,
+        room_id: roomId,
+        user_id: user.id,
+        username: user.username,
+        content: content.trim(),
+        timestamp: new Date().toISOString(),
+        type: 'message'
+      };
+      
+      // Add to UI immediately for better UX
+      setMessages(prev => [...prev, optimisticMessage]);
+      
       // Send via WebSocket
       try {
         socketManager.sendMessage(content);
         console.log('📤 Message sent via WebSocket:', content);
-        toast.success('Message sent!');
+        // Remove success toast - message already appears in chat
       } catch (error) {
         console.error('Failed to send message via WebSocket:', error);
+        // Remove the optimistic message on error
+        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         toast.error('Failed to send message. Check your connection.');
       }
     } else {
@@ -249,11 +275,24 @@ export default function RoomPage() {
 
     setIsLoading(true);
     try {
+      console.log('🎥 Creating live stream:', videoTitle);
       const stream = await apiClient.createLiveStream(roomId, videoTitle.trim());
+      console.log('✅ Live stream created:', stream);
+      
+      // Verify we have required data
+      if (!stream.playback_id) {
+        toast.error('⚠️ Live stream created but missing playback ID. Check backend Mux configuration.');
+        console.error('Missing playback_id in stream response:', stream);
+      }
+      
+      if (!stream.stream_key) {
+        toast.error('⚠️ Live stream created but missing stream key. Check backend Mux configuration.');
+        console.error('Missing stream_key in stream response:', stream);
+      }
       
       // Create a video message with live stream info
       const streamMessage: Message = {
-        id: Date.now().toString(),
+        id: `stream-${Date.now()}`,
         room_id: roomId,
         user_id: user.id,
         username: user.username,
@@ -265,12 +304,28 @@ export default function RoomPage() {
         stream_key: stream.stream_key
       };
       
-      // Send via WebSocket if connected
-      if (wsConnected) {
-        socketManager.sendMessage(JSON.stringify(streamMessage));
+      // Add to messages immediately
+      setMessages(prev => [...prev, streamMessage]);
+      
+      // Also send via WebSocket if connected
+      if (wsConnected && socketManager.isConnected()) {
+        try {
+          // Send as JSON string with proper structure
+          const wsMessage = {
+            type: 'live_stream_created',
+            content: streamMessage.content,
+            title: videoTitle,
+            playback_id: stream.playback_id,
+            stream_key: stream.stream_key
+          };
+          socketManager.sendMessage(JSON.stringify(wsMessage));
+          console.log('📤 Sent live stream message via WebSocket');
+        } catch (wsError) {
+          console.error('Failed to send via WebSocket:', wsError);
+        }
       }
       
-      toast.success(`Live stream created! Stream key: ${stream.stream_key}`);
+      toast.success(`✅ Live stream created!`, { duration: 3000 });
       
       // Show detailed stream info
       setTimeout(() => {
@@ -305,17 +360,27 @@ export default function RoomPage() {
     setUploadProgress(0);
     
     try {
+      console.log('📤 Starting video upload:', { title: videoTitle, file: selectedFile.name });
+      
       // Step 1: Create video upload request
       const upload = await apiClient.createVideoUpload(roomId, videoTitle.trim());
+      console.log('✅ Upload URL received:', upload);
+      
+      if (!upload.playback_id) {
+        toast.error('⚠️ Upload created but missing playback ID. Check backend Mux configuration.');
+      }
+      
       setUploadProgress(25);
       
       // Step 2: Upload file directly to Mux
+      console.log('⬆️ Uploading file to Mux...');
       await apiClient.uploadVideoFile(upload.upload_url, selectedFile);
       setUploadProgress(100);
+      console.log('✅ File uploaded successfully');
       
       // Step 3: Create video message
       const videoMessage: Message = {
-        id: Date.now().toString(),
+        id: `video-${Date.now()}`,
         room_id: roomId,
         user_id: user.id,
         username: user.username,
@@ -326,12 +391,26 @@ export default function RoomPage() {
         playback_id: upload.playback_id
       };
       
-      // Send via WebSocket if connected
-      if (wsConnected) {
-        socketManager.sendMessage(JSON.stringify(videoMessage));
+      // Add to messages immediately
+      setMessages(prev => [...prev, videoMessage]);
+      
+      // Also send via WebSocket if connected
+      if (wsConnected && socketManager.isConnected()) {
+        try {
+          const wsMessage = {
+            type: 'video_ready',
+            content: videoMessage.content,
+            title: videoTitle,
+            playback_id: upload.playback_id
+          };
+          socketManager.sendMessage(JSON.stringify(wsMessage));
+          console.log('📤 Sent video message via WebSocket');
+        } catch (wsError) {
+          console.error('Failed to send via WebSocket:', wsError);
+        }
       }
       
-      toast.success('Video uploaded successfully!');
+      toast.success('✅ Video uploaded successfully!', { duration: 3000 });
       resetUploadModal();
     } catch (error) {
       toast.error('Failed to upload video. Please check backend connection.');
