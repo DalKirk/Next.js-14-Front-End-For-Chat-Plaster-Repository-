@@ -79,7 +79,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             {message.username}
           </span>
           <span className="text-xs text-white/60">
-            {format(new Date(message.timestamp), 'HH:mm')}
+            {format(new Date(message.timestamp.endsWith('Z') ? message.timestamp : message.timestamp + 'Z'), 'HH:mm')}
           </span>
         </div>
 
