@@ -207,29 +207,14 @@ export default function RoomPage() {
     if (!content.trim() || !user) return;
     
     if (wsConnected && socketManager.isConnected()) {
-      // Add optimistic update - show message immediately
-      const optimisticMessage: Message = {
-        id: `temp-${Date.now()}`,
-        room_id: roomId,
-        user_id: user.id,
-        username: user.username,
-        content: content.trim(),
-        timestamp: new Date().toISOString(),
-        type: 'message'
-      };
-      
-      // Add to UI immediately for better UX
-      setMessages(prev => [...prev, optimisticMessage]);
-      
+      // Send via WebSocket - message will appear when server broadcasts it back
       // Send via WebSocket
       try {
         socketManager.sendMessage(content);
-        console.log('📤 Message sent via WebSocket:', content);
-        // Remove success toast - message already appears in chat
+        console.log('ðŸ“¤ Message sent via WebSocket:', content);
+        // Message will appear in chat when received from server (no optimistic update)
       } catch (error) {
         console.error('Failed to send message via WebSocket:', error);
-        // Remove the optimistic message on error
-        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         toast.error('Failed to send message. Check your connection.');
       }
     } else {
