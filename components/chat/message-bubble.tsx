@@ -10,6 +10,44 @@ interface MessageBubbleProps {
   isOwn?: boolean;
 }
 
+// Function to parse URLs in text and make them clickable
+const parseMessageWithLinks = (text: string) => {
+  // Regex to match URLs (http, https, www, or just domain.com)
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+  
+  // Split text by URLs and create elements
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    // Check if this part is a URL
+    if (urlRegex.test(part)) {
+      // Ensure URL has protocol
+      let href = part;
+      if (part.startsWith('www.')) {
+        href = 'https://' + part;
+      } else if (!part.startsWith('http://') && !part.startsWith('https://')) {
+        href = 'https://' + part;
+      }
+      
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    
+    // Return regular text
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
 
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
@@ -47,7 +85,9 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
 
         {/* Message content */}
         {message.type === 'system' ? (
-          <p className="text-sm italic text-white/80">{message.content}</p>
+          <p className="text-sm italic text-white/80">
+            {parseMessageWithLinks(message.content)}
+          </p>
         ) : isVideoMessage ? (
           <div className="space-y-3">
             {/* Video type indicator */}
@@ -85,11 +125,15 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             
             {/* Message text if any */}
             {message.content && (
-              <p className="text-sm text-white/90">{message.content}</p>
+              <p className="text-sm text-white/90">
+                {parseMessageWithLinks(message.content)}
+              </p>
             )}
           </div>
         ) : (
-          <p className="text-sm text-white break-words">{message.content}</p>
+          <p className="text-sm text-white break-words">
+            {parseMessageWithLinks(message.content)}
+          </p>
         )}
       </div>
     </motion.div>
