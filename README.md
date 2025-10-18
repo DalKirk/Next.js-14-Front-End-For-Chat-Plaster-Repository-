@@ -310,6 +310,99 @@ CMD ["npm", "start"]
 5. Webhook notifies when ready
 6. Video appears in chat
 
+## 📖 How the Code Works
+
+This is a Next.js 14 frontend application for a real-time video chat platform with the following architecture and functionality:
+
+### Core Architecture
+
+**Framework & Tech Stack:**
+- Next.js 14 with App Router
+- TypeScript for type safety
+- Tailwind CSS for styling with glassmorphism design
+- Framer Motion for animations
+- React Query for server state management
+- Axios for HTTP requests
+- WebSocket for real-time messaging
+
+### Application Flow
+
+#### 1. **Entry Point (app/page.tsx)**
+- Landing page with user creation form
+- Allows creating usernames and rooms
+- Stores user data in localStorage
+- Redirects to chat room selection
+
+#### 2. **Room Selection (app/chat/page.tsx)**
+- Displays list of available chat rooms
+- Fetches rooms from backend API
+- Allows joining existing rooms
+- Shows room creation timestamps
+
+#### 3. **Chat Room Interface (app/room/[id]/page.tsx)**
+The main chat functionality includes:
+
+**Real-time Messaging:**
+- WebSocket connection to FastAPI backend
+- Auto-reconnect with exponential backoff
+- Optimistic UI updates for sent messages
+- Message history loading on room join
+
+**Video Features:**
+- **Live Streaming:** Creates RTMP streams via Bunny.net, displays in chat
+- **Video Upload:** Direct upload to Bunny.net CDN, shows HLS player in messages
+- **Video Player:** HLS.js integration for cross-browser video playback
+
+**UI Components:**
+- Glassmorphism design with backdrop blur effects
+- Responsive layout for mobile/desktop
+- Auto-scroll to new messages with manual scroll controls
+- Message bubbles with timestamps and user identification
+
+### Key Libraries & Integrations
+
+#### **API Layer (lib/api.ts)**
+- Axios-based client for FastAPI backend
+- Handles Railway deployment quirks (server sleeping)
+- Comprehensive error handling with user-friendly messages
+- Endpoints for users, rooms, messages, and video operations
+
+#### **WebSocket Management (lib/socket.ts)**
+- Singleton SocketManager class
+- Handles connection lifecycle and reconnection
+- Message routing for different event types
+- Production-ready with Railway WebSocket URLs
+
+#### **Video Integration**
+- **Bunny.net CDN** for video hosting and streaming
+- **HLS.js** for browser video playback
+- Direct upload URLs for efficient file transfers
+- Playback ID system for video identification
+
+#### **UI Components**
+- **MessageBubble:** Handles text, video, and live stream messages
+- **VideoPlayer:** HLS video player with error states
+- **Modal:** For video upload and live stream creation
+- **ServerStatus:** Real-time backend health monitoring
+
+### Data Flow
+
+1. **User Creation:** POST to `/users` → Store in localStorage
+2. **Room Join:** POST to `/rooms/{id}/join` → WebSocket connect
+3. **Message Send:** WebSocket emit → Backend broadcast → UI update
+4. **Video Upload:** Get signed URL → Direct upload → Webhook → Message display
+5. **Live Stream:** Create stream → Get RTMP key → Embed player
+
+### Error Handling
+
+- Network errors with retry logic
+- CORS configuration guidance
+- Backend availability checks
+- Graceful degradation for missing features
+- User-friendly error messages throughout
+
+The application is designed for production deployment on Vercel with a FastAPI backend on Railway, featuring modern React patterns, real-time capabilities, and professional video streaming integration.
+
 ## 🎨 Customization
 
 ### Theme Colors
