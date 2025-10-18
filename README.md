@@ -2,7 +2,7 @@
 
 # 🎬 Video Chat Platform - Frontend
 
-A beautiful, modern Next.js 14 frontend for real-time video chat with Mux streaming integration. Features glassmorphism design, live streaming capabilities, and seamless FastAPI backend integration.
+A beautiful, modern Next.js 14 frontend for real-time video chat with Bunny.net streaming integration. Features glassmorphism design, live streaming capabilities, and seamless FastAPI backend integration.
 
 ## ⚠️ **Current Backend Status**
 
@@ -28,7 +28,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.33-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Latest-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-Latest-38B2AC?style=for-the-badge&logo=tailwind-css)
-![Mux](https://img.shields.io/badge/Mux-Video-FF6B6B?style=for-the-badge)
+![Bunny.net](https://img.shields.io/badge/Bunny.net-Video-FF6B6B?style=for-the-badge)
 
 ## 🎯 **Quick Test Guide**
 
@@ -75,7 +75,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 
 - 🎨 **Glassmorphism Design** - Modern glass-effect UI with beautiful animations
 - 📱 **Mobile-First Responsive** - Perfect experience on all devices
-- 🎬 **Mux Video Integration** - Professional video player with live streaming
+- 🎬 **Bunny.net Video Integration** - Professional video player with live streaming
 - ⚡ **Real-time Chat** - WebSocket connection to FastAPI backend
 - 🔄 **Live Streaming** - RTMP streaming with OBS integration
 - 📹 **Video Upload** - Drag & drop video sharing
@@ -141,7 +141,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Mux stream
 ### Components
 - **Glass Cards** - Transparent cards with blur effects
 - **Gradient Buttons** - Beautiful hover animations
-- **Video Players** - Branded Mux player integration
+- **Video Players** - HLS video player with Bunny.net integration
 - **Message Bubbles** - Animated chat messages
 - **Modals** - Smooth slide-in dialogs
 
@@ -158,7 +158,7 @@ Frontend:
 └── Socket.io Client
 
 Video:
-├── Mux Player React
+├── HLS.js
 ├── React Dropzone
 └── WebRTC support
 
@@ -286,7 +286,7 @@ CMD ["npm", "start"]
 }
 ```
 
-## 🎬 Mux Integration
+## 🎬 Bunny.net Integration
 
 ### Video Player Features
 - Auto-generated thumbnails
@@ -298,15 +298,15 @@ CMD ["npm", "start"]
 ### Live Streaming Workflow
 1. User clicks "🔴 Live" button
 2. Frontend calls `/rooms/{id}/live-stream`
-3. Backend creates Mux live stream
+3. Backend creates Bunny.net live stream
 4. User gets RTMP key for OBS
-5. Stream appears in chat with Mux Player
+5. Stream appears in chat with HLS Player
 
 ### Video Upload Workflow
 1. User clicks "📹 Upload" button
 2. Select video file via drag & drop
 3. Frontend gets signed upload URL
-4. Direct upload to Mux storage
+4. Direct upload to Bunny.net storage
 5. Webhook notifies when ready
 6. Video appears in chat
 
@@ -441,7 +441,7 @@ Customize in `globals.css`:
    - Verify CORS settings in backend
 
 2. **Video Player Not Loading**
-   - Check Mux credentials in backend
+   - Check Bunny.net credentials in backend
    - Verify playback IDs are valid
    - Check browser console for errors
 
@@ -483,7 +483,8 @@ See [CORS_FIX_GUIDE.md](CORS_FIX_GUIDE.md) for complete setup instructions.
 ## 📚 Additional Resources
 
 - [Next.js 14 Documentation](https://nextjs.org/docs)
-- [Mux Player React](https://docs.mux.com/guides/video/mux-player-react)
+- [Bunny.net Documentation](https://docs.bunny.net/)
+- [HLS.js](https://github.com/video-dev/hls.js/)
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [Framer Motion](https://www.framer.com/motion/)
 
