@@ -266,12 +266,12 @@ export default function RoomPage() {
       
       // Verify we have required data
       if (!stream.playback_id) {
-        toast.error('⚠️ Live stream created but missing playback ID. Check backend Mux configuration.');
+        toast.error('⚠️ Live stream created but missing playback ID. Check backend Bunny.net configuration.');
         console.error('Missing playback_id in stream response:', stream);
       }
       
       if (!stream.stream_key) {
-        toast.error('⚠️ Live stream created but missing stream key. Check backend Mux configuration.');
+        toast.error('⚠️ Live stream created but missing stream key. Check backend Bunny.net configuration.');
         console.error('Missing stream_key in stream response:', stream);
       }
       
@@ -315,7 +315,7 @@ export default function RoomPage() {
       // Show detailed stream info
       setTimeout(() => {
         toast.success(
-          `RTMP URL: ${stream.rtmp_url || 'rtmp://global-live.mux.com:5222/live'}\nStream Key: ${stream.stream_key}`,
+          `RTMP URL: ${stream.rtmp_url || 'rtmp://rtmp.bunnycdn.com/live'}\nStream Key: ${stream.stream_key}`,
           { duration: 15000 }
         );
       }, 1000);
@@ -352,13 +352,13 @@ export default function RoomPage() {
       console.log('✅ Upload URL received:', upload);
       
       if (!upload.playback_id) {
-        toast.error('⚠️ Upload created but missing playback ID. Check backend Mux configuration.');
+        toast.error('⚠️ Upload created but missing playback ID. Check backend Bunny.net configuration.');
       }
       
       setUploadProgress(25);
       
-      // Step 2: Upload file directly to Mux
-      console.log('⬆️ Uploading file to Mux...');
+      // Step 2: Upload file directly to Bunny.net
+      console.log('⬆️ Uploading file to Bunny.net...');
       await apiClient.uploadVideoFile(upload.upload_url, selectedFile);
       setUploadProgress(100);
       console.log('✅ File uploaded successfully');

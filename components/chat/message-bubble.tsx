@@ -118,8 +118,8 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               />
             ) : (
               <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                <p className="text-red-300 text-xs">⚠️ No playback ID - backend may not have configured Mux correctly</p>
-                <p className="text-red-400/60 text-xs mt-1">Check backend logs for Mux token configuration</p>
+                <p className="text-red-300 text-xs">⚠️ No playback ID - backend may not have configured Bunny.net correctly</p>
+                <p className="text-red-400/60 text-xs mt-1">Check backend logs for Bunny.net configuration</p>
               </div>
             )}
             

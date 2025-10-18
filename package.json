@@ -12,12 +12,12 @@
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
-    "@mux/mux-player-react": "^2.3.0",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.6.2",
     "clsx": "^2.0.0",
     "date-fns": "^3.0.6",
     "framer-motion": "^10.16.16",
+    "hls.js": "^1.6.13",
     "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
