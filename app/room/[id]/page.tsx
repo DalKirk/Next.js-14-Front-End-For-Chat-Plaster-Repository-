@@ -357,9 +357,11 @@ export default function RoomPage() {
       
       setUploadProgress(25);
       
-      // Step 2: Upload file directly to Bunny.net
-      console.log('⬆️ Uploading file to Bunny.net...');
-      await apiClient.uploadVideoFile(upload.upload_url, selectedFile);
+  // Step 2: Upload file directly to Bunny.net (or provider returned upload_url)
+  console.log('⬆️ Uploading file to upload_url...');
+  // If the backend returned an access_key, include it in the PUT headers
+  const apiKey = (upload as any).access_key || undefined;
+  await apiClient.uploadVideoFile(upload.upload_url, selectedFile, (pct) => setUploadProgress(pct), apiKey);
       setUploadProgress(100);
       console.log('✅ File uploaded successfully');
       

@@ -4,7 +4,7 @@
 
 ### ✅ FastAPI Backend: RUNNING
 - **URL**: http://localhost:8000
-- **Status**: ✅ Mux API configured successfully
+- **Status**: ✅ Bunny.net Stream API configured successfully
 - **Features**: Chat, WebSocket, Video Upload, Live Streaming
 
 ### 🎯 Next: Start Frontend

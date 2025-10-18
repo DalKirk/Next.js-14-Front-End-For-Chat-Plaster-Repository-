@@ -41,6 +41,8 @@ export interface VideoUpload {
   playback_id: string;
   title: string;
   description?: string;
+  // Optional access key returned by the backend to authorize direct PUT uploads
+  access_key?: string;
 }
 
 export interface VideoMessage extends Message {

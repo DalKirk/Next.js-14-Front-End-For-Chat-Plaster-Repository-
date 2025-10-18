@@ -17,7 +17,8 @@ export default function DebugPage() {
   const testApiConnection = async () => {
     addResult('Testing API connection...');
     try {
-      const user = await apiClient.createUser('test-user-' + Date.now());
+      const username = 'test-user-' + Date.now();
+      const user = await apiClient.createUser(username);
       setApiStatus('working');
       addResult(`✅ API working - Created user: ${user.username}`);
     } catch (error) {
@@ -31,8 +32,14 @@ export default function DebugPage() {
     setWsStatus('connecting');
     
     try {
-      socketManager.connect('test-room', 'test-user');
-      
+      // Create a user and room, then join room BEFORE connecting socket
+      const username = 'debug-user-' + Date.now();
+      const user = await apiClient.createUser(username);
+      const room = await apiClient.createRoom('debug-room-' + Date.now());
+      await apiClient.joinRoom(room.id, user.id);
+
+      socketManager.connect(room.id, user.id);
+
       socketManager.onConnect((connected: boolean) => {
         if (connected) {
           setWsStatus('connected');
@@ -42,7 +49,7 @@ export default function DebugPage() {
           addResult('❌ WebSocket failed to connect');
         }
       });
-      
+
       socketManager.onMessage((message) => {
         addResult(`📨 Received message: ${JSON.stringify(message)}`);
       });

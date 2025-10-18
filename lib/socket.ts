@@ -12,18 +12,36 @@ class SocketManager {
   connect(roomId: string, userId: string): void {
     this.roomId = roomId;
     this.userId = userId;
-    
-    const BASE_URL = process.env.NODE_ENV === 'production' 
-      ? 'natural-presence-production.up.railway.app'
-      : (process.env.NEXT_PUBLIC_API_URL?.replace(/^https?:\/\//, '') || 'localhost:8000');
-    
-    const WS_PROTOCOL = process.env.NODE_ENV === 'production' ? 'wss' : 'ws';
-    const WS_URL = `${WS_PROTOCOL}://${BASE_URL}/ws/${roomId}/${userId}`;
+    // Build WS host/protocol robustly.
+    let host = '';
+    let protocol: 'wss' | 'ws' = 'ws';
+
+    const configured = process.env.NEXT_PUBLIC_API_URL || '';
+    if (configured) {
+      try {
+        const u = new URL(configured);
+        host = u.host; // includes port if present
+        protocol = u.protocol === 'https:' ? 'wss' : 'ws';
+      } catch (e) {
+        // If NEXT_PUBLIC_API_URL is not a full URL, strip scheme if present and use as host
+        host = configured.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        protocol = configured.startsWith('https') ? 'wss' : 'ws';
+      }
+    } else if (typeof window !== 'undefined') {
+      host = window.location.host;
+      protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    } else {
+      host = 'localhost:8000';
+      protocol = 'ws';
+    }
+
+    const WS_URL = `${protocol}://${host}/ws/${roomId}/${userId}`;
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-      BASE_URL,
+      host,
+      protocol,
       WS_URL,
       roomId,
       userId,
@@ -71,6 +89,7 @@ class SocketManager {
       this.socket.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
         this.callbacks.get('connect')?.(false);
+        this.callbacks.get('error')?.(new Error('WebSocket error'));
       };
 
       this.socket.onmessage = (event) => {

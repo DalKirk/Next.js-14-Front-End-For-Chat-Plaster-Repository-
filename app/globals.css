@@ -1,45 +1,81 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
-  
+
   body {
-    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900;
-    @apply text-white min-h-screen;
+    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a);
+    color: white;
+    min-height: 100vh;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-xl;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
-  
+
   .glass-button {
-    @apply bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20;
-    @apply rounded-lg px-4 py-2 transition-all duration-200;
-    @apply hover:scale-105 active:scale-95;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 200ms;
   }
-  
+
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  .glass-button:active {
+    transform: scale(0.95);
+  }
+
   .message-bubble {
-    @apply bg-white/10 backdrop-blur-sm border border-white/10;
-    @apply rounded-2xl p-3 max-w-xs shadow-lg;
-    @apply animate-slide-up;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 12px;
+    max-width: 320px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    animation: slideUp 0.3s ease-out;
   }
-  
+
   .video-player {
-    @apply rounded-xl overflow-hidden shadow-2xl;
-    @apply border border-white/20;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
-  
+
   .chat-input {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
-    @apply rounded-full px-6 py-3 text-white placeholder-white/60;
-    @apply focus:outline-none focus:ring-2 focus:ring-accent-blue/50;
-    @apply transition-all duration-200;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    padding: 12px 24px;
+    color: white;
+    width: 100%;
+  }
+
+  .chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .chat-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.5);
   }
 }
 
@@ -47,7 +83,7 @@
   .animate-typing {
     animation: typing 1.5s infinite;
   }
-  
+
   @keyframes typing {
     0%, 60%, 100% {
       transform: translateY(0);
@@ -56,33 +92,46 @@
       transform: translateY(-10px);
     }
   }
-  
+
   .gradient-text {
-    @apply bg-gradient-to-r from-accent-blue to-accent-green bg-clip-text text-transparent;
+    background: linear-gradient(to right, #00d4ff, #00ff88);
+    background-clip: text;
+    color: transparent;
   }
-  
+
   /* Custom scrollbar styling */
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(139, 92, 246, 0.3) rgba(255, 255, 255, 0.1);
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(139, 92, 246, 0.4);
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(139, 92, 246, 0.6);
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

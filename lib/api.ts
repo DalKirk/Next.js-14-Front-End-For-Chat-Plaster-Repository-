@@ -1,172 +1,199 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload } from './types';
 
-// API configuration - Force Railway URL for production
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://natural-presence-production.up.railway.app'
-  : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
+// If not set, prefer same-origin (window.location.origin) so relative upload_url like
+// "/upload-proxy/{id}" works without CORS issues.
+const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_ORIGIN;
 
-// Debug logging for environment variables (only in development)
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔧 API Configuration:', {
-    NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    API_BASE_URL
-  });
+if (process.env.NODE_ENV !== 'production') {
+  // eslint-disable-next-line no-console
+  console.debug('🔧 API config', { NODE_ENV: process.env.NODE_ENV, NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL, API_BASE_URL });
 }
 
+// axios instance used for same-origin requests and endpoints. Enable withCredentials
+// in case the backend uses cookies/auth that require credentials. For cross-origin
+// upload URLs (absolute third-party URLs) we fall back to axios directly.
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  timeout: 15000, // 15 second timeout
-  withCredentials: false, // Disable credentials for CORS
+  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+  timeout: 15000,
+  withCredentials: true,
 });
 
-// Error handler for development/missing backend
-const handleApiError = (error: any, operation: string) => {
-  console.error(`❌ ${operation} failed:`, error);
-  
-  if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
-    throw new Error(`⚠️ Backend not available at ${API_BASE_URL}. The Railway server may be sleeping or offline. Please try again in a few moments.`);
+function extractMessage(err: any): string {
+  if (axios.isAxiosError(err)) {
+    return err.response?.data?.message || err.response?.data?.detail || err.message || String(err);
   }
-  
-  if (error.response) {
-    // Server responded with error status
-    const status = error.response.status;
-    const message = error.response.data?.message || error.response.data?.detail || error.message;
-    
-    if (status === 502) {
-      throw new Error(`🔄 Backend server is currently unavailable (502 Bad Gateway). The Railway service may be sleeping or restarting. Please wait 30-60 seconds and try again.`);
-    } else if (status === 503) {
-      throw new Error(`⏳ Backend service is temporarily unavailable (503). Please try again shortly.`);
-    } else if (status === 404) {
-      throw new Error(`❌ API endpoint not found. Check if ${API_BASE_URL} is the correct backend URL.`);
-    } else if (status === 500) {
-      throw new Error(`💥 Backend server error: ${message}`);
-    } else if (status >= 400) {
-      throw new Error(`⚠️ Request failed (${status}): ${message}`);
-    }
-  } else if (error.request) {
-    // Network error or no response - check for CORS
-    if (error.message?.includes('CORS') || error.message?.includes('Access-Control')) {
-      throw new Error(`🚫 CORS Error: Backend at ${API_BASE_URL} doesn't allow requests from ${typeof window !== 'undefined' ? window.location.origin : 'this domain'}. Please configure CORS in your FastAPI backend.`);
-    }
-    // Network error or no response
-    throw new Error(`🌐 Network error: Unable to reach backend at ${API_BASE_URL}. Please check your internet connection or CORS settings.`);
-  }
-  
-  throw new Error(`${operation} failed: ${error.message}`);
-};
+  return String(err);
+}
 
-// Health check endpoint
+function handleApiError(error: any, operation: string): never {
+  // eslint-disable-next-line no-console
+  console.error(`❌ ${operation} failed:`, error);
+  if (axios.isAxiosError(error)) {
+    if (!error.response && error.request) {
+      throw new Error(`🌐 Network/CORS error contacting ${API_BASE_URL}. Check backend and CORS. See browser DevTools Network tab.`);
+    }
+    const status = error.response?.status;
+    const msg = extractMessage(error);
+    if (status === 502) throw new Error('🔄 Backend gateway error (502). Try again shortly.');
+    if (status === 503) throw new Error('⏳ Service unavailable (503).');
+    if (status === 404) throw new Error(`❌ API endpoint not found at ${API_BASE_URL}.`);
+    if (status === 500) throw new Error(`💥 Backend error: ${msg}`);
+    if (status && status >= 400) throw new Error(`⚠️ Request failed (${status}): ${msg}`);
+  }
+  throw new Error(`${operation} failed: ${String(error)}`);
+}
+
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    const response = await api.get('/health', { timeout: 5000 });
-    return response.status === 200;
-  } catch (error) {
-    console.error('Health check failed:', error);
+    const r = await api.get('/health', { timeout: 5000 });
+    return r.status === 200;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('Health check failed', err);
     return false;
   }
 };
 
-// API functions matching your FastAPI endpoints
 export const apiClient = {
-  // Health check
   checkHealth: checkServerHealth,
 
-  // User endpoints
   createUser: async (username: string): Promise<User> => {
+    if (!username || !username.trim()) throw new Error('Please provide a username');
     try {
-      console.log(`🚀 Creating user "${username}" at ${API_BASE_URL}/users`);
-      const response = await api.post('/users', { username });
-      console.log('✅ User created successfully:', response.data);
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'User creation');
-      throw error; // This will never be reached but satisfies TypeScript
+      const r = await api.post('/users', { username });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Create user');
     }
   },
 
-  // Room endpoints
   getRooms: async (): Promise<Room[]> => {
     try {
-      const response = await api.get('/rooms');
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'Get rooms');
-      throw error;
+      const r = await api.get('/rooms');
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Get rooms');
     }
   },
 
   createRoom: async (name: string): Promise<Room> => {
+    if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
-      const response = await api.post('/rooms', { name });
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'Create room');
-      throw error;
+      const r = await api.post('/rooms', { name });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Create room');
     }
   },
 
   joinRoom: async (roomId: string, userId: string): Promise<void> => {
     try {
       await api.post(`/rooms/${roomId}/join`, { user_id: userId });
-    } catch (error) {
-      handleApiError(error, 'Join room');
-      throw error;
+    } catch (e) {
+      handleApiError(e, 'Join room');
     }
   },
 
-  // Message endpoints
   getRoomMessages: async (roomId: string): Promise<Message[]> => {
     try {
-      const response = await api.get(`/rooms/${roomId}/messages`);
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'Get room messages');
-      throw error;
+      const r = await api.get(`/rooms/${roomId}/messages`);
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Get room messages');
     }
   },
 
-  // Video endpoints
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
+    if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const response = await api.post(`/rooms/${roomId}/live-stream`, { title });
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'Create live stream');
-      throw error;
+      const r = await api.post(`/rooms/${roomId}/live-stream`, { title });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Create live stream');
     }
   },
 
+  // createVideoUpload returns a same-origin upload_url (e.g. /upload-proxy/{id})
   createVideoUpload: async (roomId: string, title: string, description?: string): Promise<VideoUpload> => {
+    if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const response = await api.post(`/rooms/${roomId}/video-upload`, { 
-        title, 
-        description 
-      });
-      return response.data;
-    } catch (error) {
-      handleApiError(error, 'Create video upload');
-      throw error;
+      const r = await api.post(`/rooms/${roomId}/video-upload`, { title, description });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Create video upload');
     }
   },
 
-  uploadVideoFile: async (uploadUrl: string, file: File): Promise<void> => {
+  // upload to the given uploadUrl (designed to be same-origin proxy). Accepts progress callback.
+  // upload to the given uploadUrl. If the backend returned an access_key, pass it as apiKey.
+  uploadVideoFile: async (
+    uploadUrl: string,
+    file: File,
+    onProgress?: (pct: number) => void,
+    apiKey?: string
+  ): Promise<void> => {
     try {
-      await axios.put(uploadUrl, file, {
-        headers: {
-          'Content-Type': file.type,
-        },
+      // Use fetch to PUT the file. This allows custom headers like AccessKey and
+      // uses the actual file.type as Content-Type.
+      // We attempt to use the Fetch + ReadableStream upload progress if available; if
+      // not, we fall back to XMLHttpRequest to track upload progress.
+
+      const headers: Record<string, string> = {
+        'Content-Type': file.type || 'application/octet-stream',
+      };
+      if (apiKey) headers['AccessKey'] = apiKey;
+
+      // Prefer fetch for modern browsers and same-origin/third-party uploads
+      if (typeof window !== 'undefined' && 'fetch' in window && 'ReadableStream' in window) {
+        // Some CDNs reject extra headers on pre-signed URLs. If adding AccessKey causes problems,
+        // backend should return a signed URL that doesn't require custom headers. We'll still
+        // attempt fetch with the header when provided.
+        const response = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers,
+          body: file,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status ${response.status}`);
+        }
+
+        // If onProgress is provided, report 100% when complete
+        onProgress?.(100);
+        return;
+      }
+
+      // Fallback to XMLHttpRequest for progress reporting in older browsers/environments
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl, true);
+        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+        xhr.timeout = 5 * 60 * 1000;
+        xhr.upload.onprogress = (ev) => {
+          if (!ev.lengthComputable) return;
+          const pct = Math.round((ev.loaded * 100) / ev.total);
+          onProgress?.(pct);
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            onProgress?.(100);
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out'));
+        xhr.send(file);
       });
-    } catch (error) {
-      handleApiError(error, 'Upload video file');
-      throw error;
+    } catch (e) {
+      handleApiError(e, 'Upload video file');
     }
   },
 };
 
-export default api;
+export default apiClient;

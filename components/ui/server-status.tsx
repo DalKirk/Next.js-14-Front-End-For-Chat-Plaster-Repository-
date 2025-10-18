@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiClient } from '@/lib/api';
 
 interface ServerStatusProps {
   apiUrl?: string;
@@ -13,43 +14,21 @@ export function ServerStatus({ apiUrl }: ServerStatusProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   const checkServerStatus = useCallback(async () => {
-    const url = apiUrl || process.env.NEXT_PUBLIC_API_URL || 'https://natural-presence-production.up.railway.app';
-    
     try {
       setStatus('checking');
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      const response = await fetch(`${url}/health`, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
+      const healthy = await apiClient.checkHealth();
+      if (healthy) {
         setStatus('online');
         setErrorMessage('');
-      } else if (response.status === 502) {
-        setStatus('error');
-        setErrorMessage('Backend server is currently unavailable (502 Bad Gateway). The Railway service may be sleeping or restarting.');
       } else {
         setStatus('offline');
-        setErrorMessage(`Server returned status: ${response.status}`);
+        setErrorMessage('Server responded but reported unhealthy');
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        setStatus('offline');
-        setErrorMessage('Connection timeout - server is not responding');
-      } else {
-        setStatus('offline');
-        setErrorMessage((error as Error)?.message || 'Unable to connect to backend server');
-      }
+    } catch (err: any) {
+      setStatus('offline');
+      setErrorMessage(err?.message || 'Unable to connect to backend server');
     }
-  }, [apiUrl]);
+  }, []);
 
   useEffect(() => {
     checkServerStatus();

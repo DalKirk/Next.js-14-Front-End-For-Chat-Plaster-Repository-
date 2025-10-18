@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { socketManager } from '@/lib/socket';
+import { apiClient } from '@/lib/api';
 import { SocketMessage, Message, User, Room } from '@/lib/types';
 
 interface UseChatProps {
@@ -15,14 +16,32 @@ export function useChat({ roomId, user }: UseChatProps) {
   useEffect(() => {
     if (!roomId || !user) return;
 
-    // Connect to WebSocket
-    socketManager.connect(roomId, user.id);
+    let cancelled = false;
 
-    // Set up event listeners
-    socketManager.onConnect(setIsConnected);
-    socketManager.onMessage(handleMessage);
+    // Ensure backend knows about the user-room relationship before opening WebSocket
+    (async () => {
+      try {
+        await apiClient.joinRoom(roomId, user.id);
+      } catch (err) {
+        // If joining the room fails, do not attempt the WebSocket connection
+        // eslint-disable-next-line no-console
+        console.error('Failed to join room before WebSocket connect', err);
+        setIsConnected(false);
+        return;
+      }
+
+      if (cancelled) return;
+
+      // Connect to WebSocket
+      socketManager.connect(roomId, user.id);
+
+      // Set up event listeners
+      socketManager.onConnect(setIsConnected);
+      socketManager.onMessage(handleMessage);
+    })();
 
     return () => {
+      cancelled = true;
       socketManager.disconnect();
     };
   }, [roomId, user.id]);
