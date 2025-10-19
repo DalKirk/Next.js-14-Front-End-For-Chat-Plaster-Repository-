@@ -8,6 +8,8 @@ class SocketManager {
   private reconnectDelay = 1000;
   private roomId: string = '';
   private userId: string = '';
+  private keepAliveInterval: NodeJS.Timeout | null = null;
+  private keepAliveIntervalMs = 25000; // Send keep-alive every 25 seconds
 
   connect(roomId: string, userId: string): void {
     this.roomId = roomId;
@@ -41,11 +43,13 @@ class SocketManager {
       this.socket.onopen = () => {
         console.log('✅ Connected to WebSocket successfully');
         this.reconnectAttempts = 0;
+        this.startKeepAlive();
         this.callbacks.get('connect')?.(true);
       };
 
       this.socket.onclose = (event) => {
         console.log('❌ Disconnected from WebSocket:', event.code, event.reason);
+        this.stopKeepAlive();
         this.callbacks.get('connect')?.(false);
         
         // Check close codes
@@ -70,6 +74,7 @@ class SocketManager {
       
       this.socket.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
+        this.stopKeepAlive();
         this.callbacks.get('connect')?.(false);
         this.callbacks.get('error')?.(new Error('WebSocket error'));
       };
@@ -78,6 +83,13 @@ class SocketManager {
         try {
           const data = JSON.parse(event.data);
           console.log('📨 Received WebSocket message:', data);
+          
+          // Handle ping from server - respond with pong
+          if (data.type === 'ping') {
+            console.log('🏓 Received ping from server, sending pong');
+            this.socket?.send(JSON.stringify({ type: 'pong' }));
+            return;
+          }
           
           // Handle different message types
           if (data.type === 'message') {
@@ -102,6 +114,25 @@ class SocketManager {
       this.reconnectAttempts = this.maxReconnectAttempts; // Prevent auto-reconnect
       this.socket.close();
       this.socket = null;
+    }
+    this.stopKeepAlive();
+  }
+
+  private startKeepAlive(): void {
+    this.stopKeepAlive(); // Clear any existing keep-alive
+    this.keepAliveInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        console.log('💓 Sending WebSocket keep-alive');
+        // Send a simple keep-alive message that the server can ignore
+        this.socket.send(JSON.stringify({ type: 'keep_alive', timestamp: Date.now() }));
+      }
+    }, this.keepAliveIntervalMs);
+  }
+
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
     }
   }
 
