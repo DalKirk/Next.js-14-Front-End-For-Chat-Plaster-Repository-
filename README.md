@@ -21,7 +21,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Bunny.net 
 
 ## 🌐 **Live Demo - Test It Now!**
 
-### 🚀 **[https://video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)**
+### 🚀 **[https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app)**
 
 **No installation required!** Jump straight into testing the full application:
 
@@ -33,7 +33,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Bunny.net 
 ## 🎯 **Quick Test Guide**
 
 ### 🆕 **New to this app? Start here:**
-1. **🔗 Click**: [Live Demo Link](https://video-chat-frontend-ruby.vercel.app)
+1. **🔗 Click**: [Live Demo Link](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app)
 2. **✅ Check Status**: Look for the server status indicator in the top-right corner
    - 🟢 Green = Ready to use
    - 🟡 Yellow = Checking connection
@@ -84,7 +84,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Bunny.net 
 
 ## 🚀 Quick Start
 
-> **👆 Prefer to test online?** Use the [Live Demo](https://video-chat-frontend-ruby.vercel.app) above - no setup required!
+> **👆 Prefer to test online?** Use the [Live Demo](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app) above - no setup required!
 
 ### For Developers - Local Development
 
@@ -231,7 +231,7 @@ Custom theme with:
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
-**🚀 Live Demo**: [https://video-chat-frontend-ruby.vercel.app](https://video-chat-frontend-ruby.vercel.app)
+**🚀 Live Demo**: [https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FDalKirk%2FNext.js-14-Front-End-For-Chat-Plaster-Repository-)
 
@@ -470,7 +470,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://video-chat-frontend-ruby.vercel.app"
+        "https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -492,7 +492,7 @@ See [CORS_FIX_GUIDE.md](CORS_FIX_GUIDE.md) for complete setup instructions.
 
 We welcome contributions! Here's how to get started:
 
-1. **Test First**: Try the [live demo](https://video-chat-frontend-ruby.vercel.app) to understand the app
+1. **Test First**: Try the [live demo](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app) to understand the app
 2. **Fork the Repository**: Click the fork button on GitHub
 3. **Clone Your Fork**: 
    ```bash
@@ -506,14 +506,14 @@ We welcome contributions! Here's how to get started:
 8. **Submit PR**: Create a pull request with clear description
 
 ### 🐛 Found a Bug?
-- Test it on the [live demo](https://video-chat-frontend-ruby.vercel.app) first
+- Test it on the [live demo](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app) first
 - Check if it's reproducible
 - Open an issue with screenshots and steps to reproduce
 
 ## 🎉 Next Steps
 
 ### 🧪 **For Testers**
-1. **🔗 Visit**: [Live Demo](https://video-chat-frontend-ruby.vercel.app)
+1. **🔗 Visit**: [Live Demo](https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app)
 2. **📱 Test**: Try on different devices (mobile, tablet, desktop)
 3. **🐛 Report**: Found issues? Open a GitHub issue with details
 
