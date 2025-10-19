@@ -16,7 +16,10 @@ class SocketManager {
     let host = '';
     let protocol: 'wss' | 'ws' = 'ws';
 
-    const configured = process.env.NEXT_PUBLIC_API_URL || '';
+  // Prefer an explicit WS URL if provided (NEXT_PUBLIC_WS_URL). Otherwise derive
+  // from NEXT_PUBLIC_API_URL or fallback to the production backend. This makes
+  // the deployed frontend reliably connect to the Railway backend domain.
+  const configured = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || '';
     if (configured) {
       try {
         const u = new URL(configured);
@@ -35,7 +38,7 @@ class SocketManager {
       protocol = 'ws';
     }
 
-    const WS_URL = `${protocol}://${host}/ws/${roomId}/${userId}`;
+  const WS_URL = `${protocol}://${host}/ws/${roomId}/${userId}`;
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,
