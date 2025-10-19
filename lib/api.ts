@@ -122,8 +122,7 @@ export const apiClient = {
     try {
       await api.post(`/rooms/${roomId}/join`, { user_id: userId });
     } catch (e) {
-      // Fallback - ignore join when backend is unavailable
-      console.warn('Backend unavailable, skipping room join:', e);
+      handleApiError(e, 'Join room');
     }
   },
 
