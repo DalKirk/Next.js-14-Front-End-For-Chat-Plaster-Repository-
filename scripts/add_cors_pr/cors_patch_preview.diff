@@ -1,0 +1,24 @@
+*** Begin Patch
+*** Add File: cors_snippet.py
++# --- CORS middleware (preview snippet)
++import os
++from fastapi.middleware.cors import CORSMiddleware
++
++# Environment variable `ALLOWED_ORIGINS` expected as a comma-separated list OR '*' for all origins
++ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
++if ALLOWED_ORIGINS and ALLOWED_ORIGINS.strip() != '':
++    origins = [o.strip() for o in ALLOWED_ORIGINS.split(',') if o.strip()]
++else:
++    origins = ["*"]
++
++# Add middleware after app = FastAPI(...)
++app.add_middleware(
++    CORSMiddleware,
++    allow_origins=origins,
++    allow_credentials=True,
++    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
++    allow_headers=["*"],
++)
++
++# --- end CORS middleware
+*** End Patch
