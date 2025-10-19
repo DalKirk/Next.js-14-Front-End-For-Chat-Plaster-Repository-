@@ -163,6 +163,11 @@ export default function RoomPage() {
       socketManager.onMessage((socketMessage: any) => {
         console.log('📨 Received WebSocket message:', socketMessage);
         
+        // Ignore system messages like keep_alive, ping, pong
+        if (['keep_alive', 'ping', 'pong'].includes(socketMessage.type)) {
+          return; // Don't add these to chat
+        }
+        
         // Handle different message formats from backend
         const messageContent = socketMessage.content || socketMessage.message || '';
         const messageId = socketMessage.id || socketMessage.message_id || `msg-${Date.now()}-${Math.random()}`;
