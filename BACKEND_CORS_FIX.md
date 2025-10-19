@@ -17,8 +17,10 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://video-chat-frontend-ruby.vercel.app",
-        "http://localhost:3000"
+        "https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app",
+        "https://*.vercel.app",  # Allow all Vercel preview deployments
+        "http://localhost:3000",
+        "http://localhost:3001"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -38,8 +40,10 @@ app.add_middleware(
 from dynamic_cors_middleware import DynamicCORSMiddleware
 
 WHITELIST = {
-    "https://video-chat-frontend-ruby.vercel.app",
+    "https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app",
+    "https://*.vercel.app",
     "http://localhost:3000",
+    "http://localhost:3001",
 }
 
 app.add_middleware(DynamicCORSMiddleware, whitelist=WHITELIST)
@@ -52,8 +56,14 @@ app.add_middleware(DynamicCORSMiddleware, whitelist=WHITELIST)
 After deploying, test CORS:
 
 ```bash
-curl -I -H "Origin: https://video-chat-frontend-ruby.vercel.app" \
+curl -I -H "Origin: https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app" \
   https://web-production-3ba7e.up.railway.app/health
+```
+
+Or use PowerShell:
+```powershell
+$response = Invoke-WebRequest -Uri "https://web-production-3ba7e.up.railway.app/" -Method GET -Headers @{"Origin"="https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app"}
+$response.Headers['Access-Control-Allow-Origin']
 ```
 
 Look for `Access-Control-Allow-Origin` in the response headers.
@@ -62,7 +72,7 @@ Look for `Access-Control-Allow-Origin` in the response headers.
 
 Set in Railway dashboard:
 ```
-ALLOWED_ORIGINS=https://video-chat-frontend-ruby.vercel.app,http://localhost:3000
+ALLOWED_ORIGINS=https://next-js-14-front-end-for-chat-plaster-repository-7vb273qqo.vercel.app,http://localhost:3000
 ```
 
 ## ?? Expected Result
