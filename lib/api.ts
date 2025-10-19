@@ -1,13 +1,15 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload } from './types';
 
+const BACKEND_URL = 'https://web-production-3ba7e.up.railway.app';
+
 // Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
 // If not set, prefer the production Railway backend (safe default) before falling back
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
 // Use environment variable for backend URL, fallback to hardcoded for production
 const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
-const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || BACKEND_URL;
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
@@ -51,7 +53,7 @@ function handleApiError(error: any, operation: string): never {
 
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    const r = await api.get('/', { timeout: 5000 });
+    const r = await api.get(`${BACKEND_URL}/`, { timeout: 5000 });
     return r.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -66,7 +68,7 @@ export const apiClient = {
   createUser: async (username: string): Promise<User> => {
     if (!username || !username.trim()) throw new Error('Please provide a username');
     try {
-      const r = await api.post('/users', { username });
+      const r = await api.post(`${BACKEND_URL}/users`, { username });
       return r.data;
     } catch (e) {
       // Fallback to mock user when backend is unavailable
@@ -82,7 +84,7 @@ export const apiClient = {
 
   getRooms: async (): Promise<Room[]> => {
     try {
-      const r = await api.get('/rooms');
+      const r = await api.get(`${BACKEND_URL}/rooms`);
       return r.data;
     } catch (e) {
       // Fallback to mock rooms when backend is unavailable
@@ -105,7 +107,7 @@ export const apiClient = {
   createRoom: async (name: string): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
-      const r = await api.post('/rooms', { name });
+      const r = await api.post(`${BACKEND_URL}/rooms`, { name });
       return r.data;
     } catch (e) {
       // Fallback to mock room when backend is unavailable
@@ -121,7 +123,7 @@ export const apiClient = {
 
   joinRoom: async (roomId: string, userId: string): Promise<void> => {
     try {
-      await api.post(`/rooms/${roomId}/join`, { user_id: userId });
+      await api.post(`${BACKEND_URL}/rooms/${roomId}/join`, { user_id: userId });
     } catch (e) {
       handleApiError(e, 'Join room');
     }
@@ -129,7 +131,7 @@ export const apiClient = {
 
   getRoomMessages: async (roomId: string): Promise<Message[]> => {
     try {
-      const r = await api.get(`/rooms/${roomId}/messages`);
+      const r = await api.get(`${BACKEND_URL}/rooms/${roomId}/messages`);
       return r.data;
     } catch (e) {
       // Fallback to empty messages when backend is unavailable
@@ -141,26 +143,23 @@ export const apiClient = {
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const r = await api.post(`/rooms/${roomId}/live-stream`, { title });
+      const r = await api.post(`${BACKEND_URL}/rooms/${roomId}/live-stream`, { title });
       return r.data;
     } catch (e) {
       handleApiError(e, 'Create live stream');
     }
   },
 
-  // createVideoUpload returns a same-origin upload_url (e.g. /upload-proxy/{id})
   createVideoUpload: async (roomId: string, title: string, description?: string): Promise<VideoUpload> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const r = await api.post(`/rooms/${roomId}/video-upload`, { title, description });
+      const r = await api.post(`${BACKEND_URL}/rooms/${roomId}/video-upload`, { title, description });
       return r.data;
     } catch (e) {
       handleApiError(e, 'Create video upload');
     }
   },
 
-  // upload to the given uploadUrl (designed to be same-origin proxy). Accepts progress callback.
-  // upload to the given uploadUrl. If the backend returned an access_key, pass it as apiKey.
   uploadVideoFile: async (
     uploadUrl: string,
     file: File,
@@ -168,21 +167,12 @@ export const apiClient = {
     apiKey?: string
   ): Promise<void> => {
     try {
-      // Use fetch to PUT the file. This allows custom headers like AccessKey and
-      // uses the actual file.type as Content-Type.
-      // We attempt to use the Fetch + ReadableStream upload progress if available; if
-      // not, we fall back to XMLHttpRequest to track upload progress.
-
       const headers: Record<string, string> = {
         'Content-Type': file.type || 'application/octet-stream',
       };
       if (apiKey) headers['AccessKey'] = apiKey;
 
-      // Prefer fetch for modern browsers and same-origin/third-party uploads
       if (typeof window !== 'undefined' && 'fetch' in window && 'ReadableStream' in window) {
-        // Some CDNs reject extra headers on pre-signed URLs. If adding AccessKey causes problems,
-        // backend should return a signed URL that doesn't require custom headers. We'll still
-        // attempt fetch with the header when provided.
         const response = await fetch(uploadUrl, {
           method: 'PUT',
           headers,
@@ -193,12 +183,10 @@ export const apiClient = {
           throw new Error(`Upload failed with status ${response.status}`);
         }
 
-        // If onProgress is provided, report 100% when complete
         onProgress?.(100);
         return;
       }
 
-      // Fallback to XMLHttpRequest for progress reporting in older browsers/environments
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl, true);
