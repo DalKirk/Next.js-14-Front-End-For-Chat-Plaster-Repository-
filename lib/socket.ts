@@ -146,7 +146,6 @@ class SocketManager {
 
   sendMessage(content: string): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      console.log('📤 Sending message via WebSocket:', content);
       const message = JSON.stringify({ content });
       this.socket.send(message);
     } else {

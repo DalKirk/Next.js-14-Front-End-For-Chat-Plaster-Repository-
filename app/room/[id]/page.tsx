@@ -161,10 +161,8 @@ export default function RoomPage() {
       
       // Handle incoming messages - IMPROVED VERSION
       socketManager.onMessage((socketMessage: any) => {
-        console.log('📨 Received WebSocket message:', socketMessage);
-        
         // Ignore system messages like keep_alive, ping, pong
-        if (['keep_alive', 'ping', 'pong'].includes(socketMessage.type)) {
+        if (['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
         }
         
@@ -184,16 +182,12 @@ export default function RoomPage() {
           playback_id: socketMessage.playback_id
         };
         
-        console.log('✅ Adding message to state:', newMessage);
-        
         setMessages(prev => {
           // Avoid duplicate messages by ID
           const exists = prev.some(msg => msg.id === newMessage.id);
           if (exists) {
-            console.log('⚠️ Duplicate message detected, skipping:', messageId);
             return prev;
           }
-          console.log(`📝 Total messages: ${prev.length + 1}`);
           return [...prev, newMessage];
         });
       });
@@ -231,13 +225,6 @@ export default function RoomPage() {
 
   const sendMessage = (content: string) => {
     if (!content.trim() || !user) return;
-    
-    console.log('🔍 sendMessage called:', { 
-      wsConnected, 
-      isConnected: socketManager.isConnected(),
-      readyState: socketManager.getReadyState(),
-      content 
-    });
     
     if (wsConnected && socketManager.isConnected()) {
       // Send via WebSocket - message will appear when server broadcasts it back
