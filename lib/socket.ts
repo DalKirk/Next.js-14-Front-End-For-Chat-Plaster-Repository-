@@ -83,10 +83,12 @@ class SocketManager {
       };
       
       this.socket.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
+        console.error('❌ WebSocket error occurred');
+        console.log('📊 WebSocket state:', this.socket?.readyState);
+        console.log('🔗 Attempted URL:', WS_URL);
         this.stopKeepAlive();
         this.callbacks.get('connect')?.(false);
-        this.callbacks.get('error')?.(new Error('WebSocket error'));
+        this.callbacks.get('error')?.(new Error('WebSocket connection error'));
       };
 
       this.socket.onmessage = (event) => {
