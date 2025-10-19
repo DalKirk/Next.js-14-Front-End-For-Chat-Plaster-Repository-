@@ -14,6 +14,13 @@ class SocketManager {
   connect(roomId: string, userId: string): void {
     this.roomId = roomId;
     this.userId = userId;
+    
+    // If already connected to the same room, don't reconnect
+    if (this.socket?.readyState === WebSocket.OPEN && this.roomId === roomId && this.userId === userId) {
+      console.log('⚠️ Already connected to this room, skipping reconnect');
+      return;
+    }
+    
     // Build WS host/protocol robustly.
     let host = '';
     let protocol: 'wss' | 'ws' = 'ws';
@@ -35,6 +42,7 @@ class SocketManager {
     
     // Disconnect existing connection
     if (this.socket) {
+      console.log('🔌 Closing existing WebSocket connection before creating new one');
       this.socket.close();
     }
     

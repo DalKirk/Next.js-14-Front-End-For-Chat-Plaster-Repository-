@@ -46,6 +46,7 @@ export default function RoomPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitializedRef = useRef(false); // Prevent double initialization
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -77,11 +78,20 @@ export default function RoomPage() {
   }, [messages, isAtBottom]);
 
   useEffect(() => {
+    // Prevent double initialization (React StrictMode in dev)
+    if (isInitializedRef.current) {
+      console.log('⚠️ Skipping duplicate initialization');
+      return;
+    }
+    
     // Get user from localStorage
     const savedUser = localStorage.getItem('chat-user');
     if (savedUser) {
       const userData = JSON.parse(savedUser);
       setUser(userData);
+      
+      // Mark as initialized
+      isInitializedRef.current = true;
       
       // Load initial messages
       loadMessages();
@@ -101,8 +111,9 @@ export default function RoomPage() {
       socketManager.disconnect();
       setWsConnected(false);
       setIsConnected(false);
+      isInitializedRef.current = false; // Reset for next mount
     };
-  }, [roomId, router]);
+  }, [roomId]); // Removed 'router' from dependencies to prevent re-renders
 
   const initializeWebSocket = async (userData?: User) => {
     const currentUser = userData || user;
