@@ -16,29 +16,8 @@ class SocketManager {
     let host = '';
     let protocol: 'wss' | 'ws' = 'ws';
 
-  // Prefer an explicit WS URL if provided (NEXT_PUBLIC_WS_URL). Otherwise derive
-  // from NEXT_PUBLIC_API_URL or fallback to the production backend. This makes
-  // the deployed frontend reliably connect to the Railway backend domain.
-  const configured = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || '';
-    if (configured) {
-      try {
-        const u = new URL(configured);
-        host = u.host; // includes port if present
-        protocol = u.protocol === 'https:' ? 'wss' : 'ws';
-      } catch (e) {
-        // If NEXT_PUBLIC_API_URL is not a full URL, strip scheme if present and use as host
-        host = configured.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        protocol = configured.startsWith('https') ? 'wss' : 'ws';
-      }
-    } else if (typeof window !== 'undefined') {
-      host = window.location.host;
-      protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    } else {
-      host = 'localhost:8000';
-      protocol = 'ws';
-    }
-
-  const WS_URL = `${protocol}://${host}/ws/${roomId}/${userId}`;
+    // Always use explicit Railway backend for all WebSocket connections
+    const WS_URL = `wss://web-production-3ba7e.up.railway.app/ws/${roomId}/${userId}`;
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,

@@ -5,10 +5,8 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 // If not set, prefer the production Railway backend (safe default) before falling back
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
-const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
-// Explicit production backend provided by ops / developer (used as a last-resort fallback)
-const PROD_BACKEND_FALLBACK = 'https://web-production-3ba7e.up.railway.app';
-const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || PROD_BACKEND_FALLBACK || DEFAULT_ORIGIN;
+// Always use explicit Railway backend for all API calls
+const API_BASE_URL = 'https://web-production-3ba7e.up.railway.app';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
