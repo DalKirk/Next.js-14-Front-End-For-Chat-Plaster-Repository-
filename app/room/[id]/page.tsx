@@ -205,8 +205,18 @@ export default function RoomPage() {
   const loadMessages = async () => {
     try {
       const roomMessages = await apiClient.getRoomMessages(roomId);
-      setMessages(roomMessages);
-      console.log('✅ Loaded real messages from backend:', roomMessages.length);
+      
+      // Validate and sanitize messages - ensure all have valid timestamps
+      const validMessages = roomMessages.map(msg => ({
+        ...msg,
+        // Ensure timestamp is valid, fallback to current time
+        timestamp: msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+          ? msg.timestamp 
+          : new Date().toISOString()
+      }));
+      
+      setMessages(validMessages);
+      console.log('✅ Loaded and validated messages from backend:', validMessages.length);
     } catch (error) {
       console.error('❌ Failed to load messages from backend:', error);
       toast.error('Failed to connect to server. Please check your connection.');

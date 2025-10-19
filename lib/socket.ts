@@ -4,7 +4,7 @@ class SocketManager {
   private socket: WebSocket | null = null;
   private callbacks: Map<string, Function> = new Map();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10; // Increased from 5 for Railway free tier wake-up
   private reconnectDelay = 1000;
   private roomId: string = '';
   private userId: string = '';
