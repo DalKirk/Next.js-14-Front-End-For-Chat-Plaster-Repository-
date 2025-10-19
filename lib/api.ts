@@ -6,7 +6,8 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
 // Use environment variable for backend URL, fallback to hardcoded for production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
