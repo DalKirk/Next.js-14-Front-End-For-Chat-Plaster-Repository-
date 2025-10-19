@@ -18,8 +18,9 @@ class SocketManager {
     let host = '';
     let protocol: 'wss' | 'ws' = 'ws';
 
-    // Always use explicit Railway backend for all WebSocket connections
-    const WS_URL = `wss://web-production-64adb.up.railway.app/ws/${roomId}/${userId}`;
+    // Use environment variable for WebSocket URL, fallback to hardcoded
+    const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://web-production-3ba7e.up.railway.app';
+    const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}`;
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,

@@ -5,8 +5,8 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 // If not set, prefer the production Railway backend (safe default) before falling back
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
-// Always use explicit Railway backend for all API calls
-const API_BASE_URL = 'https://web-production-64adb.up.railway.app';
+// Use environment variable for backend URL, fallback to hardcoded for production
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
