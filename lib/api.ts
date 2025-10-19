@@ -53,7 +53,8 @@ function handleApiError(error: any, operation: string): never {
 
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    const r = await api.get(`${BACKEND_URL}/`, { timeout: 5000 });
+    // Call the dedicated health endpoint rather than root. Use configured `api` so baseURL and credentials apply.
+    const r = await api.get('/health', { timeout: 5000 });
     return r.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -68,7 +69,7 @@ export const apiClient = {
   createUser: async (username: string): Promise<User> => {
     if (!username || !username.trim()) throw new Error('Please provide a username');
     try {
-      const r = await api.post(`${BACKEND_URL}/users`, { username });
+      const r = await api.post('/users', { username });
       return r.data;
     } catch (e) {
       // Fallback to mock user when backend is unavailable
@@ -84,7 +85,7 @@ export const apiClient = {
 
   getRooms: async (): Promise<Room[]> => {
     try {
-      const r = await api.get(`${BACKEND_URL}/rooms`);
+      const r = await api.get('/rooms');
       return r.data;
     } catch (e) {
       // Fallback to mock rooms when backend is unavailable
@@ -107,7 +108,7 @@ export const apiClient = {
   createRoom: async (name: string): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
-      const r = await api.post(`${BACKEND_URL}/rooms`, { name });
+      const r = await api.post('/rooms', { name });
       return r.data;
     } catch (e) {
       // Fallback to mock room when backend is unavailable
@@ -122,16 +123,28 @@ export const apiClient = {
   },
 
   joinRoom: async (roomId: string, userId: string): Promise<void> => {
+    // Avoid calling backend for locally-created mock rooms
+    if (roomId.startsWith('mock-')) {
+      // Local/mock join: nothing to send to backend
+      // You can add local state updates here if needed.
+      // eslint-disable-next-line no-console
+      console.warn('Attempted to join mock room locally; skipping backend call', roomId);
+      return;
+    }
+
     try {
-      await api.post(`${BACKEND_URL}/rooms/${roomId}/join`, { user_id: userId });
+      await api.post(`/rooms/${roomId}/join`, { user_id: userId });
     } catch (e) {
-      handleApiError(e, 'Join room');
+      // Fail gracefully: log and return so UI can continue using fallback behavior
+      // eslint-disable-next-line no-console
+      console.warn('Join room failed, continuing with fallback behavior', e);
+      return;
     }
   },
 
   getRoomMessages: async (roomId: string): Promise<Message[]> => {
     try {
-      const r = await api.get(`${BACKEND_URL}/rooms/${roomId}/messages`);
+      const r = await api.get(`/rooms/${roomId}/messages`);
       return r.data;
     } catch (e) {
       // Fallback to empty messages when backend is unavailable
@@ -143,7 +156,7 @@ export const apiClient = {
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const r = await api.post(`${BACKEND_URL}/rooms/${roomId}/live-stream`, { title });
+      const r = await api.post(`/rooms/${roomId}/live-stream`, { title });
       return r.data;
     } catch (e) {
       handleApiError(e, 'Create live stream');
@@ -153,7 +166,7 @@ export const apiClient = {
   createVideoUpload: async (roomId: string, title: string, description?: string): Promise<VideoUpload> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
-      const r = await api.post(`${BACKEND_URL}/rooms/${roomId}/video-upload`, { title, description });
+      const r = await api.post(`/rooms/${roomId}/video-upload`, { title, description });
       return r.data;
     } catch (e) {
       handleApiError(e, 'Create video upload');
