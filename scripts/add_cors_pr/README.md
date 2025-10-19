@@ -16,7 +16,7 @@ Railway instructions
 
 ```bash
 # Example - set environment variable on Railway
-railway environment set ALLOWED_ORIGINS "https://natural-presence-production.up.railway.app,http://localhost:3000"
+railway environment set ALLOWED_ORIGINS "https://web-production-3ba7e.up.railway.app,http://localhost:3000"
 ```
 
 Curl tests to verify CORS preflight and upload
@@ -24,7 +24,7 @@ Curl tests to verify CORS preflight and upload
 
 ```bash
 curl -i -X OPTIONS \
-  -H "Origin: https://natural-presence-production.up.railway.app" \
+  -H "Origin: https://web-production-3ba7e.up.railway.app" \
   -H "Access-Control-Request-Method: PUT" \
   -H "Access-Control-Request-Headers: Content-Type, AccessKey" \
   https://your-backend.example.com/rooms/123/video-upload
