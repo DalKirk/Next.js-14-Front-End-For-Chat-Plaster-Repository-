@@ -206,19 +206,29 @@ export default function RoomPage() {
   const sendMessage = (content: string) => {
     if (!content.trim() || !user) return;
     
+    console.log('🔍 sendMessage called:', { 
+      wsConnected, 
+      isConnected: socketManager.isConnected(),
+      readyState: socketManager.getReadyState(),
+      content 
+    });
+    
     if (wsConnected && socketManager.isConnected()) {
       // Send via WebSocket - message will appear when server broadcasts it back
       // Send via WebSocket
       try {
         socketManager.sendMessage(content);
-        console.log('ðŸ“¤ Message sent via WebSocket:', content);
+        console.log('📤 Message sent via WebSocket:', content);
         // Message will appear in chat when received from server (no optimistic update)
       } catch (error) {
-        console.error('Failed to send message via WebSocket:', error);
+        console.error('❌ Failed to send message via WebSocket:', error);
         toast.error('Failed to send message. Check your connection.');
+        throw error; // Re-throw to be caught by handleSendMessage
       }
     } else {
+      console.error('❌ WebSocket not connected - cannot send message');
       toast.error('Not connected to server. Cannot send message.');
+      throw new Error('WebSocket not connected');
     }
   };
   
@@ -241,8 +251,13 @@ export default function RoomPage() {
   const handleSendMessage = () => {
     if (!message.trim() || !user) return;
     
-    sendMessage(message.trim());
-    setMessage('');
+    try {
+      sendMessage(message.trim());
+      setMessage('');
+    } catch (error) {
+      console.error('❌ Error sending message:', error);
+      toast.error('Failed to send message. Please check your connection.');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

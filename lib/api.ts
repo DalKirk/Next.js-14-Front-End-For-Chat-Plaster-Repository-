@@ -1,15 +1,12 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload } from './types';
 
-const BACKEND_URL = 'https://web-production-3ba7e.up.railway.app';
-
 // Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
 // If not set, prefer the production Railway backend (safe default) before falling back
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
 // Use environment variable for backend URL, fallback to hardcoded for production
-const DEFAULT_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
-const API_BASE_URL = process.env.NEXT_PUBLIC_FORCE_API_URL || process.env.NEXT_PUBLIC_API_URL || BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
@@ -53,8 +50,7 @@ function handleApiError(error: any, operation: string): never {
 
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    // Call the dedicated health endpoint rather than root. Use configured `api` so baseURL and credentials apply.
-    const r = await api.get('/health', { timeout: 5000 });
+    const r = await api.get('/', { timeout: 5000 });
     return r.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -123,22 +119,10 @@ export const apiClient = {
   },
 
   joinRoom: async (roomId: string, userId: string): Promise<void> => {
-    // Avoid calling backend for locally-created mock rooms
-    if (roomId.startsWith('mock-')) {
-      // Local/mock join: nothing to send to backend
-      // You can add local state updates here if needed.
-      // eslint-disable-next-line no-console
-      console.warn('Attempted to join mock room locally; skipping backend call', roomId);
-      return;
-    }
-
     try {
       await api.post(`/rooms/${roomId}/join`, { user_id: userId });
     } catch (e) {
-      // Fail gracefully: log and return so UI can continue using fallback behavior
-      // eslint-disable-next-line no-console
-      console.warn('Join room failed, continuing with fallback behavior', e);
-      return;
+      handleApiError(e, 'Join room');
     }
   },
 
@@ -163,6 +147,7 @@ export const apiClient = {
     }
   },
 
+  // createVideoUpload returns a same-origin upload_url (e.g. /upload-proxy/{id})
   createVideoUpload: async (roomId: string, title: string, description?: string): Promise<VideoUpload> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
@@ -173,6 +158,8 @@ export const apiClient = {
     }
   },
 
+  // upload to the given uploadUrl (designed to be same-origin proxy). Accepts progress callback.
+  // upload to the given uploadUrl. If the backend returned an access_key, pass it as apiKey.
   uploadVideoFile: async (
     uploadUrl: string,
     file: File,
@@ -180,12 +167,21 @@ export const apiClient = {
     apiKey?: string
   ): Promise<void> => {
     try {
+      // Use fetch to PUT the file. This allows custom headers like AccessKey and
+      // uses the actual file.type as Content-Type.
+      // We attempt to use the Fetch + ReadableStream upload progress if available; if
+      // not, we fall back to XMLHttpRequest to track upload progress.
+
       const headers: Record<string, string> = {
         'Content-Type': file.type || 'application/octet-stream',
       };
       if (apiKey) headers['AccessKey'] = apiKey;
 
+      // Prefer fetch for modern browsers and same-origin/third-party uploads
       if (typeof window !== 'undefined' && 'fetch' in window && 'ReadableStream' in window) {
+        // Some CDNs reject extra headers on pre-signed URLs. If adding AccessKey causes problems,
+        // backend should return a signed URL that doesn't require custom headers. We'll still
+        // attempt fetch with the header when provided.
         const response = await fetch(uploadUrl, {
           method: 'PUT',
           headers,
@@ -196,10 +192,12 @@ export const apiClient = {
           throw new Error(`Upload failed with status ${response.status}`);
         }
 
+        // If onProgress is provided, report 100% when complete
         onProgress?.(100);
         return;
       }
 
+      // Fallback to XMLHttpRequest for progress reporting in older browsers/environments
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl, true);
