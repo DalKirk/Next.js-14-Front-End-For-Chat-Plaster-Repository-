@@ -9,7 +9,7 @@ class SocketManager {
   private roomId: string = '';
   private userId: string = '';
   private keepAliveInterval: NodeJS.Timeout | null = null;
-  private keepAliveIntervalMs = 25000; // Send keep-alive every 25 seconds
+  private keepAliveIntervalMs = 10000; // Send keep-alive every 10 seconds
 
   connect(roomId: string, userId: string): void {
     this.roomId = roomId;
@@ -63,7 +63,8 @@ class SocketManager {
         // Auto-reconnect with exponential backoff
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
-          const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+          // Reduce delay for faster reconnection
+          const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 5000);
           console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
           setTimeout(() => this.connect(this.roomId, this.userId), delay);
         } else {
