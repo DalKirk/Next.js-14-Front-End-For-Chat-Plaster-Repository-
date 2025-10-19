@@ -96,7 +96,6 @@ class SocketManager {
           
           // Handle ping from server - respond with pong
           if (data.type === 'ping') {
-            console.log('🏓 Received ping from server, sending pong');
             this.socket?.send(JSON.stringify({ type: 'pong' }));
             return;
           }
@@ -132,8 +131,7 @@ class SocketManager {
     this.stopKeepAlive(); // Clear any existing keep-alive
     this.keepAliveInterval = setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        console.log('💓 Sending WebSocket keep-alive');
-        // Send a simple keep-alive message that the server can ignore
+        // Send a simple keep-alive message that the server can ignore (silent)
         this.socket.send(JSON.stringify({ type: 'keep_alive', timestamp: Date.now() }));
       }
     }, this.keepAliveIntervalMs);
