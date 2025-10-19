@@ -17,7 +17,7 @@ A beautiful, modern Next.js 14 frontend for real-time video chat with Bunny.net 
 2. Check the server status indicator (top-right corner)
 3. Visit the [Troubleshooting Page](/troubleshooting) for detailed diagnostics
 
-**Backend URL:** `https://natural-presence-production.up.railway.app`
+**Backend URL:** `https://web-production-3ba7e.up.railway.app`
 
 ## 🌐 **Live Demo - Test It Now!**
 
@@ -217,8 +217,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
 
 # Production URLs (for deployment)
-NEXT_PUBLIC_API_URL=https://your-railway-app.up.railway.app
-NEXT_PUBLIC_WS_URL=wss://your-railway-app.up.railway.app
+NEXT_PUBLIC_API_URL=https://web-production-3ba7e.up.railway.app
+NEXT_PUBLIC_WS_URL=wss://web-production-3ba7e.up.railway.app
 ```
 
 ### Tailwind Configuration
