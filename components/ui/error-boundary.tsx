@@ -20,11 +20,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    console.error('🚨 ErrorBoundary - Error occurred:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('🚨 ErrorBoundary caught an error:', error);
+    console.error('🚨 Component stack:', errorInfo.componentStack);
+    console.error('🚨 Error stack:', error.stack);
   }
 
   render() {
@@ -56,12 +59,29 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 Try Again
               </Button>
+              {this.state.error && (
+                <Button
+                  onClick={() => {
+                    const errorText = `Error: ${this.state.error?.message}\n\nStack:\n${this.state.error?.stack}`;
+                    navigator.clipboard.writeText(errorText);
+                    alert('Error details copied to clipboard!');
+                  }}
+                  variant="glass"
+                  className="w-full"
+                >
+                  📋 Copy Error Details
+                </Button>
+              )}
             </div>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {this.state.error && (
               <details className="mt-4 text-left">
-                <summary className="text-white/70 cursor-pointer">Error Details</summary>
-                <pre className="text-xs text-red-300 mt-2 p-2 bg-black/20 rounded overflow-auto">
+                <summary className="text-white/70 cursor-pointer hover:text-white">
+                  🔍 Error Details (Click to expand)
+                </summary>
+                <pre className="text-xs text-red-300 mt-2 p-2 bg-black/20 rounded overflow-auto max-h-40">
                   {this.state.error.message}
+                  {'\n\n'}
+                  {this.state.error.stack}
                 </pre>
               </details>
             )}
