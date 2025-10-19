@@ -53,6 +53,28 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;
 
+  // Safely format timestamp with fallback
+  const formatTimestamp = (timestamp: string | undefined) => {
+    if (!timestamp) return 'Now';
+    
+    try {
+      // Ensure timestamp has 'Z' suffix for UTC if it doesn't already
+      const isoTimestamp = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
+      const date = new Date(isoTimestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp:', timestamp);
+        return 'Now';
+      }
+      
+      return format(date, 'HH:mm');
+    } catch (error) {
+      console.error('Error formatting timestamp:', timestamp, error);
+      return 'Now';
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -79,7 +101,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             {message.username}
           </span>
           <span className="text-xs text-white/60">
-            {format(new Date(message.timestamp.endsWith('Z') ? message.timestamp : message.timestamp + 'Z'), 'HH:mm')}
+            {formatTimestamp(message.timestamp)}
           </span>
         </div>
 
