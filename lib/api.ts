@@ -6,7 +6,7 @@ import { User, Room, Message, LiveStream, VideoUpload } from './types';
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
 // to reach the correct backend URL.
 // Always use explicit Railway backend for all API calls
-const API_BASE_URL = 'https://web-production-3ba7e.up.railway.app';
+const API_BASE_URL = 'https://web-production-64adb.up.railway.app';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
@@ -50,7 +50,7 @@ function handleApiError(error: any, operation: string): never {
 
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    const r = await api.get('/health', { timeout: 5000 });
+    const r = await api.get('/', { timeout: 5000 });
     return r.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console
