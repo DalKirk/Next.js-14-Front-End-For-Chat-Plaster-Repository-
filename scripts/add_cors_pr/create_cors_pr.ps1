@@ -146,7 +146,7 @@ Example (Railway) CLI to set allowed origins:
 
 ```bash
 # allow the frontend deployment and localhost for testing
-railway environment set ALLOWED_ORIGINS "https://natural-presence-production.up.railway.app,http://localhost:3000"
+railway environment set ALLOWED_ORIGINS "https://web-production-3ba7e.up.railway.app,http://localhost:3000"
 ```
 
 If you use a different host or domain, include it in the list.
