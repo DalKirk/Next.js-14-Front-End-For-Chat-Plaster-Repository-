@@ -35,7 +35,7 @@ const parseMessageWithLinks = (text: string) => {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline break-all"
+          className="text-primary-300 hover:text-primary-200 underline break-all"
           onClick={(e) => e.stopPropagation()}
         >
           {part}
@@ -90,24 +90,24 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
           'max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl p-4 shadow-lg',
           'backdrop-blur-sm border',
           isOwn 
-            ? 'bg-blue-600/20 border-blue-500/30 text-white' 
-            : 'bg-white/10 border-white/20 text-white',
+            ? 'bg-primary-500/25 border-primary-400/40 text-text-primary shadow-primary-500/20' 
+            : 'bg-surface/60 border-primary-400/25 text-text-primary',
           isVideoMessage && 'max-w-sm lg:max-w-md xl:max-w-lg'
         )}
       >
         {/* Username and timestamp */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-white/90">
+          <span className="text-sm font-medium text-text-primary">
             {message.username}
           </span>
-          <span className="text-xs text-white/60">
+          <span className="text-xs text-text-muted">
             {formatTimestamp(message.timestamp)}
           </span>
         </div>
 
         {/* Message content */}
         {message.type === 'system' ? (
-          <p className="text-sm italic text-white/80">
+          <p className="text-sm italic text-text-secondary">
             {parseMessageWithLinks(message.content)}
           </p>
         ) : isVideoMessage ? (
@@ -117,14 +117,14 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               <span className="text-lg">
                 {message.type === 'live_stream_created' ? '🔴' : '🎥'}
               </span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-text-primary">
                 {message.type === 'live_stream_created' ? 'Live Stream' : 'Video'}
               </span>
             </div>
             
             {/* Video title */}
             {videoMessage.title && (
-              <h4 className="text-sm font-medium text-white">
+              <h4 className="text-sm font-medium text-text-primary">
                 {videoMessage.title}
               </h4>
             )}
@@ -147,13 +147,13 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             
             {/* Message text if any */}
             {message.content && (
-              <p className="text-sm text-white/90">
+              <p className="text-sm text-text-secondary">
                 {parseMessageWithLinks(message.content)}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-sm text-white break-words">
+          <p className="text-sm text-text-primary break-words">
             {parseMessageWithLinks(message.content)}
           </p>
         )}

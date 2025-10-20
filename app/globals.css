@@ -9,14 +9,14 @@
 
   body {
     background: linear-gradient(135deg, 
-      oklch(20% 0.02 240) 0%, 
-      oklch(25% 0.03 240) 25%, 
-      oklch(35% 0.10 3.815) 50%, 
-      oklch(25% 0.03 240) 75%, 
-      oklch(20% 0.02 240) 100%);
+      oklch(16% 0.02 3.815) 0%, 
+      oklch(22% 0.04 3.815) 25%, 
+      oklch(28% 0.08 3.815) 50%, 
+      oklch(20% 0.05 3.815) 75%, 
+      oklch(14% 0.03 3.815) 100%);
     background-size: 200% 200%;
     animation: gradientShift 15s ease infinite;
-    color: oklch(95% 0.01 240);
+    color: oklch(96% 0.015 3.815);
     min-height: 100vh;
   }
 
@@ -29,24 +29,24 @@
 
 @layer components {
   .glass-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: oklch(24% 0.04 3.815 / 0.6);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.3);
     border-radius: 12px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 25px 50px -12px oklch(12% 0.05 3.815 / 0.4);
   }
 
   .glass-button {
-    background: rgba(255, 255, 255, 0.1);
+    background: oklch(28% 0.05 3.815 / 0.5);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.4);
     border-radius: 8px;
     padding: 8px 16px;
     transition: all 200ms;
   }
 
   .glass-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: oklch(35% 0.08 3.815 / 0.7);
     transform: scale(1.05);
   }
 
@@ -55,40 +55,41 @@
   }
 
   .message-bubble {
-    background: rgba(255, 255, 255, 0.1);
+    background: oklch(28% 0.06 3.815 / 0.5);
     backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.25);
     border-radius: 16px;
     padding: 12px;
     max-width: 320px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 15px -3px oklch(12% 0.05 3.815 / 0.3);
     animation: slideUp 0.3s ease-out;
   }
 
   .video-player {
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 25px 50px -12px oklch(12% 0.05 3.815 / 0.4);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.35);
   }
 
   .chat-input {
-    background: rgba(255, 255, 255, 0.1);
+    background: oklch(24% 0.045 3.815 / 0.5);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.35);
     border-radius: 9999px;
     padding: 12px 24px;
-    color: white;
+    color: oklch(96% 0.015 3.815);
     width: 100%;
   }
 
   .chat-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: oklch(75% 0.06 3.815 / 0.6);
   }
 
   .chat-input:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 0 2px oklch(45.9% 0.187 3.815 / 0.6);
+    border-color: oklch(45.9% 0.187 3.815 / 0.7);
   }
 }
 
@@ -109,8 +110,8 @@
   .gradient-text {
     background: linear-gradient(to right, 
       oklch(45.9% 0.187 3.815), 
-      oklch(55% 0.20 320), 
-      oklch(65% 0.25 30));
+      oklch(55% 0.20 3.815), 
+      oklch(70% 0.16 3.815));
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
@@ -127,7 +128,7 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: oklch(30% 0.04 240 / 0.3);
+    background: oklch(22% 0.035 3.815 / 0.4);
     border-radius: 10px;
   }
 

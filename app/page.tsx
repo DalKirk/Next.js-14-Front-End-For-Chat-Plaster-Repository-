@@ -101,7 +101,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+            className="text-4xl font-bold bg-gradient-to-r from-primary-400 to-primary-300 bg-clip-text text-transparent"
           >
             Video Chat Platform
           </motion.h1>
@@ -109,7 +109,7 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="mt-2 text-white/60"
+            className="mt-2 text-text-muted"
           >
             Real-time messaging with live streaming powered by Railway
           </motion.p>
@@ -124,7 +124,7 @@ export default function HomePage() {
         >
           {/* User Creation */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">Get Started</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Get Started</h2>
             <Input
               label="Username"
               placeholder="Enter your username"
@@ -144,8 +144,8 @@ export default function HomePage() {
           </div>
 
           {/* Room Creation */}
-          <div className="border-t border-white/10 pt-6 space-y-4">
-            <h3 className="text-lg font-medium text-white">Create New Room</h3>
+          <div className="border-t border-primary-400/20 pt-6 space-y-4">
+            <h3 className="text-lg font-medium text-text-primary">Create New Room</h3>
             <Input
               label="Room Name"
               placeholder="Enter room name"
@@ -165,7 +165,7 @@ export default function HomePage() {
           </div>
 
           {/* Quick Access */}
-          <div className="border-t border-white/10 pt-6">
+          <div className="border-t border-primary-400/20 pt-6">
             <Button
               onClick={() => router.push('/chat')}
               className="w-full"
@@ -185,15 +185,15 @@ export default function HomePage() {
         >
           <div className="glass-card p-4">
             <div className="text-2xl mb-2">💬</div>
-            <div className="text-sm text-white/80">Real-time Chat</div>
+            <div className="text-sm text-text-secondary">Real-time Chat</div>
           </div>
           <div className="glass-card p-4">
             <div className="text-2xl mb-2">🔴</div>
-            <div className="text-sm text-white/80">Live Streaming</div>
+            <div className="text-sm text-text-secondary">Live Streaming</div>
           </div>
           <div className="glass-card p-4">
             <div className="text-2xl mb-2">🎥</div>
-            <div className="text-sm text-white/80">Video Upload</div>
+            <div className="text-sm text-text-secondary">Video Upload</div>
           </div>
         </motion.div>
 
@@ -205,7 +205,7 @@ export default function HomePage() {
           className="text-center"
         >
           <Link href="/troubleshooting">
-            <span className="text-sm text-white/50 hover:text-white/80 transition-colors cursor-pointer">
+            <span className="text-sm text-text-muted hover:text-primary-300 transition-colors cursor-pointer">
               🔧 Having connection issues? Click here for help
             </span>
           </Link>

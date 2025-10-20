@@ -494,12 +494,12 @@ export default function RoomPage() {
               Back
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-white">{roomName}</h1>
+              <h1 className="text-xl font-bold text-text-primary">{roomName}</h1>
               <div className="flex items-center space-x-2 text-sm">
-                <div className={`w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-green-400' : 'bg-red-400'
+                <div className={`w-2 h-2 rounded-full shadow-sm ${
+                  wsConnected ? 'bg-status-success shadow-status-success/50' : 'bg-status-error shadow-status-error/50'
                 }`}></div>
-                <span className="text-white/60">
+                <span className="text-text-muted">
                   {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
                 {!wsConnected && (
@@ -560,11 +560,11 @@ export default function RoomPage() {
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-white/60 mb-4">
+                <div className="text-text-muted mb-4">
                   {wsConnected ? 'No messages yet. Start the conversation!' : 'WebSocket connection required for real-time messaging.'}
                 </div>
                 {!wsConnected && (
-                  <div className="text-white/40 text-sm">
+                  <div className="text-text-muted/60 text-sm">
                     Make sure your backend server is running with WebSocket support.
                   </div>
                 )}
@@ -585,7 +585,7 @@ export default function RoomPage() {
           </div>
 
           {/* Sticky Message Input */}
-          <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0">
+          <div className="border-t border-primary-400/20 p-4 bg-background/40 backdrop-blur-sm sticky bottom-0">
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Input
@@ -621,7 +621,7 @@ export default function RoomPage() {
               onClick={scrollToTop}
               variant="glass"
               size="sm"
-              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-white/20 hover:bg-white/20"
+              className="w-10 h-10 rounded-full p-0 bg-surface/60 backdrop-blur-sm border border-primary-400/30 hover:bg-surface-hover hover:border-primary-400/50"
               title="Scroll to top"
             >
               <ChevronUpIcon className="w-4 h-4" />
@@ -652,7 +652,7 @@ export default function RoomPage() {
               onClick={scrollToBottom}
               variant="primary"
               size="sm"
-              className="bg-blue-500/90 backdrop-blur-sm border border-white/20 hover:bg-blue-400/90"
+              className="backdrop-blur-sm border border-primary-400/40"
             >
               <ChevronDownIcon className="w-4 h-4 mr-1" />
               New messages
