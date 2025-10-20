@@ -25,10 +25,31 @@ export default function RootLayout({
         <meta name="theme-color" content="#1e1b4b" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Double+Ink:wght@100..900&family=Bungee&display=swap" rel="stylesheet" />
       </head>
-      <body className={inter.className}>
+      <body 
+        className={inter.className}
+        style={{
+          backgroundColor: 'oklch(25.7% 0.09 281.288)',
+          backdropFilter: 'blur(20px)'
+        }}
+      >
         <Providers>
-          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+          <div 
+            className="min-h-screen"
+            style={{
+              background: `linear-gradient(135deg, 
+                oklch(25.7% 0.09 281.288) 0%, 
+                oklch(22% 0.110 286) 25%, 
+                oklch(29% 0.115 276) 50%, 
+                oklch(24% 0.095 291) 75%, 
+                oklch(25.7% 0.09 281.288) 100%)`,
+              backgroundSize: '200% 200%',
+              animation: 'gradientShift 15s ease infinite'
+            }}
+          >
             <ErrorBoundary>
               {children}
             </ErrorBoundary>

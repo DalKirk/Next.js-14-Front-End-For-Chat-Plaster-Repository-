@@ -96,23 +96,16 @@ export default function HomePage() {
         className="w-full max-w-md space-y-8"
       >
         {/* Header */}
-        <div className="text-center">
+        <div className="text-left">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+            className="bitcount-prop-double-ink font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap"
+            style={{ fontSize: '60px', letterSpacing: '0.05em' }}
           >
-            Video Chat Platform
+            CHATTER BOX
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="mt-2 text-white/60"
-          >
-            Real-time messaging with live streaming powered by Railway
-          </motion.p>
         </div>
 
         {/* Form */}

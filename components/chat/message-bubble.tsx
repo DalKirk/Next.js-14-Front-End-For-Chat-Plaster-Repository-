@@ -144,6 +144,29 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   const allCodeBlocks = [...manualCodeBlocks, ...autoDetectedBlocks];
   const hasCodeBlocks = message.content?.includes('```') || false;
 
+  // Create content with code blocks removed for ReactMarkdown to prevent duplication
+  const getContentWithoutCodeBlocks = (content: string) => {
+    if (!content) return content;
+    
+    // If we have manual code blocks, remove them from the content
+    if (manualCodeBlocks.length > 0) {
+      return content.replace(/```[\w]*\n[\s\S]*?\n```/g, '');
+    }
+    
+    // If we have auto-detected blocks, remove the detected content
+    if (autoDetectedBlocks.length > 0) {
+      let cleanContent = content;
+      autoDetectedBlocks.forEach(block => {
+        cleanContent = cleanContent.replace(block.code, '');
+      });
+      return cleanContent;
+    }
+    
+    return content;
+  };
+
+  const processedContent = getContentWithoutCodeBlocks(message.content || '');
+
   // Unified copy to clipboard function
   const copyToClipboard = async (text: string, type: 'code' | 'message' = 'code') => {
     try {
@@ -622,7 +645,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                 ),
               }}
             >
-              {message.content}
+              {processedContent}
             </ReactMarkdown>
           </div>
         )}

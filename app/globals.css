@@ -7,15 +7,58 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  .bitcount-prop-double-ink {
+    font-family: "Bitcount Prop Double Ink", system-ui;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-variation-settings:
+      "slnt" 0,
+      "CRSV" 0.5,
+      "ELSH" 0,
+      "ELXP" 0,
+      "SZP1" 0,
+      "SZP2" 0,
+      "XPN1" 0,
+      "XPN2" 0,
+      "YPN1" 0,
+      "YPN2" 0;
+  }
+
+  .bitcount-bold {
+    font-family: "Bitcount Prop Double Ink", system-ui;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+    font-variation-settings:
+      "slnt" 0,
+      "CRSV" 0.5,
+      "ELSH" 0,
+      "ELXP" 0,
+      "SZP1" 0,
+      "SZP2" 0,
+      "XPN1" 0,
+      "XPN2" 0,
+      "YPN1" 0,
+      "YPN2" 0;
+  }
+
+  .bungee-regular {
+    font-family: "Bungee", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+
   body {
     background: linear-gradient(135deg, 
-      oklch(20% 0.02 240) 0%, 
-      oklch(25% 0.03 240) 25%, 
-      oklch(35% 0.10 3.815) 50%, 
-      oklch(25% 0.03 240) 75%, 
-      oklch(20% 0.02 240) 100%);
+      oklch(25.7% 0.09 281.288) 0%, 
+      oklch(22% 0.110 286) 25%, 
+      oklch(29% 0.115 276) 50%, 
+      oklch(24% 0.095 291) 75%, 
+      oklch(25.7% 0.09 281.288) 100%);
     background-size: 200% 200%;
     animation: gradientShift 15s ease infinite;
+    backdrop-filter: blur(20px);
     color: oklch(95% 0.01 240);
     min-height: 100vh;
   }
@@ -29,11 +72,33 @@
 
 @layer components {
   .glass-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
   }
 
   .glass-button {
@@ -47,7 +112,9 @@
 
   .glass-button:hover {
     background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
 
   .glass-button:active {
