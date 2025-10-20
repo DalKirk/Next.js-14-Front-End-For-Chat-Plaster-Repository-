@@ -64,6 +64,9 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   const detectCodeBlocks = (content: string) => {
     if (!content) return [];
     
+    // If content contains manual code blocks, don't auto-detect
+    if (content.includes('```')) return [];
+    
     // Common code patterns to detect
     const codePatterns = [
       // JavaScript/TypeScript patterns
@@ -136,6 +139,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   };
   
   const manualCodeBlocks = message.content ? extractCodeBlocks(message.content) : [];
+  // Only run auto-detection if there are no manual code blocks
   const autoDetectedBlocks = manualCodeBlocks.length === 0 ? detectCodeBlocks(message.content || '') : [];
   const allCodeBlocks = [...manualCodeBlocks, ...autoDetectedBlocks];
   const hasCodeBlocks = message.content?.includes('```') || false;
