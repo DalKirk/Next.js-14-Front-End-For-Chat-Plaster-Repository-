@@ -77,6 +77,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   };
   
   const manualCodeBlocks = message.content ? extractCodeBlocks(message.content) : [];
+  const hasCodeBlocks = message.content?.includes('```') || false;
 
   // Unified copy to clipboard function
   const copyToClipboard = async (text: string, type: 'code' | 'message' = 'code') => {
@@ -257,7 +258,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               </details>
             )}
             
-            {/* Manual code block rendering if ReactMarkdown fails */}
+            {/* Manual code block rendering as primary method */}
             {manualCodeBlocks.length > 0 && (
               <div className="mb-4">
                 {manualCodeBlocks.map((block, index) => (
@@ -342,6 +343,11 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   />
                 ),
                 code: ({ node, inline, className, children, ...props }: any) => {
+                  // If manual parser found blocks, don't render duplicates from ReactMarkdown
+                  if (!inline && manualCodeBlocks.length > 0) {
+                    return null;
+                  }
+                  
                   const match = /language-(\w+)/.exec(className || '');
                   const language = match ? match[1] : '';
                   
@@ -526,9 +532,13 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                     </div>
                   );
                 },
-                pre: ({ node, ...props }) => (
-                  <pre className="!bg-transparent !p-0 !m-0" {...props} />
-                ),
+                pre: ({ node, ...props }) => {
+                  // If manual parser found blocks, don't render pre elements
+                  if (manualCodeBlocks.length > 0) {
+                    return null;
+                  }
+                  return <pre className="!bg-transparent !p-0 !m-0" {...props} />;
+                },
                 blockquote: ({ node, ...props }) => (
                   <blockquote className="border-l-4 border-blue-400 pl-3 my-2 italic" {...props} />
                 ),
