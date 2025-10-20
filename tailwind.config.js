@@ -8,60 +8,60 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Modern Dark Indigo Theme
+        // OKLCH Color Scheme - Modern perceptual color space
         primary: {
-          DEFAULT: '#6366f1',
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
+          DEFAULT: 'oklch(45.9% 0.187 3.815)',      // Base color
+          50: 'oklch(95% 0.02 3.815)',              // Very light
+          100: 'oklch(90% 0.04 3.815)',             // Light
+          200: 'oklch(80% 0.08 3.815)',             // Lighter
+          300: 'oklch(70% 0.12 3.815)',             // Light-medium
+          400: 'oklch(60% 0.15 3.815)',             // Medium-light
+          500: 'oklch(45.9% 0.187 3.815)',          // Base (your color)
+          600: 'oklch(40% 0.20 3.815)',             // Medium-dark
+          700: 'oklch(35% 0.18 3.815)',             // Dark
+          800: 'oklch(30% 0.15 3.815)',             // Darker
+          900: 'oklch(25% 0.12 3.815)',             // Darkest
         },
         secondary: {
-          DEFAULT: '#8b5cf6',
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#a855f7',
-          600: '#9333ea',
-          700: '#7e22ce',
-          800: '#6b21a8',
-          900: '#581c87',
+          DEFAULT: 'oklch(55% 0.20 320)',           // Complementary hue
+          50: 'oklch(95% 0.02 320)',
+          100: 'oklch(90% 0.04 320)',
+          200: 'oklch(80% 0.08 320)',
+          300: 'oklch(70% 0.12 320)',
+          400: 'oklch(60% 0.15 320)',
+          500: 'oklch(55% 0.20 320)',
+          600: 'oklch(50% 0.22 320)',
+          700: 'oklch(45% 0.20 320)',
+          800: 'oklch(40% 0.18 320)',
+          900: 'oklch(35% 0.15 320)',
         },
         accent: {
-          DEFAULT: '#ec4899',
-          pink: '#ec4899',
-          green: '#10b981',
-          red: '#ef4444',
-          yellow: '#f59e0b',
+          DEFAULT: 'oklch(65% 0.25 30)',            // Vibrant accent
+          pink: 'oklch(65% 0.25 30)',
+          green: 'oklch(70% 0.18 145)',
+          red: 'oklch(55% 0.22 25)',
+          yellow: 'oklch(75% 0.15 85)',
         },
         background: {
-          DEFAULT: '#0f172a',
-          dark: '#020617',
-          light: '#1e293b',
+          DEFAULT: 'oklch(20% 0.02 240)',           // Dark background
+          dark: 'oklch(15% 0.015 240)',
+          light: 'oklch(25% 0.03 240)',
         },
         surface: {
-          DEFAULT: '#1e293b',
-          light: '#334155',
-          lighter: '#475569',
+          DEFAULT: 'oklch(30% 0.04 240)',           // Surface elements
+          light: 'oklch(35% 0.05 240)',
+          lighter: 'oklch(40% 0.06 240)',
         },
         text: {
-          primary: '#f1f5f9',
-          secondary: '#94a3b8',
-          muted: '#64748b',
+          primary: 'oklch(95% 0.01 240)',           // Light text
+          secondary: 'oklch(75% 0.03 240)',
+          muted: 'oklch(60% 0.04 240)',
         },
         status: {
-          success: '#10b981',
-          error: '#ef4444',
-          warning: '#f59e0b',
-          info: '#3b82f6',
+          success: 'oklch(70% 0.18 145)',
+          error: 'oklch(55% 0.22 25)',
+          warning: 'oklch(75% 0.15 85)',
+          info: 'oklch(60% 0.20 240)',
         },
         glass: {
           white: 'rgba(255, 255, 255, 0.1)',

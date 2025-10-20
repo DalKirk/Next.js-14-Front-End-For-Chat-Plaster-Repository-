@@ -8,10 +8,15 @@
   }
 
   body {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #312e81 50%, #1e293b 75%, #0f172a 100%);
+    background: linear-gradient(135deg, 
+      oklch(20% 0.02 240) 0%, 
+      oklch(25% 0.03 240) 25%, 
+      oklch(35% 0.10 3.815) 50%, 
+      oklch(25% 0.03 240) 75%, 
+      oklch(20% 0.02 240) 100%);
     background-size: 200% 200%;
     animation: gradientShift 15s ease infinite;
-    color: #f1f5f9;
+    color: oklch(95% 0.01 240);
     min-height: 100vh;
   }
 
@@ -102,16 +107,19 @@
   }
 
   .gradient-text {
-    background: linear-gradient(to right, #6366f1, #8b5cf6, #ec4899);
+    background: linear-gradient(to right, 
+      oklch(45.9% 0.187 3.815), 
+      oklch(55% 0.20 320), 
+      oklch(65% 0.25 30));
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
   }
 
-  /* Custom scrollbar styling - Indigo theme */
+  /* Custom scrollbar styling - OKLCH theme */
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.4) rgba(30, 41, 59, 0.3);
+    scrollbar-color: oklch(45.9% 0.187 3.815 / 0.4) oklch(30% 0.04 240 / 0.3);
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -119,18 +127,18 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.3);
+    background: oklch(30% 0.04 240 / 0.3);
     border-radius: 10px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.5);
+    background: oklch(45.9% 0.187 3.815 / 0.5);
     border-radius: 10px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid oklch(45.9% 0.187 3.815 / 0.2);
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.7);
+    background: oklch(45.9% 0.187 3.815 / 0.7);
   }
 }
 
