@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { VideoPlayer } from '@/components/video/video-player';
@@ -304,7 +305,7 @@ export default function RoomPage() {
     }
   };
 
-  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setMessage(value);
     
@@ -330,11 +331,14 @@ export default function RoomPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter without Shift = Send message
+    // Shift+Enter = New line
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
+    // Allow Shift+Enter to create newlines naturally
   };
 
   const handleLiveStream = async () => {
@@ -657,14 +661,16 @@ export default function RoomPage() {
               </div>
             )}
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-start space-x-2">
               <div className="flex-1">
-                <Input
-                  placeholder={wsConnected ? "Type your message (Markdown supported)..." : "Connect to server to send messages"}
+                <Textarea
+                  placeholder={wsConnected ? "Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send" : "Connect to server to send messages"}
                   value={message}
                   onChange={handleMessageChange}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   disabled={!wsConnected}
+                  rows={message.includes('\n') || message.length > 80 ? Math.min(Math.max(message.split('\n').length, 3), 10) : 2}
+                  className="min-h-[60px] max-h-[300px]"
                 />
               </div>
               <Button
