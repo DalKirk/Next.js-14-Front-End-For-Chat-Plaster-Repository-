@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus, atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message, VideoMessage } from '@/lib/types';
 import { VideoPlayer } from '@/components/video/video-player';
 import { cn } from '@/lib/utils';
+import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 interface MessageBubbleProps {
   message: Message;
@@ -52,9 +55,21 @@ const parseMessageWithLinks = (text: string) => {
 };
 
 export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;
+
+  // Copy code to clipboard
+  const copyToClipboard = async (code: string, language: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
 
   // Enhanced timestamp formatting with smart display
   const formatTimestamp = (timestamp: string | undefined) => {
@@ -186,14 +201,72 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                     rel="noopener noreferrer"
                   />
                 ),
-                code: ({ node, inline, ...props }: any) =>
-                  inline ? (
-                    <code className="bg-white/10 px-1.5 py-0.5 rounded text-blue-300" {...props} />
+                code: ({ node, inline, className, children, ...props }: any) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const language = match ? match[1] : '';
+                  const codeString = String(children).replace(/\n$/, '');
+                  
+                  return !inline && language ? (
+                    <div className="relative group my-3">
+                      {/* Language badge and copy button */}
+                      <div className="flex items-center justify-between bg-gray-800/90 px-4 py-2 rounded-t-lg border-b border-white/10">
+                        <span className="text-xs font-mono text-blue-300 uppercase tracking-wider">
+                          {language}
+                        </span>
+                        <button
+                          onClick={() => copyToClipboard(codeString, language)}
+                          className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/10"
+                          title="Copy code"
+                        >
+                          {copiedCode === codeString ? (
+                            <>
+                              <CheckIcon className="w-4 h-4 text-green-400" />
+                              <span className="text-green-400">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardDocumentIcon className="w-4 h-4" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      
+                      {/* Syntax highlighted code */}
+                      <SyntaxHighlighter
+                        style={atomDark}
+                        language={language}
+                        PreTag="div"
+                        className="!mt-0 !rounded-t-none !rounded-b-lg !bg-gray-900/90 text-sm"
+                        customStyle={{
+                          margin: 0,
+                          padding: '1rem',
+                          background: 'rgba(17, 24, 39, 0.9)',
+                          borderRadius: '0 0 0.5rem 0.5rem',
+                        }}
+                        codeTagProps={{
+                          style: {
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                            fontSize: '0.875rem',
+                            lineHeight: '1.5',
+                          }
+                        }}
+                      >
+                        {codeString}
+                      </SyntaxHighlighter>
+                    </div>
+                  ) : inline ? (
+                    <code className="bg-white/10 px-1.5 py-0.5 rounded text-blue-300 font-mono text-sm" {...props}>
+                      {children}
+                    </code>
                   ) : (
-                    <code className="block bg-white/10 p-2 rounded-lg my-2 overflow-x-auto" {...props} />
-                  ),
+                    <code className="block bg-gray-900/90 p-3 rounded-lg my-2 overflow-x-auto font-mono text-sm" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
                 pre: ({ node, ...props }) => (
-                  <pre className="bg-white/10 p-3 rounded-lg my-2 overflow-x-auto" {...props} />
+                  <pre className="!bg-transparent !p-0 !m-0" {...props} />
                 ),
                 blockquote: ({ node, ...props }) => (
                   <blockquote className="border-l-4 border-blue-400 pl-3 my-2 italic" {...props} />
