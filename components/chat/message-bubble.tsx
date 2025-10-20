@@ -60,16 +60,75 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;
 
+  // Auto-detect code blocks without backticks
+  const detectCodeBlocks = (content: string) => {
+    if (!content) return [];
+    
+    // Common code patterns to detect
+    const codePatterns = [
+      // JavaScript/TypeScript patterns
+      { pattern: /(?:import\s+.*from|export\s+.*|function\s+\w+|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|class\s+\w+|interface\s+\w+)/gm, language: 'javascript' },
+      // HTML patterns
+      { pattern: /<!DOCTYPE\s+html|<html|<\/html>|<head|<\/head>|<body|<\/body>|<div|<\/div>|<span|<\/span>/gm, language: 'html' },
+      // CSS patterns
+      { pattern: /(?:\.\w+\s*\{|#\w+\s*\{|\w+\s*:\s*[^;]+;|@media|@import|@keyframes)/gm, language: 'css' },
+      // Python patterns
+      { pattern: /(?:def\s+\w+|class\s+\w+|import\s+\w+|from\s+\w+\s+import|if\s+__name__\s*==|print\()/gm, language: 'python' },
+      // SQL patterns
+      { pattern: /(?:SELECT\s+.*FROM|INSERT\s+INTO|UPDATE\s+.*SET|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE)/gim, language: 'sql' },
+      // JSON patterns
+      { pattern: /^\s*\{[\s\S]*\}\s*$|^\s*\[[\s\S]*\]\s*$/gm, language: 'json' },
+      // Bash/Shell patterns
+      { pattern: /(?:#!\/bin\/bash|#!\/bin\/sh|echo\s+|cd\s+|ls\s+|mkdir\s+|rm\s+|cp\s+|mv\s+)/gm, language: 'bash' }
+    ];
+    
+    // Check if content looks like code
+    const lines = content.split('\n');
+    let codeScore = 0;
+    let detectedLanguage = 'text';
+    
+    // Score based on code-like characteristics
+    for (const line of lines) {
+      // Indentation suggests code structure
+      if (line.match(/^\s{2,}/)) codeScore += 1;
+      // Semicolons, braces, parentheses
+      if (line.match(/[;{}()]/)) codeScore += 1;
+      // Common code keywords
+      if (line.match(/\b(function|class|import|export|return|if|else|for|while|var|let|const|def|print)\b/)) codeScore += 2;
+    }
+    
+    // Try to detect language
+    for (const { pattern, language } of codePatterns) {
+      if (pattern.test(content)) {
+        detectedLanguage = language;
+        codeScore += 5;
+        break;
+      }
+    }
+    
+    // If it looks like code (score > 3 or has multiple lines with indentation)
+    if (codeScore > 3 || (lines.length > 2 && lines.filter(l => l.match(/^\s{2,}/)).length > lines.length * 0.3)) {
+      return [{
+        language: detectedLanguage,
+        code: content,
+        autoDetected: true
+      }];
+    }
+    
+    return [];
+  };
+  
   // Extract code blocks efficiently
   const extractCodeBlocks = (content: string) => {
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-    const blocks: Array<{ language: string; code: string }> = [];
+    const blocks: Array<{ language: string; code: string; autoDetected?: boolean }> = [];
     let match;
     
     while ((match = codeBlockRegex.exec(content)) !== null) {
       blocks.push({
         language: match[1] || 'text',
-        code: match[2]
+        code: match[2],
+        autoDetected: false
       });
     }
     
@@ -77,6 +136,8 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   };
   
   const manualCodeBlocks = message.content ? extractCodeBlocks(message.content) : [];
+  const autoDetectedBlocks = manualCodeBlocks.length === 0 ? detectCodeBlocks(message.content || '') : [];
+  const allCodeBlocks = [...manualCodeBlocks, ...autoDetectedBlocks];
   const hasCodeBlocks = message.content?.includes('```') || false;
 
   // Unified copy to clipboard function
@@ -258,15 +319,22 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               </details>
             )}
             
-            {/* Manual code block rendering as primary method */}
-            {manualCodeBlocks.length > 0 && (
+            {/* Auto-detected and manual code block rendering */}
+            {allCodeBlocks.length > 0 && (
               <div className="mb-4">
-                {manualCodeBlocks.map((block, index) => (
+                {allCodeBlocks.map((block, index) => (
                   <div key={index} className="not-prose relative group my-4 rounded-lg overflow-hidden border border-gray-600 shadow-2xl max-w-full">
                     <div className="flex items-center justify-between bg-[#21252b] px-4 py-2.5 border-b border-gray-600 flex-shrink-0">
-                      <span className="text-xs font-mono text-blue-400 uppercase tracking-wider font-bold">
-                        {block.language}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-blue-400 uppercase tracking-wider font-bold">
+                          {block.language}
+                        </span>
+                        {block.autoDetected && (
+                          <span className="text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
+                            ✨ Auto-detected
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => copyToClipboard(block.code, 'code')}
                         className="flex items-center gap-2 text-xs text-gray-300 hover:text-white transition-all px-3 py-1.5 rounded-md hover:bg-gray-600/50 active:scale-95"
@@ -343,8 +411,8 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   />
                 ),
                 code: ({ node, inline, className, children, ...props }: any) => {
-                  // If manual parser found blocks, don't render duplicates from ReactMarkdown
-                  if (!inline && manualCodeBlocks.length > 0) {
+                  // If manual parser or auto-detection found blocks, don't render duplicates from ReactMarkdown
+                  if (!inline && allCodeBlocks.length > 0) {
                     return null;
                   }
                   
@@ -533,8 +601,8 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   );
                 },
                 pre: ({ node, ...props }) => {
-                  // If manual parser found blocks, don't render pre elements
-                  if (manualCodeBlocks.length > 0) {
+                  // If manual parser or auto-detection found blocks, don't render pre elements
+                  if (allCodeBlocks.length > 0) {
                     return null;
                   }
                   return <pre className="!bg-transparent !p-0 !m-0" {...props} />;

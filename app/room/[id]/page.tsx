@@ -305,6 +305,29 @@ export default function RoomPage() {
     }
   };
 
+  const handleFileContent = (content: string, filename: string) => {
+    // Auto-detect and format the file content
+    const extension = filename.split('.').pop()?.toLowerCase();
+    const languageMap: { [key: string]: string } = {
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'py': 'python',
+      'html': 'html',
+      'css': 'css',
+      'json': 'json',
+      'md': 'markdown',
+      'sql': 'sql',
+      'sh': 'bash',
+      'bash': 'bash'
+    };
+    
+    const language = extension ? languageMap[extension] || extension : 'text';
+    const formattedContent = `File: ${filename}\n\`\`\`${language}\n${content}\n\`\`\``;
+    setMessage(formattedContent);
+  };
+
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setMessage(value);
@@ -664,10 +687,11 @@ export default function RoomPage() {
             <div className="flex items-start space-x-2">
               <div className="flex-1">
                 <Textarea
-                  placeholder={wsConnected ? "Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send" : "Connect to server to send messages"}
+                  placeholder={wsConnected ? "Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send\nDrag & drop code files for instant sharing!" : "Connect to server to send messages"}
                   value={message}
                   onChange={handleMessageChange}
                   onKeyDown={handleKeyPress}
+                  onFileContent={handleFileContent}
                   disabled={!wsConnected}
                   rows={message.includes('\n') || message.length > 80 ? Math.min(Math.max(message.split('\n').length, 3), 10) : 2}
                   className="min-h-[60px] max-h-[300px]"
