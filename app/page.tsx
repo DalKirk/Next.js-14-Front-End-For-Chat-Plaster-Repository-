@@ -104,7 +104,7 @@ export default function HomePage() {
             className="bitcount-prop-double-ink font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap"
             style={{ fontSize: '60px', letterSpacing: '0.05em' }}
           >
-            CHATTER BOX
+            CHATTER BOX v2.0
           </motion.h1>
         </div>
 
