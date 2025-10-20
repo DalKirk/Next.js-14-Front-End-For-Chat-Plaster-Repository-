@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,11 +10,30 @@ import { ServerStatus } from '@/components/ui/server-status';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
 
+interface User {
+  id: string;
+  username: string;
+}
+
 export default function HomePage() {
   const [username, setUsername] = useState('');
   const [roomName, setRoomName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const storedUser = localStorage.getItem('chat-user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('chat-user');
+      }
+    }
+  }, []);
 
   const handleCreateUser = async () => {
     if (!username.trim()) {
@@ -26,6 +45,7 @@ export default function HomePage() {
     try {
       const user = await apiClient.createUser(username.trim());
       localStorage.setItem('chat-user', JSON.stringify(user));
+      setCurrentUser(user);
       
       if (user.id.startsWith('mock-')) {
         toast.success(`Welcome, ${user.username}! (Demo mode - backend unavailable)`);
@@ -85,7 +105,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
       {/* Server Status Indicator */}
       <ServerStatus />
 
@@ -93,19 +113,71 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md space-y-8"
+        className="w-full max-w-lg sm:max-w-xl lg:max-w-2xl space-y-8"
       >
+        {/* Navigation */}
+        {currentUser && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex justify-end mb-4"
+          >
+            <Button
+              onClick={() => router.push('/profile')}
+              variant="glass"
+              className="flex items-center gap-2"
+            >
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {currentUser.username.charAt(0).toUpperCase()}
+              </div>
+              Profile
+            </Button>
+          </motion.div>
+        )}
+
         {/* Header */}
-        <div className="text-left">
+        <div className="text-center space-y-6">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="bitcount-prop-double-ink font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap"
+            className="bitcount-prop-double-ink font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
             style={{ fontSize: '60px', letterSpacing: '0.05em' }}
           >
-            CHATTER BOX v2.0
+            CHATTER BOX
           </motion.h1>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="space-y-4"
+          >
+            <p className="text-xl text-white/90 font-medium">
+              Real-time collaboration for developers
+            </p>
+            <p className="text-white/70 max-w-lg mx-auto leading-relaxed">
+              Share code with syntax highlighting, chat instantly, and connect face-to-face. 
+              Everything you need for seamless team collaboration.
+            </p>
+            
+            {/* Feature highlights */}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 text-sm">
+              <span className="glass-panel px-2 sm:px-3 py-1 rounded-full text-white/80 flex items-center gap-1">
+                <span>✨</span> <span className="hidden sm:inline">Syntax Highlighting</span><span className="sm:hidden">Syntax</span>
+              </span>
+              <span className="glass-panel px-2 sm:px-3 py-1 rounded-full text-white/80 flex items-center gap-1">
+                <span>🎥</span> <span className="hidden sm:inline">HD Video Chat</span><span className="sm:hidden">Video</span>
+              </span>
+              <span className="glass-panel px-2 sm:px-3 py-1 rounded-full text-white/80 flex items-center gap-1">
+                <span>📁</span> <span className="hidden sm:inline">File Sharing</span><span className="sm:hidden">Files</span>
+              </span>
+              <span className="glass-panel px-2 sm:px-3 py-1 rounded-full text-white/80 flex items-center gap-1">
+                <span>⚡</span> <span className="hidden sm:inline">Real-time Sync</span><span className="sm:hidden">Sync</span>
+              </span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Form */}
@@ -126,14 +198,22 @@ export default function HomePage() {
               onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
               maxLength={20}
             />
-            <Button
-              onClick={handleCreateUser}
-              disabled={isLoading || !username.trim()}
-              className="w-full"
-              variant="primary"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {isLoading ? 'Creating...' : 'Create Profile'}
-            </Button>
+              <Button
+                onClick={handleCreateUser}
+                disabled={isLoading || !username.trim()}
+                className="w-full relative overflow-hidden group"
+                variant="primary"
+              >
+                <span className="relative z-10">
+                  {isLoading ? 'Creating...' : 'Create Profile'}
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </Button>
+            </motion.div>
           </div>
 
           {/* Room Creation */}
@@ -147,46 +227,130 @@ export default function HomePage() {
               onKeyPress={(e) => e.key === 'Enter' && handleCreateRoom()}
               maxLength={30}
             />
-            <Button
-              onClick={handleCreateRoom}
-              disabled={isLoading || !roomName.trim()}
-              className="w-full"
-              variant="secondary"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {isLoading ? 'Creating...' : 'Create Room'}
-            </Button>
+              <Button
+                onClick={handleCreateRoom}
+                disabled={isLoading || !roomName.trim()}
+                className="w-full relative overflow-hidden group"
+                variant="secondary"
+              >
+                <span className="relative z-10">
+                  {isLoading ? 'Creating...' : 'Create Room'}
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </Button>
+            </motion.div>
           </div>
 
           {/* Quick Access */}
           <div className="border-t border-white/10 pt-6">
-            <Button
-              onClick={() => router.push('/chat')}
-              className="w-full"
-              variant="glass"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              Browse Existing Rooms
-            </Button>
+              <Button
+                onClick={() => router.push('/chat')}
+                className="w-full relative overflow-hidden group"
+                variant="glass"
+              >
+                <span className="relative z-10">Browse Existing Rooms</span>
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </Button>
+            </motion.div>
           </div>
         </motion.div>
 
-        {/* Features */}
+        {/* Enhanced Features Showcase */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="grid grid-cols-3 gap-4 text-center"
+          className="space-y-6"
         >
-          <div className="glass-card p-4">
-            <div className="text-2xl mb-2">💬</div>
-            <div className="text-sm text-white/80">Real-time Chat</div>
+          <h3 className="text-lg font-semibold text-center text-white/90">
+            Everything you need for team collaboration
+          </h3>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-card p-4 text-center space-y-2 hover:bg-white/10 transition-all duration-300">
+              <div className="text-2xl">💻</div>
+              <div className="text-sm font-medium text-white">Code Editor</div>
+              <div className="text-xs text-white/60">150+ languages</div>
+            </div>
+            
+            <div className="glass-card p-4 text-center space-y-2 hover:bg-white/10 transition-all duration-300">
+              <div className="text-2xl">🎥</div>
+              <div className="text-sm font-medium text-white">HD Video</div>
+              <div className="text-xs text-white/60">Screen sharing</div>
+            </div>
+            
+            <div className="glass-card p-4 text-center space-y-2 hover:bg-white/10 transition-all duration-300">
+              <div className="text-2xl">⚡</div>
+              <div className="text-sm font-medium text-white">Real-time</div>
+              <div className="text-xs text-white/60">Instant sync</div>
+            </div>
+            
+            <div className="glass-card p-4 text-center space-y-2 hover:bg-white/10 transition-all duration-300">
+              <div className="text-2xl">🔒</div>
+              <div className="text-sm font-medium text-white">Secure</div>
+              <div className="text-xs text-white/60">Private rooms</div>
+            </div>
           </div>
-          <div className="glass-card p-4">
-            <div className="text-2xl mb-2">🔴</div>
-            <div className="text-sm text-white/80">Live Streaming</div>
+          
+          {/* Quick Stats */}
+          <div className="flex justify-center space-x-8 text-center text-sm">
+            <div>
+              <div className="font-semibold text-white">150+</div>
+              <div className="text-white/60">Languages</div>
+            </div>
+            <div>
+              <div className="font-semibold text-white">&lt;100ms</div>
+              <div className="text-white/60">Latency</div>
+            </div>
+            <div>
+              <div className="font-semibold text-white">24/7</div>
+              <div className="text-white/60">Uptime</div>
+            </div>
           </div>
-          <div className="glass-card p-4">
-            <div className="text-2xl mb-2">🎥</div>
-            <div className="text-sm text-white/80">Video Upload</div>
+        </motion.div>
+
+        {/* Interactive Demo Preview */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="glass-card p-4 space-y-3"
+        >
+          <div className="text-center">
+            <div className="text-sm font-medium text-white/90 mb-2">Live Preview</div>
+            <div className="bg-black/20 rounded-lg p-3 text-left space-y-1">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                <span className="text-white/50 ml-2">CHATTER BOX - Room #demo</span>
+              </div>
+              <div className="text-xs text-white/70 py-2">
+                <div className="flex items-start gap-2 mb-1">
+                  <span className="text-blue-400">Alex:</span>
+                  <span>Check out this function:</span>
+                </div>
+                <div className="bg-black/30 rounded p-2 font-mono text-xs">
+                  <span className="text-purple-400">const</span> <span className="text-blue-300">fibonacci</span> <span className="text-white">=</span> <span className="text-yellow-300">(n)</span> <span className="text-white">=&gt; {`{`}</span>
+                  <br />
+                  <span className="text-white ml-2">return n &lt; 2 ? n : fibonacci(n-1) + fibonacci(n-2);</span>
+                  <br />
+                  <span className="text-white">{`}`}</span>
+                </div>
+                <div className="flex items-start gap-2 mt-1">
+                  <span className="text-green-400">Sarah:</span>
+                  <span>Nice! Syntax highlighting works perfectly ✨</span>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
 
