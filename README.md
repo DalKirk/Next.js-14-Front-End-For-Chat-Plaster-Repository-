@@ -4,9 +4,11 @@ A modern real-time chat application built with Next.js 14, featuring professiona
 
 ## 🚀 Live Demo
 
-**🌐 Production**: [https://next-js-14-front-end-for-chat-plaster-repository.vercel.app](https://next-js-14-front-end-for-chat-plaster-repository.vercel.app)
+**🌐 Production**: [https://next-js-14-front-end-for-chat-plast.vercel.app](https://next-js-14-front-end-for-chat-plast.vercel.app)
 
 **🔧 Backend API**: [https://web-production-3ba7e.up.railway.app](https://web-production-3ba7e.up.railway.app)
+
+**📝 Local Development**: [http://localhost:3000](http://localhost:3000)
 
 ## ✨ Features
 
