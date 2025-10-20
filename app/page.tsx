@@ -48,13 +48,13 @@ export default function HomePage() {
       setCurrentUser(user);
       
       if (user.id.startsWith('mock-')) {
-        toast.success(`Welcome, ${user.username}! (Demo mode - backend unavailable)`);
+        toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
       } else {
-        toast.success(`Welcome, ${user.username}!`);
+        toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
       }
       
-      // Redirect to chat page
-      router.push('/chat');
+      // Redirect to profile setup instead of chat
+      router.push('/profile');
     } catch (error) {
       console.error('❌ User creation error:', error);
       let errorMessage = 'Failed to create user';

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import toast from 'react-hot-toast';
 
 interface UserProfile {
   id: string;
@@ -34,46 +35,81 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [isFirstTime, setIsFirstTime] = useState(false);
 
   useEffect(() => {
     // Load profile from localStorage or API
-    const storedUser = localStorage.getItem('currentUser');
+    const storedUser = localStorage.getItem('chat-user');
     if (!storedUser) {
       router.push('/');
       return;
     }
 
+    const userData = JSON.parse(storedUser);
+    
+    // Check if this is first-time setup
+    const existingProfile = localStorage.getItem('userProfile');
+    const isNewUser = !existingProfile;
+    setIsFirstTime(isNewUser);
+
     // Mock profile data - in real app, fetch from API
     const mockProfile: UserProfile = {
-      id: JSON.parse(storedUser).id,
-      username: JSON.parse(storedUser).username,
-      bio: 'Developer passionate about real-time collaboration and clean code.',
+      id: userData.id,
+      username: userData.username,
+      bio: isNewUser ? '' : 'Developer passionate about real-time collaboration and clean code.',
       avatar: '', // Will implement avatar upload
-      joinedDate: '2024-01-15',
-      totalRooms: 12,
-      totalMessages: 247,
+      joinedDate: new Date().toISOString().split('T')[0],
+      totalRooms: 0,
+      totalMessages: 0,
       favoriteLanguage: 'JavaScript',
       theme: 'purple',
       notifications: true
     };
 
-    const mockRecentRooms: RecentRoom[] = [
+    // Load existing profile or use defaults
+    if (existingProfile) {
+      const savedProfile = JSON.parse(existingProfile);
+      setProfile({ ...mockProfile, ...savedProfile });
+      setEditedProfile({ ...mockProfile, ...savedProfile });
+    } else {
+      setProfile(mockProfile);
+      setEditedProfile(mockProfile);
+      setIsEditing(true); // Start in edit mode for new users
+    }
+
+    const mockRecentRooms: RecentRoom[] = isNewUser ? [] : [
       { id: '1', name: 'Frontend Team', lastVisited: '2024-10-19', messageCount: 45 },
       { id: '2', name: 'Code Review', lastVisited: '2024-10-18', messageCount: 23 },
       { id: '3', name: 'Project Planning', lastVisited: '2024-10-17', messageCount: 31 }
     ];
 
-    setProfile(mockProfile);
     setRecentRooms(mockRecentRooms);
-    setEditedProfile(mockProfile);
   }, [router]);
 
   const handleSaveProfile = () => {
     if (profile && editedProfile) {
+      // Validate required fields for first-time setup
+      if (isFirstTime && (!editedProfile.bio || editedProfile.bio.trim().length < 10)) {
+        toast.error('Please add a bio with at least 10 characters');
+        return;
+      }
+
       const updatedProfile = { ...profile, ...editedProfile };
       setProfile(updatedProfile);
       // In real app, save to API
       localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+      
+      if (isFirstTime) {
+        toast.success('Profile setup complete! Welcome to CHATTER BOX!');
+        setIsFirstTime(false);
+        // Redirect to chat after first-time setup
+        setTimeout(() => {
+          router.push('/chat');
+        }, 1500);
+      } else {
+        toast.success('Profile updated successfully!');
+      }
+      
       setIsEditing(false);
     }
   };
@@ -109,9 +145,14 @@ export default function ProfilePage() {
                 ← Back to Home
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-white bitcount-prop-double-ink">
-              User Profile
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-white bitcount-prop-double-ink">
+                {isFirstTime ? 'Welcome to CHATTER BOX!' : 'User Profile'}
+              </h1>
+              {isFirstTime && (
+                <p className="text-white/70 mt-1">Let's set up your profile to get started</p>
+              )}
+            </div>
           </div>
           
           {!isEditing ? (
@@ -121,11 +162,13 @@ export default function ProfilePage() {
           ) : (
             <div className="flex gap-2">
               <Button onClick={handleSaveProfile} variant="primary">
-                Save Changes
+                {isFirstTime ? 'Complete Setup' : 'Save Changes'}
               </Button>
-              <Button onClick={handleCancelEdit} variant="glass">
-                Cancel
-              </Button>
+              {!isFirstTime && (
+                <Button onClick={handleCancelEdit} variant="glass">
+                  Cancel
+                </Button>
+              )}
             </div>
           )}
         </motion.div>
@@ -154,17 +197,26 @@ export default function ProfilePage() {
                       maxLength={20}
                     />
                     <Textarea
-                      label="Bio"
+                      label={`Bio ${isFirstTime ? '(Required - tell us about yourself!)' : ''}`}
                       value={editedProfile.bio || ''}
                       onChange={(e) => setEditedProfile({...editedProfile, bio: e.target.value})}
                       maxLength={150}
-                      rows={3}
+                      rows={4}
+                      placeholder={isFirstTime ? 
+                        "Tell us about yourself! What do you love about coding? What languages do you use? What are you working on?" :
+                        "Update your bio..."
+                      }
                     />
+                    {isFirstTime && (
+                      <p className="text-xs text-white/60">
+                        💡 A good bio helps others connect with you in chat rooms!
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <h2 className="text-xl font-semibold text-white">{profile.username}</h2>
-                    <p className="text-white/70 text-sm">{profile.bio}</p>
+                    <p className="text-white/70 text-sm">{profile.bio || 'No bio added yet.'}</p>
                   </div>
                 )}
               </div>
@@ -253,33 +305,75 @@ export default function ProfilePage() {
             </div>
 
             {/* Recent Rooms */}
-            <div className="glass-card p-6 space-y-4">
-              <h3 className="text-xl font-semibold text-white">Recent Rooms</h3>
-              <div className="space-y-3">
-                {recentRooms.map((room) => (
-                  <div key={room.id} className="glass-panel p-4 rounded-lg hover:bg-white/10 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-white">{room.name}</h4>
-                        <p className="text-sm text-white/60">
-                          Last visited: {new Date(room.lastVisited).toLocaleDateString()}
-                        </p>
+            {!isFirstTime && (
+              <div className="glass-card p-6 space-y-4">
+                <h3 className="text-xl font-semibold text-white">Recent Rooms</h3>
+                {recentRooms.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentRooms.map((room) => (
+                      <div key={room.id} className="glass-panel p-4 rounded-lg hover:bg-white/10 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium text-white">{room.name}</h4>
+                            <p className="text-sm text-white/60">
+                              Last visited: {new Date(room.lastVisited).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-white/80">{room.messageCount} messages</p>
+                            <Button 
+                              variant="glass" 
+                              className="mt-2 text-xs px-3 py-1"
+                              onClick={() => router.push(`/room/${room.id}`)}
+                            >
+                              Join Room
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-white/80">{room.messageCount} messages</p>
-                        <Button 
-                          variant="glass" 
-                          className="mt-2 text-xs px-3 py-1"
-                          onClick={() => router.push(`/room/${room.id}`)}
-                        >
-                          Join Room
-                        </Button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-white/60 mb-4">No recent rooms yet</p>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => router.push('/chat')}
+                    >
+                      Browse Available Rooms
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* First-time Welcome Message */}
+            {isFirstTime && (
+              <div className="glass-card p-6 space-y-4">
+                <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
+                <div className="space-y-4">
+                  <p className="text-white/80">
+                    You're just one step away from joining the best real-time collaboration platform for developers!
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-white">What you can do:</h4>
+                    <ul className="space-y-1 text-sm text-white/70">
+                      <li>• Share code with syntax highlighting</li>
+                      <li>• Video chat with screen sharing</li>
+                      <li>• Join collaborative coding sessions</li>
+                      <li>• Connect with developers worldwide</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <p className="text-blue-200 text-sm">
+                      💡 Complete your profile setup above to start chatting!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Quick Actions */}
             <div className="glass-card p-6 space-y-4">
