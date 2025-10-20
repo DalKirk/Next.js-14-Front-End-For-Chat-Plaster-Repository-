@@ -8,61 +8,65 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // OKLCH Color Scheme - Based on oklch(45.9% 0.187 3.815)
+        // OKLCH Color Scheme - Modern perceptual color space
         primary: {
           DEFAULT: 'oklch(45.9% 0.187 3.815)',      // Base color
-          50: 'oklch(96% 0.035 3.815)',             // Very light
-          100: 'oklch(92% 0.055 3.815)',            // Light
-          200: 'oklch(85% 0.09 3.815)',             // Lighter
-          300: 'oklch(75% 0.12 3.815)',             // Light-medium
+          50: 'oklch(95% 0.02 3.815)',              // Very light
+          100: 'oklch(90% 0.04 3.815)',             // Light
+          200: 'oklch(80% 0.08 3.815)',             // Lighter
+          300: 'oklch(70% 0.12 3.815)',             // Light-medium
           400: 'oklch(60% 0.15 3.815)',             // Medium-light
-          500: 'oklch(45.9% 0.187 3.815)',          // Base
-          600: 'oklch(38% 0.19 3.815)',             // Medium-dark
-          700: 'oklch(32% 0.17 3.815)',             // Dark
-          800: 'oklch(26% 0.14 3.815)',             // Darker
-          900: 'oklch(20% 0.11 3.815)',             // Darkest
+          500: 'oklch(45.9% 0.187 3.815)',          // Base (your color)
+          600: 'oklch(40% 0.20 3.815)',             // Medium-dark
+          700: 'oklch(35% 0.18 3.815)',             // Dark
+          800: 'oklch(30% 0.15 3.815)',             // Darker
+          900: 'oklch(25% 0.12 3.815)',             // Darkest
         },
         secondary: {
-          DEFAULT: 'oklch(52% 0.17 3.815)',         // Slightly lighter variant
-          50: 'oklch(95% 0.03 3.815)',
-          100: 'oklch(90% 0.05 3.815)',
-          200: 'oklch(82% 0.09 3.815)',
-          300: 'oklch(72% 0.13 3.815)',
-          400: 'oklch(62% 0.15 3.815)',
-          500: 'oklch(52% 0.17 3.815)',
-          600: 'oklch(42% 0.18 3.815)',
-          700: 'oklch(35% 0.16 3.815)',
-          800: 'oklch(28% 0.13 3.815)',
-          900: 'oklch(22% 0.10 3.815)',
+          DEFAULT: 'oklch(55% 0.20 320)',           // Complementary hue
+          50: 'oklch(95% 0.02 320)',
+          100: 'oklch(90% 0.04 320)',
+          200: 'oklch(80% 0.08 320)',
+          300: 'oklch(70% 0.12 320)',
+          400: 'oklch(60% 0.15 320)',
+          500: 'oklch(55% 0.20 320)',
+          600: 'oklch(50% 0.22 320)',
+          700: 'oklch(45% 0.20 320)',
+          800: 'oklch(40% 0.18 320)',
+          900: 'oklch(35% 0.15 320)',
         },
         accent: {
-          DEFAULT: 'oklch(55% 0.20 3.815)',         // More vibrant
-          light: 'oklch(65% 0.18 3.815)',
-          dark: 'oklch(40% 0.22 3.815)',
+          DEFAULT: 'oklch(65% 0.25 30)',            // Vibrant accent
+          pink: 'oklch(65% 0.25 30)',
+          green: 'oklch(70% 0.18 145)',
+          red: 'oklch(55% 0.22 25)',
+          yellow: 'oklch(75% 0.15 85)',
         },
         background: {
-          DEFAULT: 'oklch(18% 0.025 3.815)',        // Dark with base hue
-          dark: 'oklch(14% 0.02 3.815)',
-          light: 'oklch(24% 0.035 3.815)',
-          lighter: 'oklch(30% 0.045 3.815)',
+          DEFAULT: 'oklch(20% 0.02 240)',           // Dark background
+          dark: 'oklch(15% 0.015 240)',
+          light: 'oklch(25% 0.03 240)',
         },
         surface: {
-          DEFAULT: 'oklch(28% 0.045 3.815)',        // Surface with base hue
-          light: 'oklch(34% 0.055 3.815)',
-          lighter: 'oklch(40% 0.065 3.815)',
-          hover: 'oklch(32% 0.06 3.815)',
+          DEFAULT: 'oklch(30% 0.04 240)',           // Surface elements
+          light: 'oklch(35% 0.05 240)',
+          lighter: 'oklch(40% 0.06 240)',
         },
         text: {
-          primary: 'oklch(96% 0.015 3.815)',        // Light text with hint of base
-          secondary: 'oklch(80% 0.04 3.815)',
-          muted: 'oklch(65% 0.06 3.815)',
-          inverse: 'oklch(25% 0.08 3.815)',
+          primary: 'oklch(95% 0.01 240)',           // Light text
+          secondary: 'oklch(75% 0.03 240)',
+          muted: 'oklch(60% 0.04 240)',
         },
         status: {
-          success: 'oklch(65% 0.16 145)',           // Keep functional colors
-          error: 'oklch(55% 0.20 25)',
-          warning: 'oklch(75% 0.14 85)',
-          info: 'oklch(55% 0.18 3.815)',            // Use base hue for info
+          success: 'oklch(70% 0.18 145)',
+          error: 'oklch(55% 0.22 25)',
+          warning: 'oklch(75% 0.15 85)',
+          info: 'oklch(60% 0.20 240)',
+        },
+        glass: {
+          white: 'rgba(255, 255, 255, 0.1)',
+          dark: 'rgba(0, 0, 0, 0.3)',
+          border: 'rgba(255, 255, 255, 0.2)',
         },
       },
       backdropBlur: {

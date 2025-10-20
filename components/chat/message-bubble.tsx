@@ -1,6 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
+import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import { Message, VideoMessage } from '@/lib/types';
 import { VideoPlayer } from '@/components/video/video-player';
 import { cn } from '@/lib/utils';
@@ -35,7 +38,7 @@ const parseMessageWithLinks = (text: string) => {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary-300 hover:text-primary-200 underline break-all"
+          className="text-blue-400 hover:text-blue-300 underline break-all"
           onClick={(e) => e.stopPropagation()}
         >
           {part}
@@ -53,22 +56,39 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;
 
-  // Safely format timestamp with fallback
+  // Enhanced timestamp formatting with smart display
   const formatTimestamp = (timestamp: string | undefined) => {
     if (!timestamp) return 'Now';
     
     try {
-      // Ensure timestamp has 'Z' suffix for UTC if it doesn't already
       const isoTimestamp = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
       const date = new Date(isoTimestamp);
       
-      // Check if date is valid
       if (isNaN(date.getTime())) {
         console.warn('Invalid timestamp:', timestamp);
         return 'Now';
       }
       
-      return format(date, 'HH:mm');
+      // Smart formatting based on age
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 1) {
+        // Less than 1 hour: "2 minutes ago"
+        return formatDistanceToNow(date, { addSuffix: true });
+      } else if (isToday(date)) {
+        // Today: "14:30"
+        return format(date, 'HH:mm');
+      } else if (isYesterday(date)) {
+        // Yesterday: "Yesterday 14:30"
+        return `Yesterday ${format(date, 'HH:mm')}`;
+      } else if (diffInHours < 168) {
+        // Within a week: "Mon 14:30"
+        return format(date, 'EEE HH:mm');
+      } else {
+        // Older: "Oct 19, 14:30"
+        return format(date, 'MMM dd, HH:mm');
+      }
     } catch (error) {
       console.error('Error formatting timestamp:', timestamp, error);
       return 'Now';
@@ -90,24 +110,24 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
           'max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl p-4 shadow-lg',
           'backdrop-blur-sm border',
           isOwn 
-            ? 'bg-primary-500/25 border-primary-400/40 text-text-primary shadow-primary-500/20' 
-            : 'bg-surface/60 border-primary-400/25 text-text-primary',
+            ? 'bg-blue-600/20 border-blue-500/30 text-white' 
+            : 'bg-white/10 border-white/20 text-white',
           isVideoMessage && 'max-w-sm lg:max-w-md xl:max-w-lg'
         )}
       >
         {/* Username and timestamp */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-text-primary">
+          <span className="text-sm font-medium text-white/90">
             {message.username}
           </span>
-          <span className="text-xs text-text-muted">
+          <span className="text-xs text-white/60">
             {formatTimestamp(message.timestamp)}
           </span>
         </div>
 
         {/* Message content */}
         {message.type === 'system' ? (
-          <p className="text-sm italic text-text-secondary">
+          <p className="text-sm italic text-white/80">
             {parseMessageWithLinks(message.content)}
           </p>
         ) : isVideoMessage ? (
@@ -117,14 +137,14 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               <span className="text-lg">
                 {message.type === 'live_stream_created' ? '🔴' : '🎥'}
               </span>
-              <span className="text-sm font-medium text-text-primary">
+              <span className="text-sm font-medium">
                 {message.type === 'live_stream_created' ? 'Live Stream' : 'Video'}
               </span>
             </div>
             
             {/* Video title */}
             {videoMessage.title && (
-              <h4 className="text-sm font-medium text-text-primary">
+              <h4 className="text-sm font-medium text-white">
                 {videoMessage.title}
               </h4>
             )}
@@ -147,15 +167,48 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             
             {/* Message text if any */}
             {message.content && (
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-white/90">
                 {parseMessageWithLinks(message.content)}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-sm text-text-primary break-words">
-            {parseMessageWithLinks(message.content)}
-          </p>
+          <div className="text-sm text-white break-words prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              components={{
+                a: ({ node, ...props }) => (
+                  <a
+                    {...props}
+                    className="text-blue-400 hover:text-blue-300 underline break-all"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                ),
+                code: ({ node, inline, ...props }: any) =>
+                  inline ? (
+                    <code className="bg-white/10 px-1.5 py-0.5 rounded text-blue-300" {...props} />
+                  ) : (
+                    <code className="block bg-white/10 p-2 rounded-lg my-2 overflow-x-auto" {...props} />
+                  ),
+                pre: ({ node, ...props }) => (
+                  <pre className="bg-white/10 p-3 rounded-lg my-2 overflow-x-auto" {...props} />
+                ),
+                blockquote: ({ node, ...props }) => (
+                  <blockquote className="border-l-4 border-blue-400 pl-3 my-2 italic" {...props} />
+                ),
+                ul: ({ node, ...props }) => (
+                  <ul className="list-disc list-inside my-1" {...props} />
+                ),
+                ol: ({ node, ...props }) => (
+                  <ol className="list-decimal list-inside my-1" {...props} />
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
     </motion.div>

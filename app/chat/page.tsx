@@ -72,10 +72,10 @@ export default function ChatPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-text-primary">
+              <h1 className="text-2xl font-bold text-white">
                 Welcome, {user.username}! 👋
               </h1>
-              <p className="text-text-muted mt-1">
+              <p className="text-white/60 mt-1">
                 Choose a room to start chatting and sharing videos
               </p>
             </div>
@@ -96,7 +96,7 @@ export default function ChatPage() {
           className="glass-card p-6"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-text-primary">Available Rooms</h2>
+            <h2 className="text-xl font-semibold text-white">Available Rooms</h2>
             <Button
               onClick={loadRooms}
               disabled={isLoading}
@@ -109,11 +109,11 @@ export default function ChatPage() {
 
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-pulse text-text-muted">Loading rooms...</div>
+              <div className="animate-pulse text-white/60">Loading rooms...</div>
             </div>
           ) : rooms.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-text-muted mb-4">No rooms available</div>
+              <div className="text-white/60 mb-4">No rooms available</div>
               <Button
                 onClick={() => router.push('/')}
                 variant="primary"
@@ -129,19 +129,19 @@ export default function ChatPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-surface/40 backdrop-blur-sm border border-primary-400/20 rounded-lg p-4 hover:bg-surface-hover hover:border-primary-400/35 transition-all duration-200 shadow-lg shadow-primary-900/20"
+                  className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-medium text-text-primary truncate">
+                    <h3 className="font-medium text-white truncate">
                       {room.name}
                     </h3>
-                    <div className="flex items-center space-x-1 text-xs text-text-muted">
-                      <div className="w-2 h-2 bg-status-success rounded-full shadow-sm shadow-status-success/50"></div>
+                    <div className="flex items-center space-x-1 text-xs text-white/60">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <span>Active</span>
                     </div>
                   </div>
                   
-                  <p className="text-sm text-text-muted mb-4">
+                  <p className="text-sm text-white/60 mb-4">
                     Created {new Date(room.created_at).toLocaleDateString()}
                   </p>
                   
@@ -168,24 +168,24 @@ export default function ChatPage() {
         >
           <div className="glass-card p-4 text-center">
             <div className="text-3xl mb-2">💬</div>
-            <h3 className="font-medium text-text-primary mb-1">Real-time Chat</h3>
-            <p className="text-sm text-text-secondary">
+            <h3 className="font-medium text-white mb-1">Real-time Chat</h3>
+            <p className="text-sm text-white/60">
               Instant messaging with all room members
             </p>
           </div>
           
           <div className="glass-card p-4 text-center">
             <div className="text-3xl mb-2">🔴</div>
-            <h3 className="font-medium text-text-primary mb-1">Live Streaming</h3>
-            <p className="text-sm text-text-secondary">
+            <h3 className="font-medium text-white mb-1">Live Streaming</h3>
+            <p className="text-sm text-white/60">
               Stream live video with RTMP support
             </p>
           </div>
           
           <div className="glass-card p-4 text-center">
             <div className="text-3xl mb-2">🎥</div>
-            <h3 className="font-medium text-text-primary mb-1">Video Sharing</h3>
-            <p className="text-sm text-text-secondary">
+            <h3 className="font-medium text-white mb-1">Video Sharing</h3>
+            <p className="text-sm text-white/60">
               Upload and share videos instantly
             </p>
           </div>

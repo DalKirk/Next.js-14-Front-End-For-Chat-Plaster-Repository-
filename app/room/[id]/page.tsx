@@ -43,10 +43,12 @@ export default function RoomPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [wsConnected, setWsConnected] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializedRef = useRef(false); // Prevent double initialization
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -192,6 +194,28 @@ export default function RoomPage() {
         });
       });
       
+      // Handle typing indicators
+      socketManager.onTyping((data: any) => {
+        const typingUserId = data.user_id;
+        const typingUsername = data.username || 'Someone';
+        
+        if (typingUserId === currentUser.id) return; // Ignore own typing
+        
+        if (data.type === 'typing_start') {
+          setTypingUsers(prev => {
+            const updated = new Set(prev);
+            updated.add(typingUsername);
+            return updated;
+          });
+        } else if (data.type === 'typing_stop') {
+          setTypingUsers(prev => {
+            const updated = new Set(prev);
+            updated.delete(typingUsername);
+            return updated;
+          });
+        }
+      });
+      
     } catch (error) {
       console.error('❌ WebSocket connection failed:', error);
       setIsConnected(false);
@@ -265,11 +289,44 @@ export default function RoomPage() {
     if (!message.trim() || !user) return;
     
     try {
+      // Stop typing indicator before sending
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      socketManager.sendTypingIndicator(false);
+      
       sendMessage(message.trim());
       setMessage('');
     } catch (error) {
       console.error('❌ Error sending message:', error);
       toast.error('Failed to send message. Please check your connection.');
+    }
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+    
+    // Send typing indicator
+    if (value.trim() && wsConnected) {
+      socketManager.sendTypingIndicator(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 2 seconds of no input
+      typingTimeoutRef.current = setTimeout(() => {
+        socketManager.sendTypingIndicator(false);
+      }, 2000);
+    } else if (!value.trim()) {
+      // Clear typing if message is empty
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      socketManager.sendTypingIndicator(false);
     }
   };
 
@@ -494,12 +551,12 @@ export default function RoomPage() {
               Back
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-text-primary">{roomName}</h1>
+              <h1 className="text-xl font-bold text-white">{roomName}</h1>
               <div className="flex items-center space-x-2 text-sm">
-                <div className={`w-2 h-2 rounded-full shadow-sm ${
-                  wsConnected ? 'bg-status-success shadow-status-success/50' : 'bg-status-error shadow-status-error/50'
+                <div className={`w-2 h-2 rounded-full ${
+                  wsConnected ? 'bg-green-400' : 'bg-red-400'
                 }`}></div>
-                <span className="text-text-muted">
+                <span className="text-white/60">
                   {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
                 {!wsConnected && (
@@ -560,11 +617,11 @@ export default function RoomPage() {
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-text-muted mb-4">
+                <div className="text-white/60 mb-4">
                   {wsConnected ? 'No messages yet. Start the conversation!' : 'WebSocket connection required for real-time messaging.'}
                 </div>
                 {!wsConnected && (
-                  <div className="text-text-muted/60 text-sm">
+                  <div className="text-white/40 text-sm">
                     Make sure your backend server is running with WebSocket support.
                   </div>
                 )}
@@ -585,13 +642,27 @@ export default function RoomPage() {
           </div>
 
           {/* Sticky Message Input */}
-          <div className="border-t border-primary-400/20 p-4 bg-background/40 backdrop-blur-sm sticky bottom-0">
+          <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0">
+            {/* Typing Indicator */}
+            {typingUsers.size > 0 && (
+              <div className="mb-2 text-sm text-white/70 italic flex items-center gap-2">
+                <span className="flex gap-1">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </span>
+                <span>
+                  {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                </span>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Input
-                  placeholder={wsConnected ? "Type your message..." : "Connect to server to send messages"}
+                  placeholder={wsConnected ? "Type your message (Markdown supported)..." : "Connect to server to send messages"}
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   onKeyPress={handleKeyPress}
                   disabled={!wsConnected}
                 />
@@ -621,7 +692,7 @@ export default function RoomPage() {
               onClick={scrollToTop}
               variant="glass"
               size="sm"
-              className="w-10 h-10 rounded-full p-0 bg-surface/60 backdrop-blur-sm border border-primary-400/30 hover:bg-surface-hover hover:border-primary-400/50"
+              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-white/20 hover:bg-white/20"
               title="Scroll to top"
             >
               <ChevronUpIcon className="w-4 h-4" />
@@ -652,7 +723,7 @@ export default function RoomPage() {
               onClick={scrollToBottom}
               variant="primary"
               size="sm"
-              className="backdrop-blur-sm border border-primary-400/40"
+              className="bg-blue-500/90 backdrop-blur-sm border border-white/20 hover:bg-blue-400/90"
             >
               <ChevronDownIcon className="w-4 h-4 mr-1" />
               New messages

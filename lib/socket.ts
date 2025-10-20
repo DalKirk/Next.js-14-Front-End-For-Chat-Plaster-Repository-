@@ -102,6 +102,12 @@ class SocketManager {
             return;
           }
           
+          // Handle typing indicators
+          if (data.type === 'typing_start' || data.type === 'typing_stop') {
+            this.callbacks.get('typing')?.(data);
+            return;
+          }
+          
           // Handle different message types
           if (data.type === 'message') {
             this.callbacks.get('message')?.(data);
@@ -156,6 +162,18 @@ class SocketManager {
     }
   }
 
+  sendTypingIndicator(isTyping: boolean): void {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      const event = JSON.stringify({
+        type: isTyping ? 'typing_start' : 'typing_stop',
+        user_id: this.userId,
+        room_id: this.roomId,
+        timestamp: Date.now()
+      });
+      this.socket.send(event);
+    }
+  }
+
   onConnect(callback: (connected: boolean) => void): void {
     this.callbacks.set('connect', callback);
   }
@@ -170,6 +188,10 @@ class SocketManager {
 
   onError(callback: (error: Error) => void): void {
     this.callbacks.set('error', callback);
+  }
+
+  onTyping(callback: (data: { type: string; user_id: string; username?: string }) => void): void {
+    this.callbacks.set('typing', callback);
   }
 
   isConnected(): boolean {
