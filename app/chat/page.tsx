@@ -41,15 +41,22 @@ export default function ChatPage() {
   };
 
   const joinRoom = async (room: Room) => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Please create a user profile first');
+      router.push('/');
+      return;
+    }
     
     try {
-      await apiClient.joinRoom(room.id, user.id);
-      // Navigate to room (we'll create this route later)
+      console.log('🚪 Attempting to join room:', { roomId: room.id, userId: user.id, roomName: room.name });
+      
+      // Navigate directly to room - the room page will handle joining
       router.push(`/room/${room.id}?name=${encodeURIComponent(room.name)}`);
+      
+      toast.success(`Joining ${room.name}...`);
     } catch (error) {
-      toast.error('Failed to join room');
-      console.error('Error joining room:', error);
+      console.error('❌ Error navigating to room:', error);
+      toast.error('Failed to join room. Please try again.');
     }
   };
 

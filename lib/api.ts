@@ -122,6 +122,11 @@ export const apiClient = {
     try {
       await api.post(`/rooms/${roomId}/join`, { user_id: userId });
     } catch (e) {
+      // If endpoint doesn't exist (404), that's okay - room page will handle it
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        console.warn('⚠️ Join room endpoint not found - room page will handle joining');
+        return;
+      }
       handleApiError(e, 'Join room');
     }
   },

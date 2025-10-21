@@ -125,19 +125,16 @@ export default function RoomPage() {
     try {
       console.log('🔌 Initializing chat connection...');
       
-      // STEP 1: Join room on backend FIRST (this is critical!)
+      // STEP 1: Try to join room on backend (optional - not all backends have this endpoint)
       try {
         await apiClient.joinRoom(roomId, currentUser.id);
         console.log('✅ Joined room on backend successfully');
       } catch (joinError) {
-        console.error('❌ Failed to join room on backend:', joinError);
-        toast.error('Could not join this room. It may not exist or the server is unavailable.');
-        setIsConnected(false);
-        setWsConnected(false);
-        return; // Stop here - don't attempt WebSocket if backend join fails
+        console.warn('⚠️ Join room endpoint not available (404) - continuing with WebSocket connection');
+        // Don't stop here - WebSocket can work without this endpoint
       }
 
-      // STEP 2: NOW connect WebSocket (only after successful room join)
+      // STEP 2: Connect WebSocket (works even if join endpoint doesn't exist)
       setConnectionAttempts(prev => prev + 1);
       socketManager.connect(roomId, currentUser.id);
       
@@ -629,11 +626,21 @@ export default function RoomPage() {
             {messages.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-white/60 mb-4">
-                  {wsConnected ? 'No messages yet. Start the conversation!' : 'WebSocket connection required for real-time messaging.'}
+                  {wsConnected ? 'No messages yet. Start the conversation!' : '⚠️ Real-time messaging unavailable'}
                 </div>
                 {!wsConnected && (
-                  <div className="text-white/40 text-sm">
-                    Make sure your backend server is running with WebSocket support.
+                  <div className="space-y-4">
+                    <div className="text-white/40 text-sm max-w-md mx-auto">
+                      <p className="mb-2">Your backend server needs WebSocket support for real-time chat.</p>
+                      <p className="text-xs">Required endpoint: <code className="bg-white/10 px-2 py-1 rounded">wss://your-backend/ws/{'{roomId}'}/{'{userId}'}</code></p>
+                    </div>
+                    <Button
+                      onClick={loadMessages}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Load Messages Manually
+                    </Button>
                   </div>
                 )}
               </div>
