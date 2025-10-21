@@ -460,7 +460,9 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                       // Collect all text node values
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       codeString = node.children
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .filter((child: any) => child.type === 'text')
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         .map((child: any) => child.value || '')
                         .join('');
                     }

@@ -72,11 +72,10 @@ export default function AITestPage() {
   const testSuggestReply = async () => {
     setLoading(true);
     try {
-      const suggestion = await claudeAPI.suggestReply(
-        'Previous conversation context',
-        prompt
-      );
-      setResponse(suggestion || 'No suggestion available');
+      const result = await claudeAPI.suggestReply([
+        { username: 'User', content: prompt }
+      ]);
+      setResponse(result.suggestions.join('\n') || 'No suggestion available');
       toast.success('Reply suggestion generated!');
     } catch (error) {
       toast.error('Reply suggestion failed');
