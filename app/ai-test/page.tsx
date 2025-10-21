@@ -20,16 +20,20 @@ export default function AITestPage() {
         maxTokens: 100,
         temperature: 0.7
       });
-      setResponse(result);
+      setResponse(`✅ AI Response Generated!\n\n${result}`);
       toast.success('AI response generated!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      if (errorMsg.includes('Bad Gateway') || errorMsg.includes('502')) {
+      
+      if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+        toast.error('Model not found - check backend configuration');
+        setResponse(`⚠️ Model Not Found Error\n\nThe backend is using an outdated or incorrect Claude model name.\n\n🔧 Fix in your Railway backend:\n\nUpdate the model name to one of:\n- claude-3-5-sonnet-20241022 (Latest, most capable)\n- claude-3-5-haiku-20241022 (Fast, efficient)\n- claude-3-opus-20240229 (Legacy, still works)\n\nError: ${errorMsg}\n\n💡 Tip: Check your backend code where you call:\nanthropic.messages.create(model="...")`);
+      } else if (errorMsg.includes('Bad Gateway') || errorMsg.includes('502')) {
         toast.error('AI service not configured on backend');
         setResponse('⚠️ AI Service Not Available\n\nThe Railway backend needs AI endpoints configured.\n\nTo fix this:\n1. Add Claude API key to Railway environment variables\n2. Implement /ai/generate endpoint in backend\n3. Deploy backend changes\n\nError: ' + errorMsg);
       } else {
         toast.error('Failed to generate response');
-        setResponse(`Error: ${errorMsg}`);
+        setResponse(`❌ Generation Error\n\n${errorMsg}\n\nCheck the browser console for more details.`);
       }
       console.error('Generation error:', error);
     } finally {
@@ -105,9 +109,29 @@ export default function AITestPage() {
     try {
       const health = await claudeAPI.checkHealth();
       setAiHealth(health);
-      setResponse(JSON.stringify(health, null, 2));
+      
+      // Format the response nicely
+      let formattedResponse = '✅ AI Service Available!\n\n';
+      formattedResponse += `Status: ${health.ai_enabled ? 'Enabled' : 'Disabled'}\n`;
+      
+      // Check if health has additional info
+      const healthData = health as any;
+      if (healthData.model) {
+        formattedResponse += `Model: ${healthData.model}\n`;
+      }
+      if (healthData.features && Array.isArray(healthData.features)) {
+        formattedResponse += `\nAvailable Features:\n`;
+        healthData.features.forEach((feature: string) => {
+          formattedResponse += `  ✓ ${feature.replace(/_/g, ' ')}\n`;
+        });
+      }
+      
+      formattedResponse += `\n📊 Raw Response:\n${JSON.stringify(health, null, 2)}`;
+      
+      setResponse(formattedResponse);
+      
       if (health.ai_enabled) {
-        toast.success('AI services are available!');
+        toast.success('🎉 AI services are ready!');
       } else {
         toast.error('AI services are unavailable');
       }
