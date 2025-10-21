@@ -21,6 +21,15 @@ interface ModerationResult {
   reason?: string;
 }
 
+interface SpamResult {
+  is_spam: boolean;
+  reason?: string;
+}
+
+interface SuggestReplyResult {
+  suggestions: string[];
+}
+
 interface Message {
   username: string;
   content: string;
@@ -54,7 +63,7 @@ export const claudeAPI = {
       }
 
       const data = await response.json();
-      return data.response;
+      return { response: data.response, model: data.model };
     } catch (error) {
       console.error('Claude API error:', error);
       throw error;
@@ -90,7 +99,7 @@ export const claudeAPI = {
   /**
    * Detect spam
    */
-  async detectSpam(content: string): Promise<boolean> {
+  async detectSpam(content: string): Promise<SpamResult> {
     try {
       const apiUrl = getApiUrl();
       const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/detect-spam`;
@@ -106,17 +115,17 @@ export const claudeAPI = {
       });
 
       const data = await response.json();
-      return data.is_spam || false;
+      return { is_spam: data.is_spam || false, reason: data.reason };
     } catch (error) {
       console.error('Spam detection error:', error);
-      return false;
+      return { is_spam: false };
     }
   },
 
   /**
-   * Get smart reply suggestion
+   * Get smart reply suggestions based on conversation context
    */
-  async suggestReply(context: string, userMessage: string): Promise<string | null> {
+  async suggestReply(messages: Message[]): Promise<SuggestReplyResult> {
     try {
       const apiUrl = getApiUrl();
       const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/suggest-reply`;
@@ -128,17 +137,20 @@ export const claudeAPI = {
           ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/suggest-reply' })
         },
         credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
-        body: JSON.stringify({
-          context,
-          user_message: userMessage,
-        }),
+        body: JSON.stringify({ messages }),
       });
 
       const data = await response.json();
-      return data.suggested_reply;
+      // Backend returns suggestions as array or single suggestion
+      const suggestions = Array.isArray(data.suggestions) 
+        ? data.suggestions 
+        : data.suggested_reply 
+        ? [data.suggested_reply] 
+        : [];
+      return { suggestions };
     } catch (error) {
       console.error('Reply suggestion error:', error);
-      return null;
+      return { suggestions: [] };
     }
   },
 
