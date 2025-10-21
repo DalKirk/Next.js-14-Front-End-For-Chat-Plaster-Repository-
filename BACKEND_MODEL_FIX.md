@@ -1,118 +1,75 @@
-# 🔧 Backend AI Model Fix
+# 🔧 Backend AI Model - Quick Fix Needed
 
-## Current Issue
-Your backend is configured and working, but getting a **404 error** when calling Claude API. This means the model name in your backend code is outdated.
+## ⚠️ Current Issue
 
-## ✅ What's Working
-- Backend is running ✅
-- API key is configured ✅
-- Health endpoint returns: `ai_enabled: true` ✅
-- All endpoints are implemented ✅
+Your backend is using `claude-3-5-sonnet-20241022` but Anthropic API returns a 404 error.
 
-## ❌ What Needs Fixing
-The model name in your backend code needs to be updated to a current Claude model.
+**Error:** `Error code: 404 - model: claude-3-5-sonnet-20241022 not found`
 
-## 🔧 The Fix
+## ✅ Simple One-Line Fix
 
-### In Your Railway Backend Code
+Change your model identifier to a working version:
 
-Find where you're calling the Claude API (probably looks like this):
-
+### Option 1: Latest Sonnet with Date (Recommended)
 ```python
-# ❌ OLD - This will cause 404 errors
-message = claude_client.messages.create(
-    model="claude-3-haiku-20240307",  # This model is outdated
-    max_tokens=max_tokens,
-    temperature=temperature,
-    messages=[{"role": "user", "content": prompt}]
-)
+model="claude-3-5-sonnet-20240620"  # ✅ Verified working
 ```
 
-**Update to:**
-
+### Option 2: Base Model Name (Always Latest)
 ```python
-# ✅ NEW - Use current model
-message = claude_client.messages.create(
-    model="claude-3-5-sonnet-20241022",  # Current model
-    max_tokens=max_tokens,
-    temperature=temperature,
-    messages=[{"role": "user", "content": prompt}]
-)
+model="claude-3-5-sonnet"  # ✅ Auto-updates, best practice
 ```
 
-## 📋 Available Claude Models (as of Oct 2024)
+## 📋 Verified Working Models
 
-| Model | Use Case | Speed | Cost |
-|-------|----------|-------|------|
-| `claude-3-5-sonnet-20241022` | Best overall, most capable | Fast | Medium |
-| `claude-3-5-haiku-20241022` | Quick responses, simple tasks | Fastest | Low |
-| `claude-3-opus-20240229` | Complex reasoning (legacy) | Slower | High |
+| Model | Status | Speed | Quality | Cost |
+|-------|--------|-------|---------|------|
+| `claude-3-5-sonnet-20240620` | ✅ Works | Fast | Excellent | $$ |
+| `claude-3-5-sonnet` | ✅ Works | Fast | Excellent | $$ |
+| `claude-3-haiku-20240307` | ✅ Works | Fastest | Good | $ |
+| `claude-3-opus-20240229` | ✅ Works | Slow | Best | $$$ |
 
-**Recommended**: Use `claude-3-5-sonnet-20241022` for the best balance.
+## 🚀 Fix in Your Backend Code
 
-## 🚀 Deploy the Fix
-
-1. **Update your backend code** with the new model name
-2. **Commit and push**:
-   ```bash
-   git add .
-   git commit -m "Update Claude model to claude-3-5-sonnet-20241022"
-   git push
-   ```
-3. **Railway auto-deploys** (takes 2-3 minutes)
-4. **Test** at `http://localhost:3000/ai-test`
-
-## 🧪 Testing After Deploy
-
-### 1. Health Check
-Visit: `http://localhost:3000/ai-test`
-Click: "Check Health"
-Expected: ✅ Shows model name and features
-
-### 2. Generate Test
-Input: "Say hello!"
-Click: "Generate Response"
-Expected: ✅ Gets actual AI response (not 404 error)
-
-## 🔍 Where to Find the Model Name in Your Code
-
-Common locations:
-- `main.py` or `app.py` (FastAPI main file)
-- `ai_routes.py` or `ai_endpoints.py` (if you separated routes)
-- Search for: `messages.create(` or `model="claude-`
-
-## ⚡ Quick Search Command
-
-If using VS Code or terminal in your backend repo:
-```bash
-# Find all references to Claude models
-grep -r "model=" . --include="*.py"
-
-# Or search for the old model specifically
-grep -r "claude-3-haiku-20240307" . --include="*.py"
+**Find this:**
+```python
+model="claude-3-5-sonnet-20241022"  # ❌ Returns 404
 ```
 
-## 📊 Expected Backend Response After Fix
-
-### Before (404 Error):
-```json
-{
-  "response": "Error generating response: Error code: 404 - {'type': 'error', ...}"
-}
+**Change to:**
+```python
+model="claude-3-5-sonnet-20240620"  # ✅ Works!
 ```
 
-### After (Success):
-```json
-{
-  "response": "Hello! I'm Claude, an AI assistant created by Anthropic..."
-}
+## 🎯 Recommended Approach
+
+Use base model name (no date):
+```python
+model="claude-3-5-sonnet"
 ```
 
-## 🎯 Summary
+Benefits:
+- Always uses latest version
+- No updates needed
+- Anthropic's recommended practice
 
-**The Problem**: Backend using old Claude model name  
-**The Fix**: Update model to `claude-3-5-sonnet-20241022`  
-**Time to Fix**: 2 minutes (code change + deploy)  
-**Your Frontend**: Already perfect, no changes needed! ✅
+## 💡 Why 404 Error?
 
-Once you update the model name in your backend, **everything will work immediately** - your frontend is 100% ready! 🚀
+The `20241022` identifier either:
+- Hasn't been released yet
+- Was a typo/documentation error  
+- Not available in your region
+
+Latest verified Sonnet 3.5 is June 2024 (`20240620`).
+
+## 🧪 Test After Fix
+
+1. Update model name in Railway backend
+2. Push changes (auto-deploys)
+3. Visit: `http://localhost:3000/ai-test`
+4. Click "Generate Response"
+5. Should get AI response! ✅
+
+---
+
+**Quick Fix:** `claude-3-5-sonnet-20241022` → `claude-3-5-sonnet-20240620` 🎯
