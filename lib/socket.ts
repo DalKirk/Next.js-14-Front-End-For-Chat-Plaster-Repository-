@@ -82,7 +82,7 @@ class SocketManager {
         }
       };
       
-      this.socket.onerror = (error) => {
+      this.socket.onerror = () => {
         console.error('❌ WebSocket error occurred');
         console.log('📊 WebSocket state:', this.socket?.readyState);
         console.log('🔗 Attempted URL:', WS_URL);

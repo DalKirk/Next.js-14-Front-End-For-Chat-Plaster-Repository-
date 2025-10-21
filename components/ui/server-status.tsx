@@ -24,9 +24,10 @@ export function ServerStatus({ apiUrl }: ServerStatusProps) {
         setStatus('offline');
         setErrorMessage('Server responded but reported unhealthy');
       }
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as Error;
       setStatus('offline');
-      setErrorMessage(err?.message || 'Unable to connect to backend server');
+      setErrorMessage(error?.message || 'Unable to connect to backend server');
     }
   }, []);
 

@@ -23,14 +23,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
-function extractMessage(err: any): string {
+function extractMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     return err.response?.data?.message || err.response?.data?.detail || err.message || String(err);
   }
   return String(err);
 }
 
-function handleApiError(error: any, operation: string): never {
+function handleApiError(error: unknown, operation: string): never {
   // eslint-disable-next-line no-console
   console.error(`❌ ${operation} failed:`, error);
   if (axios.isAxiosError(error)) {

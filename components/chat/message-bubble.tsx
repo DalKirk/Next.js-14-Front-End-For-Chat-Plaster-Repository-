@@ -458,8 +458,8 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                     } else {
                       // Collect all text node values
                       codeString = node.children
-                        .filter((child: any) => child.type === 'text')
-                        .map((child: any) => child.value || '')
+                        .filter((child: { type?: string }) => child.type === 'text')
+                        .map((child: { value?: string }) => child.value || '')
                         .join('');
                     }
                   }
@@ -627,20 +627,20 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                     </div>
                   );
                 },
-                pre: ({ node, ...props }) => {
+                pre: ({ ...props }) => {
                   // If manual parser or auto-detection found blocks, don't render pre elements
                   if (allCodeBlocks.length > 0) {
                     return null;
                   }
                   return <pre className="!bg-transparent !p-0 !m-0" {...props} />;
                 },
-                blockquote: ({ node, ...props }) => (
+                blockquote: ({ ...props }) => (
                   <blockquote className="border-l-4 border-blue-400 pl-3 my-2 italic" {...props} />
                 ),
-                ul: ({ node, ...props }) => (
+                ul: ({ ...props }) => (
                   <ul className="list-disc list-inside my-1" {...props} />
                 ),
-                ol: ({ node, ...props }) => (
+                ol: ({ ...props }) => (
                   <ol className="list-decimal list-inside my-1" {...props} />
                 ),
               }}
