@@ -1,17 +1,10 @@
-# 💬 CHATTER BOX
-
-> Real-time collaboration platform for developers with advanced syntax highlighting and video chat capabilities
-
-[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://next-js-14-front-end-for-chat-plast-kappa.vercel.app)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Vercel](https://img.shields.io/badge/Deployed-Vercel-black)](https://vercel.com)
 
 **[🚀 Try it Live](https://next-js-14-front-end-for-chat-plast-kappa.vercel.app)**
 
 ---
 
-## ✨ Features
+et-powered real-time updates
+- **Message history** - persistent chat stor## ✨ Features
 
 ### 🎨 Syntax Highlighting
 - **150+ programming languages** supported (JavaScript, Python, Java, C++, SQL, and more)
@@ -29,8 +22,7 @@
 - **Session management** - secure login/logout functionality
 
 ### 💬 Real-time Chat
-- **Instant messaging** - WebSocket-powered real-time updates
-- **Message history** - persistent chat storage
+- **Instant messaging** - WebSockage
 - **Typing indicators** - see when others are typing
 - **Message timestamps** - track conversation flow
 - **Room management** - create and join multiple chat rooms
@@ -59,7 +51,7 @@
 ### Frontend
 - **Framework:** Next.js 14.2 (App Router)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS + OKLCH colors
+- **Styling:** Tailwind CSS 
 - **Animations:** Framer Motion
 - **Syntax Highlighting:** react-syntax-highlighter (Prism)
 - **State Management:** React Hooks
