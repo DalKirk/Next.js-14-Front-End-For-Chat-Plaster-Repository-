@@ -23,9 +23,15 @@ export default function AITestPage() {
       setResponse(result);
       toast.success('AI response generated!');
     } catch (error) {
-      toast.error('Failed to generate response');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('Bad Gateway') || errorMsg.includes('502')) {
+        toast.error('AI service not configured on backend');
+        setResponse('⚠️ AI Service Not Available\n\nThe Railway backend needs AI endpoints configured.\n\nTo fix this:\n1. Add Claude API key to Railway environment variables\n2. Implement /ai/generate endpoint in backend\n3. Deploy backend changes\n\nError: ' + errorMsg);
+      } else {
+        toast.error('Failed to generate response');
+        setResponse(`Error: ${errorMsg}`);
+      }
       console.error('Generation error:', error);
-      setResponse(`Error: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,16 @@ export default function AITestPage() {
         toast.error('AI services are unavailable');
       }
     } catch (error) {
-      toast.error('Health check failed');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setAiHealth({ ai_enabled: false });
+      
+      if (errorMsg.includes('Bad Gateway') || errorMsg.includes('502')) {
+        setResponse('❌ AI Service Not Configured\n\nThe Railway backend does not have AI endpoints available.\n\n📝 To enable AI features:\n\n1. Add ANTHROPIC_API_KEY to Railway environment variables\n2. Implement AI endpoints in backend:\n   - /ai/health\n   - /ai/generate\n   - /ai/moderate\n   - /ai/detect-spam\n   - /ai/suggest-reply\n   - /ai/summarize\n3. Deploy backend with AI integration\n\nCurrent Status: Backend running, but AI endpoints return 502');
+        toast.error('AI endpoints not configured');
+      } else {
+        setResponse(`Health Check Failed\n\nError: ${errorMsg}\n\nThe backend may be offline or unreachable.`);
+        toast.error('Health check failed');
+      }
       console.error('Health check error:', error);
     } finally {
       setLoading(false);
