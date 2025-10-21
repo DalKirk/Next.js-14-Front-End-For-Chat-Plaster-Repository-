@@ -11,7 +11,7 @@
 ```json
 {
   "ai_enabled": true,
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5-20250929",
   "fallback_model": "claude-3-5-sonnet-20240620",
   "features": [
     "content_moderation",
@@ -23,7 +23,7 @@
 }
 ```
 
-**Status:** ✅ Backend is configured correctly with fallback model
+**Status:** ✅ Backend configured with latest Claude Sonnet 4.5 model
 
 ---
 

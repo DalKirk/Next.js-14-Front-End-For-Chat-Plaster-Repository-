@@ -50,7 +50,7 @@ async def ai_generate(request: Request):
     
     try:
         message = claude_client.messages.create(
-            model="claude-3-5-sonnet-20241022",  # Latest model for best results
+            model="claude-sonnet-4-5-20250929",  # Latest model for best results
             max_tokens=max_tokens,
             temperature=temperature,
             messages=[{"role": "user", "content": prompt}]
