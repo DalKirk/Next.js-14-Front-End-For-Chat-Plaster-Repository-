@@ -1,4 +1,15 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Claude API Client for AI-powered features
+// Connects to Railway backend AI endpoints
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+
+// Use proxy for development to bypass CORS
+const getApiUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return '/api/ai-proxy';
+  }
+  return API_URL;
+};
 
 interface GenerateOptions {
   maxTokens?: number;
@@ -21,12 +32,16 @@ export const claudeAPI = {
    */
   async generate(prompt: string, options: GenerateOptions = {}) {
     try {
-      const response = await fetch(`${API_URL}/ai/generate`, {
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/generate`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/generate' })
         },
-        credentials: 'include',
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({
           prompt,
           max_tokens: options.maxTokens || 1000,
@@ -51,12 +66,16 @@ export const claudeAPI = {
    */
   async moderate(content: string): Promise<ModerationResult> {
     try {
-      const response = await fetch(`${API_URL}/ai/moderate`, {
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/moderate`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/moderate' })
         },
-        credentials: 'include',
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({ content }),
       });
 
@@ -73,12 +92,16 @@ export const claudeAPI = {
    */
   async detectSpam(content: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_URL}/ai/detect-spam`, {
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/detect-spam`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/detect-spam' })
         },
-        credentials: 'include',
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({ content }),
       });
 
@@ -95,12 +118,16 @@ export const claudeAPI = {
    */
   async suggestReply(context: string, userMessage: string): Promise<string | null> {
     try {
-      const response = await fetch(`${API_URL}/ai/suggest-reply`, {
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/suggest-reply`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/suggest-reply' })
         },
-        credentials: 'include',
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({
           context,
           user_message: userMessage,
@@ -120,12 +147,16 @@ export const claudeAPI = {
    */
   async summarize(messages: Message[]): Promise<string | null> {
     try {
-      const response = await fetch(`${API_URL}/ai/summarize`, {
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/summarize`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/summarize' })
         },
-        credentials: 'include',
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({ messages }),
       });
 
@@ -142,8 +173,15 @@ export const claudeAPI = {
    */
   async checkHealth(): Promise<{ ai_enabled: boolean }> {
     try {
-      const response = await fetch(`${API_URL}/ai/health`, {
-        credentials: 'include',
+      const apiUrl = getApiUrl();
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/health`;
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/health' })
+        },
+        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
       });
 
       return await response.json();
