@@ -187,13 +187,6 @@ export function AIChatInput({
     }
   };
 
-  // Use suggestion
-  const useSuggestion = (suggestion: string) => {
-    setMessage(suggestion);
-    setShowSuggestions(false);
-    textareaRef.current?.focus();
-  };
-
   // Request AI to enhance message
   const enhanceMessage = async () => {
     if (!message.trim() || !aiHealth?.ai_enabled) return;

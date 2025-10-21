@@ -165,7 +165,7 @@ export default function RoomPage() {
       // Handle incoming messages - IMPROVED VERSION
       socketManager.onMessage((socketMessage: { type?: string; content?: string; message?: string; id?: string; message_id?: string; user_id?: string; sender_id?: string; username?: string; sender?: string; timestamp?: string; created_at?: string; message_type?: string; title?: string; playback_id?: string }) => {
         // Ignore system messages like keep_alive, ping, pong
-        if (['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
+        if (socketMessage.type && ['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
         }
         
@@ -180,7 +180,7 @@ export default function RoomPage() {
           username: socketMessage.username || socketMessage.sender || 'Unknown User',
           content: messageContent,
           timestamp: socketMessage.timestamp || socketMessage.created_at || new Date().toISOString(),
-          type: socketMessage.type || socketMessage.message_type || 'message',
+          type: (socketMessage.type || socketMessage.message_type || 'message') as Message['type'],
           title: socketMessage.title,
           playback_id: socketMessage.playback_id
         };
