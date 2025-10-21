@@ -11,23 +11,20 @@ import {
   PaperAirplaneIcon,
   SparklesIcon,
   LightBulbIcon,
-  ShieldCheckIcon,
-  ExclamationTriangleIcon
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 
 interface AIChatInputProps {
   onSendMessage: (content: string, sender?: string) => void;
   conversationHistory?: Message[];
-  roomName?: string;
   disabled?: boolean;
-  onTyping?: (isTyping: boolean) => void;
+  onTyping?: (isTyping?: boolean) => void;
   className?: string;
 }
 
 export function AIChatInput({
   onSendMessage,
   conversationHistory = [],
-  roomName = 'Chat Room',
   disabled = false,
   onTyping,
   className = ''
@@ -258,7 +255,11 @@ export function AIChatInput({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => useSuggestion(suggestion)}
+                  onClick={() => {
+                    setMessage(suggestion);
+                    setShowSuggestions(false);
+                    textareaRef.current?.focus();
+                  }}
                   className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white/90 transition-all hover:scale-105"
                 >
                   {suggestion}

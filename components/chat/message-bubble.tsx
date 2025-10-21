@@ -142,7 +142,6 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   // Only run auto-detection if there are no manual code blocks
   const autoDetectedBlocks = manualCodeBlocks.length === 0 ? detectCodeBlocks(message.content || '') : [];
   const allCodeBlocks = [...manualCodeBlocks, ...autoDetectedBlocks];
-  const hasCodeBlocks = message.content?.includes('```') || false;
 
   // Create content with code blocks removed for ReactMarkdown to prevent duplication
   const getContentWithoutCodeBlocks = (content: string) => {
@@ -429,7 +428,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               remarkPlugins={[remarkGfm]}
               skipHtml={false}
               components={{
-                a: ({ node, ...props }) => (
+                a: ({ ...props }) => (
                   <a
                     {...props}
                     className="text-blue-400 hover:text-blue-300 underline break-all"
@@ -437,6 +436,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                     rel="noopener noreferrer"
                   />
                 ),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ node, inline, className, children, ...props }: any) => {
                   // If manual parser or auto-detection found blocks, don't render duplicates from ReactMarkdown
                   if (!inline && allCodeBlocks.length > 0) {
@@ -452,14 +452,16 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   // Method 1: Get raw value from node (most reliable for code blocks)
                   if (node?.children && node.children.length > 0) {
                     // First try to get raw value from text nodes
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const textNode = node.children.find((child: any) => child.type === 'text');
                     if (textNode && textNode.value) {
                       codeString = textNode.value;
                     } else {
                       // Collect all text node values
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       codeString = node.children
-                        .filter((child: { type?: string }) => child.type === 'text')
-                        .map((child: { value?: string }) => child.value || '')
+                        .filter((child: any) => child.type === 'text')
+                        .map((child: any) => child.value || '')
                         .join('');
                     }
                   }

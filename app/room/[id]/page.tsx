@@ -163,7 +163,7 @@ export default function RoomPage() {
       });
       
       // Handle incoming messages - IMPROVED VERSION
-      socketManager.onMessage((socketMessage: any) => {
+      socketManager.onMessage((socketMessage: { type?: string; content?: string; message?: string; id?: string; message_id?: string; user_id?: string; sender_id?: string; username?: string; sender?: string; timestamp?: string; created_at?: string; message_type?: string; title?: string; playback_id?: string }) => {
         // Ignore system messages like keep_alive, ping, pong
         if (['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
@@ -196,7 +196,7 @@ export default function RoomPage() {
       });
       
       // Handle typing indicators
-      socketManager.onTyping((data: any) => {
+      socketManager.onTyping((data: { type?: string; user_id?: string; username?: string }) => {
         const typingUserId = data.user_id;
         const typingUsername = data.username || 'Someone';
         
@@ -268,22 +268,6 @@ export default function RoomPage() {
       toast.error('Not connected to server. Cannot send message.');
       throw new Error('WebSocket not connected');
     }
-  };
-  
-  const addLocalMessage = (content: string) => {
-    if (!user) return;
-    
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      room_id: roomId,
-      user_id: user.id,
-      username: user.username,
-      content: content,
-      timestamp: new Date().toISOString(),
-      type: 'message'
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
   };
 
   const handleSendMessage = () => {
@@ -472,7 +456,7 @@ export default function RoomPage() {
   // Step 2: Upload file directly to Bunny.net (or provider returned upload_url)
   console.log('⬆️ Uploading file to upload_url...');
   // If the backend returned an access_key, include it in the PUT headers
-  const apiKey = (upload as any).access_key || undefined;
+  const apiKey = (upload as { access_key?: string }).access_key || undefined;
   await apiClient.uploadVideoFile(upload.upload_url, selectedFile, (pct) => setUploadProgress(pct), apiKey);
       setUploadProgress(100);
       console.log('✅ File uploaded successfully');
