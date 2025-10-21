@@ -150,7 +150,7 @@ export default function ProfilePage() {
                 {isFirstTime ? 'Welcome to CHATTER BOX!' : 'User Profile'}
               </h1>
               {isFirstTime && (
-                <p className="text-white/70 mt-1">Let's set up your profile to get started</p>
+                <p className="text-white/70 mt-1">Let&apos;s set up your profile to get started</p>
               )}
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function ProfilePage() {
                 <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
                 <div className="space-y-4">
                   <p className="text-white/80">
-                    You're just one step away from joining the best real-time collaboration platform for developers!
+                    You&apos;re just one step away from joining the best real-time collaboration platform for developers!
                   </p>
                   
                   <div className="space-y-2">
