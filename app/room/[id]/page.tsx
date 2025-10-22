@@ -124,14 +124,19 @@ export default function RoomPage() {
     
     try {
       console.log('🔌 Initializing chat connection...');
+      console.log('👤 User:', currentUser.id, currentUser.username);
+      console.log('🏠 Room:', roomId);
       
-      // STEP 1: Try to join room on backend (optional - not all backends have this endpoint)
+      // STEP 1: Try to join room on backend (REQUIRED for WebSocket to work)
       try {
         await apiClient.joinRoom(roomId, currentUser.id);
-        console.log('✅ Joined room on backend successfully');
+        console.log('✅ Joined room on backend successfully - WebSocket should now work');
       } catch (joinError) {
-        console.warn('⚠️ Join room endpoint not available (404) - continuing with WebSocket connection');
-        // Don't stop here - WebSocket can work without this endpoint
+        console.error('❌ Failed to join room:', joinError);
+        console.warn('⚠️ Your backend needs a POST /rooms/{roomId}/join endpoint that accepts {user_id}');
+        console.warn('⚠️ Without this, WebSocket will reject the connection because user is not in room');
+        toast.error('Cannot join room - backend endpoint missing', { duration: 5000 });
+        // Continue anyway - maybe backend auto-registers on WS connect
       }
 
       // STEP 2: Connect WebSocket (works even if join endpoint doesn't exist)

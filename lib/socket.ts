@@ -47,10 +47,12 @@ class SocketManager {
     }
     
     try {
+      console.log('🔌 Creating WebSocket connection to:', WS_URL);
       this.socket = new WebSocket(WS_URL);
       
       this.socket.onopen = () => {
-        console.log('✅ Connected to WebSocket successfully');
+        console.log('✅ Connected to WebSocket successfully at:', WS_URL);
+        console.log('👤 User:', userId, '🏠 Room:', roomId);
         this.reconnectAttempts = 0;
         this.startKeepAlive();
         this.callbacks.get('connect')?.(true);
@@ -82,13 +84,15 @@ class SocketManager {
         }
       };
       
-      this.socket.onerror = () => {
-        console.error('❌ WebSocket error occurred');
+      this.socket.onerror = (error) => {
+        console.error('❌ WebSocket error occurred:', error);
         console.log('📊 WebSocket state:', this.socket?.readyState);
         console.log('🔗 Attempted URL:', WS_URL);
+        console.log('🔧 Room ID:', roomId, 'User ID:', userId);
+        console.log('💡 Make sure your backend WebSocket is running and accepting connections');
         this.stopKeepAlive();
         this.callbacks.get('connect')?.(false);
-        this.callbacks.get('error')?.(new Error('WebSocket connection error'));
+        this.callbacks.get('error')?.(new Error('WebSocket connection error - Check backend logs'));
       };
 
       this.socket.onmessage = (event) => {

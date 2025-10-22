@@ -71,6 +71,66 @@ export const claudeAPI = {
   },
 
   /**
+   * Stream AI response with real-time text updates
+   */
+  async streamGenerate(
+    prompt: string,
+    onChunk: (text: string) => void,
+    options: GenerateOptions = {}
+  ): Promise<void> {
+    try {
+      const response = await fetch('/api/ai-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          max_tokens: options.maxTokens || 1000,
+          temperature: options.temperature || 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI streaming failed: ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const text = line.slice(6);
+            if (text === '[DONE]') {
+              return;
+            }
+            // DO NOT trim or modify - append verbatim
+            onChunk(text);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Claude streaming error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Moderate content before sending
    */
   async moderate(content: string): Promise<ModerationResult> {

@@ -3,26 +3,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ServerStatus } from '@/components/ui/server-status';
 import { apiClient } from '@/lib/api';
 import { claudeAPI } from '@/lib/api/claude';
 import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus, oneDark, tomorrow, dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { 
   SparklesIcon, 
   PaperAirplaneIcon,
-  LightBulbIcon,
-  CodeBracketIcon,
-  ChatBubbleLeftRightIcon,
-  VideoCameraIcon,
-  CommandLineIcon,
-  BoltIcon,
-  LockClosedIcon,
   UserCircleIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
+import { Copy, Check } from 'lucide-react';
 
 interface User {
   id: string;
@@ -47,12 +44,13 @@ export default function HomePage() {
   const [claudeInput, setClaudeInput] = useState('');
   const [isClaudeTyping, setIsClaudeTyping] = useState(false);
   const [aiHealth, setAiHealth] = useState<{ ai_enabled: boolean } | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [codeTheme, setCodeTheme] = useState<'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula'>('vscDarkPlus');
+  const themeMap: Record<string, any> = { vscDarkPlus, oneDark, tomorrow, dracula };
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is already logged in
     const storedUser = localStorage.getItem('chat-user');
     if (storedUser) {
       try {
@@ -62,17 +60,7 @@ export default function HomePage() {
         localStorage.removeItem('chat-user');
       }
     }
-    
-    // Check AI health
     checkAIHealth();
-    
-    // Add welcome message from Claude
-    setClaudeMessages([{
-      id: '1',
-      role: 'assistant',
-      content: 'Hi! I\'m Claude, your AI assistant powered by Anthropic. I can help you with:\n\n• Writing and debugging code\n• Explaining technical concepts\n• Answering questions about programming\n• Providing suggestions and best practices\n\nHow can I help you today?',
-      timestamp: new Date()
-    }]);
   }, []);
   
   const checkAIHealth = async () => {
@@ -93,6 +81,323 @@ export default function HomePage() {
     scrollToBottom();
   }, [claudeMessages]);
 
+  const copyCode = (code: string, id: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(id);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  // Preprocess content to ensure code blocks are properly formatted
+  const preprocessContent = (content: string): string => {
+    // Normalize non-breaking spaces to regular spaces
+    content = content.replace(/\u00A0/g, ' ');
+    
+    // If already has markdown code blocks, check if they need formatting
+    if (content.includes('```')) {
+      let fixed = content;
+      
+      // FIRST AND MOST CRITICAL: Fix malformed language tags (newline right after language)
+      // Use a whitelist of common languages to avoid greedy captures like "pythonprint"
+      fixed = fixed.replace(
+        /```(javascript|js|jsx|typescript|ts|python|py|java|c\+\+|cpp|csharp|cs|bash|sh|shell|html|css|json|yaml|yml|go|rust|ruby|php|swift|kotlin|sql)(?=[^`\n\r])/gi,
+        '```$1\n'
+      );
+      
+  // Fix: Ensure there's a newline before code blocks (separate paragraphs from fences)
+  // Keep this conservative; do NOT add a newline after opening ``` as it breaks ```language
+  fixed = fixed.replace(/([^\n])```/g, '$1\n\n```');
+
+      // Fix: Add proper indentation/newlines inside code blocks
+      // Backend strips ALL newlines - code comes as single line with no spacing
+      // Allow optional spaces/tabs after the language tag for robustness
+      fixed = fixed.replace(/```(\w+)[ \t]*\n?([\s\S]*?)```/g, (match, lang, code) => {
+        const originalLang = String(lang || '').toLowerCase();
+        let cleanCode = code;
+        cleanCode = cleanCode.trim();
+        
+        // AGGRESSIVE: Convert any sequence of 2+ spaces to newlines in JavaScript-like code
+  if (originalLang === 'javascript' || originalLang === 'js' || originalLang === 'jsx' || originalLang === 'typescript' || originalLang === 'ts') {
+          // Convert patterns like "function greetUser(name) {    const" to multi-line
+          cleanCode = cleanCode.replace(/(\w+\s*\([^)]*\)\s*\{)\s{2,}(\w)/g, '$1\n    $2');
+          // Convert "greeting;    return" to "greeting;\nreturn"
+          cleanCode = cleanCode.replace(/([;}])\s{2,}(\w)/g, '$1\n$2');
+          // Convert "} const" or "}// comment" 
+          cleanCode = cleanCode.replace(/(\})\s{1,}([a-zA-Z\/])/g, '$1\n$2');
+          // Convert between statements more aggressively
+          cleanCode = cleanCode.replace(/([a-zA-Z\)]);\s{1,}([a-zA-Z\/])/g, '$1;\n$2');
+        }
+        
+    // Python-specific reconstruction
+  if (originalLang === 'python' || originalLang === 'py') {
+          // Protect quoted strings to avoid inserting newlines inside them (e.g., "Hello from Python!")
+          const strPlaceholders: string[] = [];
+          cleanCode = cleanCode.replace(/(["'])(?:\\.|(?!\1)[^\n\r])*\1/g, (m: string) => {
+            const idx = strPlaceholders.push(m) - 1;
+            return `__STR${idx}__`;
+          });
+
+          // Convert backend's 4+ spaces to newlines after protecting strings
+          cleanCode = cleanCode.replace(/\s{4,}/g, '\n    ');
+
+          cleanCode = cleanCode
+            // Add newline before comments (highest priority)
+            .replace(/#/g, '\n#')
+            // Add newline before print statements
+            .replace(/print\(/g, '\nprint(')
+            // Add newline before def
+            .replace(/def\s/g, '\ndef ')
+            // Add newline before class
+            .replace(/class\s/g, '\nclass ')
+            // Add newline before control structures
+            .replace(/\b(if|elif|else|for|while|try|except|finally|with|import|from)\b\s/g, '\n$1 ')
+            // Add newline and indent after colons (function/class definitions)
+            .replace(/:\s*/g, ':\n    ')
+            // Add newline before return
+            .replace(/return\s/g, '\nreturn ')
+            // Clean up multiple newlines
+            .replace(/\n{3,}/g, '\n\n')
+            // Remove newline at very start
+            .replace(/^\n+/, '')
+            .trim();
+
+          // Restore protected strings
+          cleanCode = cleanCode.replace(/__STR(\d+)__/g, (_: string, i: string) => strPlaceholders[Number(i)] || '');
+    } 
+    // JavaScript/JSX/TypeScript
+  else if (originalLang === 'javascript' || originalLang === 'js' || originalLang === 'jsx' || originalLang === 'typescript' || originalLang === 'ts') {
+          // Convert backend's 4+ spaces to newlines
+          cleanCode = cleanCode.replace(/\s{4,}/g, '\n    ');
+
+          // ALSO: Convert instances where there are spaces between statements
+          // Look for patterns like "} const" or "; const" or ") {" etc.
+          cleanCode = cleanCode.replace(/([;})]) +([a-zA-Z])/g, '$1\n$2');
+          cleanCode = cleanCode.replace(/([;}]) +([a-zA-Z])/g, '$1\n$2');
+
+          cleanCode = cleanCode
+            // Add newline after semicolons
+            .replace(/;/g, ';\n')
+            // Add newline after opening braces
+            .replace(/\{/g, '{\n  ')
+            // Add newline before closing braces
+            .replace(/\}/g, '\n}')
+            // Add newline before let/const/var
+            .replace(/(let|const|var)\s/g, '\n$1 ')
+            // Add newline before function
+            .replace(/function\s/g, '\nfunction ')
+            // Fix comments
+            .replace(/\/\//g, '\n//')
+            // Clean up multiple newlines
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^\n+/, '')
+            .trim();
+          // Final normalization: ensure no trailing excessive spaces on lines
+          cleanCode = cleanCode.replace(/[ \t]+\n/g, '\n');
+        }
+
+        // C-like languages (java, c++, csharp, go, rust, php, swift, kotlin)
+        else if (
+          originalLang === 'java' || originalLang === 'c++' || originalLang === 'cpp' || originalLang === 'csharp' || originalLang === 'cs' ||
+          originalLang === 'go' || originalLang === 'rust' || originalLang === 'php' || originalLang === 'swift' || originalLang === 'kotlin'
+        ) {
+          // Basic readability improvements similar to JS
+          cleanCode = cleanCode
+            .replace(/\s{4,}/g, '\n    ')
+            .replace(/;/g, ';\n')
+            .replace(/\{/g, '{\n  ')
+            .replace(/\}/g, '\n}')
+            .replace(/\b(if|else if|else|for|while|switch|case|try|catch|finally|return|class|interface|struct|enum|fn|func|package|import|using|namespace)\b/g, '\n$1')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^[\n\s]+/, '')
+            .replace(/[ \t]+\n/g, '\n')
+            .trim();
+        }
+
+        // SQL
+        else if (originalLang === 'sql') {
+          // Protect single-quoted strings
+          const strPlaceholders: string[] = [];
+          cleanCode = cleanCode.replace(/'(?:''|[^'\n\r])*'/g, (m: string) => {
+            const idx = strPlaceholders.push(m) - 1;
+            return `__SQLSTR${idx}__`;
+          });
+
+          cleanCode = cleanCode
+            .replace(/\s{4,}/g, '\n    ')
+            .replace(/,/g, ',\n')
+            .replace(/;/g, ';\n')
+            .replace(/\b(SELECT|FROM|WHERE|JOIN|LEFT JOIN|RIGHT JOIN|INNER JOIN|OUTER JOIN|GROUP BY|ORDER BY|HAVING|INSERT INTO|VALUES|UPDATE|SET|DELETE FROM|CREATE|ALTER|DROP|LIMIT|OFFSET)\b/gi, '\n$1')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^[\n\s]+/, '')
+            .trim();
+
+          cleanCode = cleanCode.replace(/__SQLSTR(\d+)__/g, (_: string, i: string) => strPlaceholders[Number(i)] || "");
+        }
+
+        // Bash/Shell
+        else if (originalLang === 'bash' || originalLang === 'sh' || originalLang === 'shell') {
+          cleanCode = cleanCode
+            .replace(/\s{4,}/g, '\n    ')
+            .replace(/\s;\s*/g, ';\n')
+            .replace(/\s&&\s*/g, ' &&\n')
+            .replace(/\s\|\|\s*/g, ' ||\n')
+            .replace(/\s\|\s*/g, ' |\n')
+            // Newline before common commands
+            .replace(/\b(echo|cd|ls|cat|grep|awk|sed|curl|wget|npm|npx|node|python|pip|pip3|docker|kubectl|git|make)\b/g, '\n$1')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^[\n\s]+/, '')
+            .trim();
+        }
+
+        // PowerShell
+        else if (originalLang === 'powershell' || originalLang === 'ps1') {
+          cleanCode = cleanCode
+            .replace(/\s{4,}/g, '\n    ')
+            .replace(/\s;\s*/g, ';\n')
+            .replace(/\s\|\s*/g, ' |\n')
+            .replace(/\b(function|param)\b/g, '\n$1')
+            // Newline before common cmdlets like Get-*, Set-*, New-*
+            .replace(/(^|[\s;])(Get|Set|New|Remove|Add|Update|Invoke|Start|Stop|Restart|Enable|Disable)-([A-Za-z]+)/g, '\n$2-$3')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^[\n\s]+/, '')
+            .trim();
+        }
+
+        // HTML
+        else if (originalLang === 'html') {
+          cleanCode = cleanCode
+            .replace(/>\s*</g, '>\n<')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        }
+
+        // CSS
+        else if (originalLang === 'css') {
+          cleanCode = cleanCode
+            .replace(/\s{4,}/g, '\n    ')
+            .replace(/;/g, ';\n')
+            .replace(/\{/g, '{\n  ')
+            .replace(/\}/g, '\n}')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^[\n\s]+/, '')
+            .trim();
+        }
+
+        // JSON
+        else if (originalLang === 'json') {
+          // Try to pretty-print valid JSON first
+          let pretty = '';
+          try {
+            // Some backends send flattened JSON without newlines
+            const obj = JSON.parse(cleanCode);
+            pretty = JSON.stringify(obj, null, 2);
+          } catch {
+            // Fallback heuristics
+            pretty = cleanCode
+              .replace(/\s{4,}/g, '\n    ')
+              .replace(/,/g, ',\n')
+              .replace(/\{/g, '{\n  ')
+              .replace(/\}/g, '\n}')
+              .replace(/\[/g, '[\n  ')
+              .replace(/\]/g, '\n]')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
+          }
+          cleanCode = pretty;
+        }
+
+        // YAML/YML (best-effort)
+        else if (originalLang === 'yaml' || originalLang === 'yml') {
+          cleanCode = cleanCode
+            .replace(/\s-\s/g, '\n- ')
+            .replace(/\s([A-Za-z0-9_-]+):\s/g, '\n$1: ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        }
+        
+        return '```' + originalLang + '\n' + cleanCode + '\n```';
+      });
+
+      if (fixed !== content) {
+        return fixed;
+      }
+
+      return content;
+    }
+
+    // Check if content has code-like patterns
+    const hasImport = /import\s+.*from|import\s+\{/i.test(content);
+    const hasFunction = /function\s+\w+|const\s+\w+\s*=|let\s+\w+\s*=/i.test(content);
+    const hasJSX = /<[A-Z]\w+|<div|<span|<button|<h[1-6]|className=/i.test(content);
+    const hasReact = /useState|useEffect|React\.|jsx/i.test(content);
+    
+    if (!hasImport && !hasFunction && !hasJSX && !hasReact) {
+      return content;
+    }
+
+    // Detect language
+    let language = 'jsx';
+    if (/def\s+\w+\s*\(|print\(|if\s+__name__/.test(content)) {
+      language = 'python';
+    } else if (hasJSX || hasReact || /className=|onClick=/.test(content)) {
+      language = 'jsx';
+    } else if (hasFunction || hasImport) {
+      language = 'javascript';
+    }
+
+    // Look for common markers where code might be prefixed with language name
+    // Like "jsximport React" or "javascriptfunction test"
+    const langPrefix = content.match(/^(jsx|javascript|python|typescript|java|c\+\+|csharp)(?=[a-z])/i);
+    if (langPrefix) {
+      // Remove the language prefix
+      content = content.replace(/^(jsx|javascript|python|typescript|java|c\+\+|csharp)/i, '');
+    }
+
+    // Try to split intro text from code
+    // Look for the first import or function declaration
+    const codeStart = content.search(/^(import\s|export\s|function\s|const\s|let\s|var\s|class\s|def\s)/m);
+    
+    if (codeStart === -1) {
+      // Code pattern exists but can't find start - wrap entire content
+      console.log('⚠️ Code pattern found but no clear start, wrapping all');
+      return '```' + language + '\n' + content + '\n```';
+    }
+
+    const beforeCode = content.substring(0, codeStart).trim();
+    let afterCodeStart = codeStart;
+    
+    // Find where code ends - look for explanatory text after code
+    // Usually starts with capital letter after some whitespace and not inside JSX
+    const remainingContent = content.substring(codeStart);
+    const codeEndMatch = remainingContent.search(/\n\n[A-Z][^<]*?:/);
+    
+    let codeContent, afterCode;
+    if (codeEndMatch > 0) {
+      codeContent = remainingContent.substring(0, codeEndMatch).trim();
+      afterCode = remainingContent.substring(codeEndMatch).trim();
+    } else {
+      // Check for common endings like "Key Features:", "Note:", etc.
+      const explanationStart = remainingContent.search(/\n\n(Key |Note|Remember|Important|Features|Why |How )/i);
+      if (explanationStart > 0) {
+        codeContent = remainingContent.substring(0, explanationStart).trim();
+        afterCode = remainingContent.substring(explanationStart).trim();
+      } else {
+        codeContent = remainingContent.trim();
+        afterCode = '';
+      }
+    }
+
+    const result = [
+      beforeCode,
+      beforeCode ? '\n\n' : '',
+      '```' + language,
+      codeContent,
+      '```',
+      afterCode ? '\n\n' + afterCode : ''
+    ].filter(s => s !== '').join('\n');
+    
+    return result;
+  };
+
   const handleCreateUser = async () => {
     if (!username.trim()) {
       toast.error('Please enter a username');
@@ -104,31 +409,11 @@ export default function HomePage() {
       const user = await apiClient.createUser(username.trim());
       localStorage.setItem('chat-user', JSON.stringify(user));
       setCurrentUser(user);
-      
-      if (user.id.startsWith('mock-')) {
-        toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
-      } else {
-        toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
-      }
-      
-      // Redirect to profile setup instead of chat
+      toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
       router.push('/profile');
     } catch (error) {
       console.error('❌ User creation error:', error);
-      let errorMessage = 'Failed to create user';
-      
-      if (error instanceof Error) {
-        // Use the enhanced error messages from the API client
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage, {
-        duration: 6000, // Show longer for server errors
-        style: {
-          maxWidth: '500px',
-        },
-      });
-      console.error('Error creating user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create user', { duration: 6000 });
     } finally {
       setIsLoading(false);
     }
@@ -145,35 +430,65 @@ export default function HomePage() {
     };
     
     setClaudeMessages(prev => [...prev, userMessage]);
+    const promptText = claudeInput.trim();
     setClaudeInput('');
     setIsClaudeTyping(true);
     
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: ClaudeMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    };
+    setClaudeMessages(prev => [...prev, assistantMessage]);
+    
     try {
-      const response = await claudeAPI.generate(claudeInput.trim(), {
-        maxTokens: 500,
-        temperature: 0.7
-      });
+      let fullContent = '';
       
-      const assistantMessage: ClaudeMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date()
-      };
+      await claudeAPI.streamGenerate(
+        promptText,
+        (chunk: string) => {
+          fullContent += chunk;
+          setClaudeMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId
+                ? { ...msg, content: fullContent }
+                : msg
+            )
+          );
+        },
+        {
+          maxTokens: 1000,
+          temperature: 0.7
+        }
+      );
       
-      setClaudeMessages(prev => [...prev, assistantMessage]);
-      toast.success('Response received!');
+  // After streaming completes, preprocess the content if needed
+  const processedContent = preprocessContent(fullContent);
+      
+      if (processedContent !== fullContent) {
+        setClaudeMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId
+              ? { ...msg, content: processedContent }
+              : msg
+          )
+        );
+      }
+      
+      toast.success('Response complete!');
     } catch (error) {
       console.error('Claude error:', error);
       toast.error('Failed to get response from Claude');
       
-      const errorMessage: ClaudeMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date()
-      };
-      setClaudeMessages(prev => [...prev, errorMessage]);
+      setClaudeMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessageId
+            ? { ...msg, content: 'Sorry, I encountered an error. Please try again.' }
+            : msg
+        )
+      );
     } finally {
       setIsClaudeTyping(false);
     }
@@ -181,7 +496,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
-      {/* Server Status Indicator */}
       <ServerStatus />
 
       {/* Top Navigation Bar */}
@@ -245,13 +559,13 @@ export default function HomePage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-24 sm:w-32 text-sm bg-[oklch(14.7%_0.004_49.25)] border-[oklch(var(--color-primary)/0.3)] text-white placeholder:text-white/40 focus:border-[oklch(var(--color-primary)/0.6)] focus:shadow-[0_0_20px_oklch(var(--color-primary)/0.2)]"
+                className="w-24 sm:w-32 text-sm bg-[oklch(14.7%_0.004_49.25)] border-[oklch(var(--color-primary)/0.3)] text-white placeholder:text-white/40 focus:border-[oklch(var(--color-primary)/0.6)]"
                 maxLength={20}
               />
               <Button
                 onClick={handleCreateUser}
                 disabled={isLoading || !username.trim()}
-                className="text-sm h-9 bg-[oklch(var(--color-primary))] hover:bg-[oklch(var(--color-primary)/0.8)] border border-[oklch(var(--color-primary)/0.5)] shadow-[0_0_20px_oklch(var(--color-primary)/0.3)] text-white"
+                className="text-sm h-9 bg-[oklch(var(--color-primary))] hover:bg-[oklch(var(--color-primary)/0.8)] text-white"
               >
                 {isLoading ? '...' : 'Join'}
                 <ArrowRightIcon className="w-4 h-4 ml-1" />
@@ -261,243 +575,194 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* Main Content */}
-      <div className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
-          {/* Claude AI Messenger - Left Side */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="lg:sticky lg:top-24 h-[calc(100vh-8rem)]"
-          >
-            <div className="h-full bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl rounded-2xl border border-[oklch(var(--color-primary)/0.3)] shadow-[0_0_40px_oklch(var(--color-primary)/0.2)] overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-[oklch(var(--color-primary)/0.2)]">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[oklch(var(--color-primary))] to-purple-600 flex items-center justify-center shadow-[0_0_20px_oklch(var(--color-primary)/0.5)]">
-                    <SparklesIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Ask Claude AI</h2>
-                    <p className="text-sm text-white/60">Powered by Claude Sonnet 4.5</p>
-                  </div>
-                </div>
-              </div>
-            
-              {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <AnimatePresence>
-                  {claudeMessages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[85%] rounded-2xl p-4 ${
-                        msg.role === 'user' 
-                          ? 'bg-[oklch(var(--color-primary)/0.2)] border border-[oklch(var(--color-primary)/0.4)] text-white' 
-                          : 'bg-[oklch(14.7%_0.004_49.25)] border border-white/10 text-white/90'
-                      }`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {msg.role === 'assistant' && (
-                            <SparklesIcon className="w-4 h-4 text-[oklch(var(--color-primary))]" />
-                          )}
-                          <span className="text-xs text-white/60">
-                            {msg.role === 'user' ? 'You' : 'Claude'}
-                          </span>
-                        </div>
-                        <div className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                
-                {isClaudeTyping && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex justify-start"
-                  >
-                    <div className="bg-[oklch(14.7%_0.004_49.25)] border border-white/10 rounded-2xl p-4 flex items-center gap-2">
-                      <SparklesIcon className="w-4 h-4 text-[oklch(var(--color-primary))] animate-pulse" />
-                      <div className="flex gap-1">
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                          className="w-2 h-2 rounded-full bg-white/40"
-                        />
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                          className="w-2 h-2 rounded-full bg-white/40"
-                        />
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                          className="w-2 h-2 rounded-full bg-white/40"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            
-              {/* Input Area */}
-              <div className="p-6 border-t border-[oklch(var(--color-primary)/0.2)]">
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <textarea
-                      ref={textareaRef}
-                      value={claudeInput}
-                      onChange={(e) => setClaudeInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAskClaude();
-                        }
-                      }}
-                      placeholder={aiHealth?.ai_enabled ? "Ask me anything... (Shift+Enter for new line)" : "AI is offline"}
-                      disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-                      rows={2}
-                      className="w-full bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-[oklch(var(--color-primary)/0.3)] rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[oklch(var(--color-primary)/0.6)] focus:shadow-[0_0_20px_oklch(var(--color-primary)/0.2)] resize-none"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleAskClaude}
-                    disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
-                    className="h-[60px] px-6 bg-[oklch(var(--color-primary))] hover:bg-[oklch(var(--color-primary)/0.8)] border border-[oklch(var(--color-primary)/0.5)] shadow-[0_0_20px_oklch(var(--color-primary)/0.3)] hover:shadow-[0_0_30px_oklch(var(--color-primary)/0.5)] text-white"
-                  >
-                    <PaperAirplaneIcon className="w-5 h-5" />
-                  </Button>
-                </div>
-                <p className="text-xs text-white/40 mt-2">
-                  Press Enter to send • Shift+Enter for new line
-                </p>
-              </div>
-            </div>
-          </motion.div>
-          
-          {/* Right Side - Features & Info */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="space-y-8"
-          >
-            {/* Hero Section */}
-            <div className="text-center lg:text-left space-y-4">
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-5xl lg:text-6xl font-bold text-white leading-tight"
-              >
-                AI-Powered
-                <span className="block bg-gradient-to-r from-[oklch(var(--color-primary))] to-purple-400 bg-clip-text text-transparent">
-                  Developer Chat
-                </span>
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-lg text-white/70 leading-relaxed"
-              >
-                Collaborate with your team and get instant AI assistance from Claude. 
-                Share code, solve problems, and build better software together.
-              </motion.p>
-            </div>
-            
-            {/* AI Features */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                {
-                  icon: CodeBracketIcon,
-                  title: 'Code Assistant',
-                  description: 'Get help with debugging, refactoring, and code reviews'
-                },
-                {
-                  icon: LightBulbIcon,
-                  title: 'Smart Suggestions',
-                  description: 'Context-aware reply suggestions and conversation summaries'
-                },
-                {
-                  icon: ChatBubbleLeftRightIcon,
-                  title: 'Content Moderation',
-                  description: 'Automatic spam detection and safety checks'
-                },
-                {
-                  icon: SparklesIcon,
-                  title: 'Message Enhancement',
-                  description: 'Improve clarity and professionalism with AI'
+      {/* Fixed Input at Top */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg z-40"
+      >
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3">
+            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+              <SparklesIcon className="w-5 h-5 text-[oklch(var(--color-primary))]" />
+            </motion.div>
+            <input
+              type="text"
+              value={claudeInput}
+              onChange={(e) => setClaudeInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAskClaude();
                 }
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className="p-6 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl rounded-xl border border-[oklch(var(--color-primary)/0.2)] hover:border-[oklch(var(--color-primary)/0.4)] transition-all hover:shadow-[0_0_30px_oklch(var(--color-primary)/0.2)] group"
+              }}
+              placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
+              disabled={!aiHealth?.ai_enabled || isClaudeTyping}
+              className="flex-1 bg-transparent outline-none text-white placeholder:text-white/40 border-b-2 border-[oklch(var(--color-primary)/0.3)] focus:border-[oklch(var(--color-primary))] transition-all duration-300 pb-2"
+            />
+            <motion.button
+              onClick={handleAskClaude}
+              disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="text-[oklch(var(--color-primary))] hover:text-[oklch(var(--color-primary)/0.8)] disabled:text-white/30 disabled:cursor-not-allowed transition-colors"
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+            </motion.button>
+
+            {/* Code theme selector */}
+            <div className="ml-2 flex items-center gap-2">
+              <label htmlFor="code-theme" className="text-xs text-white/70 hidden sm:inline">Theme</label>
+              <select
+                id="code-theme"
+                value={codeTheme}
+                onChange={(e) => setCodeTheme(e.target.value as any)}
+                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-xs border border-[oklch(var(--color-primary)/0.3)] rounded px-2 py-1 focus:outline-none focus:border-[oklch(var(--color-primary))]"
+              >
+                <option value="vscDarkPlus">VS Code Dark+</option>
+                <option value="oneDark">One Dark</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="dracula">Dracula</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Chat Messages */}
+      <div className="pt-[160px] pb-8 min-h-screen">
+        <div className="max-w-4xl mx-auto px-4 space-y-6">
+          <AnimatePresence>
+            {claudeMessages.map((msg, index) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <motion.div 
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ duration: 0.2 }}
+                  className={`max-w-3xl rounded-2xl px-6 py-4 ${
+                    msg.role === 'user' 
+                      ? 'bg-gradient-to-r from-[oklch(var(--color-primary))] to-[oklch(var(--color-primary)/0.8)] text-white shadow-lg' 
+                      : 'bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.2)] text-white/90 shadow-md'
+                  }`}
                 >
-                  <feature.icon className="w-8 h-8 text-[oklch(var(--color-primary))] mb-3 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-white font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-white/60 text-sm">{feature.description}</p>
+                  <div className="prose prose-invert max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({className, children, ...props}: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const codeString = String(children).replace(/\n$/, '');
+                          const codeId = `${msg.id}-${match?.[1] || 'code'}`;
+                          const isInline = !className;
+                          
+                          return !isInline && match ? (
+                            <div className="relative my-4 rounded-lg overflow-hidden border border-[oklch(var(--color-primary)/0.3)] bg-[oklch(8%_0.02_280)]">
+                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-[oklch(var(--color-primary)/0.2)]">
+                                <span className="font-mono text-[oklch(var(--color-primary))] font-semibold" style={{fontSize: '0.625rem'}}>
+                                  {match[1]}
+                                </span>
+                                <button
+                                  onClick={() => copyCode(codeString, codeId)}
+                                  className="flex items-center gap-2 hover:bg-white/10 px-2 py-1 rounded transition-colors text-white"
+                                >
+                                  {copiedCode === codeId ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-green-400" />
+                                      <span className="text-green-400" style={{fontSize: '0.625rem'}}>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span style={{fontSize: '0.625rem'}}>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <SyntaxHighlighter
+                                style={(themeMap[codeTheme] || vscDarkPlus) as any}
+                                language={match[1]}
+                                PreTag="div"
+                                showLineNumbers={true}
+                                wrapLines={true}
+                                customStyle={{
+                                  margin: 0,
+                                  padding: '1rem',
+                                  background: 'oklch(8% 0.02 280)',
+                                  fontSize: '0.625rem',
+                                }}
+                                lineNumberStyle={{
+                                  minWidth: '3em',
+                                  paddingRight: '1em',
+                                  color: '#6b7280',
+                                  userSelect: 'none',
+                                }}
+                              >
+                                {codeString}
+                              </SyntaxHighlighter>
+                            </div>
+                          ) : (
+                            <code className="bg-white/10 px-1 py-0.5 rounded font-mono" style={{fontSize: '0.625rem'}} {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                        p: ({children}) => <p className="mb-2 last:mb-0 leading-relaxed text-xs">{children}</p>,
+                        ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1 text-xs">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1 text-xs">{children}</ol>,
+                        li: ({children}) => <li className="leading-relaxed text-xs">{children}</li>,
+                        h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
+                        h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
+                        h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
+                        a: ({children, href}) => <a href={href} className="text-[oklch(var(--color-primary))] hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        blockquote: ({children}) => <blockquote className="border-l-4 border-[oklch(var(--color-primary))] pl-3 italic my-2 text-xs">{children}</blockquote>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                  <p className="text-white/40 mt-2" style={{fontSize: '0.625rem'}}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </motion.div>
-              ))}
-            </div>
-            
-            {/* Platform Features */}
-            <div className="p-8 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl rounded-2xl border border-[oklch(var(--color-primary)/0.3)] shadow-[0_0_40px_oklch(var(--color-primary)/0.2)]">
-              <h3 className="text-2xl font-bold text-white mb-6">Platform Features</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { icon: VideoCameraIcon, label: 'HD Video Chat' },
-                  { icon: CommandLineIcon, label: 'Code Editor' },
-                  { icon: BoltIcon, label: 'Real-time Sync' },
-                  { icon: LockClosedIcon, label: 'Secure & Private' }
-                ].map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    className="flex items-center gap-3 p-4 bg-[oklch(14.7%_0.004_49.25)] rounded-xl border border-white/10 hover:border-[oklch(var(--color-primary)/0.3)] transition-all group"
-                  >
-                    <item.icon className="w-6 h-6 text-[oklch(var(--color-primary))] group-hover:scale-110 transition-transform" />
-                    <span className="text-sm text-white/80">{item.label}</span>
-                  </motion.div>
-                ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isClaudeTyping && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-start"
+            >
+              <div className="flex gap-1">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                  className="w-2 h-2 bg-pink-500 rounded-full"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }}
+                  className="w-2 h-2 bg-pink-500 rounded-full"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}
+                  className="w-2 h-2 bg-pink-500 rounded-full"
+                />
               </div>
-            </div>
-            
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                onClick={() => router.push('/chat')}
-                className="flex-1 h-14 bg-[oklch(var(--color-primary))] hover:bg-[oklch(var(--color-primary)/0.8)] border border-[oklch(var(--color-primary)/0.5)] shadow-[0_0_20px_oklch(var(--color-primary)/0.3)] hover:shadow-[0_0_30px_oklch(var(--color-primary)/0.5)] text-white font-semibold"
-              >
-                Browse Rooms
-                <ArrowRightIcon className="w-5 h-5 ml-2" />
-              </Button>
-              <Button
-                onClick={() => router.push('/ai-test')}
-                className="flex-1 h-14 bg-[oklch(14.7%_0.004_49.25)] border-[oklch(var(--color-primary)/0.4)] hover:bg-[oklch(14.7%_0.004_49.25)] hover:border-[oklch(var(--color-primary)/0.6)] text-white"
-              >
-                <SparklesIcon className="w-5 h-5 mr-2" />
-                Test AI Features
-              </Button>
-            </div>
-            
-            {/* Help Link */}
-            <p className="text-center text-sm text-white/50">
-              Need help?{' '}
-              <Link href="/troubleshooting" className="text-[oklch(var(--color-primary))] hover:underline">
-                View troubleshooting guide
-              </Link>
-            </p>
-          </motion.div>
+            </motion.div>
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
       </div>
     </div>
