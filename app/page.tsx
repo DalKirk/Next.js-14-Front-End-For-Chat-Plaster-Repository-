@@ -503,14 +503,14 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between"
+        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[oklch(var(--color-primary))] to-purple-600 flex items-center justify-center shadow-[0_0_20px_oklch(var(--color-primary)/0.5)]">
               <SparklesIcon className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-white">CHATTER BOX</h1>
+            <h1 className="text-xl font-bold text-white truncate">CHATTER BOX</h1>
           </div>
           {aiHealth?.ai_enabled && (
             <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.3)] text-white/80 px-3 py-1.5 rounded-full flex items-center gap-2">
@@ -520,7 +520,7 @@ export default function HomePage() {
           )}
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {currentUser ? (
             <div className="relative">
               <Button
@@ -583,7 +583,7 @@ export default function HomePage() {
         className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg z-40"
       >
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
               <SparklesIcon className="w-5 h-5 text-[oklch(var(--color-primary))]" />
             </motion.div>
@@ -599,7 +599,7 @@ export default function HomePage() {
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 bg-transparent outline-none text-white placeholder:text-white/40 border-b-2 border-[oklch(var(--color-primary)/0.3)] focus:border-[oklch(var(--color-primary))] transition-all duration-300 pb-2"
+              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 border-b-2 border-[oklch(var(--color-primary)/0.3)] focus:border-[oklch(var(--color-primary))] transition-all duration-300 pb-2"
             />
             <motion.button
               onClick={handleAskClaude}
@@ -641,18 +641,18 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} min-w-0`}
               >
                 <motion.div 
                   whileHover={{ scale: 1.01 }}
                   transition={{ duration: 0.2 }}
-                  className={`max-w-3xl rounded-2xl px-6 py-4 ${
+                  className={`w-full sm:max-w-3xl min-w-0 rounded-2xl px-4 sm:px-6 py-4 ${
                     msg.role === 'user' 
                       ? 'bg-gradient-to-r from-[oklch(var(--color-primary))] to-[oklch(var(--color-primary)/0.8)] text-white shadow-lg' 
                       : 'bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.2)] text-white/90 shadow-md'
                   }`}
                 >
-                  <div className="prose prose-invert max-w-none break-words">
+                  <div className="prose prose-invert max-w-full break-words overflow-hidden">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -663,8 +663,8 @@ export default function HomePage() {
                           const isInline = !className;
                           
                           return !isInline && match ? (
-                            <div className="relative my-4 rounded-lg overflow-hidden border border-[oklch(var(--color-primary)/0.3)] bg-[oklch(8%_0.02_280)]">
-                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-[oklch(var(--color-primary)/0.2)]">
+                            <div className="relative my-4 rounded-lg overflow-auto border border-[oklch(var(--color-primary)/0.3)] bg-[oklch(8%_0.02_280)] max-w-full">
+                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-[oklch(var(--color-primary)/0.2)] flex-wrap gap-2">
                                 <span className="font-mono text-[oklch(var(--color-primary))] font-semibold" style={{fontSize: '0.625rem'}}>
                                   {match[1]}
                                 </span>
@@ -713,19 +713,25 @@ export default function HomePage() {
                               </SyntaxHighlighter>
                             </div>
                           ) : (
-                            <code className="bg-white/10 px-1 py-0.5 rounded font-mono" style={{fontSize: '0.625rem'}} {...props}>
+                            <code className="bg-white/10 px-1 py-0.5 rounded font-mono break-words" style={{fontSize: '0.625rem'}} {...props}>
                               {children}
                             </code>
                           );
                         },
-                        p: ({children}) => <p className="mb-2 last:mb-0 leading-relaxed text-xs">{children}</p>,
+                        p: ({children}) => <p className="mb-2 last:mb-0 leading-relaxed text-xs break-words">{children}</p>,
                         ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1 text-xs">{children}</ul>,
                         ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1 text-xs">{children}</ol>,
                         li: ({children}) => <li className="leading-relaxed text-xs">{children}</li>,
                         h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
-                        a: ({children, href}) => <a href={href} className="text-[oklch(var(--color-primary))] hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        a: ({children, href}) => <a href={href} className="text-[oklch(var(--color-primary))] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        img: ({...props}) => <img {...props} style={{maxWidth: '100%', height: 'auto'}} />,
+                        table: ({children}) => (
+                          <div className="w-full overflow-x-auto">
+                            <table className="text-xs w-full min-w-max">{children}</table>
+                          </div>
+                        ),
                         blockquote: ({children}) => <blockquote className="border-l-4 border-[oklch(var(--color-primary))] pl-3 italic my-2 text-xs">{children}</blockquote>,
                       }}
                     >
