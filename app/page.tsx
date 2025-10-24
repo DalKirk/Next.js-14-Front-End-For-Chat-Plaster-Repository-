@@ -495,7 +495,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       <ServerStatus />
 
       {/* Top Navigation Bar */}
@@ -652,7 +652,7 @@ export default function HomePage() {
                       : 'bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.2)] text-white/90 shadow-md'
                   }`}
                 >
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose prose-invert max-w-none break-words">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -691,11 +691,16 @@ export default function HomePage() {
                                 PreTag="div"
                                 showLineNumbers={true}
                                 wrapLines={true}
+                                wrapLongLines={true}
                                 customStyle={{
                                   margin: 0,
                                   padding: '1rem',
                                   background: 'oklch(8% 0.02 280)',
                                   fontSize: '0.625rem',
+                                  overflowX: 'auto',
+                                  whiteSpace: 'pre-wrap',
+                                  overflowWrap: 'anywhere',
+                                  wordBreak: 'break-word',
                                 }}
                                 lineNumberStyle={{
                                   minWidth: '3em',
