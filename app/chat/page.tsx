@@ -7,11 +7,16 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
 import { Room, User } from '@/lib/types';
 import toast from 'react-hot-toast';
+import { Modal } from '@/components/ui/modal';
+import { Input } from '@/components/ui/input';
 
 export default function ChatPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -60,6 +65,33 @@ export default function ChatPage() {
     }
   };
 
+  const createRoom = async () => {
+    if (!user) {
+      toast.error('Please create a user profile first');
+      router.push('/');
+      return;
+    }
+    if (!newRoomName.trim()) {
+      toast.error('Please enter a room name');
+      return;
+    }
+    setIsCreating(true);
+    try {
+      const room = await apiClient.createRoom(newRoomName.trim());
+      toast.success(`Room "${room.name}" created`);
+      setShowCreateModal(false);
+      setNewRoomName('');
+      // Optimistically insert into list and navigate
+      setRooms(prev => [room, ...prev]);
+      joinRoom(room);
+    } catch (error) {
+      console.error('❌ Error creating room:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create room');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -77,7 +109,7 @@ export default function ChatPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6 mb-6"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold text-white">
                 Welcome, {user.username}! 👋
@@ -86,12 +118,22 @@ export default function ChatPage() {
                 Choose a room to start chatting and sharing videos
               </p>
             </div>
-            <Button
-              onClick={() => router.push('/')}
-              variant="ghost"
-            >
-              Back to Home
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                variant="primary"
+                size="sm"
+              >
+                Create Room
+              </Button>
+              <Button
+                onClick={() => router.push('/')}
+                variant="glass"
+                size="sm"
+              >
+                Back to Home
+              </Button>
+            </div>
           </div>
         </motion.div>
 
@@ -198,6 +240,40 @@ export default function ChatPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Create Room Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => { setShowCreateModal(false); setNewRoomName(''); }}
+        title="Create a New Room"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Room Name"
+            placeholder="Enter a room name"
+            value={newRoomName}
+            onChange={(e) => setNewRoomName(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={() => { setShowCreateModal(false); setNewRoomName(''); }}
+              variant="glass"
+              className="flex-1"
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={createRoom}
+              variant="primary"
+              className="flex-1"
+              disabled={isCreating || !newRoomName.trim()}
+            >
+              {isCreating ? 'Creating...' : 'Create'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

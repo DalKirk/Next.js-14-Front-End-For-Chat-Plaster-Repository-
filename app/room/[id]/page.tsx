@@ -250,6 +250,17 @@ export default function RoomPage() {
     }
   };
 
+  // Polling fallback when WebSocket is disconnected
+  useEffect(() => {
+    if (!wsConnected) {
+      const interval = setInterval(() => {
+        loadMessages();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+    return;
+  }, [wsConnected, roomId]);
+
   const sendMessage = (content: string) => {
     if (!content.trim() || !user) return;
     
