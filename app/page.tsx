@@ -599,7 +599,7 @@ export default function HomePage() {
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 border-b-2 border-[oklch(var(--color-primary)/0.3)] focus:border-[oklch(var(--color-primary))] transition-all duration-300 pb-2"
+              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 pb-2"
             />
             <motion.button
               onClick={handleAskClaude}
