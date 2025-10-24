@@ -347,25 +347,11 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* First-time Welcome Message */}
+            {/* First-time Welcome Message (trimmed) */}
             {isFirstTime && (
               <div className="glass-card p-6 space-y-4">
                 <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
                 <div className="space-y-4">
-                  <p className="text-white/80">
-                    You&apos;re just one step away from joining the best real-time collaboration platform for developers!
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-white">What you can do:</h4>
-                    <ul className="space-y-1 text-sm text-white/70">
-                      <li>• Share code with syntax highlighting</li>
-                      <li>• Video chat with screen sharing</li>
-                      <li>• Join collaborative coding sessions</li>
-                      <li>• Connect with developers worldwide</li>
-                    </ul>
-                  </div>
-                  
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                     <p className="text-blue-200 text-sm">
                       💡 Complete your profile setup above to start chatting!
