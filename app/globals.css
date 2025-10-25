@@ -230,18 +230,37 @@
 .bubble-wobble {
   position: absolute;
   bottom: -100px;
-  width: 40px;
-  height: 40px;
   background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
-  animation: rise-wobble 10s infinite ease-in-out;
+  animation-name: rise-wobble;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  animation-duration: 10s;
   pointer-events: none; /* decorative, don't block clicks */
 }
 
+/* Size variants */
+.bubble-sm { width: 16px; height: 16px; }
+.bubble-md { width: 28px; height: 28px; }
+.bubble-lg { width: 44px; height: 44px; }
+.bubble-xl { width: 64px; height: 64px; }
+
+/* Speed variants */
+.bubble-fast { animation-duration: 7s; }
+.bubble-normal { animation-duration: 10s; }
+.bubble-slow { animation-duration: 14s; }
+
+/* Staggered delays */
+.bubble-delay-1 { animation-delay: 0.5s; }
+.bubble-delay-2 { animation-delay: 1.2s; }
+.bubble-delay-3 { animation-delay: 2.0s; }
+.bubble-delay-4 { animation-delay: 3.3s; }
+.bubble-delay-5 { animation-delay: 4.7s; }
+
 @keyframes rise-wobble {
   0% { bottom: -100px; opacity: 0; transform: translateX(0); }
-  25% { transform: translateX(15px); }
-  50% { opacity: 1; transform: translateX(-15px); }
-  75% { transform: translateX(10px); }
+  25% { transform: translateX(var(--sway, 15px)); }
+  50% { opacity: 1; transform: translateX(calc(var(--sway, 15px) * -1)); }
+  75% { transform: translateX(calc(var(--sway, 15px) * 0.66)); }
   100% { bottom: 110vh; opacity: 0; transform: translateX(0); }
 }

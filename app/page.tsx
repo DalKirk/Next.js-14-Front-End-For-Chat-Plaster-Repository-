@@ -630,11 +630,18 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-  {/* Decorative floating bubble */}
-  <div className="bubble-wobble left-6 sm:left-16"></div>
+      {/* Decorative floating bubbles layer (background, no scroll impact) */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="bubble-wobble bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
+        <div className="bubble-wobble bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
+        <div className="bubble-wobble bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
+        <div className="bubble-wobble bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
+        <div className="bubble-wobble bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
+        <div className="bubble-wobble bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
+      </div>
 
   {/* Chat Messages */}
-      <div className="pt-[160px] pb-8 min-h-screen">
+  <div className="relative z-10 pt-[160px] pb-8 min-h-screen">
         <div className="max-w-4xl mx-auto px-4 space-y-6">
           <AnimatePresence>
             {claudeMessages.map((msg, index) => (
