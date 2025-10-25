@@ -515,7 +515,7 @@ export default function HomePage() {
           {aiHealth?.ai_enabled && (
             <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.3)] text-white/80 px-3 py-1.5 rounded-full flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Server Online
+              AI Online
             </span>
           )}
         </div>
