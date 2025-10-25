@@ -91,6 +91,35 @@ export default function HomePage() {
   const preprocessContent = (content: string): string => {
     // Normalize non-breaking spaces to regular spaces
     content = content.replace(/\u00A0/g, ' ');
+
+    // Helper: normalize lists/bullets outside of code fences
+    const normalizeListsOutsideCode = (text: string): string => {
+      const codeBlocks: string[] = [];
+      // Temporarily protect fenced code blocks
+      const stubbed = text.replace(/```[\s\S]*?```/g, (m: string) => {
+        const i = codeBlocks.push(m) - 1;
+        return `__CODEBLOCK_${i}__`;
+      });
+
+      let t = stubbed;
+      // If the backend flattened newlines to multiple spaces, bring bullets back to new lines
+      // Examples handled: "    - item", "    * item", "    • item", "    1. item", "    1) item"
+      t = t.replace(/(\s{3,})([-*]|•|\d+[.)])\s/g, '\n$2 ');
+
+      // If bullet/numbered markers appear mid-line without newline, move them to a new line
+      t = t.replace(/([^\n])\s+([-*]|•|\d+[.)])\s/g, (_m, prev: string, marker: string) => `${prev}\n${marker} `);
+
+      // Normalize unicode bullet to dash for consistent GFM handling
+      t = t.replace(/(^|\n)[ \t]*•\s/g, '$1- ');
+
+      // Ensure there is a blank line before the first bullet group to trigger list parsing
+      t = t.replace(/([^\n])\n(- |\d+[.)] )/g, '$1\n\n$2');
+
+      // Restore protected code blocks
+      return t.replace(/__CODEBLOCK_(\d+)__/g, (_: string, i: string) => codeBlocks[Number(i)] || '');
+    };
+
+    content = normalizeListsOutsideCode(content);
     
     // If already has markdown code blocks, check if they need formatting
     if (content.includes('```')) {
@@ -317,11 +346,12 @@ export default function HomePage() {
         return '```' + originalLang + '\n' + cleanCode + '\n```';
       });
 
+      // Normalize lists again on the result to ensure bullets render outside any non-code parts
       if (fixed !== content) {
-        return fixed;
+        return normalizeListsOutsideCode(fixed);
       }
 
-      return content;
+      return normalizeListsOutsideCode(content);
     }
 
     // Check if content has code-like patterns
