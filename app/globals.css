@@ -230,13 +230,30 @@
 .bubble-wobble {
   position: absolute;
   bottom: -100px;
-  background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   animation-name: rise-wobble;
   animation-iteration-count: infinite;
   animation-timing-function: ease-in-out;
   animation-duration: 10s;
   pointer-events: none; /* decorative, don't block clicks */
+  /* Neon glow effect */
+  box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+}
+
+/* Neon electric colors for futuristic vibe */
+.bubble-cyan {
+  background: rgba(34, 211, 238, 0.3); /* cyan-400 */
+  color: rgb(34, 211, 238);
+}
+
+.bubble-fuchsia {
+  background: rgba(217, 70, 239, 0.3); /* fuchsia-500 */
+  color: rgb(217, 70, 239);
+}
+
+.bubble-purple {
+  background: rgba(147, 51, 234, 0.3); /* purple-600 */
+  color: rgb(147, 51, 234);
 }
 
 /* Size variants */

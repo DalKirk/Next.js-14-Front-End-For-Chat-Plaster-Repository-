@@ -662,12 +662,12 @@ export default function HomePage() {
 
       {/* Decorative floating bubbles layer (background, no scroll impact) */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="bubble-wobble bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
-        <div className="bubble-wobble bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
-        <div className="bubble-wobble bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
-        <div className="bubble-wobble bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
-        <div className="bubble-wobble bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
-        <div className="bubble-wobble bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
+        <div className="bubble-wobble bubble-cyan bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
+        <div className="bubble-wobble bubble-fuchsia bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
+        <div className="bubble-wobble bubble-purple bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
+        <div className="bubble-wobble bubble-cyan bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
+        <div className="bubble-wobble bubble-fuchsia bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
+        <div className="bubble-wobble bubble-purple bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
       </div>
 
   {/* Chat Messages */}
