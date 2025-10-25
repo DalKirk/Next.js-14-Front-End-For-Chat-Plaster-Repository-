@@ -495,7 +495,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       <ServerStatus />
 
       {/* Top Navigation Bar */}
@@ -503,7 +503,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl sm:border-b sm:border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
+        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
@@ -515,7 +515,7 @@ export default function HomePage() {
           {aiHealth?.ai_enabled && (
             <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.3)] text-white/80 px-3 py-1.5 rounded-full flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              AI Online
+              Server Online
             </span>
           )}
         </div>
@@ -580,7 +580,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl shadow-lg z-40"
+        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg z-40"
       >
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 flex-wrap">
@@ -630,7 +630,10 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* Chat Messages */}
+  {/* Decorative floating bubble */}
+  <div className="bubble-wobble left-6 sm:left-16"></div>
+
+  {/* Chat Messages */}
       <div className="pt-[160px] pb-8 min-h-screen">
         <div className="max-w-4xl mx-auto px-4 space-y-6">
           <AnimatePresence>

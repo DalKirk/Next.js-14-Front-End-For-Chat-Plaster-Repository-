@@ -225,3 +225,23 @@
     opacity: 1;
   }
 }
+
+/* Floating bubble wobble animation for homepage */
+.bubble-wobble {
+  position: absolute;
+  bottom: -100px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  animation: rise-wobble 10s infinite ease-in-out;
+  pointer-events: none; /* decorative, don't block clicks */
+}
+
+@keyframes rise-wobble {
+  0% { bottom: -100px; opacity: 0; transform: translateX(0); }
+  25% { transform: translateX(15px); }
+  50% { opacity: 1; transform: translateX(-15px); }
+  75% { transform: translateX(10px); }
+  100% { bottom: 110vh; opacity: 0; transform: translateX(0); }
+}
