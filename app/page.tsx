@@ -503,7 +503,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
+        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl sm:border-b sm:border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
