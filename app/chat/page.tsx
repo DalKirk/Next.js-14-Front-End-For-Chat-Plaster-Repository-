@@ -101,13 +101,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 mb-6"
+          className="glass-card p-6 mb-6 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
         >
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -123,6 +123,7 @@ export default function ChatPage() {
                 onClick={() => setShowCreateModal(true)}
                 variant="primary"
                 size="sm"
+                className="bg-gradient-to-r from-cyan-400 to-fuchsia-500 hover:from-cyan-500 hover:to-fuchsia-600 shadow-[0_0_20px_rgba(34,211,238,0.4)]"
               >
                 Create Room
               </Button>
@@ -142,7 +143,7 @@ export default function ChatPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card p-6"
+          className="glass-card p-6 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Available Rooms</h2>
@@ -178,14 +179,14 @@ export default function ChatPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-all duration-200"
+                  className="bg-white/5 backdrop-blur-sm border border-purple-600/30 rounded-lg p-4 hover:bg-purple-600/10 hover:border-purple-600/50 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="font-medium text-white truncate">
                       {room.name}
                     </h3>
-                    <div className="flex items-center space-x-1 text-xs text-white/60">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <div className="flex items-center space-x-1 text-xs text-cyan-400">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
                       <span>Active</span>
                     </div>
                   </div>
@@ -196,7 +197,7 @@ export default function ChatPage() {
                   
                   <Button
                     onClick={() => joinRoom(room)}
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_15px_rgba(217,70,239,0.4)]"
                     variant="primary"
                     size="sm"
                   >
@@ -215,7 +216,7 @@ export default function ChatPage() {
           transition={{ delay: 0.2 }}
           className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <div className="glass-card p-4 text-center">
+          <div className="glass-card p-4 text-center border border-fuchsia-500/20 hover:border-fuchsia-500/40 hover:shadow-[0_0_20px_rgba(217,70,239,0.3)] transition-all">
             <div className="text-3xl mb-2">💬</div>
             <h3 className="font-medium text-white mb-1">Real-time Chat</h3>
             <p className="text-sm text-white/60">
@@ -223,7 +224,7 @@ export default function ChatPage() {
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center">
+          <div className="glass-card p-4 text-center border border-cyan-400/20 hover:border-cyan-400/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all">
             <div className="text-3xl mb-2">🔴</div>
             <h3 className="font-medium text-white mb-1">Live Streaming</h3>
             <p className="text-sm text-white/60">
@@ -231,7 +232,7 @@ export default function ChatPage() {
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center">
+          <div className="glass-card p-4 text-center border border-purple-600/20 hover:border-purple-600/40 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all">
             <div className="text-3xl mb-2">🎥</div>
             <h3 className="font-medium text-white mb-1">Video Sharing</h3>
             <p className="text-sm text-white/60">

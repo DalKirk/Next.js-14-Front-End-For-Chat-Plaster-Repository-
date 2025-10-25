@@ -40,7 +40,7 @@ const parseMessageWithLinks = (text: string) => {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline break-all"
+          className="text-cyan-400 hover:text-cyan-300 underline break-all"
           onClick={(e) => e.stopPropagation()}
         >
           {part}
@@ -256,11 +256,11 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             {!isVideoMessage && message.content && (
               <button
                 onClick={() => copyToClipboard(message.content, 'message')}
-                className="text-white/40 hover:text-white/90 transition-colors p-1 rounded hover:bg-white/10"
+                className="text-white/40 hover:text-cyan-400 transition-colors p-1 rounded hover:bg-cyan-400/10 hover:shadow-[0_0_10px_rgba(34,211,238,0.3)]"
                 title="Copy message"
               >
                 {copiedMessage ? (
-                  <CheckIcon className="w-4 h-4 text-green-400" />
+                  <CheckIcon className="w-4 h-4 text-cyan-400" />
                 ) : (
                   <ClipboardDocumentIcon className="w-4 h-4" />
                 )}
@@ -320,9 +320,9 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
           <div className="text-sm text-white break-words prose prose-invert prose-sm max-w-none">
             {/* View Source feature for messages with code blocks */}
             {message.content?.includes('```') && (
-              <details className="mb-4 rounded-lg overflow-hidden border border-white/10">
-                <summary className="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2.5 transition-colors flex items-center justify-between group">
-                  <span className="text-xs font-medium text-white/70 group-hover:text-white/90 flex items-center gap-2">
+              <details className="mb-4 rounded-lg overflow-hidden border border-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.2)]">
+                <summary className="cursor-pointer bg-white/5 hover:bg-purple-600/10 px-4 py-2.5 transition-colors flex items-center justify-between group">
+                  <span className="text-xs font-medium text-cyan-300 group-hover:text-cyan-200 flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                     </svg>
@@ -333,7 +333,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                 <div className="bg-gray-900/50 p-4 relative group/source">
                   <button
                     onClick={() => copyToClipboard(message.content, 'message')}
-                    className="absolute top-2 right-2 text-white/40 hover:text-white/90 transition-colors p-1.5 rounded bg-gray-800/80 hover:bg-gray-700/80 opacity-0 group-hover/source:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 text-white/40 hover:text-fuchsia-400 transition-colors p-1.5 rounded bg-gray-800/80 hover:bg-fuchsia-500/10 opacity-0 group-hover/source:opacity-100 transition-opacity hover:shadow-[0_0_10px_rgba(217,70,239,0.4)]"
                     title="Copy raw source"
                   >
                     <ClipboardDocumentIcon className="w-3.5 h-3.5" />
@@ -352,24 +352,24 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   <div key={index} className="not-prose relative group my-4 rounded-lg overflow-hidden border border-gray-600 shadow-2xl max-w-full">
                     <div className="flex items-center justify-between bg-[#21252b] px-4 py-2.5 border-b border-gray-600 flex-shrink-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-blue-400 uppercase tracking-wider font-bold">
+                        <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-bold">
                           {block.language}
                         </span>
                         {block.autoDetected && (
-                          <span className="text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.3)]">
                             ✨ Auto-detected
                           </span>
                         )}
                       </div>
                       <button
                         onClick={() => copyToClipboard(block.code, 'code')}
-                        className="flex items-center gap-2 text-xs text-gray-300 hover:text-white transition-all px-3 py-1.5 rounded-md hover:bg-gray-600/50 active:scale-95"
+                        className="flex items-center gap-2 text-xs text-gray-300 hover:text-purple-300 transition-all px-3 py-1.5 rounded-md hover:bg-purple-600/20 active:scale-95 hover:shadow-[0_0_10px_rgba(147,51,234,0.3)]"
                         title="Copy code to clipboard"
                       >
                         {copiedCode === block.code ? (
                           <>
-                            <CheckIcon className="w-4 h-4 text-green-400" />
-                            <span className="text-green-400 font-medium">Copied!</span>
+                            <CheckIcon className="w-4 h-4 text-cyan-400" />
+                            <span className="text-cyan-400 font-medium">Copied!</span>
                           </>
                         ) : (
                           <>
@@ -496,21 +496,21 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   // Block code with language - syntax highlighting
                   if (!inline && language) {
                     return (
-                      <div className="not-prose relative group my-4 rounded-lg overflow-hidden border border-gray-600 shadow-2xl max-w-full">
+                      <div className="not-prose relative group my-4 rounded-lg overflow-hidden border border-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.2)] max-w-full">
                         {/* Language badge and copy button */}
-                        <div className="flex items-center justify-between bg-[#21252b] px-4 py-2.5 border-b border-gray-600 flex-shrink-0">
-                          <span className="text-xs font-mono text-blue-400 uppercase tracking-wider font-bold">
+                        <div className="flex items-center justify-between bg-[#21252b] px-4 py-2.5 border-b border-purple-600/30 flex-shrink-0">
+                          <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-bold">
                             {language}
                           </span>
                           <button
                             onClick={() => copyToClipboard(codeString, 'code')}
-                            className="flex items-center gap-2 text-xs text-gray-300 hover:text-white transition-all px-3 py-1.5 rounded-md hover:bg-gray-600/50 active:scale-95"
+                            className="flex items-center gap-2 text-xs text-gray-300 hover:text-purple-300 transition-all px-3 py-1.5 rounded-md hover:bg-purple-600/20 active:scale-95 hover:shadow-[0_0_10px_rgba(147,51,234,0.3)]"
                             title="Copy code to clipboard"
                           >
                             {copiedCode === codeString ? (
                               <>
-                                <CheckIcon className="w-4 h-4 text-green-400" />
-                                <span className="text-green-400 font-medium">Copied!</span>
+                                <CheckIcon className="w-4 h-4 text-cyan-400" />
+                                <span className="text-cyan-400 font-medium">Copied!</span>
                               </>
                             ) : (
                               <>
@@ -590,7 +590,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                   if (inline) {
                     return (
                       <code 
-                        className="bg-gray-800/90 px-2 py-0.5 rounded-md text-emerald-300 font-mono text-sm border border-gray-700/50" 
+                        className="bg-gray-800/90 px-2 py-0.5 rounded-md text-cyan-300 font-mono text-sm border border-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.2)]" 
                         {...props}
                       >
                         {children}

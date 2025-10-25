@@ -17,7 +17,10 @@ import {
   SparklesIcon, 
   PaperAirplaneIcon,
   UserCircleIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  Bars3Icon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { Copy, Check } from 'lucide-react';
 
@@ -537,14 +540,14 @@ export default function HomePage() {
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[oklch(var(--color-primary))] to-purple-600 flex items-center justify-center shadow-[0_0_20px_oklch(var(--color-primary)/0.5)]">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.5)]">
               <SparklesIcon className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl font-bold text-white truncate">CHATTER BOX</h1>
           </div>
           {aiHealth?.ai_enabled && (
-            <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.3)] text-white/80 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/30 text-cyan-400 px-3 py-1.5 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
               Server Online
             </span>
           )}
@@ -555,18 +558,43 @@ export default function HomePage() {
             <div className="relative">
               <Button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.3)] hover:border-[oklch(var(--color-primary)/0.5)] text-white"
+                className="flex items-center gap-2 bg-[oklch(14.7%_0.004_49.25)] border border-fuchsia-500/30 hover:border-fuchsia-500/60 text-white hover:shadow-[0_0_15px_rgba(217,70,239,0.3)] p-2"
               >
-                <UserCircleIcon className="w-5 h-5 text-[oklch(var(--color-primary))]" />
-                <span className="hidden sm:inline">{currentUser.username}</span>
+                <Bars3Icon className="w-6 h-6 text-fuchsia-500" />
               </Button>
               
               {showUserMenu && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="absolute right-0 mt-2 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-[oklch(var(--color-primary)/0.3)] rounded-xl p-2 space-y-1 min-w-[150px] shadow-[0_0_30px_oklch(var(--color-primary)/0.3)]"
+                  className="absolute right-0 mt-2 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-purple-600/30 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(147,51,234,0.3)]"
                 >
+                  <div className="px-3 py-2 border-b border-purple-600/20">
+                    <div className="flex items-center gap-2">
+                      <UserCircleIcon className="w-5 h-5 text-fuchsia-500" />
+                      <span className="text-white font-medium text-sm">{currentUser.username}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      router.push('/profile');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <UserCircleIcon className="w-4 h-4" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push('/chat');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                    Rooms
+                  </button>
                   <button
                     onClick={() => { router.push('/profile'); setShowUserMenu(false); }}
                     className="w-full text-left px-3 py-2 hover:bg-white/10 rounded-lg text-sm text-white/90"
@@ -589,13 +617,13 @@ export default function HomePage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-24 sm:w-32 text-sm bg-[oklch(14.7%_0.004_49.25)] border-[oklch(var(--color-primary)/0.3)] text-white placeholder:text-white/40 focus:border-[oklch(var(--color-primary)/0.6)]"
+                className="w-24 sm:w-32 text-sm bg-[oklch(14.7%_0.004_49.25)] border-cyan-400/30 text-white placeholder:text-white/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)]"
                 maxLength={20}
               />
               <Button
                 onClick={handleCreateUser}
                 disabled={isLoading || !username.trim()}
-                className="text-sm h-9 bg-[oklch(var(--color-primary))] hover:bg-[oklch(var(--color-primary)/0.8)] text-white"
+                className="text-sm h-9 bg-gradient-to-r from-cyan-400 to-fuchsia-500 hover:from-cyan-500 hover:to-fuchsia-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)]"
               >
                 {isLoading ? '...' : 'Join'}
                 <ArrowRightIcon className="w-4 h-4 ml-1" />
@@ -610,12 +638,12 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg z-40"
+        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl shadow-lg z-40"
       >
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-              <SparklesIcon className="w-5 h-5 text-[oklch(var(--color-primary))]" />
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
+              <Cog6ToothIcon className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
             </motion.div>
             <input
               type="text"
@@ -636,7 +664,7 @@ export default function HomePage() {
               disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="text-[oklch(var(--color-primary))] hover:text-[oklch(var(--color-primary)/0.8)] disabled:text-white/30 disabled:cursor-not-allowed transition-colors"
+              className="text-fuchsia-500 hover:text-fuchsia-400 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.8)] disabled:text-white/30 disabled:cursor-not-allowed transition-colors"
             >
               <PaperAirplaneIcon className="w-5 h-5" />
             </motion.button>
@@ -648,7 +676,7 @@ export default function HomePage() {
                 id="code-theme"
                 value={codeTheme}
                 onChange={(e) => setCodeTheme(e.target.value as any)}
-                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-xs border border-[oklch(var(--color-primary)/0.3)] rounded px-2 py-1 focus:outline-none focus:border-[oklch(var(--color-primary))]"
+                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-xs border border-purple-600/30 rounded px-2 py-1 focus:outline-none focus:border-purple-600 focus:shadow-[0_0_10px_rgba(147,51,234,0.4)]"
               >
                 <option value="vscDarkPlus">VS Code Dark+</option>
                 <option value="oneDark">One Dark</option>
@@ -688,8 +716,8 @@ export default function HomePage() {
                   transition={{ duration: 0.2 }}
                   className={`w-full sm:max-w-3xl min-w-0 rounded-2xl px-4 sm:px-6 py-4 ${
                     msg.role === 'user' 
-                      ? 'bg-gradient-to-r from-[oklch(var(--color-primary))] to-[oklch(var(--color-primary)/0.8)] text-white shadow-lg' 
-                      : 'bg-[oklch(14.7%_0.004_49.25)] border border-[oklch(var(--color-primary)/0.2)] text-white/90 shadow-md'
+                      ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white shadow-[0_0_20px_rgba(217,70,239,0.4)]' 
+                      : 'bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/20 text-white/90 shadow-md'
                   }`}
                 >
                   <div className="prose prose-invert max-w-full break-words overflow-hidden">
@@ -703,9 +731,9 @@ export default function HomePage() {
                           const isInline = !className;
                           
                           return !isInline && match ? (
-                            <div className="relative my-4 rounded-lg overflow-auto border border-[oklch(var(--color-primary)/0.3)] bg-[oklch(8%_0.02_280)] max-w-full">
-                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-[oklch(var(--color-primary)/0.2)] flex-wrap gap-2">
-                                <span className="font-mono text-[oklch(var(--color-primary))] font-semibold" style={{fontSize: '0.625rem'}}>
+                            <div className="relative my-4 rounded-lg overflow-auto border border-purple-600/30 bg-[oklch(8%_0.02_280)] max-w-full shadow-[0_0_15px_rgba(147,51,234,0.2)]">
+                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-purple-600/20 flex-wrap gap-2">
+                                <span className="font-mono text-purple-400 font-semibold" style={{fontSize: '0.625rem'}}>
                                   {match[1]}
                                 </span>
                                 <button
@@ -765,14 +793,14 @@ export default function HomePage() {
                         h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
-                        a: ({children, href}) => <a href={href} className="text-[oklch(var(--color-primary))] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        a: ({children, href}) => <a href={href} className="text-cyan-400 hover:text-cyan-300 hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
                         img: ({...props}) => <img {...props} style={{maxWidth: '100%', height: 'auto'}} />,
                         table: ({children}) => (
                           <div className="w-full overflow-x-auto">
                             <table className="text-xs w-full min-w-max">{children}</table>
                           </div>
                         ),
-                        blockquote: ({children}) => <blockquote className="border-l-4 border-[oklch(var(--color-primary))] pl-3 italic my-2 text-xs">{children}</blockquote>,
+                        blockquote: ({children}) => <blockquote className="border-l-4 border-fuchsia-500 pl-3 italic my-2 text-xs">{children}</blockquote>,
                       }}
                     >
                       {msg.content}

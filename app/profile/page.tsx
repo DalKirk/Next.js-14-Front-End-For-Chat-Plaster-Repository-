@@ -130,7 +130,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <motion.div
@@ -181,10 +181,10 @@ export default function ProfilePage() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="lg:col-span-1"
           >
-            <div className="glass-card p-6 space-y-6">
+            <div className="glass-card p-6 space-y-6 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
               {/* Avatar Section */}
               <div className="text-center space-y-4">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-[0_0_30px_rgba(34,211,238,0.5)]">
                   {profile.username.charAt(0).toUpperCase()}
                 </div>
                 
@@ -251,7 +251,7 @@ export default function ProfilePage() {
             className="lg:col-span-2 space-y-6"
           >
             {/* Settings */}
-            <div className="glass-card p-6 space-y-4">
+            <div className="glass-card p-6 space-y-4 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]">
               <h3 className="text-xl font-semibold text-white">Settings</h3>
               
               {isEditing ? (
@@ -266,10 +266,10 @@ export default function ProfilePage() {
                           key={theme}
                           onClick={() => setEditedProfile({...editedProfile, theme})}
                           className={`w-8 h-8 rounded-full border-2 ${
-                            editedProfile.theme === theme ? 'border-white' : 'border-white/30'
+                            editedProfile.theme === theme ? 'border-white shadow-[0_0_15px_currentColor]' : 'border-white/30'
                           } ${
-                            theme === 'purple' ? 'bg-purple-500' :
-                            theme === 'blue' ? 'bg-blue-500' : 'bg-green-500'
+                            theme === 'purple' ? 'bg-purple-600' :
+                            theme === 'blue' ? 'bg-cyan-400' : 'bg-fuchsia-500'
                           }`}
                         />
                       ))}
@@ -281,7 +281,7 @@ export default function ProfilePage() {
                     <button
                       onClick={() => setEditedProfile({...editedProfile, notifications: !editedProfile.notifications})}
                       className={`w-12 h-6 rounded-full transition-colors ${
-                        editedProfile.notifications ? 'bg-blue-500' : 'bg-white/20'
+                        editedProfile.notifications ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 shadow-[0_0_15px_rgba(34,211,238,0.5)]' : 'bg-white/20'
                       } relative`}
                     >
                       <div className={`w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 ${
@@ -306,12 +306,12 @@ export default function ProfilePage() {
 
             {/* Recent Rooms */}
             {!isFirstTime && (
-              <div className="glass-card p-6 space-y-4">
+              <div className="glass-card p-6 space-y-4 border border-fuchsia-500/20 shadow-[0_0_30px_rgba(217,70,239,0.15)]">
                 <h3 className="text-xl font-semibold text-white">Recent Rooms</h3>
                 {recentRooms.length > 0 ? (
                   <div className="space-y-3">
                     {recentRooms.map((room) => (
-                      <div key={room.id} className="glass-panel p-4 rounded-lg hover:bg-white/10 transition-colors">
+                      <div key={room.id} className="glass-panel p-4 rounded-lg border border-purple-600/30 hover:bg-purple-600/10 hover:border-purple-600/50 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-colors">
                         <div className="flex justify-between items-start">
                           <div>
                             <h4 className="font-medium text-white">{room.name}</h4>
@@ -349,11 +349,11 @@ export default function ProfilePage() {
 
             {/* First-time Welcome Message (trimmed) */}
             {isFirstTime && (
-              <div className="glass-card p-6 space-y-4">
+              <div className="glass-card p-6 space-y-4 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
                 <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
                 <div className="space-y-4">
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                    <p className="text-blue-200 text-sm">
+                  <div className="bg-cyan-500/10 border border-cyan-400/30 rounded-lg p-4 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                    <p className="text-cyan-300 text-sm">
                       💡 Complete your profile setup above to start chatting!
                     </p>
                   </div>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
             )}
 
             {/* Quick Actions */}
-            <div className="glass-card p-6 space-y-4">
+            <div className="glass-card p-6 space-y-4 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]">
               <h3 className="text-xl font-semibold text-white">Quick Actions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button 

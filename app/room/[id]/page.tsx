@@ -557,12 +557,12 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col max-h-screen overflow-hidden">
+    <div className="min-h-screen flex flex-col max-h-screen overflow-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card m-4 p-4"
+        className="glass-card m-4 p-4 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -578,7 +578,7 @@ export default function RoomPage() {
               <h1 className="text-xl font-bold text-white">{roomName}</h1>
               <div className="flex items-center space-x-2 text-sm">
                 <div className={`w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-green-400' : 'bg-red-400'
+                  wsConnected ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                 }`}></div>
                 <span className="text-white/60">
                   {wsConnected ? 'Connected' : 'Disconnected'}
@@ -602,7 +602,7 @@ export default function RoomPage() {
               onClick={() => setShowVideoModal(true)}
               variant="secondary"
               size="sm"
-              className="text-xs sm:text-sm"
+              className="text-xs sm:text-sm border-fuchsia-500/30 hover:border-fuchsia-500/60 hover:shadow-[0_0_15px_rgba(217,70,239,0.4)]"
             >
               <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">🔴 Live</span>
@@ -612,7 +612,7 @@ export default function RoomPage() {
               onClick={() => setShowUploadModal(true)}
               variant="secondary"
               size="sm"
-              className="text-xs sm:text-sm"
+              className="text-xs sm:text-sm border-purple-600/30 hover:border-purple-600/60 hover:shadow-[0_0_15px_rgba(147,51,234,0.4)]"
             >
               <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">📹 Upload</span>
@@ -628,7 +628,7 @@ export default function RoomPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card flex-1 flex flex-col min-h-0"
+          className="glass-card flex-1 flex flex-col min-h-0 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]"
           style={{ maxHeight: 'calc(100vh - 160px)' }}
         >
           {/* Messages List */}
@@ -676,14 +676,14 @@ export default function RoomPage() {
           </div>
 
           {/* Sticky Message Input */}
-          <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0">
+          <div className="border-t border-purple-600/30 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-[0_-5px_30px_rgba(147,51,234,0.2)]">
             {/* Typing Indicator */}
             {typingUsers.size > 0 && (
-              <div className="mb-2 text-sm text-white/70 italic flex items-center gap-2">
+              <div className="mb-2 text-sm text-cyan-300 italic flex items-center gap-2">
                 <span className="flex gap-1">
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(34,211,238,0.8)]" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-fuchsia-500 rounded-full animate-bounce shadow-[0_0_8px_rgba(217,70,239,0.8)]" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-purple-600 rounded-full animate-bounce shadow-[0_0_8px_rgba(147,51,234,0.8)]" style={{ animationDelay: '300ms' }}></span>
                 </span>
                 <span>
                   {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
@@ -709,7 +709,7 @@ export default function RoomPage() {
                 disabled={!message.trim() || !wsConnected}
                 variant="primary"
                 size="sm"
-                className="px-4"
+                className="px-4 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
               >
                 <PaperAirplaneIcon className="w-4 h-4" />
               </Button>
@@ -729,10 +729,10 @@ export default function RoomPage() {
               onClick={scrollToTop}
               variant="glass"
               size="sm"
-              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-white/20 hover:bg-white/20"
+              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-cyan-400/30 hover:bg-cyan-400/20 hover:border-cyan-400/60 hover:shadow-[0_0_20px_rgba(34,211,238,0.5)]"
               title="Scroll to top"
             >
-              <ChevronUpIcon className="w-4 h-4" />
+              <ChevronUpIcon className="w-4 h-4 text-cyan-400" />
             </Button>
             
             {!isAtBottom && (
@@ -740,7 +740,7 @@ export default function RoomPage() {
                 onClick={scrollToBottom}
                 variant="primary"
                 size="sm"
-                className="w-10 h-10 rounded-full p-0"
+                className="w-10 h-10 rounded-full p-0 bg-gradient-to-br from-cyan-400 to-fuchsia-500 shadow-[0_0_20px_rgba(34,211,238,0.6)]"
                 title="Scroll to bottom"
               >
                 <ChevronDownIcon className="w-4 h-4" />
@@ -760,7 +760,7 @@ export default function RoomPage() {
               onClick={scrollToBottom}
               variant="primary"
               size="sm"
-              className="bg-blue-500/90 backdrop-blur-sm border border-white/20 hover:bg-blue-400/90"
+              className="bg-gradient-to-r from-fuchsia-500 to-purple-600 backdrop-blur-sm border border-fuchsia-400/30 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.6)]"
             >
               <ChevronDownIcon className="w-4 h-4 mr-1" />
               New messages
@@ -847,7 +847,7 @@ export default function RoomPage() {
               </div>
               <div className="w-full bg-white/10 rounded-full h-2">
                 <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-cyan-400 to-fuchsia-500 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

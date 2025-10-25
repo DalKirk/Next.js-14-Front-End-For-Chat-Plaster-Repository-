@@ -1,9 +1,14 @@
-import { Inter } from 'next/font/google';
+import { Inter, Orbitron } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 const inter = Inter({ subsets: ['latin'] });
+const orbitron = Orbitron({ 
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-orbitron'
+});
 
 export const viewport = {
   width: 'device-width',
@@ -30,7 +35,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Double+Ink:wght@100..900&family=Bungee&display=swap" rel="stylesheet" />
       </head>
       <body 
-        className={inter.className}
+        className={`${inter.className} ${orbitron.variable}`}
         style={{
           backgroundColor: 'oklch(25.7% 0.09 281.288)',
           backdropFilter: 'blur(20px)'
