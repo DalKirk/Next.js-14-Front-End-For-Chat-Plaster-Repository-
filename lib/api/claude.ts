@@ -259,11 +259,13 @@ export const claudeAPI = {
       const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/health`;
       
       const response = await fetch(endpoint, {
-        method: 'GET',
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/health' })
         },
         credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
+        body: JSON.stringify({}),
       });
 
       return await response.json();
