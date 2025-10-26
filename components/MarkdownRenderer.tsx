@@ -46,6 +46,124 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             </code>
           );
         },
+        // Style headers with neon
+        h1({ children, ...props }: any) {
+          return (
+            <h1 
+              style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginTop: '2rem',
+                marginBottom: '1rem',
+                color: '#22d3ee',
+                textShadow: '0 0 10px rgba(34, 211, 238, 0.5)',
+                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
+              }}
+              {...props}
+            >
+              {children}
+            </h1>
+          );
+        },
+        h2({ children, ...props }: any) {
+          return (
+            <h2 
+              style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                marginTop: '1.5rem',
+                marginBottom: '0.75rem',
+                color: '#d946ef',
+                textShadow: '0 0 10px rgba(217, 70, 239, 0.5)',
+                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
+              }}
+              {...props}
+            >
+              {children}
+            </h2>
+          );
+        },
+        h3({ children, ...props }: any) {
+          return (
+            <h3 
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                marginTop: '1.25rem',
+                marginBottom: '0.5rem',
+                color: '#9333ea',
+                textShadow: '0 0 8px rgba(147, 51, 234, 0.5)',
+                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
+              }}
+              {...props}
+            >
+              {children}
+            </h3>
+          );
+        },
+        // Style lists with proper spacing
+        ul({ children, ...props }: any) {
+          return (
+            <ul 
+              style={{
+                marginLeft: '1.5rem',
+                marginTop: '0.75rem',
+                marginBottom: '0.75rem',
+                listStyleType: 'disc',
+                color: 'rgba(255, 255, 255, 0.9)'
+              }}
+              {...props}
+            >
+              {children}
+            </ul>
+          );
+        },
+        ol({ children, ...props }: any) {
+          return (
+            <ol 
+              style={{
+                marginLeft: '1.5rem',
+                marginTop: '0.75rem',
+                marginBottom: '0.75rem',
+                listStyleType: 'decimal',
+                color: 'rgba(255, 255, 255, 0.9)'
+              }}
+              {...props}
+            >
+              {children}
+            </ol>
+          );
+        },
+        li({ children, ...props }: any) {
+          return (
+            <li 
+              style={{
+                marginBottom: '0.5rem',
+                lineHeight: '1.6',
+                paddingLeft: '0.25rem'
+              }}
+              {...props}
+            >
+              {children}
+            </li>
+          );
+        },
+        // Style paragraphs
+        p({ children, ...props }: any) {
+          return (
+            <p 
+              style={{
+                marginTop: '0.75rem',
+                marginBottom: '0.75rem',
+                lineHeight: '1.6',
+                color: 'rgba(255, 255, 255, 0.9)'
+              }}
+              {...props}
+            >
+              {children}
+            </p>
+          );
+        },
         // Style links with cyan neon
         a({ children, href, ...props }: any) {
           return (
@@ -75,13 +193,64 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 paddingLeft: '1rem',
                 fontStyle: 'italic',
                 color: 'rgba(255, 255, 255, 0.8)',
-                marginTop: '0.5rem',
-                marginBottom: '0.5rem'
+                marginTop: '0.75rem',
+                marginBottom: '0.75rem',
+                backgroundColor: 'rgba(217, 70, 239, 0.05)',
+                padding: '0.75rem 1rem',
+                borderRadius: '0 8px 8px 0'
               }}
               {...props}
             >
               {children}
             </blockquote>
+          );
+        },
+        // Style tables
+        table({ children, ...props }: any) {
+          return (
+            <div style={{ overflowX: 'auto', marginTop: '1rem', marginBottom: '1rem' }}>
+              <table 
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  border: '1px solid rgba(147, 51, 234, 0.3)'
+                }}
+                {...props}
+              >
+                {children}
+              </table>
+            </div>
+          );
+        },
+        th({ children, ...props }: any) {
+          return (
+            <th 
+              style={{
+                padding: '0.75rem',
+                backgroundColor: 'rgba(147, 51, 234, 0.2)',
+                color: '#d946ef',
+                fontWeight: '600',
+                textAlign: 'left',
+                border: '1px solid rgba(147, 51, 234, 0.3)'
+              }}
+              {...props}
+            >
+              {children}
+            </th>
+          );
+        },
+        td({ children, ...props }: any) {
+          return (
+            <td 
+              style={{
+                padding: '0.75rem',
+                border: '1px solid rgba(147, 51, 234, 0.2)',
+                color: 'rgba(255, 255, 255, 0.9)'
+              }}
+              {...props}
+            >
+              {children}
+            </td>
           );
         }
       }}
