@@ -10,9 +10,10 @@ interface MarkdownRendererProps {
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
+    <div style={{ width: '100%' }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
         code({ node, inline, className, children, ...props }: any) {
           const match = /language-(\w+)/.exec(className || '');
           return !inline && match ? (
@@ -20,49 +21,23 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               style={vscDarkPlus} 
               language={match[1]} 
               PreTag="div"
-              customStyle={{
-                margin: '1rem 0',
-                borderRadius: '8px',
-                border: '1px solid rgba(147, 51, 234, 0.3)',
-                boxShadow: '0 0 15px rgba(147, 51, 234, 0.2)'
-              }}
             >
               {String(children).replace(/\n$/, '')}
             </SyntaxHighlighter>
           ) : (
             <code 
               style={{
-                backgroundColor: 'rgba(39, 39, 42, 0.9)',
-                color: '#22d3ee',
+                backgroundColor: '#27272a',
+                color: '#fbbf24',
                 padding: '2px 6px',
                 borderRadius: '4px',
                 fontFamily: 'monospace',
-                border: '1px solid rgba(34, 211, 238, 0.3)',
-                boxShadow: '0 0 8px rgba(34, 211, 238, 0.2)'
+                fontSize: '0.9em'
               }} 
               {...props}
             >
               {children}
             </code>
-          );
-        },
-        // Style headers with neon
-        h1({ children, ...props }: any) {
-          return (
-            <h1 
-              style={{
-                fontSize: '2rem',
-                fontWeight: '700',
-                marginTop: '2rem',
-                marginBottom: '1rem',
-                color: '#22d3ee',
-                textShadow: '0 0 10px rgba(34, 211, 238, 0.5)',
-                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
-              }}
-              {...props}
-            >
-              {children}
-            </h1>
           );
         },
         h2({ children, ...props }: any) {
@@ -73,9 +48,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 fontWeight: '600',
                 marginTop: '1.5rem',
                 marginBottom: '0.75rem',
-                color: '#d946ef',
-                textShadow: '0 0 10px rgba(217, 70, 239, 0.5)',
-                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
+                color: '#ffffff',
+                borderBottom: '1px solid #3f3f46',
+                paddingBottom: '0.5rem'
               }}
               {...props}
             >
@@ -91,9 +66,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 fontWeight: '600',
                 marginTop: '1.25rem',
                 marginBottom: '0.5rem',
-                color: '#9333ea',
-                textShadow: '0 0 8px rgba(147, 51, 234, 0.5)',
-                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif'
+                color: '#fafafa'
               }}
               {...props}
             >
@@ -106,11 +79,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           return (
             <ul 
               style={{
+                listStyleType: 'disc',
                 marginLeft: '1.5rem',
                 marginTop: '0.75rem',
                 marginBottom: '0.75rem',
-                listStyleType: 'disc',
-                color: 'rgba(255, 255, 255, 0.9)'
+                paddingLeft: '0.5rem'
               }}
               {...props}
             >
@@ -122,11 +95,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           return (
             <ol 
               style={{
+                listStyleType: 'decimal',
                 marginLeft: '1.5rem',
                 marginTop: '0.75rem',
                 marginBottom: '0.75rem',
-                listStyleType: 'decimal',
-                color: 'rgba(255, 255, 255, 0.9)'
+                paddingLeft: '0.5rem'
               }}
               {...props}
             >
@@ -140,7 +113,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               style={{
                 marginBottom: '0.5rem',
                 lineHeight: '1.6',
-                paddingLeft: '0.25rem'
+                color: '#e4e4e7'
               }}
               {...props}
             >
@@ -156,7 +129,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 marginTop: '0.75rem',
                 marginBottom: '0.75rem',
                 lineHeight: '1.6',
-                color: 'rgba(255, 255, 255, 0.9)'
+                color: '#e4e4e7'
               }}
               {...props}
             >
@@ -164,7 +137,20 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             </p>
           );
         },
-        // Style links with cyan neon
+        strong({ children, ...props }: any) {
+          return (
+            <strong 
+              style={{
+                fontWeight: '600',
+                color: '#ffffff'
+              }}
+              {...props}
+            >
+              {children}
+            </strong>
+          );
+        },
+        // Style links
         a({ children, href, ...props }: any) {
           return (
             <a 
@@ -172,91 +158,37 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               target="_blank" 
               rel="noopener noreferrer"
               style={{
-                color: '#22d3ee',
-                textDecoration: 'underline',
-                transition: 'color 0.2s'
+                color: '#60a5fa',
+                textDecoration: 'none'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#06b6d4'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#22d3ee'}
               {...props}
             >
               {children}
             </a>
           );
         },
-        // Style blockquotes with fuchsia accent
+        // Style blockquotes
         blockquote({ children, ...props }: any) {
           return (
             <blockquote 
               style={{
-                borderLeft: '4px solid #d946ef',
+                borderLeft: '4px solid #3f3f46',
                 paddingLeft: '1rem',
-                fontStyle: 'italic',
-                color: 'rgba(255, 255, 255, 0.8)',
-                marginTop: '0.75rem',
-                marginBottom: '0.75rem',
-                backgroundColor: 'rgba(217, 70, 239, 0.05)',
-                padding: '0.75rem 1rem',
-                borderRadius: '0 8px 8px 0'
+                margin: '1rem 0',
+                color: '#a1a1aa',
+                fontStyle: 'italic'
               }}
               {...props}
             >
               {children}
             </blockquote>
           );
-        },
-        // Style tables
-        table({ children, ...props }: any) {
-          return (
-            <div style={{ overflowX: 'auto', marginTop: '1rem', marginBottom: '1rem' }}>
-              <table 
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  border: '1px solid rgba(147, 51, 234, 0.3)'
-                }}
-                {...props}
-              >
-                {children}
-              </table>
-            </div>
-          );
-        },
-        th({ children, ...props }: any) {
-          return (
-            <th 
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'rgba(147, 51, 234, 0.2)',
-                color: '#d946ef',
-                fontWeight: '600',
-                textAlign: 'left',
-                border: '1px solid rgba(147, 51, 234, 0.3)'
-              }}
-              {...props}
-            >
-              {children}
-            </th>
-          );
-        },
-        td({ children, ...props }: any) {
-          return (
-            <td 
-              style={{
-                padding: '0.75rem',
-                border: '1px solid rgba(147, 51, 234, 0.2)',
-                color: 'rgba(255, 255, 255, 0.9)'
-              }}
-              {...props}
-            >
-              {children}
-            </td>
-          );
         }
       }}
     >
       {content}
     </ReactMarkdown>
+    </div>
   );
 };
 
