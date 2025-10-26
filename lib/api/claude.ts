@@ -3,12 +3,9 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
-// Use proxy for development to bypass CORS
+// Always use Next.js API proxy to avoid CORS issues
 const getApiUrl = () => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return '/api/ai-proxy';
-  }
-  return API_URL;
+  return '/api/ai-proxy';
 };
 
 interface GenerateOptions {
