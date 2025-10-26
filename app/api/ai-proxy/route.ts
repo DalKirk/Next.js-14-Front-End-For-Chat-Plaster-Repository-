@@ -48,10 +48,11 @@ export async function GET(request: NextRequest) {
     console.log(`[AI Proxy] Health check to: ${BACKEND_URL}${targetEndpoint}`);
     
     const response = await fetch(`${BACKEND_URL}${targetEndpoint}`, {
-      method: 'GET',
+      method: 'POST', // Backend expects POST, not GET
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({}), // Empty body for health check
     });
 
     if (!response.ok) {
