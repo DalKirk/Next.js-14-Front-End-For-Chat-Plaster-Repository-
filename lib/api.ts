@@ -127,6 +127,14 @@ export const apiClient = {
         console.warn('⚠️ Join room endpoint not found - room page will handle joining');
         return;
       }
+      // If user not found (400/422), that's also okay - WebSocket might still work
+      if (axios.isAxiosError(e) && (e.response?.status === 400 || e.response?.status === 422)) {
+        const errorMsg = e.response?.data?.detail || '';
+        if (errorMsg.includes('User not found')) {
+          console.warn('⚠️ User not found in backend - WebSocket might still accept connection');
+          return; // Don't throw error, let WebSocket try to connect
+        }
+      }
       handleApiError(e, 'Join room');
     }
   },
