@@ -85,7 +85,8 @@ export const claudeAPI = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          message: prompt, // API expects 'message' not 'prompt'
+          conversation_history: [],
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
         }),
@@ -115,12 +116,21 @@ export const claudeAPI = {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const text = line.slice(6);
-            if (text === '[DONE]') {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
               return;
             }
-            // DO NOT trim or modify - append verbatim
-            onChunk(text);
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                onChunk(parsed.content);
+              } else if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              // If it's not JSON, treat as raw text (backward compatibility)
+              onChunk(data);
+            }
           }
         }
       }

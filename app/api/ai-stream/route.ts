@@ -2,9 +2,32 @@ import { NextRequest } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    console.log(`[AI Stream] Request body:`, JSON.stringify(body, null, 2));
+    
+    // Validate required fields
+    if (!body.message || typeof body.message !== 'string' || !body.message.trim()) {
+      console.error('[AI Stream] Invalid message:', body.message);
+      return new Response(
+        JSON.stringify({ error: 'Message is required and cannot be empty' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     console.log(`[AI Stream] Starting stream to: ${BACKEND_URL}/ai/generate`);
     
@@ -18,36 +41,45 @@ export async function POST(request: NextRequest) {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({
+              message: body.message.trim(), // Backend expects 'message' field
+              conversation_history: Array.isArray(body.conversation_history) ? body.conversation_history : []
+            }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
             console.error(`[AI Stream] Backend error: ${response.status} - ${errorText}`);
-            controller.enqueue(new TextEncoder().encode(`data: Error: ${response.statusText}\n\n`));
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: response.statusText })}\n\n`));
             controller.close();
             return;
           }
 
           const data = await response.json();
-          const fullResponse = data.response || '';
+          console.log('[AI Stream] Backend response data:', JSON.stringify(data, null, 2));
           
-          // Stream character by character to preserve ALL spacing
-          // DO NOT trim or modify the response - send it verbatim
-          for (let i = 0; i < fullResponse.length; i++) {
-            const char = fullResponse[i];
-            controller.enqueue(new TextEncoder().encode(`data: ${char}\n\n`));
-            
-            // Small delay for streaming effect (adjust as needed)
-            await new Promise(resolve => setTimeout(resolve, 5));
+          const fullResponse = data.response || data.message || data.content || '';
+          console.log('[AI Stream] Extracted response:', fullResponse);
+          
+          if (!fullResponse) {
+            console.error('[AI Stream] No response content found in:', data);
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: 'No response content received from backend' })}\n\n`));
+            controller.close();
+            return;
           }
+          
+          // CRITICAL FIX: Send complete formatted response at once
+          // This preserves markdown structure (line breaks, bullets, headers)
+          controller.enqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({ content: fullResponse, format_type: data.format_type || 'structured' })}\n\n`)
+          );
           
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (error) {
           console.error('[AI Stream] Error:', error);
           controller.enqueue(
-            new TextEncoder().encode(`data: Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n`)
+            new TextEncoder().encode(`data: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' })}\n\n`)
           );
           controller.close();
         }

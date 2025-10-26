@@ -9,6 +9,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   format_type?: string;
+  isStreaming?: boolean; // NEW: Track if message is still streaming
 }
 
 interface ChatInterfaceProps {
@@ -34,24 +35,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    const trimmedInput = input.trim();
+    if (!trimmedInput || loading) {
+      console.log('Cannot send: empty input or loading');
+      return;
+    }
 
-    const userMsg: Message = { role: 'user', content: input };
+    const userMsg: Message = { role: 'user', content: trimmedInput };
     setMessages(prev => [...prev, userMsg]);
-    const currentInput = input;
+    const currentInput = trimmedInput;
     setInput('');
     setLoading(true);
+    
+    console.log('Sending message:', currentInput);
 
     try {
+      const requestPayload = {
+        message: currentInput,
+        conversation_history: messages.filter(m => m.role && m.content)
+      };
+      
+      console.log('Request payload:', requestPayload);
+      
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: currentInput,
-          conversation_history: messages
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
@@ -84,11 +95,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg && lastMsg.role === 'assistant') {
                       lastMsg.content = assistantMessage;
+                      lastMsg.isStreaming = true; // Mark as streaming
                     } else {
                       newMessages.push({
                         role: 'assistant',
                         content: assistantMessage,
-                        format_type: parsed.format_type
+                        format_type: parsed.format_type,
+                        isStreaming: true // Mark as streaming
                       });
                     }
                     return newMessages;
@@ -100,6 +113,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             }
           }
         }
+        
+        // CRITICAL: Mark streaming as complete
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMsg = newMessages[newMessages.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            lastMsg.isStreaming = false; // Streaming complete
+          }
+          return newMessages;
+        });
       }
     } catch (error) {
       console.error('Error:', error);
@@ -151,7 +174,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div className="text-white/90 text-sm sm:text-base">
                   {msg.role === 'user' ? (
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  ) : msg.isStreaming ? (
+                    // CRITICAL FIX: Show raw text while streaming
+                    <p className="whitespace-pre-wrap break-words font-mono text-white/70">
+                      {msg.content}
+                    </p>
                   ) : (
+                    // CRITICAL FIX: Only render markdown when streaming is complete
                     <MarkdownRenderer content={msg.content} />
                   )}
                 </div>
