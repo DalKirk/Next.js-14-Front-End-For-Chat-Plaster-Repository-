@@ -256,16 +256,16 @@ export const claudeAPI = {
       const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/health`;
       
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/health' })
         },
         credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
-        body: JSON.stringify({}),
       });
 
-      return await response.json();
+      const data = await response.json();
+      // Backend returns { status: "healthy", claude_enabled: true }
+      return { ai_enabled: data.claude_enabled || data.ai_enabled || false };
     } catch (error) {
       console.error('AI health check error:', error);
       return { ai_enabled: false };

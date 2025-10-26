@@ -48,11 +48,10 @@ export async function GET(request: NextRequest) {
     console.log(`[AI Proxy] Health check to: ${BACKEND_URL}${targetEndpoint}`);
     
     const response = await fetch(`${BACKEND_URL}${targetEndpoint}`, {
-      method: 'POST', // Backend expects POST, not GET
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({}), // Empty body for health check
     });
 
     if (!response.ok) {
@@ -64,7 +63,13 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    // Transform backend response to match frontend expectations
+    const result = {
+      ai_enabled: data.claude_enabled || data.ai_enabled || false,
+      status: data.status,
+      services: data.services
+    };
+    return NextResponse.json(result);
   } catch (error) {
     console.error('[AI Proxy] Health check error:', error);
     return NextResponse.json(
