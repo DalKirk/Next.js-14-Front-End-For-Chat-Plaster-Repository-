@@ -142,6 +142,19 @@ export const apiClient = {
     }
   },
 
+  sendRoomMessage: async (roomId: string, userId: string, content: string): Promise<Message> => {
+    if (!content || !content.trim()) throw new Error('Message cannot be empty');
+    try {
+      const r = await api.post(`/rooms/${roomId}/messages`, {
+        user_id: userId,
+        content: content.trim(),
+      });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Send message');
+    }
+  },
+
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {

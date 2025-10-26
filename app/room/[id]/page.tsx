@@ -261,12 +261,11 @@ export default function RoomPage() {
     return;
   }, [wsConnected, roomId]);
 
-  const sendMessage = (content: string) => {
+  const sendMessage = async (content: string) => {
     if (!content.trim() || !user) return;
     
     if (wsConnected && socketManager.isConnected()) {
       // Send via WebSocket - message will appear when server broadcasts it back
-      // Send via WebSocket
       try {
         socketManager.sendMessage(content);
         console.log('📤 Message sent via WebSocket:', content);
@@ -277,13 +276,24 @@ export default function RoomPage() {
         throw error; // Re-throw to be caught by handleSendMessage
       }
     } else {
-      console.error('❌ WebSocket not connected - cannot send message');
-      toast.error('Not connected to server. Cannot send message.');
-      throw new Error('WebSocket not connected');
+      // Fallback to REST API when WebSocket is not available
+      console.log('📤 Sending message via REST API (WebSocket unavailable)');
+      try {
+        const newMessage = await apiClient.sendRoomMessage(roomId, user.id, content);
+        console.log('✅ Message sent via REST API:', newMessage);
+        
+        // Add message to local state immediately
+        setMessages(prev => [...prev, newMessage]);
+        toast.success('Message sent (polling mode)', { duration: 1000 });
+      } catch (error) {
+        console.error('❌ Failed to send message via REST API:', error);
+        toast.error('Failed to send message. Check backend connection.');
+        throw error;
+      }
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim() || !user) return;
     
     try {
@@ -292,13 +302,15 @@ export default function RoomPage() {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
-      socketManager.sendTypingIndicator(false);
+      if (wsConnected) {
+        socketManager.sendTypingIndicator(false);
+      }
       
-      sendMessage(message.trim());
+      await sendMessage(message.trim());
       setMessage('');
     } catch (error) {
       console.error('❌ Error sending message:', error);
-      toast.error('Failed to send message. Please check your connection.');
+      // Error toast already shown in sendMessage
     }
   };
 
@@ -642,21 +654,16 @@ export default function RoomPage() {
             {messages.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-white/60 mb-4">
-                  {wsConnected ? 'No messages yet. Start the conversation!' : '⚠️ Real-time messaging unavailable'}
+                  No messages yet. Start the conversation!
                 </div>
                 {!wsConnected && (
                   <div className="space-y-4">
                     <div className="text-white/40 text-sm max-w-md mx-auto">
-                      <p className="mb-2">Your backend server needs WebSocket support for real-time chat.</p>
-                      <p className="text-xs">Required endpoint: <code className="bg-white/10 px-2 py-1 rounded">wss://your-backend/ws/{'{roomId}'}/{'{userId}'}</code></p>
+                      <p className="mb-2">⚠️ WebSocket unavailable - using polling mode</p>
+                      <p className="text-xs">Messages will be sent via REST API and polled every 3 seconds.</p>
+                      <p className="text-xs mt-2">To enable real-time chat, your backend needs WebSocket support at:</p>
+                      <code className="bg-white/10 px-2 py-1 rounded text-xs block mt-1">wss://your-backend/ws/{'{roomId}'}/{'{userId}'}</code>
                     </div>
-                    <Button
-                      onClick={loadMessages}
-                      variant="primary"
-                      size="sm"
-                    >
-                      Load Messages Manually
-                    </Button>
                   </div>
                 )}
               </div>
@@ -694,22 +701,23 @@ export default function RoomPage() {
             <div className="flex items-start space-x-2">
               <div className="flex-1">
                 <Textarea
-                  placeholder={wsConnected ? "Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send\nDrag & drop code files for instant sharing!" : "Connect to server to send messages"}
+                  placeholder="Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send\nDrag & drop code files for instant sharing!"
                   value={message}
                   onChange={handleMessageChange}
                   onKeyDown={handleKeyPress}
                   onFileContent={handleFileContent}
-                  disabled={!wsConnected}
+                  disabled={false}
                   rows={message.includes('\n') || message.length > 80 ? Math.min(Math.max(message.split('\n').length, 3), 10) : 2}
                   className="min-h-[60px] max-h-[300px]"
                 />
               </div>
               <Button
                 onClick={handleSendMessage}
-                disabled={!message.trim() || !wsConnected}
+                disabled={!message.trim()}
                 variant="primary"
                 size="sm"
                 className="px-4 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
+                title={wsConnected ? "Send via WebSocket" : "Send via REST API (WebSocket unavailable)"}
               >
                 <PaperAirplaneIcon className="w-4 h-4" />
               </Button>
