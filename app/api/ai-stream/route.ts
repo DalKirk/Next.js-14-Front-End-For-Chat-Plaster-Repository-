@@ -29,14 +29,14 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log(`[AI Stream] Starting stream to: ${BACKEND_URL}/ai/generate`);
+    console.log(`[AI Stream] Starting stream to: ${BACKEND_URL}/api/v1/chat`);
     
     // Create a readable stream
     const stream = new ReadableStream({
       async start(controller) {
         try {
           // Make request to Railway backend
-          const response = await fetch(`${BACKEND_URL}/ai/generate`, {
+          const response = await fetch(`${BACKEND_URL}/api/v1/chat`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
