@@ -39,17 +39,18 @@ export const claudeAPI = {
   async generate(prompt: string, options: GenerateOptions = {}) {
     try {
       const apiUrl = getApiUrl();
-      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/ai/generate`;
+      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/api/v1/chat`;
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/ai/generate' })
+          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/api/v1/chat' })
         },
         credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
         body: JSON.stringify({
-          prompt,
+          message: prompt,
+          conversation_history: [],
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
         }),

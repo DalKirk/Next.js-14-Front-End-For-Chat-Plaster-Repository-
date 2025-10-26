@@ -154,12 +154,13 @@ export default function AITestPage() {
   const testDirectAPI = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://web-production-3ba7e.up.railway.app/ai/generate', {
+      const response = await fetch('https://web-production-3ba7e.up.railway.app/api/v1/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          prompt: prompt,
+          message: prompt,
+          conversation_history: [],
           max_tokens: 50
         })
       });
