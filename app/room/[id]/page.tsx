@@ -49,6 +49,28 @@ export default function RoomPage() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prevent viewport zoom on mobile when focusing inputs
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Add viewport meta tag to prevent zooming
+    const metaViewport = document.querySelector('meta[name="viewport"]');
+    if (metaViewport) {
+      metaViewport.setAttribute('content', 
+        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content'
+      );
+    }
+
+    return () => {
+      // Restore original viewport settings on unmount
+      if (metaViewport) {
+        metaViewport.setAttribute('content', 
+          'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, interactive-widget=resizes-content'
+        );
+      }
+    };
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializedRef = useRef(false); // Prevent double initialization
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -765,8 +787,8 @@ export default function RoomPage() {
                   onFileContent={handleFileContent}
                   disabled={false}
                   rows={2}
-                  className="h-[60px] !min-h-[60px] !max-h-[60px] overflow-y-auto !resize-none"
-                  style={{ height: '60px', minHeight: '60px', maxHeight: '60px' }}
+                  className="h-[60px] !min-h-[60px] !max-h-[60px] overflow-y-auto !resize-none text-base"
+                  style={{ height: '60px', minHeight: '60px', maxHeight: '60px', fontSize: '16px' }}
                 />
               </div>
               <Button
