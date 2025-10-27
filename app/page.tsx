@@ -52,6 +52,8 @@ export default function HomePage() {
   const themeMap: Record<string, any> = { vscDarkPlus, oneDark, tomorrow, dracula };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -101,6 +103,38 @@ export default function HomePage() {
     
     return () => {
       inputElement?.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  // Track keyboard height using Visual Viewport API
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+
+      // Calculate keyboard height
+      const windowHeight = window.innerHeight;
+      const viewportHeight = viewport.height;
+      const keyboardHeight = windowHeight - viewportHeight - viewport.offsetTop;
+
+      // Update offset to position input just above keyboard
+      if (keyboardHeight > 0) {
+        setKeyboardOffset(keyboardHeight);
+      } else {
+        setKeyboardOffset(0);
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
     };
   }, []);
 
@@ -817,12 +851,15 @@ export default function HomePage() {
 
       {/* Fixed Input at Bottom */}
       <motion.div
+        ref={inputContainerRef}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50"
+        className="fixed left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50"
         style={{ 
-          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)'
+          bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
+          paddingBottom: keyboardOffset > 0 ? '0px' : 'max(env(safe-area-inset-bottom), 8px)',
+          transition: 'bottom 0.2s ease-out'
         }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
