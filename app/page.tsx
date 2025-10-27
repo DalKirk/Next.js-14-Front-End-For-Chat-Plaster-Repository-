@@ -51,6 +51,7 @@ export default function HomePage() {
   const [codeTheme, setCodeTheme] = useState<'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula'>('vscDarkPlus');
   const themeMap: Record<string, any> = { vscDarkPlus, oneDark, tomorrow, dracula };
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -83,6 +84,44 @@ export default function HomePage() {
   useEffect(() => {
     scrollToBottom();
   }, [claudeMessages]);
+
+  // Handle mobile keyboard overlap
+  useEffect(() => {
+    let originalHeight = window.innerHeight;
+    
+    const handleResize = () => {
+      const currentHeight = window.innerHeight;
+      const inputElement = inputRef.current;
+      
+      if (inputElement && document.activeElement === inputElement) {
+        // Keyboard is open (viewport shrunk)
+        if (currentHeight < originalHeight) {
+          // Scroll input into view
+          setTimeout(() => {
+            inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      const inputElement = inputRef.current;
+      if (inputElement) {
+        setTimeout(() => {
+          inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          window.scrollTo(0, document.body.scrollHeight);
+        }, 300);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    inputRef.current?.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      inputRef.current?.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const copyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -800,8 +839,12 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="sticky bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50 safe-area-inset-bottom"
-        style={{ position: '-webkit-sticky' }}
+        className="fixed bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50"
+        style={{ 
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)'
+        }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -809,6 +852,7 @@ export default function HomePage() {
               <Cog6ToothIcon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
             </motion.div>
             <input
+              ref={inputRef}
               type="text"
               value={claudeInput}
               onChange={(e) => setClaudeInput(e.target.value)}

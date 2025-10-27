@@ -5,6 +5,26 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    /* Fix for mobile keyboard overlap */
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    height: 100%;
+    overflow: auto;
+    /* Prevent iOS bounce */
+    overscroll-behavior: none;
+    /* Support for dynamic viewport height */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Ensure main container uses full viewport */
+  #__next,
+  #__next > div {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   .font-orbitron {
