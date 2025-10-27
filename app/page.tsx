@@ -85,41 +85,22 @@ export default function HomePage() {
     scrollToBottom();
   }, [claudeMessages]);
 
-  // Handle mobile keyboard overlap
+  // Handle mobile keyboard overlap - lightweight approach
   useEffect(() => {
-    let originalHeight = window.innerHeight;
-    
-    const handleResize = () => {
-      const currentHeight = window.innerHeight;
-      const inputElement = inputRef.current;
-      
-      if (inputElement && document.activeElement === inputElement) {
-        // Keyboard is open (viewport shrunk)
-        if (currentHeight < originalHeight) {
-          // Scroll input into view
-          setTimeout(() => {
-            inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
-        }
-      }
-    };
-
     const handleFocus = () => {
-      const inputElement = inputRef.current;
-      if (inputElement) {
+      // On mobile, when keyboard opens, ensure input is visible
+      if (inputRef.current && window.innerWidth <= 768) {
         setTimeout(() => {
-          inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          window.scrollTo(0, document.body.scrollHeight);
+          inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 300);
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    inputRef.current?.addEventListener('focus', handleFocus);
+    const inputElement = inputRef.current;
+    inputElement?.addEventListener('focus', handleFocus);
     
     return () => {
-      window.removeEventListener('resize', handleResize);
-      inputRef.current?.removeEventListener('focus', handleFocus);
+      inputElement?.removeEventListener('focus', handleFocus);
     };
   }, []);
 
@@ -567,7 +548,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] flex flex-col">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
       {/* Top Navigation Bar */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -688,7 +669,7 @@ export default function HomePage() {
       </div>
 
   {/* Chat Messages */}
-  <div className="relative z-10 pt-16 sm:pt-20 pb-32 sm:pb-36 flex-1 overflow-y-auto">
+  <div className="relative z-10 pt-16 sm:pt-20 pb-32 sm:pb-36 min-h-screen">
         <div className="max-w-4xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
           <AnimatePresence>
             {claudeMessages.map((msg, index) => (
@@ -841,9 +822,7 @@ export default function HomePage() {
         transition={{ delay: 0.1, duration: 0.4 }}
         className="fixed bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50"
         style={{ 
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          transform: 'translateZ(0)',
-          WebkitTransform: 'translateZ(0)'
+          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)'
         }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
