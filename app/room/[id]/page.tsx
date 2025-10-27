@@ -755,8 +755,8 @@ export default function RoomPage() {
               </div>
             )}
             
-            <div className="flex items-center space-x-2">
-              <div className="flex-1 max-w-full">
+            <div className="flex items-start space-x-2">
+              <div className="flex-1 min-w-0">
                 <Textarea
                   placeholder="Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send\nDrag & drop code files for instant sharing!"
                   value={message}
@@ -765,14 +765,15 @@ export default function RoomPage() {
                   onFileContent={handleFileContent}
                   disabled={false}
                   rows={2}
-                  className="min-h-[60px] max-h-[120px] overflow-y-auto resize-none"
+                  className="h-[60px] !min-h-[60px] !max-h-[60px] overflow-y-auto !resize-none"
+                  style={{ height: '60px', minHeight: '60px', maxHeight: '60px' }}
                 />
               </div>
               <Button
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
                 variant="primary"
-                className="shrink-0 px-4 py-3 bg-transparent border-transparent hover:bg-transparent hover:shadow-none disabled:opacity-50 self-end"
+                className="shrink-0 w-12 h-[60px] flex items-center justify-center bg-transparent border-transparent hover:bg-transparent hover:shadow-none disabled:opacity-50"
                 title={wsConnected ? "Send via WebSocket" : "Send via REST API (WebSocket unavailable)"}
               >
                 <PaperAirplaneIcon className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
