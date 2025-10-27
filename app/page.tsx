@@ -528,7 +528,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
+    <div className="relative min-h-screen min-h-[100dvh] overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] flex flex-col">
       {/* Top Navigation Bar */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -649,7 +649,7 @@ export default function HomePage() {
       </div>
 
   {/* Chat Messages */}
-  <div className="relative z-10 pt-16 sm:pt-20 pb-28 sm:pb-32 min-h-screen">
+  <div className="relative z-10 pt-16 sm:pt-20 pb-32 sm:pb-36 flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
           <AnimatePresence>
             {claudeMessages.map((msg, index) => (
@@ -800,12 +800,13 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-40"
+        className="sticky bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50 safe-area-inset-bottom"
+        style={{ position: '-webkit-sticky' }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-              <Cog6ToothIcon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+              <Cog6ToothIcon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
             </motion.div>
             <input
               type="text"
@@ -819,16 +820,16 @@ export default function HomePage() {
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 border-b border-cyan-400/30 focus:border-cyan-400 pb-1 sm:pb-2 text-sm sm:text-base"
+              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 border-b border-cyan-400/30 focus:border-cyan-400 pb-1 sm:pb-2 text-base sm:text-lg"
             />
             <motion.button
               onClick={handleAskClaude}
               disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="p-1.5 sm:p-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(217,70,239,0.5)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)]"
+              className="p-2 sm:p-2.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(217,70,239,0.5)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)]"
             >
-              <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              <PaperAirplaneIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </motion.button>
 
             {/* Code theme selector */}
