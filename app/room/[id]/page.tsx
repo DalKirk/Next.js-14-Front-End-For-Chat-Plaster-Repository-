@@ -20,7 +20,8 @@ import {
   DocumentIcon,
   ArrowLeftIcon,
   ChevronUpIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  Bars3Icon
 } from '@heroicons/react/24/outline';
 
 export default function RoomPage() {
@@ -45,6 +46,7 @@ export default function RoomPage() {
   const [wsConnected, setWsConnected] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -574,25 +576,26 @@ export default function RoomPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card m-4 p-4 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+        className="glass-card m-2 sm:m-4 p-2 sm:p-4 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)] relative z-50"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
             <Button
               onClick={() => router.push('/chat')}
               variant="ghost"
               size="sm"
+              className="shrink-0"
             >
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Back
+              <ArrowLeftIcon className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back</span>
             </Button>
-            <div>
-              <h1 className="text-xl font-bold text-white">{roomName}</h1>
-              <div className="flex items-center space-x-2 text-sm">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-xl font-bold text-white truncate">{roomName}</h1>
+              <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
                 <div className={`w-2 h-2 rounded-full ${
                   wsConnected ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                 }`}></div>
-                <span className="text-white/60">
+                <span className="text-white/60 hidden min-[375px]:inline">
                   {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
                 {!wsConnected && (
@@ -610,46 +613,100 @@ export default function RoomPage() {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button
-              onClick={() => setShowVideoModal(true)}
-              variant="secondary"
-              size="sm"
-              className="text-xs sm:text-sm border-fuchsia-500/30 hover:border-fuchsia-500/60 hover:shadow-[0_0_15px_rgba(217,70,239,0.4)]"
-            >
-              <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">🔴 Live</span>
-              <span className="sm:hidden">🔴</span>
-            </Button>
-            <Button
-              onClick={() => setShowUploadModal(true)}
-              variant="secondary"
-              size="sm"
-              className="text-xs sm:text-sm border-purple-600/30 hover:border-purple-600/60 hover:shadow-[0_0_15px_rgba(147,51,234,0.4)]"
-            >
-              <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">📹 Upload</span>
-              <span className="sm:hidden">📹</span>
-            </Button>
+            {/* Desktop buttons (>450px) */}
+            <div className="hidden min-[450px]:flex items-center space-x-2">
+              <Button
+                onClick={() => setShowVideoModal(true)}
+                variant="secondary"
+                size="sm"
+                className="text-xs sm:text-sm border-fuchsia-500/30 hover:border-fuchsia-500/60 hover:shadow-[0_0_15px_rgba(217,70,239,0.4)]"
+              >
+                <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">🔴 Live</span>
+                <span className="sm:hidden">🔴</span>
+              </Button>
+              <Button
+                onClick={() => setShowUploadModal(true)}
+                variant="secondary"
+                size="sm"
+                className="text-xs sm:text-sm border-purple-600/30 hover:border-purple-600/60 hover:shadow-[0_0_15px_rgba(147,51,234,0.4)]"
+              >
+                <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">📹 Upload</span>
+                <span className="sm:hidden">📹</span>
+              </Button>
+            </div>
+            
+            {/* Mobile hamburger menu (<=450px) */}
+            <div className="min-[450px]:hidden relative">
+              <Button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                variant="secondary"
+                size="sm"
+                className="bg-transparent border-transparent hover:bg-transparent p-2"
+              >
+                <div className="w-6 h-5 flex flex-col justify-between">
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                </div>
+              </Button>
+              
+              {showMobileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="absolute right-0 top-12 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-purple-600/30 rounded-xl shadow-[0_0_30px_rgba(147,51,234,0.3)] z-[100] min-w-[180px]"
+                >
+                  <div className="p-2 space-y-2">
+                    <Button
+                      onClick={() => {
+                        setShowVideoModal(true);
+                        setShowMobileMenu(false);
+                      }}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start text-sm border-fuchsia-500/30 hover:border-fuchsia-500/60 hover:shadow-[0_0_15px_rgba(217,70,239,0.4)]"
+                    >
+                      <VideoCameraIcon className="w-4 h-4 mr-2" />
+                      🔴 Live Stream
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowUploadModal(true);
+                        setShowMobileMenu(false);
+                      }}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start text-sm border-purple-600/30 hover:border-purple-600/60 hover:shadow-[0_0_15px_rgba(147,51,234,0.4)]"
+                    >
+                      <DocumentIcon className="w-4 h-4 mr-2" />
+                      📹 Upload Video
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
 
       {/* Messages Area */}
-      <div className="flex-1 mx-4 mb-4 flex flex-col relative min-h-0">
+      <div className="flex-1 mx-2 sm:mx-4 mb-2 sm:mb-4 flex flex-col relative min-h-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass-card flex-1 flex flex-col min-h-0 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]"
-          style={{ maxHeight: 'calc(100vh - 160px)' }}
+          style={{ maxHeight: 'calc(100vh - 100px)' }}
         >
           {/* Messages List */}
           <div 
             ref={messagesContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 scroll-smooth min-h-0 custom-scrollbar" 
+            className="flex-1 overflow-y-auto p-2 sm:p-4 scroll-smooth min-h-0 custom-scrollbar" 
             id="messages-container"
-            style={{ maxHeight: 'calc(100vh - 240px)' }}
+            style={{ maxHeight: 'calc(100vh - 180px)' }}
           >
             {messages.length === 0 ? (
               <div className="text-center py-8">
@@ -683,7 +740,7 @@ export default function RoomPage() {
           </div>
 
           {/* Sticky Message Input */}
-          <div className="border-t border-purple-600/30 p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-[0_-5px_30px_rgba(147,51,234,0.2)]">
+          <div className="border-t border-purple-600/30 p-2 sm:p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-[0_-5px_30px_rgba(147,51,234,0.2)]">
             {/* Typing Indicator */}
             {typingUsers.size > 0 && (
               <div className="mb-2 text-sm text-cyan-300 italic flex items-center gap-2">
@@ -698,7 +755,7 @@ export default function RoomPage() {
               </div>
             )}
             
-            <div className="flex items-start space-x-2">
+            <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Textarea
                   placeholder="Type your message (Markdown supported)...\nShift+Enter for new line, Enter to send\nDrag & drop code files for instant sharing!"
@@ -715,11 +772,10 @@ export default function RoomPage() {
                 onClick={handleSendMessage}
                 disabled={!message.trim()}
                 variant="primary"
-                size="sm"
-                className="px-4 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.5)]"
+                className="px-4 py-3 bg-transparent border-transparent hover:bg-transparent hover:shadow-none disabled:opacity-50"
                 title={wsConnected ? "Send via WebSocket" : "Send via REST API (WebSocket unavailable)"}
               >
-                <PaperAirplaneIcon className="w-4 h-4" />
+                <PaperAirplaneIcon className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
               </Button>
             </div>
           </div>

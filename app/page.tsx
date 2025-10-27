@@ -529,26 +529,25 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
-      <ServerStatus />
-
       {/* Top Navigation Bar */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2"
+        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-2 sm:p-3 md:p-4 flex items-center justify-between flex-wrap gap-2"
       >
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.5)]">
-              <SparklesIcon className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.5)]">
+              <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-white truncate">CHATTER BOX</h1>
+            <h1 className="text-base sm:text-xl font-bold text-white truncate">CHATTER BOX</h1>
           </div>
           {aiHealth?.ai_enabled && (
-            <span className="text-xs bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/30 text-cyan-400 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-              Server Online
+            <span className="flex text-xs bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/30 text-cyan-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+              <span className="hidden sm:inline">Server Online</span>
+              <span className="sm:hidden">Online</span>
             </span>
           )}
         </div>
@@ -556,12 +555,16 @@ export default function HomePage() {
         <div className="flex items-center gap-2 min-w-0">
           {currentUser ? (
             <div className="relative">
-              <Button
+              <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 bg-[oklch(14.7%_0.004_49.25)] border border-fuchsia-500/30 hover:border-fuchsia-500/60 text-white hover:shadow-[0_0_15px_rgba(217,70,239,0.3)] p-2"
+                className="bg-transparent border-none p-2 cursor-pointer"
               >
-                <Bars3Icon className="w-6 h-6 text-fuchsia-500" />
-              </Button>
+                <div className="w-6 h-5 flex flex-col justify-between">
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                </div>
+              </button>
               
               {showUserMenu && (
                 <motion.div
@@ -611,82 +614,29 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Input
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-24 sm:w-32 text-sm bg-[oklch(14.7%_0.004_49.25)] border-cyan-400/30 text-white placeholder:text-white/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-[oklch(14.7%_0.004_49.25)] border-cyan-400/30 text-white placeholder:text-white/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)]"
                 maxLength={20}
               />
               <Button
                 onClick={handleCreateUser}
                 disabled={isLoading || !username.trim()}
-                className="text-sm h-9 bg-gradient-to-r from-cyan-400 to-fuchsia-500 hover:from-cyan-500 hover:to-fuchsia-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)]"
+                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-cyan-400 to-fuchsia-500 hover:from-cyan-500 hover:to-fuchsia-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)]"
               >
                 {isLoading ? '...' : 'Join'}
-                <ArrowRightIcon className="w-4 h-4 ml-1" />
+                <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
               </Button>
             </div>
           )}
         </div>
       </motion.div>
 
-      {/* Fixed Input at Top */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed top-[72px] left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl shadow-lg z-40"
-      >
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-              <Cog6ToothIcon className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-            </motion.div>
-            <input
-              type="text"
-              value={claudeInput}
-              onChange={(e) => setClaudeInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleAskClaude();
-                }
-              }}
-              placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
-              disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 pb-2"
-            />
-            <motion.button
-              onClick={handleAskClaude}
-              disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="text-fuchsia-500 hover:text-fuchsia-400 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.8)] disabled:text-white/30 disabled:cursor-not-allowed transition-colors"
-            >
-              <PaperAirplaneIcon className="w-5 h-5" />
-            </motion.button>
 
-            {/* Code theme selector */}
-            <div className="ml-2 flex items-center gap-2">
-              <label htmlFor="code-theme" className="text-xs text-white/70 hidden sm:inline">Theme</label>
-              <select
-                id="code-theme"
-                value={codeTheme}
-                onChange={(e) => setCodeTheme(e.target.value as any)}
-                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-xs border border-purple-600/30 rounded px-2 py-1 focus:outline-none focus:border-purple-600 focus:shadow-[0_0_10px_rgba(147,51,234,0.4)]"
-              >
-                <option value="vscDarkPlus">VS Code Dark+</option>
-                <option value="oneDark">One Dark</option>
-                <option value="tomorrow">Tomorrow</option>
-                <option value="dracula">Dracula</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
       {/* Decorative floating bubbles layer (background, no scroll impact) */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -699,8 +649,8 @@ export default function HomePage() {
       </div>
 
   {/* Chat Messages */}
-  <div className="relative z-10 pt-[160px] pb-8 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 space-y-6">
+  <div className="relative z-10 pt-16 sm:pt-20 pb-28 sm:pb-32 min-h-screen">
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
           <AnimatePresence>
             {claudeMessages.map((msg, index) => (
               <motion.div
@@ -709,15 +659,15 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} min-w-0`}
+                className="flex justify-center min-w-0"
               >
                 <motion.div 
                   whileHover={{ scale: 1.01 }}
                   transition={{ duration: 0.2 }}
-                  className={`w-full sm:max-w-3xl min-w-0 rounded-2xl px-4 sm:px-6 py-4 ${
+                  className={`w-full sm:max-w-3xl min-w-0 rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 backdrop-blur-sm ${
                     msg.role === 'user' 
-                      ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white shadow-[0_0_20px_rgba(217,70,239,0.4)]' 
-                      : 'bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/20 text-white/90 shadow-md'
+                      ? 'bg-gradient-to-br from-[rgba(217,70,239,0.4)] to-[rgba(147,51,234,0.3)] border-2 sm:border-4 border-fuchsia-500 text-white shadow-[0_0_30px_rgba(217,70,239,0.5)] sm:shadow-[0_0_60px_rgba(217,70,239,0.7)]' 
+                      : 'bg-gradient-to-br from-[rgba(0,255,255,0.4)] to-[rgba(0,200,255,0.2)] border-2 sm:border-4 border-cyan-400 text-white shadow-[0_0_30px_rgba(34,211,238,0.5)] sm:shadow-[0_0_60px_rgba(34,211,238,0.7)]'
                   }`}
                 >
                   <div className="prose prose-invert max-w-full break-words overflow-hidden">
@@ -844,6 +794,61 @@ export default function HomePage() {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Fixed Input at Bottom */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+        className="fixed bottom-0 left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-40"
+      >
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
+              <Cog6ToothIcon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+            </motion.div>
+            <input
+              type="text"
+              value={claudeInput}
+              onChange={(e) => setClaudeInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAskClaude();
+                }
+              }}
+              placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
+              disabled={!aiHealth?.ai_enabled || isClaudeTyping}
+              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 border-b border-cyan-400/30 focus:border-cyan-400 pb-1 sm:pb-2 text-sm sm:text-base"
+            />
+            <motion.button
+              onClick={handleAskClaude}
+              disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-1.5 sm:p-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(217,70,239,0.5)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)]"
+            >
+              <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </motion.button>
+
+            {/* Code theme selector */}
+            <div className="ml-1 sm:ml-2 flex items-center gap-1 sm:gap-2">
+              <label htmlFor="code-theme" className="text-xs text-white/70 hidden md:inline">Theme</label>
+              <select
+                id="code-theme"
+                value={codeTheme}
+                onChange={(e) => setCodeTheme(e.target.value as any)}
+                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-[10px] sm:text-xs border border-purple-600/30 rounded px-1.5 sm:px-2 py-0.5 sm:py-1 focus:outline-none focus:border-purple-600 focus:shadow-[0_0_10px_rgba(147,51,234,0.4)]"
+              >
+                <option value="vscDarkPlus">VS Code Dark+</option>
+                <option value="oneDark">One Dark</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="dracula">Dracula</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
