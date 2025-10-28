@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import SpaceShooter from '@/components/SpaceShooter';
+import BurgerTime from '@/components/BurgerTime';
 
 export default function GamesPage() {
   const router = useRouter();
@@ -20,6 +21,13 @@ export default function GamesPage() {
       available: true,
     },
     {
+      id: 'burger-smash',
+      title: 'Burger Smash DEMO',
+      description: 'Drop burger parts to complete orders',
+      icon: '🍔',
+      available: true,
+    },
+    {
       id: 'tic-tac-toe',
       title: 'Tic Tac Toe',
       description: 'Classic X and O game',
@@ -30,14 +38,7 @@ export default function GamesPage() {
       id: 'memory',
       title: 'Memory Match',
       description: 'Find matching pairs',
-      icon: '🃏',
-      available: false,
-    },
-    {
-      id: 'guess-number',
-      title: 'Guess the Number',
-      description: 'Guess a number between 1-100',
-      icon: '🎯',
+      icon: '�',
       available: false,
     },
     {
@@ -73,6 +74,8 @@ export default function GamesPage() {
       {/* Game View */}
       {selectedGame === 'space-attack' ? (
         <SpaceShooter />
+      ) : selectedGame === 'burger-smash' ? (
+        <BurgerTime />
       ) : selectedGame ? (
         <div className="container mx-auto px-4 py-8 text-center">
           <p className="text-purple-300 text-xl">Coming Soon!</p>
