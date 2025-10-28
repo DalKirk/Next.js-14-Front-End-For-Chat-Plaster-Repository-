@@ -3,8 +3,6 @@
 
 ---
 
-et-powered real-time updates
-- **Message history** - persistent chat stor## ✨ Features
 
 ### 🎨 Syntax Highlighting
 - **150+ programming languages** supported (JavaScript, Python, Java, C++, SQL, and more)
