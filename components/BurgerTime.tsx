@@ -471,7 +471,7 @@ export default function BurgerTime() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-fuchsia-950 p-4">
       <div className="mb-2 text-center">
         <h1 className={`${isMobile ? 'text-2xl' : 'text-4xl'} font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent mb-2`}>
-          BurgerTime
+          Play Burger Smash DEMO
         </h1>
         <div className={`flex ${isMobile ? 'flex-col gap-1' : 'gap-6 justify-center'} ${isMobile ? 'text-sm' : 'text-xl'}`}>
           <p className="text-cyan-400">Score: {score}</p>
