@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import SpaceShooter from '@/components/SpaceShooter';
 import BurgerTime from '@/components/BurgerTime';
+import GravityWell from '@/components/GravityWell';
 
 export default function GamesPage() {
   const router = useRouter();
@@ -25,6 +26,13 @@ export default function GamesPage() {
       title: 'Burger Smash DEMO',
       description: 'Drop burger parts to complete orders',
       icon: '🍔',
+      available: true,
+    },
+    {
+      id: 'gravity-well',
+      title: 'Gravity Well',
+      description: 'Use gravity to reach the target',
+      icon: '🌌',
       available: true,
     },
     {
@@ -76,6 +84,8 @@ export default function GamesPage() {
         <SpaceShooter />
       ) : selectedGame === 'burger-smash' ? (
         <BurgerTime />
+      ) : selectedGame === 'gravity-well' ? (
+        <GravityWell />
       ) : selectedGame ? (
         <div className="container mx-auto px-4 py-8 text-center">
           <p className="text-purple-300 text-xl">Coming Soon!</p>
