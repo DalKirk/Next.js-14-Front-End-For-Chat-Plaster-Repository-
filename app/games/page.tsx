@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import SpaceShooter from '@/components/SpaceShooter';
 import BurgerTime from '@/components/BurgerTime';
 import GravityWell from '@/components/GravityWell';
+import HackingGame from '@/components/HackingGame';
 
 export default function GamesPage() {
   const router = useRouter();
@@ -33,6 +34,13 @@ export default function GamesPage() {
       title: 'Gravity Well',
       description: 'Use gravity to reach the target',
       icon: '🌌',
+      available: true,
+    },
+    {
+      id: 'hacking-game',
+      title: 'Terminal Hacker',
+      description: 'Crack the password like Fallout',
+      icon: '💻',
       available: true,
     },
     {
@@ -86,6 +94,8 @@ export default function GamesPage() {
         <BurgerTime />
       ) : selectedGame === 'gravity-well' ? (
         <GravityWell />
+      ) : selectedGame === 'hacking-game' ? (
+        <HackingGame />
       ) : selectedGame ? (
         <div className="container mx-auto px-4 py-8 text-center">
           <p className="text-purple-300 text-xl">Coming Soon!</p>
