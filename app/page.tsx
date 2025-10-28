@@ -624,7 +624,7 @@ export default function HomePage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="absolute right-0 mt-2 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-purple-600/30 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(147,51,234,0.3)]"
+                  className="absolute right-0 mt-2 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-purple-600/30 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(147,51,234,0.3)] z-50"
                 >
                   <div className="px-3 py-2 border-b border-purple-600/20">
                     <div className="flex items-center gap-2">
@@ -651,6 +651,16 @@ export default function HomePage() {
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
                     Rooms
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push('/games');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <span className="w-4 h-4 flex items-center justify-center">🎮</span>
+                    Games
                   </button>
                   <button
                     onClick={() => { router.push('/profile'); setShowUserMenu(false); }}
