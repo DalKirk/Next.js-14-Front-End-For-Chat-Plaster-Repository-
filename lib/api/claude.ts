@@ -8,9 +8,29 @@ const getApiUrl = () => {
   return '/api/ai-proxy';
 };
 
+// Generate or retrieve conversation ID for maintaining history
+const getConversationId = (): string => {
+  if (typeof window === 'undefined') return ''; // SSR safety
+  
+  let conversationId = sessionStorage.getItem('claude_conversation_id');
+  if (!conversationId) {
+    conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('claude_conversation_id', conversationId);
+  }
+  return conversationId;
+};
+
+// Clear conversation history and start fresh
+export const clearConversationHistory = () => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('claude_conversation_id');
+  }
+};
+
 interface GenerateOptions {
   maxTokens?: number;
   temperature?: number;
+  conversationId?: string; // Optional: override default conversation ID
 }
 
 interface ModerationResult {
@@ -34,12 +54,15 @@ interface Message {
 
 export const claudeAPI = {
   /**
-   * Generate AI response
+   * Generate AI response with conversation history
    */
   async generate(prompt: string, options: GenerateOptions = {}) {
     try {
       const apiUrl = getApiUrl();
       const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/api/v1/chat`;
+      
+      // Use provided conversation ID or get default one
+      const conversationId = options.conversationId || getConversationId();
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -51,6 +74,7 @@ export const claudeAPI = {
         body: JSON.stringify({
           message: prompt,
           conversation_history: [],
+          conversation_id: conversationId, // NEW: Include conversation ID
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
         }),
@@ -61,7 +85,7 @@ export const claudeAPI = {
       }
 
       const data = await response.json();
-      return { response: data.response, model: data.model };
+      return { response: data.response, model: data.model, conversationId };
     } catch (error) {
       console.error('Claude API error:', error);
       throw error;
@@ -69,7 +93,7 @@ export const claudeAPI = {
   },
 
   /**
-   * Stream AI response with real-time text updates
+   * Stream AI response with real-time text updates and conversation history
    */
   async streamGenerate(
     prompt: string,
@@ -77,14 +101,18 @@ export const claudeAPI = {
     options: GenerateOptions = {}
   ): Promise<void> {
     try {
+      // Use provided conversation ID or get default one
+      const conversationId = options.conversationId || getConversationId();
+      
       const response = await fetch('/api/ai-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: prompt, // API expects 'message' not 'prompt'
+          message: prompt,
           conversation_history: [],
+          conversation_id: conversationId, // NEW: Include conversation ID
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
         }),
@@ -272,4 +300,14 @@ export const claudeAPI = {
       return { ai_enabled: false };
     }
   },
+
+  /**
+   * Get current conversation ID
+   */
+  getConversationId,
+  
+  /**
+   * Clear conversation history
+   */
+  clearHistory: clearConversationHistory,
 };
