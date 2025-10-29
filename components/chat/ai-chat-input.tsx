@@ -321,12 +321,7 @@ export function AIChatInput({
           className="px-4 mt-0"
         >
           {isChecking ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            >
-              <ShieldCheckIcon className="w-4 h-4" />
-            </motion.div>
+            <ShieldCheckIcon className="w-4 h-4" style={{ animation: 'spin 3s linear infinite' }} />
           ) : (
             <PaperAirplaneIcon className="w-4 h-4" />
           )}

@@ -87,6 +87,24 @@
 }
 
 @layer components {
+  /* Fixed Sidebar - Always stays in place like a scrollbar */
+  .sidebar-fixed {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 56px !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    transform: translateZ(0) !important;
+    will-change: transform !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
   .glass-card {
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(40px);
@@ -256,20 +274,20 @@
   box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
 }
 
-/* Neon electric colors for futuristic vibe */
-.bubble-cyan {
-  background: rgba(34, 211, 238, 0.3); /* cyan-400 */
-  color: rgb(34, 211, 238);
+/* Mango color scheme for vibrant vibe */
+.bubble-mango {
+  background: rgba(255, 153, 0, 0.3); /* #FF9900 */
+  color: rgb(255, 153, 0);
 }
 
-.bubble-fuchsia {
-  background: rgba(217, 70, 239, 0.3); /* fuchsia-500 */
-  color: rgb(217, 70, 239);
+.bubble-mango-light {
+  background: rgba(255, 184, 77, 0.3); /* #FFB84D */
+  color: rgb(255, 184, 77);
 }
 
-.bubble-purple {
-  background: rgba(147, 51, 234, 0.3); /* purple-600 */
-  color: rgb(147, 51, 234);
+.bubble-yellow {
+  background: rgba(250, 204, 21, 0.3); /* yellow-400 */
+  color: rgb(250, 204, 21);
 }
 
 /* Size variants */

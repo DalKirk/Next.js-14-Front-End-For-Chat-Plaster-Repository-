@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ServerStatus } from '@/components/ui/server-status';
+import { Sidebar } from '@/components/ui/sidebar';
 import { apiClient } from '@/lib/api';
-import { claudeAPI } from '@/lib/api/claude';
+import { claudeAPI, clearConversationHistory } from '@/lib/api/claude';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,7 +21,7 @@ import {
   ArrowRightIcon,
   Bars3Icon,
   ChatBubbleLeftRightIcon,
-  Cog6ToothIcon
+  CogIcon
 } from '@heroicons/react/24/outline';
 import { Copy, Check } from 'lucide-react';
 
@@ -582,24 +583,25 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+      {/* Sidebar Navigation */}
+      <Sidebar />
+
       {/* Top Navigation Bar */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border-b border-[oklch(var(--color-primary)/0.2)] shadow-lg p-2 sm:p-3 md:p-4 flex items-center justify-between flex-wrap gap-2"
+        className="fixed top-0 left-[56px] right-0 z-50 bg-zinc-900 backdrop-blur-xl border-b border-zinc-800 shadow-black/50 p-2 sm:p-3 md:p-4 flex items-center justify-between flex-wrap gap-2"
       >
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.5)]">
-              <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <h1 className="text-base sm:text-xl font-bold text-white truncate">CHATTER BOX</h1>
+            <span className="text-2xl sm:text-3xl">🥭</span>
+            <h1 className="text-base sm:text-xl font-bold text-white truncate">Mango Box v.1</h1>
           </div>
           {aiHealth?.ai_enabled && (
-            <span className="flex text-xs bg-[oklch(14.7%_0.004_49.25)] border border-cyan-400/30 text-cyan-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+            <span className="flex text-xs bg-zinc-900 border border-[#FF9900]/30 text-[#FF9900] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
               <span className="hidden sm:inline">Server Online</span>
               <span className="sm:hidden">Online</span>
             </span>
@@ -614,9 +616,9 @@ export default function HomePage() {
                 className="bg-transparent border-none p-2 cursor-pointer"
               >
                 <div className="w-6 h-5 flex flex-col justify-between">
-                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
                 </div>
               </button>
               
@@ -624,11 +626,11 @@ export default function HomePage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="absolute right-0 mt-2 bg-[oklch(14.7%_0.004_49.25)] backdrop-blur-xl border border-purple-600/30 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(147,51,234,0.3)] z-50"
+                  className="absolute right-0 mt-2 bg-zinc-900 backdrop-blur-xl border border-zinc-800 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(0,0,0,0.5)] z-50"
                 >
-                  <div className="px-3 py-2 border-b border-purple-600/20">
+                  <div className="px-3 py-2 border-b border-zinc-800">
                     <div className="flex items-center gap-2">
-                      <UserCircleIcon className="w-5 h-5 text-fuchsia-500" />
+                      <UserCircleIcon className="w-5 h-5 text-[#FF9900]" />
                       <span className="text-white font-medium text-sm">{currentUser.username}</span>
                     </div>
                   </div>
@@ -637,7 +639,7 @@ export default function HomePage() {
                       router.push('/profile');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
                   >
                     <UserCircleIcon className="w-4 h-4" />
                     Profile
@@ -647,7 +649,7 @@ export default function HomePage() {
                       router.push('/chat');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
                     Rooms
@@ -657,7 +659,7 @@ export default function HomePage() {
                       router.push('/games');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-purple-600/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
                   >
                     <span className="w-4 h-4 flex items-center justify-center">🎮</span>
                     Games
@@ -674,6 +676,21 @@ export default function HomePage() {
                   >
                     Browse Rooms
                   </button>
+                  
+                  {/* Code Theme Selector */}
+                  <div className="px-3 py-2 border-t border-zinc-800 mt-2 pt-3">
+                    <label className="text-xs text-zinc-400 mb-2 block">Code Theme</label>
+                    <select
+                      value={codeTheme}
+                      onChange={(e) => setCodeTheme(e.target.value as any)}
+                      className="w-full bg-black text-white text-sm border border-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FF9900] focus:shadow-[0_0_10px_rgba(255,153,0,0.4)]"
+                    >
+                      <option value="vscDarkPlus">VS Code Dark+</option>
+                      <option value="oneDark">One Dark</option>
+                      <option value="tomorrow">Tomorrow</option>
+                      <option value="dracula">Dracula</option>
+                    </select>
+                  </div>
                 </motion.div>
               )}
             </div>
@@ -684,13 +701,13 @@ export default function HomePage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-[oklch(14.7%_0.004_49.25)] border-cyan-400/30 text-white placeholder:text-white/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 focus:border-[#FF9900] focus:shadow-[0_0_15px_rgba(255,153,0,0.3)]"
                 maxLength={20}
               />
               <Button
                 onClick={handleCreateUser}
                 disabled={isLoading || !username.trim()}
-                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-cyan-400 to-fuchsia-500 hover:from-cyan-500 hover:to-fuchsia-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)]"
+                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)]"
               >
                 {isLoading ? '...' : 'Join'}
                 <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
@@ -704,17 +721,28 @@ export default function HomePage() {
 
       {/* Decorative floating bubbles layer (background, no scroll impact) */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="bubble-wobble bubble-cyan bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
-        <div className="bubble-wobble bubble-fuchsia bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
-        <div className="bubble-wobble bubble-purple bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
-        <div className="bubble-wobble bubble-cyan bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
-        <div className="bubble-wobble bubble-fuchsia bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
-        <div className="bubble-wobble bubble-purple bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
+        <div className="bubble-wobble bubble-mango bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
+        <div className="bubble-wobble bubble-mango-light bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
+        <div className="bubble-wobble bubble-yellow bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
+        <div className="bubble-wobble bubble-mango bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
+        <div className="bubble-wobble bubble-mango-light bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
+        <div className="bubble-wobble bubble-yellow bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
       </div>
 
-  {/* Chat Messages */}
-  <div className="relative z-10 pt-16 sm:pt-20 pb-32 sm:pb-36 min-h-screen">
-        <div className="max-w-4xl mx-auto px-2 sm:px-4 space-y-4 sm:space-y-6">
+  {/* Chat Messages - Scrollable Viewport */}
+  <div 
+    className="relative z-10 pl-[56px]"
+    style={{
+      position: 'fixed',
+      top: '64px',
+      left: 0,
+      right: 0,
+      bottom: '80px',
+      overflowY: 'auto',
+      overflowX: 'hidden'
+    }}
+  >
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 space-y-4 sm:space-y-6">
           <AnimatePresence>
             {claudeMessages.map((msg, index) => (
               <motion.div
@@ -730,8 +758,8 @@ export default function HomePage() {
                   transition={{ duration: 0.2 }}
                   className={`w-full sm:max-w-3xl min-w-0 rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 backdrop-blur-sm ${
                     msg.role === 'user' 
-                      ? 'bg-gradient-to-br from-[rgba(217,70,239,0.4)] to-[rgba(147,51,234,0.3)] border-2 sm:border-4 border-fuchsia-500 text-white shadow-[0_0_30px_rgba(217,70,239,0.5)] sm:shadow-[0_0_60px_rgba(217,70,239,0.7)]' 
-                      : 'bg-gradient-to-br from-[rgba(0,255,255,0.4)] to-[rgba(0,200,255,0.2)] border-2 sm:border-4 border-cyan-400 text-white shadow-[0_0_30px_rgba(34,211,238,0.5)] sm:shadow-[0_0_60px_rgba(34,211,238,0.7)]'
+                      ? 'bg-gradient-to-br from-[rgba(255,153,0,0.4)] to-[rgba(255,184,77,0.3)] border-2 sm:border-4 border-[#FF9900] text-white shadow-[0_0_30px_rgba(255,153,0,0.5)] sm:shadow-[0_0_60px_rgba(255,153,0,0.7)]' 
+                      : 'bg-zinc-900 border-2 sm:border-4 border-zinc-800 text-white shadow-black/50'
                   }`}
                 >
                   <div className="prose prose-invert max-w-full break-words overflow-hidden">
@@ -745,9 +773,9 @@ export default function HomePage() {
                           const isInline = !className;
                           
                           return !isInline && match ? (
-                            <div className="relative my-4 rounded-lg overflow-auto border border-purple-600/30 bg-[oklch(8%_0.02_280)] max-w-full shadow-[0_0_15px_rgba(147,51,234,0.2)]">
-                              <div className="flex items-center justify-between bg-[oklch(14.7%_0.004_49.25)] px-3 py-1.5 border-b border-purple-600/20 flex-wrap gap-2">
-                                <span className="font-mono text-purple-400 font-semibold" style={{fontSize: '0.625rem'}}>
+                            <div className="relative my-4 rounded-lg overflow-auto border border-zinc-800 bg-black max-w-full shadow-black/50">
+                              <div className="flex items-center justify-between bg-zinc-900 px-3 py-1.5 border-b border-zinc-800 flex-wrap gap-2">
+                                <span className="font-mono text-[#FF9900] font-semibold" style={{fontSize: '0.625rem'}}>
                                   {match[1]}
                                 </span>
                                 <button
@@ -807,7 +835,7 @@ export default function HomePage() {
                         h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
-                        a: ({children, href}) => <a href={href} className="text-cyan-400 hover:text-cyan-300 hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        a: ({children, href}) => <a href={href} className="text-[#FF9900] hover:text-[#FFB84D] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
                         img: ({...props}) => <img {...props} style={{maxWidth: '100%', height: 'auto'}} />,
                         table: ({children}) => (
                           <div className="w-full overflow-x-auto">
@@ -839,17 +867,17 @@ export default function HomePage() {
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                  className="w-2 h-2 bg-pink-500 rounded-full"
+                  className="w-2 h-2 bg-[#FF9900] rounded-full"
                 />
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }}
-                  className="w-2 h-2 bg-pink-500 rounded-full"
+                  className="w-2 h-2 bg-[#FFB84D] rounded-full"
                 />
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}
-                  className="w-2 h-2 bg-pink-500 rounded-full"
+                  className="w-2 h-2 bg-yellow-400 rounded-full"
                 />
               </div>
             </motion.div>
@@ -865,7 +893,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed left-0 right-0 bg-[oklch(14.7%_0.004_49.25)]/95 backdrop-blur-xl border-t border-purple-600/30 shadow-[0_-5px_30px_rgba(147,51,234,0.2)] z-50"
+        className="fixed left-[56px] right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 shadow-black/50 z-50"
         style={{ 
           bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
           paddingBottom: keyboardOffset > 0 ? '0px' : 'max(env(safe-area-inset-bottom), 8px)',
@@ -874,9 +902,24 @@ export default function HomePage() {
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-              <Cog6ToothIcon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-            </motion.div>
+            <span className="flex items-center gap-2">
+              <CogIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#FF9900]" style={{ animation: 'spin 3s linear infinite' }} />
+              <span className="sr-only">Loading indicator</span>
+            </span>
+            <motion.button
+              onClick={() => {
+                clearConversationHistory();
+                setClaudeMessages([]);
+                toast.success('Started new conversation');
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="Start new conversation"
+              className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-[#FF9900]/20 hover:bg-[#FF9900]/30 border border-[#FF9900]/30 text-[#FFB84D] text-xs sm:text-sm transition-all flex items-center gap-1 sm:gap-2"
+            >
+              <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">New Chat</span>
+            </motion.button>
             <input
               ref={inputRef}
               type="text"
@@ -890,33 +933,17 @@ export default function HomePage() {
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 transition-all duration-300 border-b border-cyan-400/30 focus:border-cyan-400 pb-1 sm:pb-2 text-base sm:text-lg"
+              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-zinc-500 transition-all duration-300 border-b border-[#FF9900]/30 focus:border-[#FF9900] pb-1 sm:pb-2 text-base sm:text-lg"
             />
             <motion.button
               onClick={handleAskClaude}
               disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="p-2 sm:p-2.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(217,70,239,0.5)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)]"
+              className="p-2 sm:p-2.5 rounded-full bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 disabled:from-zinc-700 disabled:to-zinc-800 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(255,153,0,0.5)] hover:shadow-[0_0_25px_rgba(255,153,0,0.8)]"
             >
-              <PaperAirplaneIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <PaperAirplaneIcon className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
             </motion.button>
-
-            {/* Code theme selector */}
-            <div className="ml-1 sm:ml-2 flex items-center gap-1 sm:gap-2">
-              <label htmlFor="code-theme" className="text-xs text-white/70 hidden md:inline">Theme</label>
-              <select
-                id="code-theme"
-                value={codeTheme}
-                onChange={(e) => setCodeTheme(e.target.value as any)}
-                className="bg-[oklch(14.7%_0.004_49.25)] text-white text-[10px] sm:text-xs border border-purple-600/30 rounded px-1.5 sm:px-2 py-0.5 sm:py-1 focus:outline-none focus:border-purple-600 focus:shadow-[0_0_10px_rgba(147,51,234,0.4)]"
-              >
-                <option value="vscDarkPlus">VS Code Dark+</option>
-                <option value="oneDark">One Dark</option>
-                <option value="tomorrow">Tomorrow</option>
-                <option value="dracula">Dracula</option>
-              </select>
-            </div>
           </div>
         </div>
       </motion.div>

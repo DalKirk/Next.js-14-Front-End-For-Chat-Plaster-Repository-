@@ -130,7 +130,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)]">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <motion.div
@@ -146,11 +146,11 @@ export default function ProfilePage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-white bitcount-prop-double-ink">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-[#FF9900] to-yellow-400 bg-clip-text text-transparent bitcount-prop-double-ink">
                 {isFirstTime ? 'Welcome to CHATTER BOX!' : 'User Profile'}
               </h1>
               {isFirstTime && (
-                <p className="text-white/70 mt-1">Let&apos;s set up your profile to get started</p>
+                <p className="text-zinc-400 mt-1">Let&apos;s set up your profile to get started</p>
               )}
             </div>
           </div>
@@ -181,10 +181,10 @@ export default function ProfilePage() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="lg:col-span-1"
           >
-            <div className="glass-card p-6 space-y-6 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
+            <div className="glass-card p-6 space-y-6 border border-zinc-800 shadow-black/50">
               {/* Avatar Section */}
               <div className="text-center space-y-4">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-[#FF9900] to-yellow-400 rounded-full flex items-center justify-center text-black text-2xl font-bold shadow-[0_0_30px_rgba(255,153,0,0.5)]">
                   {profile.username.charAt(0).toUpperCase()}
                 </div>
                 
@@ -216,27 +216,27 @@ export default function ProfilePage() {
                 ) : (
                   <div className="space-y-2">
                     <h2 className="text-xl font-semibold text-white">{profile.username}</h2>
-                    <p className="text-white/70 text-sm">{profile.bio || 'No bio added yet.'}</p>
+                    <p className="text-zinc-400 text-sm">{profile.bio || 'No bio added yet.'}</p>
                   </div>
                 )}
               </div>
 
               {/* Stats */}
-              <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className="border-t border-zinc-800 pt-4 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Joined</span>
+                  <span className="text-zinc-400">Joined</span>
                   <span className="text-white">{new Date(profile.joinedDate).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Total Rooms</span>
+                  <span className="text-zinc-400">Total Rooms</span>
                   <span className="text-white">{profile.totalRooms}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Messages Sent</span>
+                  <span className="text-zinc-400">Messages Sent</span>
                   <span className="text-white">{profile.totalMessages}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/70">Favorite Language</span>
+                  <span className="text-zinc-400">Favorite Language</span>
                   <span className="text-white">{profile.favoriteLanguage}</span>
                 </div>
               </div>
@@ -251,13 +251,13 @@ export default function ProfilePage() {
             className="lg:col-span-2 space-y-6"
           >
             {/* Settings */}
-            <div className="glass-card p-6 space-y-4 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]">
+            <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
               <h3 className="text-xl font-semibold text-white">Settings</h3>
               
               {isEditing ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">
+                    <label className="block text-sm font-medium text-zinc-400 mb-2">
                       Theme Color
                     </label>
                     <div className="flex gap-3">
@@ -266,7 +266,7 @@ export default function ProfilePage() {
                           key={theme}
                           onClick={() => setEditedProfile({...editedProfile, theme})}
                           className={`w-8 h-8 rounded-full border-2 ${
-                            editedProfile.theme === theme ? 'border-white shadow-[0_0_15px_currentColor]' : 'border-white/30'
+                            editedProfile.theme === theme ? 'border-[#FF9900] shadow-[0_0_15px_rgba(255,153,0,0.6)]' : 'border-zinc-800'
                           } ${
                             theme === 'purple' ? 'bg-purple-600' :
                             theme === 'blue' ? 'bg-cyan-400' : 'bg-fuchsia-500'
@@ -277,11 +277,11 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-white/80">Enable Notifications</span>
+                    <span className="text-zinc-400">Enable Notifications</span>
                     <button
                       onClick={() => setEditedProfile({...editedProfile, notifications: !editedProfile.notifications})}
                       className={`w-12 h-6 rounded-full transition-colors ${
-                        editedProfile.notifications ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-500 shadow-[0_0_15px_rgba(34,211,238,0.5)]' : 'bg-white/20'
+                        editedProfile.notifications ? 'bg-gradient-to-r from-[#FF9900] to-yellow-400 shadow-[0_0_15px_rgba(255,153,0,0.5)]' : 'bg-zinc-800'
                       } relative`}
                     >
                       <div className={`w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 ${
@@ -293,11 +293,11 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-white/70">Theme</span>
+                    <span className="text-zinc-400">Theme</span>
                     <span className="text-white capitalize">{profile.theme}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/70">Notifications</span>
+                    <span className="text-zinc-400">Notifications</span>
                     <span className="text-white">{profile.notifications ? 'Enabled' : 'Disabled'}</span>
                   </div>
                 </div>
@@ -306,21 +306,21 @@ export default function ProfilePage() {
 
             {/* Recent Rooms */}
             {!isFirstTime && (
-              <div className="glass-card p-6 space-y-4 border border-fuchsia-500/20 shadow-[0_0_30px_rgba(217,70,239,0.15)]">
+              <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
                 <h3 className="text-xl font-semibold text-white">Recent Rooms</h3>
                 {recentRooms.length > 0 ? (
                   <div className="space-y-3">
                     {recentRooms.map((room) => (
-                      <div key={room.id} className="glass-panel p-4 rounded-lg border border-purple-600/30 hover:bg-purple-600/10 hover:border-purple-600/50 hover:shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-colors">
+                      <div key={room.id} className="glass-panel p-4 rounded-lg border border-zinc-800 hover:bg-[#FF9900]/10 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-colors">
                         <div className="flex justify-between items-start">
                           <div>
                             <h4 className="font-medium text-white">{room.name}</h4>
-                            <p className="text-sm text-white/60">
+                            <p className="text-sm text-zinc-400">
                               Last visited: {new Date(room.lastVisited).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-white/80">{room.messageCount} messages</p>
+                            <p className="text-sm text-zinc-400">{room.messageCount} messages</p>
                             <Button 
                               variant="glass" 
                               className="mt-2 text-xs px-3 py-1"
@@ -335,7 +335,7 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-white/60 mb-4">No recent rooms yet</p>
+                    <p className="text-zinc-400 mb-4">No recent rooms yet</p>
                     <Button 
                       variant="primary" 
                       onClick={() => router.push('/chat')}
@@ -349,11 +349,11 @@ export default function ProfilePage() {
 
             {/* First-time Welcome Message (trimmed) */}
             {isFirstTime && (
-              <div className="glass-card p-6 space-y-4 border border-cyan-400/20 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
+              <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
                 <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
                 <div className="space-y-4">
-                  <div className="bg-cyan-500/10 border border-cyan-400/30 rounded-lg p-4 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-                    <p className="text-cyan-300 text-sm">
+                  <div className="bg-[#FF9900]/10 border border-[#FF9900]/30 rounded-lg p-4 shadow-[0_0_15px_rgba(255,153,0,0.2)]">
+                    <p className="text-[#FFB84D] text-sm">
                       💡 Complete your profile setup above to start chatting!
                     </p>
                   </div>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
             )}
 
             {/* Quick Actions */}
-            <div className="glass-card p-6 space-y-4 border border-purple-600/20 shadow-[0_0_30px_rgba(147,51,234,0.15)]">
+            <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
               <h3 className="text-xl font-semibold text-white">Quick Actions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button 
@@ -382,7 +382,7 @@ export default function ProfilePage() {
               </div>
               
               {/* Logout Section */}
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-zinc-800 pt-4">
                 <Button 
                   variant="glass" 
                   onClick={() => {
