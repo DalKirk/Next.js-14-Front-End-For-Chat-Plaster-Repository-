@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
     // Forward the request body
     const body = await request.json();
     
+    // ADD DEBUG LOGGING
+    console.log('[AI Proxy] Received body:', JSON.stringify(body, null, 2));
+    console.log('[AI Proxy] conversation_id:', body.conversation_id);
+    
     console.log(`[AI Proxy] Forwarding to: ${BACKEND_URL}${targetEndpoint}`);
     
     // Make request to Railway backend

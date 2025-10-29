@@ -58,19 +58,16 @@ export const claudeAPI = {
    */
   async generate(prompt: string, options: GenerateOptions = {}) {
     try {
-      const apiUrl = getApiUrl();
-      const endpoint = apiUrl.startsWith('/api') ? apiUrl : `${apiUrl}/api/v1/chat`;
-      
       // Use provided conversation ID or get default one
       const conversationId = options.conversationId || getConversationId();
       
-      const response = await fetch(endpoint, {
+      const response = await fetch('/api/ai-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(apiUrl.startsWith('/api') && { 'X-Target-Endpoint': '/api/v1/chat' })
+          'X-Target-Endpoint': '/api/v1/chat'
         },
-        credentials: apiUrl.startsWith('/api') ? 'same-origin' : 'include',
+        credentials: 'same-origin',
         body: JSON.stringify({
           message: prompt,
           conversation_history: [],
