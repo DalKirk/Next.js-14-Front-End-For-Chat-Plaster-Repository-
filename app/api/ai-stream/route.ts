@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     console.log(`[AI Stream] Request body:`, JSON.stringify(body, null, 2));
+    console.log(`[AI Stream] conversation_id:`, body.conversation_id); // NEW: Log conversation_id
     
     // Validate required fields
     if (!body.message || typeof body.message !== 'string' || !body.message.trim()) {
@@ -42,8 +43,9 @@ export async function POST(request: NextRequest) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              message: body.message.trim(), // Backend expects 'message' field
-              conversation_history: Array.isArray(body.conversation_history) ? body.conversation_history : []
+              message: body.message.trim(),
+              conversation_history: Array.isArray(body.conversation_history) ? body.conversation_history : [],
+              conversation_id: body.conversation_id // NEW: Forward conversation_id
             }),
           });
 
@@ -68,10 +70,13 @@ export async function POST(request: NextRequest) {
             return;
           }
           
-          // CRITICAL FIX: Send complete formatted response at once
-          // This preserves markdown structure (line breaks, bullets, headers)
+          // Send complete formatted response at once
           controller.enqueue(
-            new TextEncoder().encode(`data: ${JSON.stringify({ content: fullResponse, format_type: data.format_type || 'structured' })}\n\n`)
+            new TextEncoder().encode(`data: ${JSON.stringify({ 
+              content: fullResponse, 
+              format_type: data.format_type || 'structured',
+              conversation_id: data.conversation_id // NEW: Return conversation_id
+            })}\n\n`)
           );
           
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
