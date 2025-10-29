@@ -82,7 +82,7 @@ export const claudeAPI = {
       }
 
       const data = await response.json();
-      return { response: data.response, model: data.model, conversationId };
+      return { response: data.response || data.content, model: data.model, conversationId };
     } catch (error) {
       console.error('Claude API error:', error);
       throw error;
