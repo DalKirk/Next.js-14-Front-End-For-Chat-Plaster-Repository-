@@ -11,6 +11,7 @@ import {
   SparklesIcon,
   PuzzlePieceIcon,
   DocumentTextIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -20,6 +21,7 @@ import {
   SparklesIcon as SparklesIconSolid,
   PuzzlePieceIcon as PuzzleIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
+  WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
 } from '@heroicons/react/24/solid';
 
 interface NavItem {
@@ -39,11 +41,11 @@ const navItems: NavItem[] = [
     label: 'Home'
   },
   {
-    name: 'AI Chat',
-    path: '/',
-    icon: SparklesIcon,
-    iconSolid: SparklesIconSolid,
-    label: 'AI Assistant'
+    name: 'Berry',
+    path: '/game-builder',
+    icon: SparklesIcon, // Will be replaced with emoji
+    iconSolid: SparklesIconSolid, // Will be replaced with emoji
+    label: 'Berry - Game Builder'
   },
   {
     name: 'Rooms',
@@ -72,6 +74,13 @@ const navItems: NavItem[] = [
     icon: DocumentTextIcon,
     iconSolid: DocumentTextIconSolid,
     label: 'Developer Notes & Updates'
+  },
+  {
+    name: 'Tools',
+    path: '/tools',
+    icon: WrenchScrewdriverIcon,
+    iconSolid: WrenchScrewdriverIconSolid,
+    label: 'Tools & Settings'
   },
 ];
 
@@ -104,6 +113,7 @@ export function Sidebar() {
         {navItems.map((item, index) => {
           const active = isActive(item.path);
           const Icon = active ? item.iconSolid : item.icon;
+          const isBerry = item.name === 'Berry';
           
           return (
             <motion.button
@@ -122,13 +132,17 @@ export function Sidebar() {
               `}
               title={item.label}
             >
-              <Icon 
-                className={`w-5 h-5 transition-colors ${
-                  active 
-                    ? 'text-black' 
-                    : 'text-zinc-400 group-hover:text-[#FF9900]'
-                }`}
-              />
+              {isBerry ? (
+                <span className="text-xl">🫐</span>
+              ) : (
+                <Icon 
+                  className={`w-5 h-5 transition-colors ${
+                    active 
+                      ? 'text-black' 
+                      : 'text-zinc-400 group-hover:text-[#FF9900]'
+                  }`}
+                />
+              )}
 
               {/* Hover tooltip */}
               <div className="absolute left-full ml-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-black/50">
