@@ -7,15 +7,25 @@
     font-family: 'Inter', system-ui, sans-serif;
     /* Prevent iOS from zooming on input focus */
     -webkit-text-size-adjust: 100%;
+    /* Prevent body scroll on mobile */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
     /* Support for dynamic viewport height */
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    /* Prevent pull-to-refresh on mobile */
-    overscroll-behavior-y: contain;
+    /* Prevent pull-to-refresh from sticking */
+    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+    /* Prevent body movement */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
   .font-orbitron {

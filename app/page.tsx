@@ -90,7 +90,7 @@ export default function HomePage() {
 
 
 
-  // Track keyboard with Visual Viewport API - mobile only
+  // Track keyboard with Visual Viewport API - continuous tracking for mobile
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return;
     
@@ -98,30 +98,51 @@ export default function HomePage() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
     if (!isMobile) return;
 
-    const handleViewportChange = () => {
-      const viewport = window.visualViewport;
-      if (!viewport) return;
+    let rafId: number;
 
-      // Get the visible viewport height
-      const viewportHeight = viewport.height;
-      const visualViewportOffsetTop = viewport.offsetTop || 0;
+    const handleViewportChange = () => {
+      // Use requestAnimationFrame for smooth, continuous updates
+      cancelAnimationFrame(rafId);
       
-      // Calculate how much of the screen is taken by keyboard
-      const keyboardHeight = window.innerHeight - viewportHeight - visualViewportOffsetTop;
-      
-      // Only adjust if keyboard is significantly open (>100px)
-      if (keyboardHeight > 100) {
-        setKeyboardOffset(keyboardHeight);
-      } else {
-        setKeyboardOffset(0);
-      }
+      rafId = requestAnimationFrame(() => {
+        const viewport = window.visualViewport;
+        if (!viewport) return;
+
+        // Calculate keyboard height from the difference between window and viewport
+        const windowHeight = window.innerHeight;
+        const viewportHeight = viewport.height;
+        const keyboardHeight = windowHeight - viewportHeight;
+        
+        // Update immediately for continuous tracking
+        // Use a small threshold to avoid jitter when keyboard is closed
+        if (keyboardHeight > 50) {
+          setKeyboardOffset(keyboardHeight);
+          
+          // Ensure input stays visible by scrolling viewport if needed
+          if (inputContainerRef.current) {
+            const inputRect = inputContainerRef.current.getBoundingClientRect();
+            const viewportBottom = viewport.height;
+            
+            // If input is below visible area, scroll it into view
+            if (inputRect.bottom > viewportBottom) {
+              window.scrollBy(0, inputRect.bottom - viewportBottom + 20);
+            }
+          }
+        } else {
+          setKeyboardOffset(0);
+        }
+      });
     };
 
-    // Listen to both resize and scroll events
+    // Listen to all viewport changes for continuous tracking
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
     
+    // Initial check
+    handleViewportChange();
+    
     return () => {
+      cancelAnimationFrame(rafId);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleViewportChange);
         window.visualViewport.removeEventListener('scroll', handleViewportChange);
@@ -730,9 +751,17 @@ export default function HomePage() {
       bottom: keyboardOffset > 0 ? `${80 + keyboardOffset}px` : '80px',
       overflowY: 'auto',
       overflowX: 'hidden',
-      overscrollBehavior: 'contain',
+      overscrollBehavior: 'none',
       WebkitOverflowScrolling: 'touch',
-      transition: 'bottom 0.2s ease-out'
+      touchAction: 'pan-y',
+      transition: 'bottom 0.1s linear'
+    }}
+    onTouchStart={(e) => {
+      // Prevent pull-to-refresh from sticking
+      const scrollTop = e.currentTarget.scrollTop;
+      if (scrollTop <= 0) {
+        e.currentTarget.scrollTop = 1;
+      }
     }}
   >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 space-y-4 sm:space-y-6">
@@ -880,7 +909,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Fixed Input at Bottom */}
+      {/* Fixed Input at Bottom - Floats above keyboard */}
       <motion.div
         ref={inputContainerRef}
         initial={{ opacity: 0, y: 10 }}
@@ -890,7 +919,8 @@ export default function HomePage() {
         style={{ 
           bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
           paddingBottom: keyboardOffset > 0 ? '8px' : 'max(env(safe-area-inset-bottom), 8px)',
-          transition: 'bottom 0.2s ease-out'
+          transition: 'bottom 0.1s linear',
+          willChange: 'bottom'
         }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
@@ -925,10 +955,13 @@ export default function HomePage() {
                 }
               }}
               onFocus={(e) => {
-                // Prevent input from being hidden behind keyboard
-                setTimeout(() => {
-                  e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-                }, 100);
+                // Prevent default scroll behavior
+                e.preventDefault();
+                // Let the viewport handler manage positioning
+              }}
+              onBlur={() => {
+                // Reset scroll position when keyboard closes
+                window.scrollTo(0, 0);
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
@@ -938,6 +971,7 @@ export default function HomePage() {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck="false"
+              inputMode="text"
             />
             <motion.button
               onClick={handleAskClaude}
