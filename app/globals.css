@@ -7,19 +7,16 @@
     font-family: 'Inter', system-ui, sans-serif;
     /* Prevent iOS from zooming on input focus */
     -webkit-text-size-adjust: 100%;
-    /* Full height for mobile */
-    height: 100%;
   }
 
   body {
     /* Support for dynamic viewport height */
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    height: 100%;
-    /* Prevent body from scrolling - only allow scrolling in designated containers */
-    overflow: hidden;
-    /* Prevent pull-to-refresh bounce on body */
-    overscroll-behavior-y: none;
+    /* Allow normal scrolling */
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
   }
 
