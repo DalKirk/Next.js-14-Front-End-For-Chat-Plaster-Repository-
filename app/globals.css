@@ -5,12 +5,23 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
+    overflow: hidden;
+    height: 100%;
   }
 
   body {
     /* Support for dynamic viewport height */
     min-height: 100vh;
     min-height: -webkit-fill-available;
+    /* Prevent pull-to-refresh and improve mobile scrolling */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    /* Prevent iOS from zooming on input focus */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scroll behavior */
+    scroll-behavior: smooth;
   }
 
   .font-orbitron {

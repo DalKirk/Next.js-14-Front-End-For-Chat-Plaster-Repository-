@@ -39,7 +39,13 @@ export default function RootLayout({
         className={`${inter.className} ${orbitron.variable}`}
         style={{
           backgroundColor: 'oklch(25.7% 0.09 281.288)',
-          backdropFilter: 'blur(20px)'
+          backdropFilter: 'blur(20px)',
+          overscrollBehavior: 'none',
+          touchAction: 'pan-y',
+          position: 'fixed',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden'
         }}
       >
         <Providers>
