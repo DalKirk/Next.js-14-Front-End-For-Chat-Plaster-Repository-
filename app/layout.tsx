@@ -27,9 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
         <meta name="theme-color" content="#1e1b4b" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -39,13 +40,7 @@ export default function RootLayout({
         className={`${inter.className} ${orbitron.variable}`}
         style={{
           backgroundColor: 'oklch(25.7% 0.09 281.288)',
-          backdropFilter: 'blur(20px)',
-          overscrollBehavior: 'none',
-          touchAction: 'pan-y',
-          position: 'fixed',
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden'
+          backdropFilter: 'blur(20px)'
         }}
       >
         <Providers>

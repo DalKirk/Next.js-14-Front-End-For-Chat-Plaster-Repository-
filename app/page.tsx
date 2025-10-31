@@ -90,43 +90,41 @@ export default function HomePage() {
 
 
 
-  // Track keyboard height using Visual Viewport API with debounce
+  // Track keyboard with Visual Viewport API - mobile only
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return;
-
-    let timeoutId: NodeJS.Timeout;
+    
+    // Only apply on mobile devices
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    if (!isMobile) return;
 
     const handleViewportChange = () => {
-      clearTimeout(timeoutId);
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+
+      // Get the visible viewport height
+      const viewportHeight = viewport.height;
+      const visualViewportOffsetTop = viewport.offsetTop || 0;
       
-      timeoutId = setTimeout(() => {
-        const viewport = window.visualViewport;
-        if (!viewport) return;
-
-        // Calculate keyboard height more accurately
-        const windowHeight = window.innerHeight;
-        const viewportHeight = viewport.height;
-        
-        // Only consider it keyboard if height difference is significant (>150px)
-        const heightDiff = windowHeight - viewportHeight;
-        const isKeyboardOpen = heightDiff > 150;
-
-        if (isKeyboardOpen) {
-          // Set a max offset to prevent over-adjustment
-          const offset = Math.min(heightDiff, windowHeight * 0.5);
-          setKeyboardOffset(offset);
-        } else {
-          setKeyboardOffset(0);
-        }
-      }, 50); // Debounce by 50ms
+      // Calculate how much of the screen is taken by keyboard
+      const keyboardHeight = window.innerHeight - viewportHeight - visualViewportOffsetTop;
+      
+      // Only adjust if keyboard is significantly open (>100px)
+      if (keyboardHeight > 100) {
+        setKeyboardOffset(keyboardHeight);
+      } else {
+        setKeyboardOffset(0);
+      }
     };
 
+    // Listen to both resize and scroll events
     window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
     
     return () => {
-      clearTimeout(timeoutId);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
       }
     };
   }, []);
@@ -729,12 +727,12 @@ export default function HomePage() {
       top: '64px',
       left: 0,
       right: 0,
-      bottom: '80px',
+      bottom: keyboardOffset > 0 ? `${80 + keyboardOffset}px` : '80px',
       overflowY: 'auto',
       overflowX: 'hidden',
       overscrollBehavior: 'contain',
       WebkitOverflowScrolling: 'touch',
-      touchAction: 'pan-y'
+      transition: 'bottom 0.2s ease-out'
     }}
   >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 space-y-4 sm:space-y-6">
@@ -890,11 +888,9 @@ export default function HomePage() {
         transition={{ delay: 0.1, duration: 0.4 }}
         className="fixed left-[56px] right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 shadow-black/50 z-50"
         style={{ 
-          bottom: '0px',
-          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
-          transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : 'translateY(0)',
-          transition: 'transform 0.2s ease-out',
-          willChange: 'transform'
+          bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
+          paddingBottom: keyboardOffset > 0 ? '8px' : 'max(env(safe-area-inset-bottom), 8px)',
+          transition: 'bottom 0.2s ease-out'
         }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
