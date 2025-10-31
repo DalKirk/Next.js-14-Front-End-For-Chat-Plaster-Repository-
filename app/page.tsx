@@ -98,34 +98,51 @@ export default function HomePage() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
     if (!isMobile) return;
 
-    const handleViewportChange = () => {
-      const viewport = window.visualViewport;
-      if (!viewport) return;
+    let timeoutId: NodeJS.Timeout;
+    let lastKeyboardHeight = 0;
 
-      // Calculate keyboard height
-      const windowHeight = window.innerHeight;
-      const viewportHeight = viewport.height;
-      const keyboardHeight = windowHeight - viewportHeight;
+    const handleViewportChange = () => {
+      clearTimeout(timeoutId);
       
-      // Only adjust if keyboard is open (>100px threshold)
-      if (keyboardHeight > 100) {
-        // Position input just above the keyboard (subtract a bit for spacing)
-        // Use a smaller offset so it sits closer to the keyboard
-        setKeyboardOffset(Math.max(0, keyboardHeight - 20));
-      } else {
-        setKeyboardOffset(0);
-      }
+      // Debounce to prevent bouncing
+      timeoutId = setTimeout(() => {
+        const viewport = window.visualViewport;
+        if (!viewport) return;
+
+        // Calculate keyboard height
+        const windowHeight = window.innerHeight;
+        const viewportHeight = viewport.height;
+        const keyboardHeight = windowHeight - viewportHeight;
+        
+        // Only update if change is significant (>10px) to prevent micro-adjustments
+        if (Math.abs(keyboardHeight - lastKeyboardHeight) < 10) {
+          return;
+        }
+        
+        lastKeyboardHeight = keyboardHeight;
+        
+        // Only adjust if keyboard is open (>150px threshold for stability)
+        if (keyboardHeight > 150) {
+          // Position input FLUSH with keyboard - use exact keyboard height
+          setKeyboardOffset(keyboardHeight);
+        } else {
+          setKeyboardOffset(0);
+        }
+      }, 100); // 100ms debounce to prevent rapid updates
     };
 
     // Listen to viewport changes
     window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
     
     // Initial check
     handleViewportChange();
     
     return () => {
+      clearTimeout(timeoutId);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
       }
     };
   }, []);
@@ -898,7 +915,8 @@ export default function HomePage() {
         style={{ 
           bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
           paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
-          transition: 'bottom 0.2s ease-out'
+          transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          willChange: 'bottom'
         }}
       >
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
