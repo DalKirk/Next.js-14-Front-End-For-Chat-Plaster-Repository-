@@ -597,7 +597,7 @@ export default function HomePage() {
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-2xl sm:text-3xl">🥭</span>
-            <h1 className="text-base sm:text-xl font-bold text-white truncate">Mango Box v.1</h1>
+            <h1 className="text-base sm:text-xl font-bold text-white truncate">Mangos v.1</h1>
           </div>
           {aiHealth?.ai_enabled && (
             <span className="flex text-xs bg-zinc-900 border border-[#FF9900]/30 text-[#FF9900] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2">

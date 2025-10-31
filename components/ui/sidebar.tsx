@@ -12,6 +12,7 @@ import {
   PuzzlePieceIcon,
   DocumentTextIcon,
   WrenchScrewdriverIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -22,6 +23,7 @@ import {
   PuzzlePieceIcon as PuzzleIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
   WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
+  PhotoIcon as PhotoIconSolid,
 } from '@heroicons/react/24/solid';
 
 interface NavItem {
@@ -46,6 +48,13 @@ const navItems: NavItem[] = [
     icon: SparklesIcon, // Will be replaced with emoji
     iconSolid: SparklesIconSolid, // Will be replaced with emoji
     label: 'Berry - Game Builder'
+  },
+  {
+    name: 'Image Analysis',
+    path: '/image-analysis',
+    icon: PhotoIcon,
+    iconSolid: PhotoIconSolid,
+    label: 'Snapshot Analyzer'
   },
   {
     name: 'Rooms',
@@ -114,6 +123,7 @@ export function Sidebar() {
           const active = isActive(item.path);
           const Icon = active ? item.iconSolid : item.icon;
           const isBerry = item.name === 'Berry';
+          const isPineapple = item.name === 'Image Analysis';
           
           return (
             <motion.button
@@ -134,6 +144,8 @@ export function Sidebar() {
             >
               {isBerry ? (
                 <span className="text-xl">🫐</span>
+              ) : isPineapple ? (
+                <span className="text-xl">🍍</span>
               ) : (
                 <Icon 
                   className={`w-5 h-5 transition-colors ${

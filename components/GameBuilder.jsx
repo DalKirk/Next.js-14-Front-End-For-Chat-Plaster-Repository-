@@ -7,6 +7,11 @@ const GameBuilder = () => {
   const [mode, setMode] = useState('edit'); // 'edit' or 'play'
   const [selectedTool, setSelectedTool] = useState('player');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const mobileControlsRef = useRef({
+    left: false,
+    right: false,
+    jump: false
+  });
   const [config, setConfig] = useState({
     playerSpeed: 5,
     jumpHeight: 12,
@@ -143,8 +148,22 @@ const GameBuilder = () => {
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / config.gridSize);
-    const y = Math.floor((e.clientY - rect.top) / config.gridSize);
+    
+    // Get the actual click position relative to the canvas
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Account for canvas scaling (displayed size vs actual size)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Convert to canvas coordinates
+    const canvasX = clickX * scaleX;
+    const canvasY = clickY * scaleY;
+    
+    // Convert to grid coordinates
+    const x = Math.floor(canvasX / config.gridSize);
+    const y = Math.floor(canvasY / config.gridSize);
 
     if (selectedTool === 'player') {
       setLevel(prev => ({ ...prev, player: { x, y } }));
@@ -213,13 +232,14 @@ const GameBuilder = () => {
       }
 
       const gs = config.gridSize;
+      const mobile = mobileControlsRef.current;
       
-      // Player movement
-      if (keys['ArrowLeft'] || keys['a']) state.playerVel.x = -config.playerSpeed;
-      else if (keys['ArrowRight'] || keys['d']) state.playerVel.x = config.playerSpeed;
+      // Player movement (keyboard or mobile controls)
+      if (keys['ArrowLeft'] || keys['a'] || mobile.left) state.playerVel.x = -config.playerSpeed;
+      else if (keys['ArrowRight'] || keys['d'] || mobile.right) state.playerVel.x = config.playerSpeed;
       else state.playerVel.x = 0;
 
-      if ((keys['ArrowUp'] || keys[' '] || keys['w']) && state.onGround) {
+      if ((keys['ArrowUp'] || keys[' '] || keys['w'] || mobile.jump) && state.onGround) {
         state.playerVel.y = -config.jumpHeight;
         state.onGround = false;
       }
@@ -327,34 +347,35 @@ const GameBuilder = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] p-8">
+    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h1 className="text-4xl font-bold flex items-center gap-3">
-              <span className="text-4xl">🫐</span>
-              <span className="bg-gradient-to-r from-[#FF9900] via-[#FFB84D] to-yellow-400 bg-clip-text text-transparent">Berry - Platformer</span>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold flex items-center gap-2 sm:gap-3">
+              <span className="text-2xl sm:text-3xl md:text-4xl">🫐</span>
+              <span className="bg-gradient-to-r from-[#FF9900] via-[#FFB84D] to-yellow-400 bg-clip-text text-transparent">Berry<span className="hidden xs:inline"> - Platformer</span></span>
             </h1>
-            <p className="text-zinc-400 text-lg mt-2">Build Games With Berry</p>
+            <p className="text-zinc-400 text-sm sm:text-base md:text-lg mt-1 sm:mt-2">Build Games With Berry</p>
           </div>
           <button
             onClick={() => router.push('/')}
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-[#FF9900]/50 text-white px-4 py-2 rounded-lg transition-all shadow-black/50"
+            className="flex items-center gap-1 sm:gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-[#FF9900]/50 text-white px-2 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg transition-all shadow-black/50"
           >
-            <Home size={18} />
+            <Home size={16} className="sm:w-[18px] sm:h-[18px]" />
             <span className="hidden sm:inline">Back to Home</span>
+            <span className="sm:hidden">Home</span>
           </button>
         </div>
 
         {/* About Berry Dropdown */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <button
             onClick={() => setAboutOpen(!aboutOpen)}
-            className="w-full bg-zinc-900 border border-zinc-800 hover:border-[#FF9900]/50 rounded-lg p-4 flex items-center justify-between transition-all shadow-black/50"
+            className="w-full bg-zinc-900 border border-zinc-800 hover:border-[#FF9900]/50 rounded-lg p-3 sm:p-4 flex items-center justify-between transition-all shadow-black/50"
           >
-            <span className="text-white font-semibold flex items-center gap-2">
-              <span className="text-xl">ℹ️</span>
+            <span className="text-white text-sm sm:text-base font-semibold flex items-center gap-2">
+              <span className="text-lg sm:text-xl">ℹ️</span>
               About Berry
             </span>
             <span className={`text-[#FF9900] transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
@@ -362,55 +383,104 @@ const GameBuilder = () => {
             </span>
           </button>
           {aboutOpen && (
-            <div className="mt-2 bg-zinc-900 border border-zinc-800 rounded-lg p-6 shadow-black/50">
-              <p className="text-zinc-300 leading-relaxed">
+            <div className="mt-2 bg-zinc-900 border border-zinc-800 rounded-lg p-4 sm:p-6 shadow-black/50">
+              <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
                 Berry is a tiny drag and drop game engine still in development. New features will be added in future updates. Enjoy Building with Berry!
               </p>
             </div>
           )}
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Canvas */}
           <div className="lg:col-span-3">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg shadow-black/50 p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-white">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg shadow-black/50 p-3 sm:p-4">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-lg md:text-xl font-semibold text-white">
                   {mode === 'edit' ? '✏️ Edit Mode' : '🎮 Play Mode'}
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2">
                   {mode === 'edit' ? (
                     <button
                       onClick={handlePlayTest}
-                      className="flex items-center gap-2 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)] transition-all"
+                      className="flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)] transition-all"
                     >
-                      <Play size={18} /> Play Test
+                      <Play size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden xs:inline">Play Test</span><span className="xs:hidden">Play</span>
                     </button>
                   ) : (
                     <button
                       onClick={handleBackToEdit}
-                      className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-[#FF9900]/30 text-white px-4 py-2 rounded-lg transition-all"
+                      className="flex items-center gap-1 sm:gap-2 bg-zinc-800 hover:bg-zinc-700 border border-[#FF9900]/30 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg transition-all"
                     >
-                      <Settings size={18} /> Back to Edit
+                      <Settings size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden xs:inline">Back to Edit</span><span className="xs:hidden">Edit</span>
                     </button>
                   )}
                 </div>
               </div>
               
-              <canvas
-                ref={canvasRef}
-                width={config.levelWidth * config.gridSize}
-                height={config.levelHeight * config.gridSize}
-                onClick={handleCanvasClick}
-                className="border-4 border-zinc-800 rounded cursor-crosshair shadow-black/50"
-                style={{ imageRendering: 'pixelated' }}
-              />
+              <div className="overflow-x-auto">
+                <canvas
+                  ref={canvasRef}
+                  width={config.levelWidth * config.gridSize}
+                  height={config.levelHeight * config.gridSize}
+                  onClick={handleCanvasClick}
+                  className="border-2 sm:border-4 border-zinc-800 rounded cursor-crosshair shadow-black/50 max-w-full"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              </div>
               
               {mode === 'play' && (
-                <div className="mt-4 p-3 bg-[#FF9900]/10 border border-[#FF9900]/30 rounded">
-                  <p className="font-semibold text-[#FF9900]">Controls:</p>
-                  <p className="text-sm text-zinc-300">Arrow Keys or WASD to move • Space or Up Arrow to jump</p>
-                </div>
+                <>
+                  <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-[#FF9900]/10 border border-[#FF9900]/30 rounded">
+                    <p className="text-sm sm:text-base font-semibold text-[#FF9900]">Controls:</p>
+                    <p className="text-xs sm:text-sm text-zinc-300">
+                      <span className="hidden sm:inline">Arrow Keys or WASD to move • Space or Up Arrow to jump</span>
+                      <span className="sm:hidden">Use on-screen buttons below to play</span>
+                    </p>
+                  </div>
+                  
+                  {/* Mobile Touch Controls */}
+                  <div className="mt-4 flex justify-between items-center gap-4 lg:hidden">
+                    {/* Left/Right Controls */}
+                    <div className="flex gap-2">
+                      <button
+                        onTouchStart={() => mobileControlsRef.current.left = true}
+                        onTouchEnd={() => mobileControlsRef.current.left = false}
+                        onMouseDown={() => mobileControlsRef.current.left = true}
+                        onMouseUp={() => mobileControlsRef.current.left = false}
+                        onMouseLeave={() => mobileControlsRef.current.left = false}
+                        className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-gradient-to-r active:from-[#FF9900] active:to-yellow-400 border-2 border-zinc-700 active:border-[#FF9900] rounded-lg flex items-center justify-center text-2xl transition-all shadow-lg touch-none select-none"
+                        type="button"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onTouchStart={() => mobileControlsRef.current.right = true}
+                        onTouchEnd={() => mobileControlsRef.current.right = false}
+                        onMouseDown={() => mobileControlsRef.current.right = true}
+                        onMouseUp={() => mobileControlsRef.current.right = false}
+                        onMouseLeave={() => mobileControlsRef.current.right = false}
+                        className="w-16 h-16 bg-zinc-800 hover:bg-zinc-700 active:bg-gradient-to-r active:from-[#FF9900] active:to-yellow-400 border-2 border-zinc-700 active:border-[#FF9900] rounded-lg flex items-center justify-center text-2xl transition-all shadow-lg touch-none select-none"
+                        type="button"
+                      >
+                        →
+                      </button>
+                    </div>
+                    
+                    {/* Jump Button */}
+                    <button
+                      onTouchStart={() => mobileControlsRef.current.jump = true}
+                      onTouchEnd={() => mobileControlsRef.current.jump = false}
+                      onMouseDown={() => mobileControlsRef.current.jump = true}
+                      onMouseUp={() => mobileControlsRef.current.jump = false}
+                      onMouseLeave={() => mobileControlsRef.current.jump = false}
+                      className="w-20 h-16 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 active:scale-95 border-2 border-[#FF9900] rounded-lg flex items-center justify-center font-bold text-black text-lg transition-all shadow-[0_0_20px_rgba(255,153,0,0.4)] touch-none select-none"
+                      type="button"
+                    >
+                      JUMP
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -418,10 +488,10 @@ const GameBuilder = () => {
           {/* Toolbox */}
           <div className="lg:col-span-1">
             {mode === 'edit' && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg shadow-black/50 p-4">
-                <h3 className="text-lg font-semibold mb-4 text-[#FF9900]">🛠️ Tools</h3>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg shadow-black/50 p-3 sm:p-4">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#FF9900]">🛠️ Tools</h3>
                 
-                <div className="space-y-2 mb-6">
+                <div className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6">
                   {[
                     { id: 'player', icon: User, label: 'Player' },
                     { id: 'platform', icon: Box, label: 'Platform' },
@@ -433,23 +503,23 @@ const GameBuilder = () => {
                     <button
                       key={tool.id}
                       onClick={() => setSelectedTool(tool.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded transition ${
+                      className={`w-full flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base rounded transition ${
                         selectedTool === tool.id
                           ? 'bg-gradient-to-r from-[#FF9900] to-yellow-400 text-black font-semibold shadow-[0_0_15px_rgba(255,153,0,0.4)]'
                           : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 hover:border-[#FF9900]/50'
                       }`}
                     >
-                      <tool.icon size={18} />
+                      <tool.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                       {tool.label}
                     </button>
                   ))}
                 </div>
 
-                <h3 className="text-lg font-semibold mb-4 text-[#FF9900]">⚙️ Settings</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#FF9900]">⚙️ Settings</h3>
                 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <label className="text-sm font-medium text-zinc-300">Player Speed</label>
+                    <label className="text-xs sm:text-sm font-medium text-zinc-300">Player Speed</label>
                     <input
                       type="range"
                       min="1"
@@ -462,7 +532,7 @@ const GameBuilder = () => {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-zinc-300">Jump Height</label>
+                    <label className="text-xs sm:text-sm font-medium text-zinc-300">Jump Height</label>
                     <input
                       type="range"
                       min="5"
@@ -475,7 +545,7 @@ const GameBuilder = () => {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-zinc-300">Gravity</label>
+                    <label className="text-xs sm:text-sm font-medium text-zinc-300">Gravity</label>
                     <input
                       type="range"
                       min="0.1"
@@ -489,12 +559,12 @@ const GameBuilder = () => {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-zinc-300">Background</label>
+                    <label className="text-xs sm:text-sm font-medium text-zinc-300">Background</label>
                     <input
                       type="color"
                       value={config.backgroundColor}
                       onChange={(e) => setConfig({...config, backgroundColor: e.target.value})}
-                      className="w-full h-10 rounded bg-zinc-800 border border-zinc-700"
+                      className="w-full h-8 sm:h-10 rounded bg-zinc-800 border border-zinc-700"
                     />
                   </div>
                 </div>
@@ -504,9 +574,9 @@ const GameBuilder = () => {
                     console.log('Game configuration:', { config, level });
                     alert('Game saved! (Check console for configuration)');
                   }}
-                  className="w-full mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)] transition-all"
+                  className="w-full mt-4 sm:mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)] transition-all"
                 >
-                  <Save size={18} /> Save Game
+                  <Save size={16} className="sm:w-[18px] sm:h-[18px]" /> Save Game
                 </button>
               </div>
             )}
