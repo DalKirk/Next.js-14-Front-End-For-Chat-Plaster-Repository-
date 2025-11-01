@@ -176,17 +176,14 @@ export default function AdvancedFeaturesDemo() {
     }
   }
   
-  function handleCanvasPaint(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!tileSystemRef.current || !selectedTileset || !canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const worldX = e.clientX - rect.left;
-    const worldY = e.clientY - rect.top;
-    
+  // Core paint logic shared by mouse and touch
+  function handlePaintAt(worldX: number, worldY: number, opts?: { shift?: boolean; ctrl?: boolean }) {
+    if (!tileSystemRef.current || !selectedTileset) return;
     const { x, y } = tileSystemRef.current.worldToGrid(worldX, worldY);
-    
+    const shift = !!opts?.shift;
+    const ctrl = !!opts?.ctrl;
+
     if (brushToolRef.current) {
-      // Use brush tool
       const pickedTile = brushToolRef.current.apply(
         tileSystemRef.current,
         x,
@@ -194,22 +191,61 @@ export default function AdvancedFeaturesDemo() {
         selectedTileset,
         selectedTileId
       );
-      
-      // If eyedropper picked a tile, select it
       if (pickedTile && brushToolRef.current.mode === 'eyedropper') {
         setSelectedTileset(pickedTile.tilesetName);
         setSelectedTileId(pickedTile.tileId);
         brushToolRef.current.setMode('paint');
       }
+      return;
+    }
+
+    // Fallback simple placement
+    if (shift) {
+      tileSystemRef.current.removeTile(x, y);
+    } else if (ctrl) {
+      tileSystemRef.current.floodFill(x, y, selectedTileset, selectedTileId, 500);
     } else {
-      // Fallback to simple placement
-      if (e.shiftKey) {
-        tileSystemRef.current.removeTile(x, y);
-      } else if (e.ctrlKey) {
-        tileSystemRef.current.floodFill(x, y, selectedTileset, selectedTileId, 500);
-      } else {
-        tileSystemRef.current.setTile(x, y, selectedTileset, selectedTileId);
-      }
+      tileSystemRef.current.setTile(x, y, selectedTileset, selectedTileId);
+    }
+  }
+
+  function handleCanvasPaint(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const worldX = e.clientX - rect.left;
+    const worldY = e.clientY - rect.top;
+    handlePaintAt(worldX, worldY, { shift: e.shiftKey, ctrl: e.ctrlKey });
+  }
+
+  // Touch support
+  function handleTouchStart(e: React.TouchEvent<HTMLCanvasElement>) {
+    if (!canvasRef.current) return;
+    e.preventDefault();
+    setIsMouseDown(true);
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const worldX = touch.clientX - rect.left;
+    const worldY = touch.clientY - rect.top;
+    handlePaintAt(worldX, worldY);
+  }
+
+  function handleTouchMove(e: React.TouchEvent<HTMLCanvasElement>) {
+    if (!isMouseDown || !canvasRef.current) return;
+    e.preventDefault();
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const worldX = touch.clientX - rect.left;
+    const worldY = touch.clientY - rect.top;
+    handlePaintAt(worldX, worldY);
+  }
+
+  function handleTouchEnd(e: React.TouchEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    setIsMouseDown(false);
+    if (brushToolRef.current) {
+      brushToolRef.current.reset();
     }
   }
   
@@ -529,9 +565,14 @@ export default function AdvancedFeaturesDemo() {
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={handleCanvasMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
                   width={800}
                   height={600}
                   className="border border-gray-700 rounded cursor-crosshair bg-gray-950"
+                  style={{ touchAction: 'none' }}
                 />
                 
                 {/* Tile Palette Overlay */}

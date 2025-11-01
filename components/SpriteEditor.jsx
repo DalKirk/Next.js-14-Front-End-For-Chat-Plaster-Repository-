@@ -233,6 +233,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
               <div
                 key={frame.id}
                 onClick={() => toggleFrameSelection(frame.id)}
+                onTouchStart={(e) => { e.preventDefault(); toggleFrameSelection(frame.id); }}
                 className={`flex-shrink-0 cursor-pointer border-2 rounded overflow-hidden transition-all ${
                   frame.selected ? 'border-blue-500 shadow-lg shadow-blue-500/50' : 'border-gray-600'
                 } ${currentFrame === frame.id ? 'ring-2 ring-yellow-500' : ''}`}
