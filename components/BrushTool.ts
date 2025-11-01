@@ -247,4 +247,4 @@ export default class BrushTool {
   }
 }
 
-export default BrushTool;
+// (single default export is declared at the top of the file)

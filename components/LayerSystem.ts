@@ -380,4 +380,4 @@ export default class LayerSystem {
   }
 }
 
-export default LayerSystem;
+// (single default export is declared at the top of the file)
