@@ -243,6 +243,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
                     alt={`Frame ${frame.id}`}
                     width={64}
                     height={64}
+                    unoptimized
                     style={{ 
                       imageRendering: 'pixelated',
                       maxWidth: '64px',
