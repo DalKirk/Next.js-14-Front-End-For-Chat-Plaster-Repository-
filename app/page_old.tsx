@@ -48,7 +48,7 @@ export default function HomePage() {
   const [isClaudeTyping, setIsClaudeTyping] = useState(false);
   const [aiHealth, setAiHealth] = useState<{ ai_enabled: boolean } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // const textareaRef = useRef<HTMLTextAreaElement>(null); // Reserved for future use
   const router = useRouter();
 
   useEffect(() => {

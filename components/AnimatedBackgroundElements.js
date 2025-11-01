@@ -27,7 +27,7 @@ class AnimatedBackgroundElement {
     this.brightness = 0.5 + Math.random() * 0.5;
   }
   
-  update(deltaTime, cameraX) {
+  update(deltaTime) {
     this.frameTimer += deltaTime;
     
     if (this.frameTimer >= this.frameSpeed) {
@@ -205,10 +205,10 @@ class ParallaxBackgroundWithElements {
     });
     
     // Update animated elements
-    this.animatedElements.forEach(element => element.update(deltaTime, cameraX));
+    this.animatedElements.forEach(element => element.update(deltaTime));
   }
   
-  draw(ctx, canvasWidth, canvasHeight, cameraX, cameraY) {
+  draw(ctx, canvasWidth, canvasHeight, cameraX) {
     // Draw parallax layers
     this.layers.forEach(layer => {
       if (layer.loaded) {

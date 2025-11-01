@@ -50,7 +50,7 @@ export default function HomePage() {
   const [aiHealth, setAiHealth] = useState<{ ai_enabled: boolean } | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // const textareaRef = useRef<HTMLTextAreaElement>(null); // Reserved for future use
   const router = useRouter();
 
   useEffect(() => {
@@ -249,7 +249,7 @@ export default function HomePage() {
       // Don't trim - preserve exact formatting
       const lines = code.split('\n');
       return lines.map((line, i) => {
-        const tokens = highlightToken(line);
+        const _tokens = highlightToken(line);
         
         return (
           <div key={i} className="table-row">

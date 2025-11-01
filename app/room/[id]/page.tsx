@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { MessageBubble } from '@/components/chat/message-bubble';
-import { VideoPlayer } from '@/components/video/video-player';
-import { useChat } from '@/hooks/use-chat';
+// import { VideoPlayer } from '@/components/video/video-player'; // Reserved for future use
+// import { useChat } from '@/hooks/use-chat'; // Reserved for future use
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
@@ -20,8 +20,7 @@ import {
   DocumentIcon,
   ArrowLeftIcon,
   ChevronUpIcon,
-  ChevronDownIcon,
-  Bars3Icon
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
 export default function RoomPage() {
@@ -44,7 +43,7 @@ export default function RoomPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [wsConnected, setWsConnected] = useState(false);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [, setConnectionAttempts] = useState(0);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -94,8 +93,8 @@ export default function RoomPage() {
     setShowScrollControls(scrollTop > 100); // Show controls when scrolled up
   };
 
-  // Filter messages based on search term
-  const filteredMessages = messages;
+  // Filter messages based on search term - reserved for future use
+  // const filteredMessages = messages;
 
   useEffect(() => {
     // Only auto-scroll if user is at bottom (not browsing history)
@@ -140,6 +139,7 @@ export default function RoomPage() {
       setIsConnected(false);
       isInitializedRef.current = false; // Reset for next mount
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]); // Removed 'router' from dependencies to prevent re-renders
 
   const initializeWebSocket = async (userData?: User) => {
@@ -283,6 +283,7 @@ export default function RoomPage() {
       return () => clearInterval(interval);
     }
     return;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wsConnected, roomId]);
 
   const sendMessage = async (content: string) => {
