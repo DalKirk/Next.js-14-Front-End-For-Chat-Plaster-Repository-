@@ -25,7 +25,10 @@
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"],
       "@/hooks/*": ["./hooks/*"],
-      "@/types/*": ["./types/*"]
+      "@/types/*": ["./types/*"],
+      "@systems/TileSystem": ["./components/TileSystem.ts"],
+      "@systems/BrushTool": ["./components/BrushTool.ts"],
+      "@systems/LayerSystem": ["./components/LayerSystem.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

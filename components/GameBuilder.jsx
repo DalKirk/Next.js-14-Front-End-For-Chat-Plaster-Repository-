@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import ParallaxBackground from './ParallaxBackground';
 import { backgroundPresets } from './BackgroundPresets';
 // Use alias imports to resolve to TypeScript implementations and avoid JS shim recursion
-import TileSystem from '@/components/TileSystem';
-import BrushTool from '@/components/BrushTool';
-import LayerSystem from '@/components/LayerSystem';
+import TileSystem from '@systems/TileSystem';
+import BrushTool from '@systems/BrushTool';
+import LayerSystem from '@systems/LayerSystem';
 import BrushControls from './BrushControls';
 import LayerPanel from './LayerPanel';
 

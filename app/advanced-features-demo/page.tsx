@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import TileSystem from '@/components/TileSystem';
+import TileSystem from '@systems/TileSystem';
 import TilePalette from '@/components/TilePalette';
 import SpriteEditor from '@/components/SpriteEditor';
-import BrushTool from '@/components/BrushTool';
+import BrushTool from '@systems/BrushTool';
 import BrushControls from '@/components/BrushControls';
-import LayerSystem from '@/components/LayerSystem';
+import LayerSystem from '@systems/LayerSystem';
 import LayerPanel from '@/components/LayerPanel';
 
 /**
