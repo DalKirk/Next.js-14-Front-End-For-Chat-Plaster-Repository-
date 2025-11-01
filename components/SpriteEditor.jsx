@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 /**
  * Advanced Sprite Editor Component
@@ -119,14 +120,15 @@ function SpriteEditor({ sprite, onSave, onClose }) {
     setFrames(prevFrames => prevFrames.map(f => ({ ...f, selected: false })));
   }
   
-  function selectRange(startId, endId) {
-    const start = Math.min(startId, endId);
-    const end = Math.max(startId, endId);
-    setFrames(frames.map(f => ({
-      ...f,
-      selected: f.id >= start && f.id <= end ? true : f.selected
-    })));
-  }
+  // Reserved for future multi-select functionality
+  // function selectRange(startId, endId) {
+  //   const start = Math.min(startId, endId);
+  //   const end = Math.max(startId, endId);
+  //   setFrames(frames.map(f => ({
+  //     ...f,
+  //     selected: f.id >= start && f.id <= end ? true : f.selected
+  //   })));
+  // }
   
   if (!sprite) {
     return (
@@ -236,9 +238,11 @@ function SpriteEditor({ sprite, onSave, onClose }) {
                 } ${currentFrame === frame.id ? 'ring-2 ring-yellow-500' : ''}`}
               >
                 <div className="w-16 h-16 flex items-center justify-center bg-gray-800 overflow-hidden">
-                  <img
+                  <Image
                     src={frame.dataUrl}
                     alt={`Frame ${frame.id}`}
+                    width={64}
+                    height={64}
                     style={{ 
                       imageRendering: 'pixelated',
                       maxWidth: '64px',

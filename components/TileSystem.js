@@ -215,13 +215,13 @@ class TileSystem {
   }
   
   /**
-   * Auto-tile - intelligently connects tiles based on neighbors
+   * Auto-tile: Automatically select tile based on neighbors
    * @param {number} x - Grid X coordinate
    * @param {number} y - Grid Y coordinate
    * @param {string} tilesetName - Tileset to use
-   * @param {Object} rules - Auto-tile rules (optional)
+   * @param {Object} _rules - Auto-tile rules (optional, reserved for future use)
    */
-  autoTile(x, y, tilesetName, rules = null) {
+  autoTile(x, y, tilesetName, _rules = null) {
     // Check all 8 neighbors
     const neighbors = {
       n: this.getTile(x, y - 1),
@@ -347,7 +347,7 @@ class TileSystem {
   export() {
     return {
       tileSize: this.tileSize,
-      tiles: Array.from(this.tiles.entries()).map(([key, tile]) => tile),
+      tiles: Array.from(this.tiles.entries()).map(([_key, tile]) => tile),
       tilesetNames: Array.from(this.tilesets.keys())
     };
   }

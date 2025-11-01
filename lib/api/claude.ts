@@ -1,7 +1,8 @@
 // Claude API Client for AI-powered features
 // Connects to Railway backend AI endpoints
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+// Reserved for potential direct API calls in the future
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
 
 // Always use Next.js API proxy to avoid CORS issues
 const getApiUrl = () => {
