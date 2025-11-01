@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import TileSystem from '@/components/TileSystem.js';
 import TilePalette from '@/components/TilePalette';
 import SpriteEditor from '@/components/SpriteEditor';
-import BrushTool from '@/components/BrushTool.js';
 import BrushControls from '@/components/BrushControls';
-import LayerSystem from '@/components/LayerSystem.js';
 import LayerPanel from '@/components/LayerPanel';
+
+// Dynamic imports for JavaScript classes to avoid constructor issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let TileSystemClass: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let BrushToolClass: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let LayerSystemClass: any = null;
 
 /**
  * Demo page for testing the advanced features
@@ -47,48 +52,66 @@ export default function AdvancedFeaturesDemo() {
   
   // Initialize systems
   useEffect(() => {
-    const ts = new TileSystem(40);
-    const brush = new BrushTool();
-    const layers = new LayerSystem();
-    
-    brushToolRef.current = brush;
-    layerSystemRef.current = layers;
-    
-    // Create placeholder tilesets with colors
-    const createPlaceholderTileset = (name: string, colors: string[]) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 64; // 4 tiles x 16px
-      canvas.height = 16;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return '';
+    // Dynamically import JavaScript classes
+    const initSystems = async () => {
+      if (!TileSystemClass) {
+        const TileSystemModule = await import('@/components/TileSystem.js');
+        TileSystemClass = TileSystemModule.default;
+      }
+      if (!BrushToolClass) {
+        const BrushToolModule = await import('@/components/BrushTool.js');
+        BrushToolClass = BrushToolModule.default;
+      }
+      if (!LayerSystemClass) {
+        const LayerSystemModule = await import('@/components/LayerSystem.js');
+        LayerSystemClass = LayerSystemModule.default;
+      }
       
-      colors.forEach((color, i) => {
-        // Fill tile
-        ctx.fillStyle = color;
-        ctx.fillRect(i * 16, 0, 16, 16);
-        
-        // Border
-        ctx.strokeStyle = '#000';
-        ctx.strokeRect(i * 16, 0, 16, 16);
-        
-        // Label
-        ctx.fillStyle = '#fff';
-        ctx.font = '10px monospace';
-        ctx.fillText(String(i), i * 16 + 4, 12);
-      });
+      const ts = new TileSystemClass(40);
+      const brush = new BrushToolClass();
+      const layers = new LayerSystemClass();
       
-      return canvas.toDataURL();
+      brushToolRef.current = brush;
+      layerSystemRef.current = layers;
+      
+      // Create placeholder tilesets with colors
+      const createPlaceholderTileset = (name: string, colors: string[]) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; // 4 tiles x 16px
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return '';
+        
+        colors.forEach((color, i) => {
+          // Fill tile
+          ctx.fillStyle = color;
+          ctx.fillRect(i * 16, 0, 16, 16);
+          
+          // Border
+          ctx.strokeStyle = '#000';
+          ctx.strokeRect(i * 16, 0, 16, 16);
+          
+          // Label
+          ctx.fillStyle = '#fff';
+          ctx.font = '10px monospace';
+          ctx.fillText(String(i), i * 16 + 4, 12);
+        });
+        
+        return canvas.toDataURL();
+      };
+      
+      ts.loadTileset('terrain', createPlaceholderTileset('terrain', 
+        ['#8B7355', '#A0826D', '#6B5344', '#5A4433']
+      ), 16, 16);
+      
+      ts.loadTileset('objects', createPlaceholderTileset('objects',
+        ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B']
+      ), 16, 16);
+      
+      tileSystemRef.current = ts;
     };
     
-    ts.loadTileset('terrain', createPlaceholderTileset('terrain', 
-      ['#8B7355', '#A0826D', '#6B5344', '#5A4433']
-    ), 16, 16);
-    
-    ts.loadTileset('objects', createPlaceholderTileset('objects',
-      ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B']
-    ), 16, 16);
-    
-    tileSystemRef.current = ts;
+    initSystems();
   }, []);
   
   // Canvas rendering
