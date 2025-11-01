@@ -219,9 +219,8 @@ class TileSystem {
    * @param {number} x - Grid X coordinate
    * @param {number} y - Grid Y coordinate
    * @param {string} tilesetName - Tileset to use
-   * @param {Object} _rules - Auto-tile rules (optional, reserved for future use)
    */
-  autoTile(x, y, tilesetName, _rules = null) {
+  autoTile(x, y, tilesetName) {
     // Check all 8 neighbors
     const neighbors = {
       n: this.getTile(x, y - 1),

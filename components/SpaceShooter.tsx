@@ -99,7 +99,8 @@ export default function SpaceShooter() {
 
   const spawnEnemies = useCallback((wave: number): Enemy[] => {
     const enemies: Enemy[] = [];
-    const game = gameRef.current;
+    // Reserved for future game state reference
+    // const game = gameRef.current;
     const cols = isMobile ? Math.min(5 + Math.floor(wave / 2), 6) : Math.min(6 + Math.floor(wave / 2), 10);
     const rows = Math.min(3 + Math.floor(wave / 3), 5);
     const enemySize = isMobile ? 25 : 40;

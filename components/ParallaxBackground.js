@@ -19,7 +19,7 @@ class ParallaxLayer {
     this.x = cameraX * this.scrollSpeed;
   }
   
-  draw(ctx, canvasWidth, canvasHeight, cameraX, cameraY) {
+  draw(ctx, canvasWidth, _canvasHeight, _cameraX, _cameraY) {
     if (!this.loaded) return;
     
     ctx.save();

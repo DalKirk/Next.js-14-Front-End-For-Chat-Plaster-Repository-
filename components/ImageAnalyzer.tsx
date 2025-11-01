@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, ChangeEvent, useEffect } from 'react';
+import Image from 'next/image';
 import { 
   Upload, FileImage, FileText, MessageSquare, Loader2, AlertCircle,
   History, Download, Copy, Trash2, Clock, Globe, CheckCircle, ChevronDown
@@ -323,7 +324,7 @@ export default function ImageAnalyzer() {
               <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
                 {history.map((entry) => (
                   <div key={entry.id} className="flex gap-2 sm:gap-3 p-2 sm:p-3 bg-zinc-800 border border-zinc-700 rounded-lg hover:border-[#ff9900] hover:shadow-[0_0_15px_rgba(255,153,0,0.2)] transition-all">
-                    <img src={entry.image} alt="History" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded border border-zinc-700" />
+                    <Image src={entry.image} alt="History" width={80} height={80} unoptimized className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded border border-zinc-700" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-medium text-[#ff9900] uppercase">{entry.tab}</span>
@@ -375,10 +376,14 @@ export default function ImageAnalyzer() {
                 }`}>
                   {compressedPreview || imagePreview ? (
                     <div className="relative">
-                      <img 
+                      <Image 
                         src={compressedPreview || imagePreview || ''} 
                         alt="Preview" 
+                        width={400}
+                        height={256}
+                        unoptimized
                         className={`max-h-64 mx-auto rounded ${imageLoading ? 'opacity-50' : ''}`} 
+                        style={{ width: 'auto', height: 'auto', maxHeight: '16rem' }}
                       />
                       {imageLoading && (
                         <div className="absolute inset-0 flex items-center justify-center">
