@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+// import Link from 'next/link'; // Reserved for future use
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ServerStatus } from '@/components/ui/server-status';
@@ -13,13 +13,13 @@ import toast from 'react-hot-toast';
 import { 
   SparklesIcon, 
   PaperAirplaneIcon,
-  LightBulbIcon,
-  CodeBracketIcon,
-  ChatBubbleLeftRightIcon,
-  VideoCameraIcon,
-  CommandLineIcon,
-  BoltIcon,
-  LockClosedIcon,
+  // LightBulbIcon,
+  // CodeBracketIcon,
+  // ChatBubbleLeftRightIcon,
+  // VideoCameraIcon,
+  // CommandLineIcon,
+  // BoltIcon,
+  // LockClosedIcon,
   UserCircleIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
@@ -184,7 +184,6 @@ export default function HomePage() {
 
   // Syntax highlighting for code
   const highlightToken = (text: string) => {
-    const tokens: Array<{ text: string; className: string }> = [];
     let currentPos = 0;
     
     const patterns = [
@@ -249,7 +248,8 @@ export default function HomePage() {
       // Don't trim - preserve exact formatting
       const lines = code.split('\n');
       return lines.map((line, i) => {
-        const _tokens = highlightToken(line);
+        // Tokens are used for syntax highlighting
+        highlightToken(line);
         
         return (
           <div key={i} className="table-row">
