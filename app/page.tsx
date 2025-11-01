@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,6 @@ import {
   PaperAirplaneIcon,
   UserCircleIcon,
   ArrowRightIcon,
-  Bars3Icon,
   ChatBubbleLeftRightIcon,
   CogIcon
 } from '@heroicons/react/24/outline';
@@ -50,6 +50,7 @@ export default function HomePage() {
   const [aiHealth, setAiHealth] = useState<{ ai_enabled: boolean } | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [codeTheme, setCodeTheme] = useState<'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula'>('vscDarkPlus');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const themeMap: Record<string, any> = { vscDarkPlus, oneDark, tomorrow, dracula };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -459,7 +460,7 @@ export default function HomePage() {
     }
 
     const beforeCode = content.substring(0, codeStart).trim();
-    let afterCodeStart = codeStart;
+    // let afterCodeStart = codeStart; // Reserved for future use
     
     // Find where code ends - look for explanatory text after code
     // Usually starts with capital letter after some whitespace and not inside JSX
@@ -690,7 +691,7 @@ export default function HomePage() {
                     <label className="text-xs text-zinc-400 mb-2 block">Code Theme</label>
                     <select
                       value={codeTheme}
-                      onChange={(e) => setCodeTheme(e.target.value as any)}
+                      onChange={(e) => setCodeTheme(e.target.value as 'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula')}
                       className="w-full bg-black text-white text-sm border border-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FF9900] focus:shadow-[0_0_10px_rgba(255,153,0,0.4)]"
                     >
                       <option value="vscDarkPlus">VS Code Dark+</option>
@@ -729,12 +730,12 @@ export default function HomePage() {
 
       {/* Decorative floating bubbles layer (background, no scroll impact) */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="bubble-wobble bubble-mango bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', ['--sway' as any]: '12px' }} />
-        <div className="bubble-wobble bubble-mango-light bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', ['--sway' as any]: '18px' }} />
-        <div className="bubble-wobble bubble-yellow bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', ['--sway' as any]: '22px' }} />
-        <div className="bubble-wobble bubble-mango bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', ['--sway' as any]: '14px' }} />
-        <div className="bubble-wobble bubble-mango-light bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', ['--sway' as any]: '26px' }} />
-        <div className="bubble-wobble bubble-yellow bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', ['--sway' as any]: '16px' }} />
+        <div className="bubble-wobble bubble-mango bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', '--sway': '12px' } as React.CSSProperties} />
+        <div className="bubble-wobble bubble-mango-light bubble-md bubble-normal bubble-delay-2" style={{ left: '22%', '--sway': '18px' } as React.CSSProperties} />
+        <div className="bubble-wobble bubble-yellow bubble-lg bubble-slow bubble-delay-3" style={{ left: '38%', '--sway': '22px' } as React.CSSProperties} />
+        <div className="bubble-wobble bubble-mango bubble-sm bubble-normal bubble-delay-4" style={{ left: '55%', '--sway': '14px' } as React.CSSProperties} />
+        <div className="bubble-wobble bubble-mango-light bubble-xl bubble-slow bubble-delay-5" style={{ left: '70%', '--sway': '26px' } as React.CSSProperties} />
+        <div className="bubble-wobble bubble-yellow bubble-md bubble-fast bubble-delay-2" style={{ left: '85%', '--sway': '16px' } as React.CSSProperties} />
       </div>
 
   {/* Chat Messages - Scrollable Viewport */}
@@ -784,6 +785,7 @@ export default function HomePage() {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         code({className, children, ...props}: any) {
                           const match = /language-(\w+)/.exec(className || '');
                           const codeString = String(children).replace(/\n$/, '');
@@ -814,6 +816,7 @@ export default function HomePage() {
                                 </button>
                               </div>
                               <SyntaxHighlighter
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 style={(themeMap[codeTheme] || vscDarkPlus) as any}
                                 language={match[1]}
                                 PreTag="div"
@@ -854,7 +857,7 @@ export default function HomePage() {
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
                         a: ({children, href}) => <a href={href} className="text-[#FF9900] hover:text-[#FFB84D] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
-                        img: ({...props}) => <img {...props} style={{maxWidth: '100%', height: 'auto'}} />,
+                        img: ({src, alt, ...props}) => <Image src={src || ''} alt={alt || ''} width={800} height={600} unoptimized style={{maxWidth: '100%', height: 'auto'}} {...props} />,
                         table: ({children}) => (
                           <div className="w-full overflow-x-auto">
                             <table className="text-xs w-full min-w-max">{children}</table>
