@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Settings, Save, Grid, User, Box, Flag, Coins, Zap, Home, Image as ImageIcon, MousePointer2, AlignLeft, AlignRight, AlignCenter, Copy, Trash2, Layers, Brush, Wand2, Upload, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
