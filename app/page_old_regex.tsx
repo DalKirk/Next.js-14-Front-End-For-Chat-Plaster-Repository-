@@ -249,7 +249,7 @@ export default function HomePage() {
       const lines = code.split('\n');
       return lines.map((line, i) => {
         // Tokens are used for syntax highlighting
-        highlightToken(line);
+        const tokens = highlightToken(line);
         
         return (
           <div key={i} className="table-row">
@@ -257,7 +257,7 @@ export default function HomePage() {
               {i + 1}
             </span>
             <span className="table-cell text-white/90 py-0.5 align-top font-mono">
-              {tokens.map((token, j) => (
+              {tokens.map((token: { text: string; className: string }, j: number) => (
                 <span key={j} className={token.className || 'text-white/90'}>
                   {token.text}
                 </span>
