@@ -1,1 +1,2 @@
-export { default } from './TileSystem';
+// Redirect legacy JS import to the TypeScript implementation to avoid circular self-import
+export { default } from './TileSystem.ts';

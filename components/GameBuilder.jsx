@@ -5,9 +5,10 @@ import { Play, Settings, Save, Grid, User, Box, Flag, Coins, Zap, Home, Image as
 import { useRouter } from 'next/navigation';
 import ParallaxBackground from './ParallaxBackground';
 import { backgroundPresets } from './BackgroundPresets';
-import TileSystem from './TileSystem';
-import BrushTool from './BrushTool';
-import LayerSystem from './LayerSystem';
+// Use alias imports to resolve to TypeScript implementations and avoid JS shim recursion
+import TileSystem from '@/components/TileSystem';
+import BrushTool from '@/components/BrushTool';
+import LayerSystem from '@/components/LayerSystem';
 import BrushControls from './BrushControls';
 import LayerPanel from './LayerPanel';
 
