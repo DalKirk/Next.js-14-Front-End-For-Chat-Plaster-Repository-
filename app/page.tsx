@@ -857,7 +857,7 @@ export default function HomePage() {
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
                         a: ({children, href}) => <a href={href} className="text-[#FF9900] hover:text-[#FFB84D] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
-                        img: ({src, alt, ...props}) => <Image src={src || ''} alt={alt || ''} width={800} height={600} unoptimized style={{maxWidth: '100%', height: 'auto'}} {...props} />,
+                        img: ({src, alt}) => <Image src={src || ''} alt={alt || ''} width={800} height={600} unoptimized style={{maxWidth: '100%', height: 'auto'}} />,
                         table: ({children}) => (
                           <div className="w-full overflow-x-auto">
                             <table className="text-xs w-full min-w-max">{children}</table>

@@ -15,7 +15,7 @@ import LayerPanel from '@/components/LayerPanel';
  */
 export default function AdvancedFeaturesDemo() {
   const [showTilePalette, setShowTilePalette] = useState(false);
-  const [showSpriteEditor, setShowSpriteEditor] = useState(false);
+  const [showSpriteEditor] = useState(false); // Reserved for future sprite editor toggle
   const [showBrushControls, setShowBrushControls] = useState(false);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
   const [selectedTileset, setSelectedTileset] = useState<string | null>(null);
