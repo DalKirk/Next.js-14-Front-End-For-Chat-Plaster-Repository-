@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
+import NextImage from 'next/image';
 
 /**
  * Advanced Sprite Editor Component
@@ -238,7 +238,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
                 } ${currentFrame === frame.id ? 'ring-2 ring-yellow-500' : ''}`}
               >
                 <div className="w-16 h-16 flex items-center justify-center bg-gray-800 overflow-hidden">
-                  <Image
+                  <NextImage
                     src={frame.dataUrl}
                     alt={`Frame ${frame.id}`}
                     width={64}
