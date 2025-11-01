@@ -91,10 +91,6 @@ export default function GravityWell() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  useEffect(() => {
-    resetLevel();
-  }, [level, dimensions]);
-
   const resetLevel = () => {
     const scaleX = dimensions.width / 600;
     const scaleY = dimensions.height / 600;
@@ -108,6 +104,11 @@ export default function GravityWell() {
     setAimAngle(0);
     setAimPower(50);
   };
+
+  useEffect(() => {
+    resetLevel();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, dimensions]);
 
   const launch = () => {
     const speed = aimPower / 10;

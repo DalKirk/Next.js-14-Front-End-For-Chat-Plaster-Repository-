@@ -14,7 +14,6 @@ export default function HackingGame() {
   const [gameState, setGameState] = useState<GameState>('menu');
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [attempts, setAttempts] = useState(4);
-  const [maxAttempts, setMaxAttempts] = useState(4);
   const [words, setWords] = useState<string[]>([]);
   const [targetWord, setTargetWord] = useState('');
   const [guessHistory, setGuessHistory] = useState<GuessHistory[]>([]);
@@ -56,7 +55,6 @@ export default function HackingGame() {
     setTargetWord(target);
     const attemptsCount = level === 'easy' ? 4 : level === 'medium' ? 3 : 2;
     setAttempts(attemptsCount);
-    setMaxAttempts(attemptsCount);
     setGuessHistory([]);
     setTimeLeft(level === 'easy' ? 90 : level === 'medium' ? 60 : 45);
     setGameState('playing');

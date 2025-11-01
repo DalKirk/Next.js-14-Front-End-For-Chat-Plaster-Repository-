@@ -111,7 +111,7 @@ const GameBuilder = () => {
     // Draw parallax background if available
     const preset = backgroundPresets[selectedBackground];
     if (parallaxBgRef.current && preset.layers.length > 0) {
-      parallaxBgRef.current.draw(ctx, ctx.canvas.width, ctx.canvas.height, cameraXRef.current, 0);
+      parallaxBgRef.current.draw(ctx, ctx.canvas.width);
     } else {
       // Fallback to solid color
       ctx.fillStyle = preset.backgroundColor || config.backgroundColor;
@@ -1122,6 +1122,7 @@ const GameBuilder = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, config, level]);
 
   // Initialize parallax background when selectedBackground changes

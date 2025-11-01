@@ -346,7 +346,7 @@ class TileSystem {
   export() {
     return {
       tileSize: this.tileSize,
-      tiles: Array.from(this.tiles.entries()).map(([_key, tile]) => tile),
+      tiles: Array.from(this.tiles.values()),
       tilesetNames: Array.from(this.tilesets.keys())
     };
   }

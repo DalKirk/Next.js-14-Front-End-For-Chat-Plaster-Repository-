@@ -19,7 +19,7 @@ class ParallaxLayer {
     this.x = cameraX * this.scrollSpeed;
   }
   
-  draw(ctx, canvasWidth, _canvasHeight, _cameraX, _cameraY) {
+  draw(ctx, canvasWidth) {
     if (!this.loaded) return;
     
     ctx.save();
@@ -62,10 +62,10 @@ class ParallaxBackground {
     this.layers.forEach(layer => layer.update(cameraX));
   }
   
-  draw(ctx, canvasWidth, canvasHeight, cameraX, cameraY) {
+  draw(ctx, canvasWidth) {
     // Draw layers from back to front
     this.layers.forEach(layer => {
-      layer.draw(ctx, canvasWidth, canvasHeight, cameraX, cameraY);
+      layer.draw(ctx, canvasWidth);
     });
   }
   
