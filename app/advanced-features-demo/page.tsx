@@ -18,7 +18,7 @@ export default function AdvancedFeaturesDemo() {
   const [showSpriteEditor, setShowSpriteEditor] = useState(false);
   const [showBrushControls, setShowBrushControls] = useState(false);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
-  const [selectedTileset, setSelectedTileset] = useState(null);
+  const [selectedTileset, setSelectedTileset] = useState<string | null>(null);
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [activeTab, setActiveTab] = useState('tiles');
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -534,7 +534,7 @@ export default function AdvancedFeaturesDemo() {
                   <div className="absolute top-4 right-4 z-10">
                     <TilePalette
                       tileSystem={tileSystemRef.current}
-                      onTileSelect={(tileset: any, tileId: any) => {
+                      onTileSelect={(tileset: string, tileId: number) => {
                         setSelectedTileset(tileset);
                         setSelectedTileId(tileId);
                       }}
@@ -731,7 +731,7 @@ export default function AdvancedFeaturesDemo() {
               ) : (
                 <SpriteEditor
                   sprite={customSprite || sampleSprite}
-                  onSave={(animation: any) => {
+                  onSave={(animation: { name: string; frames: number[]; speed: number; loop: boolean }) => {
                     console.log('Animation created:', animation);
                     alert(
                       `Animation "${animation.name}" created!\n` +

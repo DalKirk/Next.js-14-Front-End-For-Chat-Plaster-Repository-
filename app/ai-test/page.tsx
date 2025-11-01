@@ -114,6 +114,7 @@ export default function AITestPage() {
       formattedResponse += `Status: ${health.ai_enabled ? 'Enabled' : 'Disabled'}\n`;
       
       // Check if health has additional info
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const healthData = health as any;
       if (healthData.model) {
         formattedResponse += `Model: ${healthData.model}\n`;

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ServerStatus } from '@/components/ui/server-status';
+// import { ServerStatus } from '@/components/ui/server-status'; // Reserved for future use
 import { Sidebar } from '@/components/ui/sidebar';
 import { apiClient } from '@/lib/api';
 import { claudeAPI, clearConversationHistory } from '@/lib/api/claude';
