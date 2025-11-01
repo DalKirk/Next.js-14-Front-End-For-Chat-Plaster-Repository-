@@ -24,18 +24,23 @@ export default function AdvancedFeaturesDemo() {
   const [isMouseDown, setIsMouseDown] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tileSystemRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const brushToolRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layerSystemRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
   const cameraRef = useRef({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sprite editor state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [customSprite, setCustomSprite] = useState<any>(null);
   const [frameWidth, setFrameWidth] = useState(128);
   const [frameHeight, setFrameHeight] = useState(128);
   const [uploadedFrames, setUploadedFrames] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [sampleSprite, setSampleSprite] = useState<any>(null);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
   const multipleFilesInputRef = useRef<HTMLInputElement>(null);
@@ -383,8 +388,8 @@ export default function AdvancedFeaturesDemo() {
         
         // Create a horizontal sprite sheet from all images
         const canvas = document.createElement('canvas');
-        const maxWidth = Math.max(...imageSrcs.map((_, i) => img.width));
-        const maxHeight = Math.max(...imageSrcs.map((_, i) => img.height));
+        const maxWidth = Math.max(...imageSrcs.map(() => img.width));
+        const maxHeight = Math.max(...imageSrcs.map(() => img.height));
         
         canvas.width = maxWidth * imageSrcs.length;
         canvas.height = maxHeight;
@@ -509,7 +514,7 @@ export default function AdvancedFeaturesDemo() {
               <div className="bg-gray-900 p-4 rounded mb-4">
                 <h3 className="font-semibold mb-2">Instructions:</h3>
                 <ul className="text-sm text-gray-300 space-y-1">
-                  <li>• Click "Show Tile Palette" to select tiles</li>
+                  <li>• Click &quot;Show Tile Palette&quot; to select tiles</li>
                   <li>• <strong>Click</strong> on canvas to place tiles</li>
                   <li>• <strong>Shift+Click</strong> to remove tiles</li>
                   <li>• <strong>Ctrl+Click</strong> for flood fill</li>
