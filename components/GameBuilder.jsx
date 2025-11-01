@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Settings, Save, Grid, User, Box, Flag, Coins, Zap, Home, Image as ImageIcon, MousePointer2, AlignLeft, AlignRight, AlignCenter, AlignVerticalSpaceAround, Copy, Trash2, Layers, Brush, TestTube2, Wand2, Upload, ArrowLeft, Square, Palette } from 'lucide-react';
+import { Play, Settings, Save, Grid, User, Box, Flag, Coins, Zap, Home, Image as ImageIcon, MousePointer2, AlignLeft, AlignRight, AlignCenter, Copy, Trash2, Layers, Brush, Wand2, Upload, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import ParallaxBackground from './ParallaxBackground';
 import { backgroundPresets } from './BackgroundPresets';
-import SpriteAnimator from './SpriteAnimator';
 import TileSystem from './TileSystem';
 import BrushTool from './BrushTool';
 import LayerSystem from './LayerSystem';
@@ -31,8 +30,8 @@ const GameBuilder = () => {
   const [dragStart, setDragStart] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isMultiSelecting, setIsMultiSelecting] = useState(false);
-  const [selectionMode, setSelectionMode] = useState('single'); // 'single', 'multi', 'box'
-  const [transformMode, setTransformMode] = useState('move'); // 'move', 'rotate', 'scale'
+  const [selectionMode] = useState('single'); // 'single', 'multi', 'box' - reserved for future use
+  // const [transformMode, setTransformMode] = useState('move'); // 'move', 'rotate', 'scale' - reserved for future use
   const [clipboard, setClipboard] = useState([]);
   const [groups, setGroups] = useState([]);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
@@ -145,7 +144,7 @@ const GameBuilder = () => {
         ];
         
         // Draw all tiles
-        for (const [key, tile] of tileSystemRef.current.tiles) {
+        for (const [, tile] of tileSystemRef.current.tiles) {
           const color = tileColors[tile.tileId % tileColors.length];
           ctx.fillStyle = color;
           ctx.fillRect(tile.x * gs, tile.y * gs, gs, gs);
@@ -330,13 +329,13 @@ const GameBuilder = () => {
     return objects;
   };
 
-  // Snapping helpers
-  const snapToGrid = (x, y, gridSize = config.gridSize) => {
-    return {
-      x: Math.round(x / gridSize) * gridSize,
-      y: Math.round(y / gridSize) * gridSize
-    };
-  };
+  // Snapping helpers - reserved for future use
+  // const snapToGrid = (x, y, gridSize = config.gridSize) => {
+  //   return {
+  //     x: Math.round(x / gridSize) * gridSize,
+  //     y: Math.round(y / gridSize) * gridSize
+  //   };
+  // };
 
   // Alignment tools
   const alignSelected = (alignment) => {
@@ -465,14 +464,15 @@ const GameBuilder = () => {
     applyObjectUpdates(updates);
   };
 
-  const selectGroup = (groupId) => {
-    const group = groups.find(g => g.id === groupId);
-    if (group) {
-      const objects = getAllObjects();
-      const groupObjects = objects.filter(o => o.groupId === groupId);
-      setSelectedObjects(groupObjects);
-    }
-  };
+  // Reserved for future group selection feature
+  // const selectGroup = (groupId) => {
+  //   const group = groups.find(g => g.id === groupId);
+  //   if (group) {
+  //     const objects = getAllObjects();
+  //     const groupObjects = objects.filter(o => o.groupId === groupId);
+  //     setSelectedObjects(groupObjects);
+  //   }
+  // };
 
   // Enhanced mouse down handler with selection support and brush tool
   const handleCanvasMouseDown = (e) => {
@@ -670,7 +670,7 @@ const GameBuilder = () => {
   };
 
   // Mouse up handler
-  const handleCanvasMouseUp = (e) => {
+  const handleCanvasMouseUp = () => {
     if (mode !== 'edit') return;
     
     setIsMouseDown(false);
@@ -703,9 +703,9 @@ const GameBuilder = () => {
   };
 
   // Legacy support - keep for backward compatibility
-  const handleCanvasClick = (e) => {
-    // This is now handled by mouseDown/mouseUp
-  };
+  // const handleCanvasClick = () => {
+  //   // This is now handled by mouseDown/mouseUp
+  // };
 
   // Save level with all features
   const saveLevel = () => {
@@ -967,6 +967,7 @@ const GameBuilder = () => {
       canvas.addEventListener('keydown', handleKeyDown);
       return () => canvas.removeEventListener('keydown', handleKeyDown);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedObjects, clipboard, config.gridSize]);
 
   useEffect(() => {
