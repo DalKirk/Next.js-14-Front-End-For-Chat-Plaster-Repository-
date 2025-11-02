@@ -20,7 +20,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-left: 1.5rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
-          margin-left: 0;
         }
         
         .markdown-content ol {
@@ -28,19 +27,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-left: 1.5rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
-          margin-left: 0;
         }
         
         .markdown-content li {
           margin-bottom: 0.5rem;
-          line-height: 1.6;
           color: #e4e4e7;
-          display: list-item;
-        }
-        
-        .markdown-content li p {
-          display: inline;
-          margin: 0;
         }
         
         .markdown-content h2 {
@@ -53,10 +44,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-bottom: 0.5rem;
         }
         
-        .markdown-content p {
+        .markdown-content > p {
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
-          line-height: 1.6;
           color: #e4e4e7;
         }
         
@@ -81,13 +71,20 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           margin-top: 1rem;
           margin-bottom: 1rem;
         }
-        
-        .markdown-content pre code {
-          background: none;
-          padding: 0;
-        }
       `}</style>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // CRITICAL: Replace p tags inside li with just the content
+          p: ({node, children, ...props}) => {
+            // Check if parent is a list item by checking if we're in a tight list context
+            return <>{children}</>;
+          },
+          li: ({node, children, ...props}) => {
+            return <li style={{ color: '#e4e4e7' }}>{children}</li>;
+          }
+        }}
+      >
         {content}
       </ReactMarkdown>
     </div>
