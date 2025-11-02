@@ -7,99 +7,44 @@ interface MarkdownRendererProps {
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
-  // Rehype plugin: unwrap <p> that are direct children of <li> to keep marker and text on one line
-  const rehypeUnwrapListItemParagraphs = () => (tree: any) => {
-    const visit = (node: any) => {
-      if (node && node.type === 'element') {
-        if (node.tagName === 'li' && Array.isArray(node.children)) {
-          node.children = node.children.flatMap((child: any) => {
-            if (child && child.type === 'element' && child.tagName === 'p') {
-              return Array.isArray(child.children) ? child.children : [];
-            }
-            return [child];
-          });
-        }
-        if (Array.isArray(node.children)) {
-          node.children.forEach(visit);
-        }
-      }
-    };
-    visit(tree);
-  };
-
-  // Rehype plugin: remove whitespace-only text nodes inside ul/ol/li to prevent empty first lines
-  const rehypeNormalizeListWhitespace = () => (tree: any) => {
-    const clean = (node: any) => {
-      if (!node || node.type !== 'element') return;
-      if (['ul', 'ol', 'li'].includes(node.tagName) && Array.isArray(node.children)) {
-        node.children = node.children.filter((child: any) => {
-          if (child && child.type === 'text') {
-            return typeof child.value === 'string' && child.value.replace(/\s+/g, '') !== '';
-          }
-          return true;
-        });
-      }
-      if (Array.isArray(node.children)) node.children.forEach(clean);
-    };
-    clean(tree);
-  };
-
-  // Heuristic: auto-convert plain line lists into markdown bullets when no markers are present
-  const autoListify = (md: string): string => {
-    const normalized = md.replace(/\r\n/g, '\n');
-    // Don't touch content that already contains code fences
-    if (/(^|\n)```/.test(normalized) || /(^|\n)~~~/.test(normalized)) {
-      return md;
-    }
-    const lines = normalized.split('\n');
-    const hasListMarkers = lines.some((l) => /^\s*([*+-]|\d+\.)\s+/.test(l));
-    if (hasListMarkers) return md;
-
-    // Count non-empty lines
-    const items = lines.filter((l) => l.trim() !== '');
-    if (items.length < 3) return md; // avoid converting short snippets
-
-    // Average line length heuristic to avoid converting paragraphs
-    const avgLen = items.reduce((s, l) => s + l.trim().length, 0) / items.length;
-    if (avgLen > 80) return md;
-
-    // Convert each non-empty line into a bullet, preserve empty lines as separators
-    const converted = lines
-      .map((l) => {
-        if (l.trim() === '') return '';
-        if (/^\s*[#>]/.test(l)) return l; // keep headings/quotes
-        return `- ${l.trim()}`;
-      })
-      .join('\n');
-    return converted;
-  };
   return (
     <div className="markdown-content" style={{ 
       width: '100%',
-      color: '#e8e8ea',
-      fontSize: '17px',
-      lineHeight: '1.7'
+      color: '#e4e4e7',
+      fontSize: '16px',
+      lineHeight: '1.6'
     }}>
       <style>{`
-        /* Use outside markers for stability across browsers */
-        .markdown-content ul,
+        .markdown-content ul {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin: 0.75rem 0;
+        }
+        
         .markdown-content ol {
-          list-style-position: outside;
-          margin-left: 0;
-          padding-left: 1.25rem;
-          margin-top: 0.75rem;
-          margin-bottom: 0.75rem;
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin: 0.75rem 0;
         }
-
+        
         .markdown-content li {
-          margin-bottom: 0.5rem;
-          color: #e8e8ea;
+          margin-bottom: 0.375rem;
+          color: #e4e4e7;
+          line-height: 1.6;
         }
-
-  /* Keep text inline with marker for paragraphs directly under list items */
-        .markdown-content li > p { display: inline; margin: 0; }
-        /* Also handle any nested p produced by plugins */
-        .markdown-content li p { display: inline; margin: 0; }
+        
+        .markdown-content li > p {
+          display: inline;
+          margin: 0;
+        }
+        
+        .markdown-content h1 {
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          color: #ffffff;
+        }
         
         .markdown-content h2 {
           font-size: 1.5rem;
@@ -111,11 +56,18 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-bottom: 0.5rem;
         }
         
-        .markdown-content .regular-paragraph,
-        .markdown-content > p {
-          margin-top: 0.75rem;
-          margin-bottom: 0.75rem;
-          color: #e8e8ea;
+        .markdown-content h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-top: 1.25rem;
+          margin-bottom: 0.5rem;
+          color: #ffffff;
+        }
+        
+        .markdown-content p {
+          margin: 0.75rem 0;
+          color: #e4e4e7;
+          line-height: 1.6;
         }
         
         .markdown-content strong {
@@ -123,28 +75,88 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           color: #ffffff;
         }
         
+        .markdown-content em {
+          font-style: italic;
+          color: #e4e4e7;
+        }
+        
+        .markdown-content a {
+          color: #60a5fa;
+          text-decoration: underline;
+        }
+        
+        .markdown-content a:hover {
+          color: #93c5fd;
+        }
+        
         .markdown-content code {
-          background-color: transparent; /* Remove grey highlight for inline code */
-          padding: 0.1rem 0.2rem;
+          background-color: rgba(255, 255, 255, 0.1);
+          color: #fbbf24;
+          padding: 0.125rem 0.375rem;
           border-radius: 0.25rem;
-          font-size: 0.95em;
-          font-family: monospace;
+          font-size: 0.875em;
+          font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         }
         
         .markdown-content pre {
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: rgba(0, 0, 0, 0.3);
           padding: 1rem;
           border-radius: 0.5rem;
           overflow-x: auto;
-          margin-top: 1rem;
-          margin-bottom: 1rem;
+          margin: 1rem 0;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .markdown-content pre code {
+          background: none;
+          color: #e4e4e7;
+          padding: 0;
+          font-size: 0.875rem;
+        }
+        
+        .markdown-content blockquote {
+          border-left: 3px solid #60a5fa;
+          padding-left: 1rem;
+          margin: 1rem 0;
+          color: #d1d5db;
+          font-style: italic;
+        }
+        
+        .markdown-content hr {
+          border: none;
+          border-top: 1px solid #3f3f46;
+          margin: 1.5rem 0;
+        }
+        
+        .markdown-content table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 1rem 0;
+        }
+        
+        .markdown-content th,
+        .markdown-content td {
+          border: 1px solid #3f3f46;
+          padding: 0.5rem;
+          text-align: left;
+        }
+        
+        .markdown-content th {
+          background-color: rgba(255, 255, 255, 0.05);
+          font-weight: 600;
+          color: #ffffff;
         }
       `}</style>
-      <ReactMarkdown
+      <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeUnwrapListItemParagraphs, rehypeNormalizeListWhitespace]}
+        components={{
+          // Remove wrapper from list item paragraphs
+          p: ({children}) => {
+            return <p>{children}</p>;
+          },
+        }}
       >
-        {autoListify(content)}
+        {content}
       </ReactMarkdown>
     </div>
   );
