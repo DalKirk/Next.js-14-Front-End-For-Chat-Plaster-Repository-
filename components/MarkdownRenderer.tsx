@@ -17,14 +17,18 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       <style>{`
         .markdown-content ul {
           list-style-type: disc;
-          padding-left: 1.25rem;
+          list-style-position: inside; /* keep bullets inline before text */
+          margin-left: 0;
+          padding-left: 1.0rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
         
         .markdown-content ol {
           list-style-type: decimal;
-          padding-left: 1.25rem;
+          list-style-position: inside; /* keep numbers inline before text */
+          margin-left: 0;
+          padding-left: 1.0rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
