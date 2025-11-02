@@ -89,6 +89,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
+                  console.log('Raw chunk:', JSON.stringify(parsed.content)); // Debug logging
                   assistantMessage += parsed.content;
                   setMessages(prev => {
                     const newMessages = [...prev];
