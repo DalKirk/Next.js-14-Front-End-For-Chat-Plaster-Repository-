@@ -8,103 +8,86 @@ interface MarkdownRendererProps {
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
-    <div style={{ 
+    <div className="markdown-content" style={{ 
       width: '100%',
       color: '#e4e4e7',
       fontSize: '16px',
       lineHeight: '1.6'
     }}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h2: ({ children }) => (
-            <h2 style={{
-              fontSize: '1.5rem',
-              fontWeight: '600',
-              marginTop: '1.5rem',
-              marginBottom: '0.75rem',
-              color: '#ffffff',
-              borderBottom: '1px solid #3f3f46',
-              paddingBottom: '0.5rem'
-            }}>
-              {children}
-            </h2>
-          ),
-          ul: ({ children }) => (
-            <ul style={{
-              listStyleType: 'disc',
-              paddingLeft: '1.5rem',
-              marginTop: '0.75rem',
-              marginBottom: '0.75rem',
-              marginLeft: '0'
-            }}>
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol style={{
-              listStyleType: 'decimal',
-              paddingLeft: '1.5rem',
-              marginTop: '0.75rem',
-              marginBottom: '0.75rem',
-              marginLeft: '0'
-            }}>
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li style={{
-              marginBottom: '0.5rem',
-              lineHeight: '1.6',
-              color: '#e4e4e7'
-            }}>
-              <span style={{ display: 'inline' }}>{children}</span>
-            </li>
-          ),
-          p: ({ children }) => (
-            <p style={{
-              marginTop: '0.75rem',
-              marginBottom: '0.75rem',
-              lineHeight: '1.6',
-              color: '#e4e4e7',
-              display: 'inline'
-            }}>
-              {children}
-            </p>
-          ),
-          strong: ({ children }) => (
-            <strong style={{
-              fontWeight: '600',
-              color: '#ffffff'
-            }}>
-              {children}
-            </strong>
-          ),
-          code: ({ children }) => (
-            <code style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              padding: '0.2rem 0.4rem',
-              borderRadius: '0.25rem',
-              fontSize: '0.9em',
-              fontFamily: 'monospace'
-            }}>
-              {children}
-            </code>
-          ),
-          pre: ({ children }) => (
-            <pre style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              overflowX: 'auto',
-              marginTop: '1rem',
-              marginBottom: '1rem'
-            }}>
-              {children}
-            </pre>
-          )
-        }}
-      >
+      <style>{`
+        .markdown-content ul {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin-top: 0.75rem;
+          margin-bottom: 0.75rem;
+          margin-left: 0;
+        }
+        
+        .markdown-content ol {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin-top: 0.75rem;
+          margin-bottom: 0.75rem;
+          margin-left: 0;
+        }
+        
+        .markdown-content li {
+          margin-bottom: 0.5rem;
+          line-height: 1.6;
+          color: #e4e4e7;
+          display: list-item;
+        }
+        
+        .markdown-content li p {
+          display: inline;
+          margin: 0;
+        }
+        
+        .markdown-content h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+          color: #ffffff;
+          border-bottom: 1px solid #3f3f46;
+          padding-bottom: 0.5rem;
+        }
+        
+        .markdown-content p {
+          margin-top: 0.75rem;
+          margin-bottom: 0.75rem;
+          line-height: 1.6;
+          color: #e4e4e7;
+        }
+        
+        .markdown-content strong {
+          font-weight: 600;
+          color: #ffffff;
+        }
+        
+        .markdown-content code {
+          background-color: rgba(255, 255, 255, 0.1);
+          padding: 0.2rem 0.4rem;
+          border-radius: 0.25rem;
+          font-size: 0.9em;
+          font-family: monospace;
+        }
+        
+        .markdown-content pre {
+          background-color: rgba(255, 255, 255, 0.05);
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin-top: 1rem;
+          margin-bottom: 1rem;
+        }
+        
+        .markdown-content pre code {
+          background: none;
+          padding: 0;
+        }
+      `}</style>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {content}
       </ReactMarkdown>
     </div>
