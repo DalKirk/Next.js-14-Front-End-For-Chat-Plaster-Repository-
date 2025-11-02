@@ -30,6 +30,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   // Heuristic: auto-convert plain line lists into markdown bullets when no markers are present
   const autoListify = (md: string): string => {
     const normalized = md.replace(/\r\n/g, '\n');
+    // Don't touch content that already contains code fences
+    if (/(^|\n)```/.test(normalized) || /(^|\n)~~~/.test(normalized)) {
+      return md;
+    }
     const lines = normalized.split('\n');
     const hasListMarkers = lines.some((l) => /^\s*([*+-]|\d+\.)\s+/.test(l));
     if (hasListMarkers) return md;
