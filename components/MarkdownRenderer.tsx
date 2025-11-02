@@ -7,6 +7,25 @@ interface MarkdownRendererProps {
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+  // Rehype plugin: unwrap <p> that are direct children of <li> to keep marker and text on one line
+  const rehypeUnwrapListItemParagraphs = () => (tree: any) => {
+    const visit = (node: any) => {
+      if (node && node.type === 'element') {
+        if (node.tagName === 'li' && Array.isArray(node.children)) {
+          node.children = node.children.flatMap((child: any) => {
+            if (child && child.type === 'element' && child.tagName === 'p') {
+              return Array.isArray(child.children) ? child.children : [];
+            }
+            return [child];
+          });
+        }
+        if (Array.isArray(node.children)) {
+          node.children.forEach(visit);
+        }
+      }
+    };
+    visit(tree);
+  };
   return (
     <div className="markdown-content" style={{ 
       width: '100%',
@@ -85,29 +104,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       `}</style>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        components={{
-          li: ({ children, ...props }) => {
-            // If a list item wraps its text in a single <p>, unwrap it to keep marker and text on the same line.
-            const kids = Array.isArray(children) ? children : [children];
-            if (kids.length > 0) {
-              const first: any = kids[0];
-              // Case 1: only a single <p>
-              if (kids.length === 1 && first && first.type === 'p') {
-                return <li {...props}>{first.props?.children}</li>;
-              }
-              // Case 2: starts with <p> followed by nested list or other elements
-              if (first && first.type === 'p') {
-                return (
-                  <li {...props}>
-                    {first.props?.children}
-                    {kids.slice(1)}
-                  </li>
-                );
-              }
-            }
-            return <li {...props}>{children}</li>;
-          }
-        }}
+        rehypePlugins={[rehypeUnwrapListItemParagraphs]}
       >
         {content}
       </ReactMarkdown>
