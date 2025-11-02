@@ -174,13 +174,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div className="text-white/90 text-sm sm:text-base">
                   {msg.role === 'user' ? (
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                  ) : msg.isStreaming ? (
-                    // CRITICAL FIX: Show raw text while streaming
-                    <p className="whitespace-pre-wrap break-words font-mono text-white/70">
-                      {msg.content}
-                    </p>
                   ) : (
-                    // CRITICAL FIX: Only render markdown when streaming is complete
+                    // TEMPORARY TEST: Always use MarkdownRenderer for assistant messages
                     <MarkdownRenderer content={msg.content} />
                   )}
                 </div>
