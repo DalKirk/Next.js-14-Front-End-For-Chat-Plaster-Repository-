@@ -34,36 +34,24 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       lineHeight: '1.7'
     }}>
       <style>{`
-        /* Robust, custom list markers to prevent marker/text separation */
+        /* Restore native markers and ensure inline alignment */
         .markdown-content ul,
         .markdown-content ol {
-          list-style: none; /* remove browser markers */
+          list-style-position: inside;
+          margin-left: 0;
+          padding-left: 1rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
-          padding-left: 0; /* we will space using ::before */
         }
-
-        .markdown-content ol { counter-reset: md-ol-counter; }
 
         .markdown-content li {
           margin-bottom: 0.5rem;
           color: #e8e8ea;
-          display: flex;               /* keep marker and text on same line */
-          align-items: baseline;
         }
 
-        .markdown-content li::before {
-          flex: 0 0 1.5rem;            /* fixed space for marker */
-          text-align: right;
-          margin-right: 0.5rem;
-          color: #e8e8ea;
-        }
-
-        .markdown-content ul li::before { content: '•'; }
-        .markdown-content ol li { counter-increment: md-ol-counter; }
-        .markdown-content ol li::before { content: counter(md-ol-counter) '.'; }
-
-        /* Inline paragraphs specifically inside list items */
+        /* Keep text inline with marker for paragraphs directly under list items */
+        .markdown-content li > p { display: inline; margin: 0; }
+        /* Also handle any nested p produced by plugins */
         .markdown-content li p { display: inline; margin: 0; }
         
         .markdown-content h2 {
