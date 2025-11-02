@@ -152,16 +152,31 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <>
       <style>{`
+        /* Isolate from parent styles */
+        .md-renderer {
+          all: initial;
+          display: block !important;
+          width: 100% !important;
+          color: #e4e4e7 !important;
+          font-size: 16px !important;
+          line-height: 1.6 !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+        }
+        
         .md-renderer * {
-          box-sizing: border-box;
+          box-sizing: border-box !important;
         }
         
         .md-ul, .md-ol {
+          all: initial !important;
           display: block !important;
           list-style-position: outside !important;
           padding-left: 1.5rem !important;
           margin: 0.75rem 0 !important;
           width: 100% !important;
+          font-family: inherit !important;
+          font-size: 16px !important;
+          color: #e4e4e7 !important;
         }
         
         .md-ul {
@@ -173,45 +188,57 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         
         .md-li, .md-li-ordered {
+          all: initial !important;
           display: list-item !important;
           margin-bottom: 0.375rem !important;
           color: #e4e4e7 !important;
           margin-left: 0 !important;
           padding-left: 0 !important;
           line-height: 1.6 !important;
+          font-family: inherit !important;
+          font-size: 16px !important;
         }
         
         .md-li {
           list-style-type: disc !important;
+          list-style-position: outside !important;
         }
         
         .md-li-ordered {
           list-style-type: decimal !important;
+          list-style-position: outside !important;
         }
         
         .md-p {
+          all: initial !important;
           display: block !important;
           margin: 0.75rem 0 !important;
           color: #e4e4e7 !important;
           line-height: 1.6 !important;
+          font-family: inherit !important;
+          font-size: 16px !important;
         }
         
         .md-h1 {
+          all: initial !important;
           display: block !important;
           font-size: 1.75rem !important;
           font-weight: 700 !important;
           margin-top: 1.5rem !important;
           margin-bottom: 1rem !important;
           color: #ffffff !important;
+          font-family: inherit !important;
         }
         
         .md-h2 {
+          all: initial !important;
           display: block !important;
           font-size: 1.5rem !important;
           font-weight: 600 !important;
           margin-top: 1.5rem !important;
           margin-bottom: 0.75rem !important;
           color: #ffffff !important;
+          font-family: inherit !important;
         }
         
         .md-strong {
@@ -229,6 +256,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         
         .md-pre {
+          all: initial !important;
           display: block !important;
           background-color: rgba(0, 0, 0, 0.3) !important;
           padding: 1rem !important;
@@ -236,6 +264,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           overflow-x: auto !important;
           margin: 1rem 0 !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          font-family: monospace !important;
         }
         
         .md-code-block {
@@ -245,12 +274,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           display: block !important;
         }
       `}</style>
-      <div className="md-renderer" style={{ 
-        width: '100%',
-        color: '#e4e4e7',
-        fontSize: '16px',
-        lineHeight: '1.6'
-      }}>
+      <div className="md-renderer">
         {renderMarkdown(content)}
       </div>
     </>
