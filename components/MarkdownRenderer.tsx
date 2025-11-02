@@ -83,7 +83,32 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           margin-bottom: 1rem;
         }
       `}</style>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          li: ({ children, ...props }) => {
+            // If a list item wraps its text in a single <p>, unwrap it to keep marker and text on the same line.
+            const kids = Array.isArray(children) ? children : [children];
+            if (kids.length > 0) {
+              const first: any = kids[0];
+              // Case 1: only a single <p>
+              if (kids.length === 1 && first && first.type === 'p') {
+                return <li {...props}>{first.props?.children}</li>;
+              }
+              // Case 2: starts with <p> followed by nested list or other elements
+              if (first && first.type === 'p') {
+                return (
+                  <li {...props}>
+                    {first.props?.children}
+                    {kids.slice(1)}
+                  </li>
+                );
+              }
+            }
+            return <li {...props}>{children}</li>;
+          }
+        }}
+      >
         {content}
       </ReactMarkdown>
     </div>
