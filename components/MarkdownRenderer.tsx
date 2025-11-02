@@ -26,6 +26,32 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     };
     visit(tree);
   };
+
+  // Heuristic: auto-convert plain line lists into markdown bullets when no markers are present
+  const autoListify = (md: string): string => {
+    const normalized = md.replace(/\r\n/g, '\n');
+    const lines = normalized.split('\n');
+    const hasListMarkers = lines.some((l) => /^\s*([*+-]|\d+\.)\s+/.test(l));
+    if (hasListMarkers) return md;
+
+    // Count non-empty lines
+    const items = lines.filter((l) => l.trim() !== '');
+    if (items.length < 3) return md; // avoid converting short snippets
+
+    // Average line length heuristic to avoid converting paragraphs
+    const avgLen = items.reduce((s, l) => s + l.trim().length, 0) / items.length;
+    if (avgLen > 80) return md;
+
+    // Convert each non-empty line into a bullet, preserve empty lines as separators
+    const converted = lines
+      .map((l) => {
+        if (l.trim() === '') return '';
+        if (/^\s*[#>]/.test(l)) return l; // keep headings/quotes
+        return `- ${l.trim()}`;
+      })
+      .join('\n');
+    return converted;
+  };
   return (
     <div className="markdown-content" style={{ 
       width: '100%',
@@ -97,7 +123,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeUnwrapListItemParagraphs]}
       >
-        {content}
+        {autoListify(content)}
       </ReactMarkdown>
     </div>
   );
