@@ -27,6 +27,23 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     visit(tree);
   };
 
+  // Rehype plugin: remove whitespace-only text nodes inside ul/ol/li to prevent empty first lines
+  const rehypeNormalizeListWhitespace = () => (tree: any) => {
+    const clean = (node: any) => {
+      if (!node || node.type !== 'element') return;
+      if (['ul', 'ol', 'li'].includes(node.tagName) && Array.isArray(node.children)) {
+        node.children = node.children.filter((child: any) => {
+          if (child && child.type === 'text') {
+            return typeof child.value === 'string' && child.value.replace(/\s+/g, '') !== '';
+          }
+          return true;
+        });
+      }
+      if (Array.isArray(node.children)) node.children.forEach(clean);
+    };
+    clean(tree);
+  };
+
   // Heuristic: auto-convert plain line lists into markdown bullets when no markers are present
   const autoListify = (md: string): string => {
     const normalized = md.replace(/\r\n/g, '\n');
@@ -64,12 +81,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       lineHeight: '1.7'
     }}>
       <style>{`
-        /* Restore native markers and ensure inline alignment */
+        /* Use outside markers for stability across browsers */
         .markdown-content ul,
         .markdown-content ol {
-          list-style-position: inside;
+          list-style-position: outside;
           margin-left: 0;
-          padding-left: 1rem;
+          padding-left: 1.25rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
@@ -79,7 +96,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           color: #e8e8ea;
         }
 
-        /* Keep text inline with marker for paragraphs directly under list items */
+  /* Keep text inline with marker for paragraphs directly under list items */
         .markdown-content li > p { display: inline; margin: 0; }
         /* Also handle any nested p produced by plugins */
         .markdown-content li p { display: inline; margin: 0; }
@@ -125,7 +142,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       `}</style>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeUnwrapListItemParagraphs]}
+        rehypePlugins={[rehypeUnwrapListItemParagraphs, rehypeNormalizeListWhitespace]}
       >
         {autoListify(content)}
       </ReactMarkdown>
