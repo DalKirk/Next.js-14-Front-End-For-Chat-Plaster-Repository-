@@ -171,7 +171,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     {msg.role === 'user' ? 'You' : 'AI Assistant'}
                   </strong>
                 </div>
-                <div className="text-white/90 text-sm sm:text-base">
+                <div className="text-white/90 text-base">
                   {msg.role === 'user' ? (
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   ) : (

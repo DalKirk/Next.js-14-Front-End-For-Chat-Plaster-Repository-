@@ -10,28 +10,34 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <div className="markdown-content" style={{ 
       width: '100%',
-      color: '#e4e4e7',
-      fontSize: '16px',
-      lineHeight: '1.6'
+      color: '#e8e8ea',
+      fontSize: '17px',
+      lineHeight: '1.7'
     }}>
       <style>{`
         .markdown-content ul {
           list-style-type: disc;
-          padding-left: 1.5rem;
+          padding-left: 1.25rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
         
         .markdown-content ol {
           list-style-type: decimal;
-          padding-left: 1.5rem;
+          padding-left: 1.25rem;
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
         
         .markdown-content li {
           margin-bottom: 0.5rem;
-          color: #e4e4e7;
+          color: #e8e8ea;
+        }
+        
+        /* Inline paragraphs specifically inside list items */
+        .markdown-content li p {
+          display: inline;
+          margin: 0;
         }
         
         .markdown-content h2 {
@@ -44,10 +50,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-bottom: 0.5rem;
         }
         
-        .markdown-content .regular-paragraph {
+        .markdown-content .regular-paragraph,
+        .markdown-content > p {
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
-          color: #e4e4e7;
+          color: #e8e8ea;
         }
         
         .markdown-content strong {
@@ -56,10 +63,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         
         .markdown-content code {
-          background-color: rgba(255, 255, 255, 0.1);
-          padding: 0.2rem 0.4rem;
+          background-color: transparent; /* Remove grey highlight for inline code */
+          padding: 0.1rem 0.2rem;
           border-radius: 0.25rem;
-          font-size: 0.9em;
+          font-size: 0.95em;
           font-family: monospace;
         }
         
@@ -72,21 +79,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           margin-bottom: 1rem;
         }
       `}</style>
-      <ReactMarkdown 
-        remarkPlugins={[remarkGfm]}
-        components={{
-          p: ({node, children, ...props}) => {
-            // Heuristic: inline paragraphs when likely inside list items, keep spacing for top-level
-            if ((node as any)?.position?.start?.line && (node as any).position.start.line > 1) {
-              return <span>{children}</span>;
-            }
-            return <p className="regular-paragraph">{children}</p>;
-          },
-          li: ({node, children, ...props}) => {
-            return <li>{children}</li>;
-          }
-        }}
-      >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {content}
       </ReactMarkdown>
     </div>
