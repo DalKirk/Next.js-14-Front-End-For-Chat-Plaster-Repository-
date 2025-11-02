@@ -14,7 +14,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       const line = lines[i];
       const trimmed = line.trim();
 
-      // Empty line
       if (!trimmed) {
         i++;
         continue;
@@ -23,14 +22,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       // Headers
       if (trimmed.startsWith('## ')) {
         elements.push(
-          <h2 key={i} style={{ 
-            fontSize: '1.5rem', 
-            fontWeight: 600, 
-            marginTop: '1.5rem', 
-            marginBottom: '0.75rem', 
-            color: '#ffffff',
-            display: 'block'
-          }}>
+          <h2 key={i} className="md-h2">
             {renderInline(trimmed.slice(3))}
           </h2>
         );
@@ -40,14 +32,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
       if (trimmed.startsWith('# ')) {
         elements.push(
-          <h1 key={i} style={{ 
-            fontSize: '1.75rem', 
-            fontWeight: 700, 
-            marginTop: '1.5rem', 
-            marginBottom: '1rem', 
-            color: '#ffffff',
-            display: 'block'
-          }}>
+          <h1 key={i} className="md-h1">
             {renderInline(trimmed.slice(2))}
           </h1>
         );
@@ -61,28 +46,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
           const itemText = lines[i].trim().slice(2);
           listItems.push(
-            <li key={i} style={{ 
-              marginBottom: '0.375rem', 
-              color: '#e4e4e7',
-              display: 'list-item',
-              listStyleType: 'disc',
-              listStylePosition: 'outside',
-              marginLeft: '0',
-              paddingLeft: '0'
-            }}>
+            <li key={i} className="md-li">
               {renderInline(itemText)}
             </li>
           );
           i++;
         }
         elements.push(
-          <ul key={`ul-${i}`} style={{ 
-            listStyleType: 'disc', 
-            paddingLeft: '1.5rem', 
-            margin: '0.75rem 0',
-            display: 'block',
-            listStylePosition: 'outside'
-          }}>
+          <ul key={`ul-${i}`} className="md-ul">
             {listItems}
           </ul>
         );
@@ -95,28 +66,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         while (i < lines.length && lines[i].trim().match(/^\d+\.\s/)) {
           const itemText = lines[i].trim().replace(/^\d+\.\s/, '');
           listItems.push(
-            <li key={i} style={{ 
-              marginBottom: '0.375rem', 
-              color: '#e4e4e7',
-              display: 'list-item',
-              listStyleType: 'decimal',
-              listStylePosition: 'outside',
-              marginLeft: '0',
-              paddingLeft: '0'
-            }}>
+            <li key={i} className="md-li-ordered">
               {renderInline(itemText)}
             </li>
           );
           i++;
         }
         elements.push(
-          <ol key={`ol-${i}`} style={{ 
-            listStyleType: 'decimal', 
-            paddingLeft: '1.5rem', 
-            margin: '0.75rem 0',
-            display: 'block',
-            listStylePosition: 'outside'
-          }}>
+          <ol key={`ol-${i}`} className="md-ol">
             {listItems}
           </ol>
         );
@@ -126,30 +83,15 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       // Code blocks
       if (trimmed.startsWith('```')) {
         const codeLines: string[] = [];
-        i++; // Skip opening ```
+        i++;
         while (i < lines.length && !lines[i].trim().startsWith('```')) {
           codeLines.push(lines[i]);
           i++;
         }
-        i++; // Skip closing ```
+        i++;
         elements.push(
-          <pre key={`pre-${i}`} style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            padding: '1rem',
-            borderRadius: '0.5rem',
-            overflowX: 'auto',
-            margin: '1rem 0',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'block'
-          }}>
-            <code style={{ 
-              fontFamily: 'monospace', 
-              fontSize: '0.875rem',
-              color: '#e4e4e7',
-              display: 'block'
-            }}>
-              {codeLines.join('\n')}
-            </code>
+          <pre key={`pre-${i}`} className="md-pre">
+            <code className="md-code-block">{codeLines.join('\n')}</code>
           </pre>
         );
         continue;
@@ -157,12 +99,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
       // Regular paragraph
       elements.push(
-        <p key={i} style={{ 
-          margin: '0.75rem 0', 
-          color: '#e4e4e7',
-          display: 'block',
-          lineHeight: '1.6'
-        }}>
+        <p key={i} className="md-p">
           {renderInline(trimmed)}
         </p>
       );
@@ -178,7 +115,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     let i = 0;
 
     while (i < text.length) {
-      // Bold **text**
       if (text[i] === '*' && text[i + 1] === '*') {
         if (current) {
           parts.push(current);
@@ -186,17 +122,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         const end = text.indexOf('**', i + 2);
         if (end !== -1) {
-          parts.push(
-            <strong key={i} style={{ fontWeight: 600, color: '#ffffff' }}>
-              {text.slice(i + 2, end)}
-            </strong>
-          );
+          parts.push(<strong key={i} className="md-strong">{text.slice(i + 2, end)}</strong>);
           i = end + 2;
           continue;
         }
       }
 
-      // Inline code `text`
       if (text[i] === '`') {
         if (current) {
           parts.push(current);
@@ -204,18 +135,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         const end = text.indexOf('`', i + 1);
         if (end !== -1) {
-          parts.push(
-            <code key={i} style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              color: '#fbbf24',
-              padding: '0.125rem 0.375rem',
-              borderRadius: '0.25rem',
-              fontSize: '0.875em',
-              fontFamily: 'monospace'
-            }}>
-              {text.slice(i + 1, end)}
-            </code>
-          );
+          parts.push(<code key={i} className="md-code">{text.slice(i + 1, end)}</code>);
           i = end + 1;
           continue;
         }
@@ -225,23 +145,115 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       i++;
     }
 
-    if (current) {
-      parts.push(current);
-    }
-
+    if (current) parts.push(current);
     return parts.length > 0 ? parts : text;
   };
 
   return (
-    <div style={{ 
-      width: '100%',
-      color: '#e4e4e7',
-      fontSize: '16px',
-      lineHeight: '1.6',
-      display: 'block'
-    }}>
-      {renderMarkdown(content)}
-    </div>
+    <>
+      <style>{`
+        .md-renderer * {
+          box-sizing: border-box;
+        }
+        
+        .md-ul, .md-ol {
+          display: block !important;
+          list-style-position: outside !important;
+          padding-left: 1.5rem !important;
+          margin: 0.75rem 0 !important;
+          width: 100% !important;
+        }
+        
+        .md-ul {
+          list-style-type: disc !important;
+        }
+        
+        .md-ol {
+          list-style-type: decimal !important;
+        }
+        
+        .md-li, .md-li-ordered {
+          display: list-item !important;
+          margin-bottom: 0.375rem !important;
+          color: #e4e4e7 !important;
+          margin-left: 0 !important;
+          padding-left: 0 !important;
+          line-height: 1.6 !important;
+        }
+        
+        .md-li {
+          list-style-type: disc !important;
+        }
+        
+        .md-li-ordered {
+          list-style-type: decimal !important;
+        }
+        
+        .md-p {
+          display: block !important;
+          margin: 0.75rem 0 !important;
+          color: #e4e4e7 !important;
+          line-height: 1.6 !important;
+        }
+        
+        .md-h1 {
+          display: block !important;
+          font-size: 1.75rem !important;
+          font-weight: 700 !important;
+          margin-top: 1.5rem !important;
+          margin-bottom: 1rem !important;
+          color: #ffffff !important;
+        }
+        
+        .md-h2 {
+          display: block !important;
+          font-size: 1.5rem !important;
+          font-weight: 600 !important;
+          margin-top: 1.5rem !important;
+          margin-bottom: 0.75rem !important;
+          color: #ffffff !important;
+        }
+        
+        .md-strong {
+          font-weight: 600 !important;
+          color: #ffffff !important;
+        }
+        
+        .md-code {
+          background-color: rgba(255, 255, 255, 0.1) !important;
+          color: #fbbf24 !important;
+          padding: 0.125rem 0.375rem !important;
+          border-radius: 0.25rem !important;
+          font-size: 0.875em !important;
+          font-family: monospace !important;
+        }
+        
+        .md-pre {
+          display: block !important;
+          background-color: rgba(0, 0, 0, 0.3) !important;
+          padding: 1rem !important;
+          border-radius: 0.5rem !important;
+          overflow-x: auto !important;
+          margin: 1rem 0 !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        .md-code-block {
+          font-family: monospace !important;
+          font-size: 0.875rem !important;
+          color: #e4e4e7 !important;
+          display: block !important;
+        }
+      `}</style>
+      <div className="md-renderer" style={{ 
+        width: '100%',
+        color: '#e4e4e7',
+        fontSize: '16px',
+        lineHeight: '1.6'
+      }}>
+        {renderMarkdown(content)}
+      </div>
+    </>
   );
 };
 
