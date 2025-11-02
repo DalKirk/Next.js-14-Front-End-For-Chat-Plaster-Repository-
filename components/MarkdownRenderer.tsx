@@ -33,23 +33,21 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           ul: ({ children }) => (
             <ul style={{
               listStyleType: 'disc',
-              listStylePosition: 'inside',  // ← CRITICAL FIX
-              marginLeft: '0',               // ← CHANGED from '1.5rem'
+              paddingLeft: '1.5rem',
               marginTop: '0.75rem',
               marginBottom: '0.75rem',
-              paddingLeft: '1rem'
+              marginLeft: '0'
             }}>
               {children}
             </ul>
           ),
-          ol: ({ children }) => (           // ← NEW: Added ordered lists
+          ol: ({ children }) => (
             <ol style={{
               listStyleType: 'decimal',
-              listStylePosition: 'inside',  // ← CRITICAL FIX
-              marginLeft: '0',
+              paddingLeft: '1.5rem',
               marginTop: '0.75rem',
               marginBottom: '0.75rem',
-              paddingLeft: '1rem'
+              marginLeft: '0'
             }}>
               {children}
             </ol>
@@ -58,10 +56,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             <li style={{
               marginBottom: '0.5rem',
               lineHeight: '1.6',
-              color: '#e4e4e7',
-              display: 'list-item'          // ← ADDED: Ensures proper display
+              color: '#e4e4e7'
             }}>
-              {children}
+              <span style={{ display: 'inline' }}>{children}</span>
             </li>
           ),
           p: ({ children }) => (
@@ -69,7 +66,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               marginTop: '0.75rem',
               marginBottom: '0.75rem',
               lineHeight: '1.6',
-              color: '#e4e4e7'
+              color: '#e4e4e7',
+              display: 'inline'
             }}>
               {children}
             </p>
@@ -82,7 +80,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               {children}
             </strong>
           ),
-          code: ({ children }) => (         // ← NEW: Inline code styling
+          code: ({ children }) => (
             <code style={{
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               padding: '0.2rem 0.4rem',
@@ -93,7 +91,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               {children}
             </code>
           ),
-          pre: ({ children }) => (          // ← NEW: Code block styling
+          pre: ({ children }) => (
             <pre style={{
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               padding: '1rem',
