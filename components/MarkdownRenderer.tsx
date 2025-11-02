@@ -34,34 +34,37 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       lineHeight: '1.7'
     }}>
       <style>{`
-        .markdown-content ul {
-          list-style-type: disc;
-          list-style-position: inside; /* keep bullets inline before text */
-          margin-left: 0;
-          padding-left: 1.0rem;
-          margin-top: 0.75rem;
-          margin-bottom: 0.75rem;
-        }
-        
+        /* Robust, custom list markers to prevent marker/text separation */
+        .markdown-content ul,
         .markdown-content ol {
-          list-style-type: decimal;
-          list-style-position: outside; /* numbers stay aligned; avoids marker-only line when first child is block */
-          margin-left: 0;
-          padding-left: 1.25rem; /* give room for outside markers */
+          list-style: none; /* remove browser markers */
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
+          padding-left: 0; /* we will space using ::before */
         }
-        
+
+        .markdown-content ol { counter-reset: md-ol-counter; }
+
         .markdown-content li {
           margin-bottom: 0.5rem;
           color: #e8e8ea;
+          display: flex;               /* keep marker and text on same line */
+          align-items: baseline;
         }
-        
+
+        .markdown-content li::before {
+          flex: 0 0 1.5rem;            /* fixed space for marker */
+          text-align: right;
+          margin-right: 0.5rem;
+          color: #e8e8ea;
+        }
+
+        .markdown-content ul li::before { content: '•'; }
+        .markdown-content ol li { counter-increment: md-ol-counter; }
+        .markdown-content ol li::before { content: counter(md-ol-counter) '.'; }
+
         /* Inline paragraphs specifically inside list items */
-        .markdown-content li p {
-          display: inline;
-          margin: 0;
-        }
+        .markdown-content li p { display: inline; margin: 0; }
         
         .markdown-content h2 {
           font-size: 1.5rem;
