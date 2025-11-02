@@ -33,19 +33,33 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           ul: ({ children }) => (
             <ul style={{
               listStyleType: 'disc',
-              marginLeft: '1.5rem',
+              listStylePosition: 'inside',  // ← CRITICAL FIX
+              marginLeft: '0',               // ← CHANGED from '1.5rem'
               marginTop: '0.75rem',
               marginBottom: '0.75rem',
-              paddingLeft: '0.5rem'
+              paddingLeft: '1rem'
             }}>
               {children}
             </ul>
+          ),
+          ol: ({ children }) => (           // ← NEW: Added ordered lists
+            <ol style={{
+              listStyleType: 'decimal',
+              listStylePosition: 'inside',  // ← CRITICAL FIX
+              marginLeft: '0',
+              marginTop: '0.75rem',
+              marginBottom: '0.75rem',
+              paddingLeft: '1rem'
+            }}>
+              {children}
+            </ol>
           ),
           li: ({ children }) => (
             <li style={{
               marginBottom: '0.5rem',
               lineHeight: '1.6',
-              color: '#e4e4e7'
+              color: '#e4e4e7',
+              display: 'list-item'          // ← ADDED: Ensures proper display
             }}>
               {children}
             </li>
@@ -67,6 +81,29 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             }}>
               {children}
             </strong>
+          ),
+          code: ({ children }) => (         // ← NEW: Inline code styling
+            <code style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              padding: '0.2rem 0.4rem',
+              borderRadius: '0.25rem',
+              fontSize: '0.9em',
+              fontFamily: 'monospace'
+            }}>
+              {children}
+            </code>
+          ),
+          pre: ({ children }) => (          // ← NEW: Code block styling
+            <pre style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              overflowX: 'auto',
+              marginTop: '1rem',
+              marginBottom: '1rem'
+            }}>
+              {children}
+            </pre>
           )
         }}
       >
