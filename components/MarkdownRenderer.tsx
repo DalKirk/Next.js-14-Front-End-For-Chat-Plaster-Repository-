@@ -44,7 +44,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           padding-bottom: 0.5rem;
         }
         
-        .markdown-content > p {
+        .markdown-content .regular-paragraph {
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
           color: #e4e4e7;
@@ -75,13 +75,15 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          // CRITICAL: Replace p tags inside li with just the content
           p: ({node, children, ...props}) => {
-            // Check if parent is a list item by checking if we're in a tight list context
-            return <>{children}</>;
+            // Heuristic: inline paragraphs when likely inside list items, keep spacing for top-level
+            if ((node as any)?.position?.start?.line && (node as any).position.start.line > 1) {
+              return <span>{children}</span>;
+            }
+            return <p className="regular-paragraph">{children}</p>;
           },
           li: ({node, children, ...props}) => {
-            return <li style={{ color: '#e4e4e7' }}>{children}</li>;
+            return <li>{children}</li>;
           }
         }}
       >
