@@ -45,9 +45,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         
         .markdown-content ol {
           list-style-type: decimal;
-          list-style-position: inside; /* keep numbers inline before text */
+          list-style-position: outside; /* numbers stay aligned; avoids marker-only line when first child is block */
           margin-left: 0;
-          padding-left: 1.0rem;
+          padding-left: 1.25rem; /* give room for outside markers */
           margin-top: 0.75rem;
           margin-bottom: 0.75rem;
         }
