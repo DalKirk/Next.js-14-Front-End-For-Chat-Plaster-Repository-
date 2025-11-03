@@ -541,37 +541,64 @@ export default function HomePage() {
     setClaudeMessages(prev => [...prev, assistantMessage]);
     
     try {
-      let fullContent = '';
-      
-      await claudeAPI.streamGenerate(
-        promptText,
-        (chunk: string) => {
-          fullContent += chunk;
-          setClaudeMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessageId
-                ? { ...msg, content: fullContent }
-                : msg
-            )
-          );
+      // Build conversation history from claudeMessages
+      const conversation_history = claudeMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      const response = await fetch('/api/ai-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          maxTokens: 1000,
-          temperature: 0.7
+        body: JSON.stringify({
+          message: promptText,
+          conversation_history: conversation_history,
+          // Hint backend to enable web search/tooling when appropriate
+          enable_search: true
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullContent += parsed.content;
+                  setClaudeMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === assistantMessageId
+                        ? { ...msg, content: fullContent }
+                        : msg
+                    )
+                  );
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
         }
-      );
-      
-  // After streaming completes, preprocess the content if needed
-  const processedContent = preprocessContent(fullContent);
-      
-      if (processedContent !== fullContent) {
-        setClaudeMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId
-              ? { ...msg, content: processedContent }
-              : msg
-          )
-        );
       }
       
       toast.success('Response complete!');
@@ -850,8 +877,8 @@ export default function HomePage() {
                           );
                         },
                         p: ({children}) => <p className="mb-2 last:mb-0 leading-relaxed text-xs break-words">{children}</p>,
-                        ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1 text-xs">{children}</ul>,
-                        ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1 text-xs">{children}</ol>,
+                        ul: ({children}) => <ul className="list-disc list-outside mb-2 space-y-1 text-xs pl-5">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal list-outside mb-2 space-y-1 text-xs pl-5">{children}</ol>,
                         li: ({children}) => <li className="leading-relaxed text-xs">{children}</li>,
                         h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
