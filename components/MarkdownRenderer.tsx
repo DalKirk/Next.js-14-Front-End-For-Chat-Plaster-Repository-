@@ -182,7 +182,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           display: block !important;
           list-style-type: decimal !important;
           margin: 0.75rem 0 !important;
-          padding-left: 1.5rem !important;
+          padding-left: 3rem !important;
+          margin-left: 0.5rem !important;
           color: #e4e4e7 !important;
           font-family: inherit !important;
         }
@@ -195,7 +196,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           line-height: 1.6 !important;
           font-family: inherit !important;
           font-size: 16px !important;
-          padding-left: 0.25rem !important;
+          padding-left: 0.5rem !important;
+          margin-left: 0 !important;
         }
         
         .md-li {
