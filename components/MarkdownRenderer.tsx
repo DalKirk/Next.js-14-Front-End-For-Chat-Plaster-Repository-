@@ -167,46 +167,43 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           box-sizing: border-box !important;
         }
         
-        .md-ul, .md-ol {
+        .md-ul {
           all: initial !important;
           display: block !important;
-          list-style-position: outside !important;
-          padding-left: 1.5rem !important;
-          margin: 0.75rem 0 !important;
-          width: 100% !important;
-          font-family: inherit !important;
-          font-size: 16px !important;
-          color: #e4e4e7 !important;
-        }
-        
-        .md-ul {
           list-style-type: disc !important;
+          margin: 0.75rem 0 !important;
+          padding-left: 1.5rem !important;
+          color: #e4e4e7 !important;
+          font-family: inherit !important;
         }
         
         .md-ol {
+          all: initial !important;
+          display: block !important;
           list-style-type: decimal !important;
+          margin: 0.75rem 0 !important;
+          padding-left: 1.5rem !important;
+          color: #e4e4e7 !important;
+          font-family: inherit !important;
         }
         
         .md-li, .md-li-ordered {
-          all: initial !important;
           display: list-item !important;
+          list-style-position: outside !important;
           margin-bottom: 0.375rem !important;
           color: #e4e4e7 !important;
-          margin-left: 0 !important;
-          padding-left: 0 !important;
           line-height: 1.6 !important;
           font-family: inherit !important;
           font-size: 16px !important;
+          padding-left: 0.25rem !important;
         }
         
         .md-li {
           list-style-type: disc !important;
-          list-style-position: outside !important;
         }
         
         .md-li-ordered {
           list-style-type: decimal !important;
-          list-style-position: outside !important;
         }
         
         .md-p {
