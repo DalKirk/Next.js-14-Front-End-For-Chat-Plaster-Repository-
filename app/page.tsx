@@ -778,12 +778,13 @@ export default function HomePage() {
       top: '64px',
       left: 0,
       right: 0,
-      bottom: '80px',
+      bottom: keyboardOffset > 0 ? `${keyboardOffset + 80}px` : '80px',
       overflowY: 'auto',
       overflowX: 'hidden',
       overscrollBehavior: 'contain',
       WebkitOverflowScrolling: 'touch',
-      touchAction: 'pan-y'
+      touchAction: 'pan-y',
+      transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     }}
     onTouchStart={(e) => {
       // Prevent pull-to-refresh from sticking
