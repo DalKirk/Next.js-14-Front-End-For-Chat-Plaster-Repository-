@@ -169,6 +169,11 @@ export default function HomePage() {
       });
 
       let t = stubbed;
+      
+      // FIRST: Handle inline lists like "• Item1 • Item2 • Item3"
+      // Split by bullet markers that appear inline (with content before them)
+      t = t.replace(/([a-zA-Z0-9)])(\s+•\s+)/g, '$1\n• ');
+      
       // If the backend flattened newlines to multiple spaces, bring bullets back to new lines
       // Examples handled: "    - item", "    * item", "    • item", "    1. item", "    1) item"
       t = t.replace(/(\s{3,})([-*]|•|\d+[.)])\s/g, '\n$2 ');
