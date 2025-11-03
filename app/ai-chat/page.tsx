@@ -1,12 +1,6 @@
-'use client';
-
-import React from 'react';
-import ChatInterface from '@/components/ChatInterface';
+import { redirect } from 'next/navigation';
 
 export default function AIChatPage() {
-  return (
-    <div className="h-screen w-full">
-      <ChatInterface />
-    </div>
-  );
+  // Redirect this legacy/unused route to the home page
+  redirect('/');
 }

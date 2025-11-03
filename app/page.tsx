@@ -24,7 +24,6 @@ import {
   CogIcon
 } from '@heroicons/react/24/outline';
 import { Copy, Check } from 'lucide-react';
-import WebSearchButton from '@/components/WebSearchButton';
 import { QuickActionBar } from '@/components/QuickActionBar';
 
 interface User {
@@ -651,7 +650,7 @@ export default function HomePage() {
           )}
         </div>
         
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           {currentUser ? (
             <div className="relative">
               <button
@@ -762,6 +761,9 @@ export default function HomePage() {
 
 
 
+      {/* Quick Web Search Actions */}
+      <QuickActionBar />
+
       {/* Decorative floating bubbles layer (background, no scroll impact) */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="bubble-wobble bubble-mango bubble-sm bubble-fast bubble-delay-1" style={{ left: '8%', '--sway': '12px' } as React.CSSProperties} />
@@ -780,7 +782,7 @@ export default function HomePage() {
       top: '64px',
       left: 0,
       right: 0,
-      bottom: keyboardOffset > 0 ? `${keyboardOffset + 140}px` : '140px',
+      bottom: keyboardOffset > 0 ? `${keyboardOffset + 80}px` : '80px',
       overflowY: 'auto',
       overflowX: 'hidden',
       overscrollBehavior: 'contain',
@@ -943,24 +945,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Web Search Section - Above Input */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.4 }}
-        className="fixed left-[56px] right-0 bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-800/50 z-40"
-        style={{ 
-          bottom: keyboardOffset > 0 ? `${keyboardOffset + 80}px` : '80px',
-          paddingBottom: '8px',
-          paddingTop: '8px',
-          transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="max-w-4xl mx-auto px-2 sm:px-4">
-          <WebSearchButton query={claudeInput} className="w-full justify-center" />
-        </div>
-      </motion.div>
-
       {/* Fixed Input at Bottom - Floats above keyboard */}
       <motion.div
         ref={inputContainerRef}
@@ -1027,9 +1011,6 @@ export default function HomePage() {
           </div>
         </div>
       </motion.div>
-
-      {/* Quick Action Bar - Floating Search Buttons */}
-      <QuickActionBar />
     </div>
   );
 }

@@ -3,6 +3,17 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  async redirects() {
+    return [
+      // Redirect legacy/unused AI chat page to home
+      { source: '/ai-chat', destination: '/', permanent: false },
+      // Redirect removed dev/test pages to home
+      { source: '/ai-test', destination: '/', permanent: false },
+      { source: '/debug', destination: '/', permanent: false },
+      { source: '/test-markdown', destination: '/', permanent: false },
+      { source: '/troubleshooting', destination: '/', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

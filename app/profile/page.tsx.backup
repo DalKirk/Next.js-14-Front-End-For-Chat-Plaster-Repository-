@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import toast from 'react-hot-toast';
 import { 
-  Camera, Settings, Activity, Shield, Trash2,
+  Camera, Settings, Activity, Shield, Trash2, Upload, 
   User, MessageSquare, Clock, Zap, Code, Globe
 } from 'lucide-react';
 import Image from 'next/image';
@@ -71,6 +71,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [isFirstTime, setIsFirstTime] = useState(false);
   
   // Avatar state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -113,23 +114,28 @@ export default function ProfilePage() {
     }
 
     const userData = JSON.parse(storedUser);
+    
+    // Check if this is first-time setup
     const existingProfile = localStorage.getItem('userProfile');
+    const isNewUser = !existingProfile;
+    setIsFirstTime(isNewUser);
 
-    // Mock profile data
+    // Mock profile data - in real app, fetch from API
     const mockProfile: UserProfile = {
       id: userData.id,
       username: userData.username,
       email: userData.email || `${userData.username}@chatplaster.com`,
-      bio: 'Developer passionate about real-time collaboration and clean code.',
-      avatar: '',
+      bio: isNewUser ? '' : 'Developer passionate about real-time collaboration and clean code.',
+      avatar: '', // Will implement avatar upload
       joinedDate: new Date().toISOString().split('T')[0],
-      totalRooms: 3,
-      totalMessages: 127,
+      totalRooms: 0,
+      totalMessages: 0,
       favoriteLanguage: 'JavaScript',
       theme: 'purple',
       notifications: true
     };
 
+    // Load existing profile or use defaults
     if (existingProfile) {
       const savedProfile = JSON.parse(existingProfile);
       setProfile({ ...mockProfile, ...savedProfile });
@@ -140,6 +146,7 @@ export default function ProfilePage() {
     } else {
       setProfile(mockProfile);
       setEditedProfile(mockProfile);
+      setIsEditing(true); // Start in edit mode for new users
     }
 
     // Load AI preferences
@@ -148,17 +155,18 @@ export default function ProfilePage() {
       setAiPreferences(JSON.parse(savedAiPrefs));
     }
 
-    // Mock stats
-    setStats({
-      messagesCount: 127,
-      conversationsCount: 23,
-      totalSessionTime: '14h 32m',
+    // Mock stats - in real app, fetch from API
+    const mockStats: ProfileStats = {
+      messagesCount: isNewUser ? 0 : 127,
+      conversationsCount: isNewUser ? 0 : 23,
+      totalSessionTime: isNewUser ? '0h 0m' : '14h 32m',
       lastActive: 'Just now',
-      aiChatsCount: 18,
-    });
+      aiChatsCount: isNewUser ? 0 : 18,
+    };
+    setStats(mockStats);
 
-    // Mock activities
-    setActivities([
+    // Mock activity - in real app, fetch from API
+    const mockActivities: ActivityItem[] = isNewUser ? [] : [
       { 
         id: '1', 
         type: 'ai', 
@@ -177,22 +185,34 @@ export default function ProfilePage() {
         id: '3', 
         type: 'ai', 
         action: 'AI Chat', 
-        details: 'Discussed project planning',
+        details: 'Discussed project planning and architecture',
         timestamp: new Date(Date.now() - 10800000).toISOString() 
       },
-    ]);
+      { 
+        id: '4', 
+        type: 'room_join', 
+        action: 'Joined Room', 
+        details: 'Frontend Team discussion',
+        timestamp: new Date(Date.now() - 86400000).toISOString() 
+      },
+    ];
+    setActivities(mockActivities);
 
-    // Mock recent rooms
-    setRecentRooms([
-      { id: '1', name: 'Frontend Team', lastVisited: '2024-11-01', messageCount: 45 },
-      { id: '2', name: 'Code Review', lastVisited: '2024-10-31', messageCount: 23 },
-    ]);
+    const mockRecentRooms: RecentRoom[] = isNewUser ? [] : [
+      { id: '1', name: 'Frontend Team', lastVisited: '2024-10-19', messageCount: 45 },
+      { id: '2', name: 'Code Review', lastVisited: '2024-10-18', messageCount: 23 },
+      { id: '3', name: 'Project Planning', lastVisited: '2024-10-17', messageCount: 31 }
+    ];
+
+    setRecentRooms(mockRecentRooms);
   }, [router]);
 
-  // Avatar handling
+  // Avatar handling functions
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processAvatarFile(file);
+    if (file) {
+      processAvatarFile(file);
+    }
   };
 
   const processAvatarFile = (file: File) => {
@@ -200,6 +220,7 @@ export default function ProfilePage() {
       toast.error('Image must be less than 5MB');
       return;
     }
+
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
@@ -210,7 +231,7 @@ export default function ProfilePage() {
       const result = reader.result as string;
       setAvatarPreview(result);
       setEditedProfile({ ...editedProfile, avatar: result });
-      toast.success('Avatar updated!');
+      toast.success('Avatar updated! Save your profile to keep changes.');
     };
     reader.readAsDataURL(file);
   };
@@ -221,15 +242,35 @@ export default function ProfilePage() {
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
       processAvatarFile(file);
+    } else {
+      toast.error('Please drop an image file');
     }
   };
 
   const handleSaveProfile = () => {
     if (profile && editedProfile) {
+      // Validate required fields for first-time setup
+      if (isFirstTime && (!editedProfile.bio || editedProfile.bio.trim().length < 10)) {
+        toast.error('Please add a bio with at least 10 characters');
+        return;
+      }
+
       const updatedProfile = { ...profile, ...editedProfile };
       setProfile(updatedProfile);
+      // In real app, save to API
       localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-      toast.success('Profile updated successfully!');
+      
+      if (isFirstTime) {
+        toast.success('Profile setup complete! Welcome to CHATTER BOX!');
+        setIsFirstTime(false);
+        // Redirect to chat after first-time setup
+        setTimeout(() => {
+          router.push('/chat');
+        }, 1500);
+      } else {
+        toast.success('Profile updated successfully!');
+      }
+      
       setIsEditing(false);
     }
   };
@@ -250,25 +291,32 @@ export default function ProfilePage() {
       toast.error('Please fill in all password fields');
       return;
     }
+    
     if (passwordData.new !== passwordData.confirm) {
       toast.error('New passwords do not match');
       return;
     }
+    
     if (passwordData.new.length < 8) {
       toast.error('Password must be at least 8 characters');
       return;
     }
+
+    // In real app, call API to change password
     toast.success('Password updated successfully!');
     setPasswordData({ current: '', new: '', confirm: '' });
   };
 
   const handleDeleteAccount = async () => {
-    if (confirm('⚠️ Are you absolutely sure? This action cannot be undone.')) {
+    if (confirm('⚠️ Are you absolutely sure? This action cannot be undone.\n\nYour account and all data will be permanently deleted.')) {
+      // In real app, call API to delete account
       localStorage.removeItem('chat-user');
       localStorage.removeItem('userProfile');
       localStorage.removeItem('aiPreferences');
       toast.success('Account deleted. Goodbye! 👋');
-      setTimeout(() => router.push('/'), 1500);
+      setTimeout(() => {
+        router.push('/');
+      }, 1500);
     }
   };
 
@@ -311,20 +359,26 @@ export default function ProfilePage() {
     <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] pt-20">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Back Button */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <Link href="/">
-            <Button variant="glass" className="px-4 py-2">← Back to Home</Button>
+            <Button variant="glass" className="px-4 py-2">
+              ← Back to Home
+            </Button>
           </Link>
         </motion.div>
 
-        {/* Enhanced Header */}
+        {/* Enhanced Header with Avatar and Stats */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
           className="glass-card p-6 sm:p-8"
         >
           <div className="flex flex-col lg:flex-row items-start gap-6">
-            {/* Avatar */}
+            {/* Avatar Section with Upload */}
             <div className="relative">
               <div
                 className={`relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 ${
@@ -335,24 +389,39 @@ export default function ProfilePage() {
                 onDrop={handleDrop}
               >
                 {avatarPreview ? (
-                  <Image src={avatarPreview} alt="Avatar" fill className="object-cover" unoptimized />
+                  <Image 
+                    src={avatarPreview} 
+                    alt="Avatar" 
+                    fill 
+                    className="object-cover" 
+                    unoptimized
+                  />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#FF9900] to-yellow-400 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
+                  <div className="w-full h-full bg-gradient-to-br from-[#FF9900] to-yellow-400 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black shadow-[0_0_30px_rgba(255,153,0,0.5)]">
                     {profile.username.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               {isEditing && (
-                <>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 p-2 sm:p-3 bg-[#FF9900] rounded-full hover:bg-[#FFB84D] transition shadow-[0_0_15px_rgba(255,153,0,0.5)]"
-                  >
-                    <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-                  </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                  <p className="text-xs text-white/60 mt-2 text-center">Drag & drop or click</p>
-                </>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 p-2 sm:p-3 bg-[#FF9900] rounded-full hover:bg-[#FFB84D] transition shadow-[0_0_15px_rgba(255,153,0,0.5)]"
+                  title="Upload avatar"
+                >
+                  <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              {isEditing && (
+                <p className="text-xs text-white/60 mt-2 text-center">
+                  Drag & drop or click to upload
+                </p>
               )}
             </div>
 
@@ -381,10 +450,22 @@ export default function ProfilePage() {
                     maxLength={200}
                     rows={3}
                     className="bg-white/5"
+                    placeholder="Tell us about yourself..."
                   />
                   <div className="flex gap-2">
-                    <Button onClick={handleSaveProfile} variant="primary">Save Profile</Button>
-                    <Button onClick={handleCancelEdit} variant="glass">Cancel</Button>
+                    <Button
+                      onClick={handleSaveProfile}
+                      variant="primary"
+                      className="shadow-[0_0_20px_rgba(255,153,0,0.4)]"
+                    >
+                      Save Profile
+                    </Button>
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="glass"
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -392,7 +473,11 @@ export default function ProfilePage() {
                   <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{profile.username}</h1>
                   <p className="text-white/60 mb-3">{profile.email}</p>
                   {profile.bio && <p className="text-white/80 mb-4 max-w-2xl">{profile.bio}</p>}
-                  <Button onClick={() => setIsEditing(true)} variant="glass" className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    variant="glass"
+                    className="flex items-center gap-2"
+                  >
                     <User className="w-4 h-4" />
                     Edit Profile
                   </Button>
@@ -401,7 +486,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto">
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto">
               <div className="glass-panel p-3 sm:p-4 text-center border border-white/10 hover:border-[#FF9900]/50 transition">
                 <div className="text-xl sm:text-2xl font-bold text-[#FF9900]">{stats.messagesCount}</div>
                 <div className="text-xs sm:text-sm text-white/60">Messages</div>
@@ -422,8 +507,13 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* Tabs */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 overflow-x-auto pb-2">
+        {/* Navigation Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin"
+        >
           {[
             { id: 'profile', label: 'Profile', icon: User },
             { id: 'preferences', label: 'AI Preferences', icon: Settings },
@@ -452,195 +542,157 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
             className="glass-card p-4 sm:p-6 lg:p-8"
           >
-            {activeTab === 'profile' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white">Profile Information</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Joined</div>
-                    <div className="text-white">{new Date(profile.joinedDate).toLocaleDateString()}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Total Rooms</div>
-                    <div className="text-white">{profile.totalRooms}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Messages Sent</div>
-                    <div className="text-white">{profile.totalMessages}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Favorite Language</div>
-                    <div className="text-white">{profile.favoriteLanguage}</div>
-                  </div>
-                </div>
-
-                {recentRooms.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">Recent Rooms</h3>
-                    <div className="space-y-3">
-                      {recentRooms.map((room) => (
-                        <div key={room.id} className="glass-panel p-4 hover:bg-[#FF9900]/10 transition">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-medium text-white">{room.name}</h4>
-                              <p className="text-sm text-white/60">Last visited: {new Date(room.lastVisited).toLocaleDateString()}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-white/60">{room.messageCount} messages</p>
-                            </div>
-                          </div>
-                        </div>
+            {/* Settings */}
+            <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
+              <h3 className="text-xl font-semibold text-white">Settings</h3>
+              
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                      Theme Color
+                    </label>
+                    <div className="flex gap-3">
+                      {(['purple', 'blue', 'green'] as const).map((theme) => (
+                        <button
+                          key={theme}
+                          onClick={() => setEditedProfile({...editedProfile, theme})}
+                          className={`w-8 h-8 rounded-full border-2 ${
+                            editedProfile.theme === theme ? 'border-[#FF9900] shadow-[0_0_15px_rgba(255,153,0,0.6)]' : 'border-zinc-800'
+                          } ${
+                            theme === 'purple' ? 'bg-purple-600' :
+                            theme === 'blue' ? 'bg-cyan-400' : 'bg-fuchsia-500'
+                          }`}
+                        />
                       ))}
                     </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-400">Enable Notifications</span>
+                    <button
+                      onClick={() => setEditedProfile({...editedProfile, notifications: !editedProfile.notifications})}
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        editedProfile.notifications ? 'bg-gradient-to-r from-[#FF9900] to-yellow-400 shadow-[0_0_15px_rgba(255,153,0,0.5)]' : 'bg-zinc-800'
+                      } relative`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 ${
+                        editedProfile.notifications ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Theme</span>
+                    <span className="text-white capitalize">{profile.theme}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Notifications</span>
+                    <span className="text-white">{profile.notifications ? 'Enabled' : 'Disabled'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Rooms */}
+            {!isFirstTime && (
+              <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
+                <h3 className="text-xl font-semibold text-white">Recent Rooms</h3>
+                {recentRooms.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentRooms.map((room) => (
+                      <div key={room.id} className="glass-panel p-4 rounded-lg border border-zinc-800 hover:bg-[#FF9900]/10 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium text-white">{room.name}</h4>
+                            <p className="text-sm text-zinc-400">
+                              Last visited: {new Date(room.lastVisited).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-zinc-400">{room.messageCount} messages</p>
+                            <Button 
+                              variant="glass" 
+                              className="mt-2 text-xs px-3 py-1"
+                              onClick={() => router.push(`/room/${room.id}`)}
+                            >
+                              Join Room
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-zinc-400 mb-4">No recent rooms yet</p>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => router.push('/chat')}
+                    >
+                      Browse Available Rooms
+                    </Button>
                   </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'preferences' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">AI Preferences</h2>
-                
-                <div>
-                  <label className="block text-white mb-2">AI Model</label>
-                  <select
-                    value={aiPreferences.aiModel}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, aiModel: e.target.value as any })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  >
-                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
-                    <option value="claude-3-opus">Claude 3 Opus</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-white mb-2">Temperature: {aiPreferences.temperature}</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={aiPreferences.temperature}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, temperature: parseFloat(e.target.value) })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-white/60 mt-1">
-                    <span>Precise</span>
-                    <span>Creative</span>
+            {/* First-time Welcome Message (trimmed) */}
+            {isFirstTime && (
+              <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
+                <h3 className="text-xl font-semibold text-white">🎉 Welcome to CHATTER BOX!</h3>
+                <div className="space-y-4">
+                  <div className="bg-[#FF9900]/10 border border-[#FF9900]/30 rounded-lg p-4 shadow-[0_0_15px_rgba(255,153,0,0.2)]">
+                    <p className="text-[#FFB84D] text-sm">
+                      💡 Complete your profile setup above to start chatting!
+                    </p>
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div>
-                  <label className="block text-white mb-2">Max Response Length</label>
-                  <select
-                    value={aiPreferences.maxTokens}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, maxTokens: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  >
-                    <option value={1024}>Short (1024 tokens)</option>
-                    <option value={2048}>Medium (2048 tokens)</option>
-                    <option value={4096}>Long (4096 tokens)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium">Web Search</div>
-                    <div className="text-white/60 text-sm">Enable real-time web search</div>
-                  </div>
-                  <button
-                    onClick={() => setAiPreferences({ ...aiPreferences, enableSearch: !aiPreferences.enableSearch })}
-                    className={`w-14 h-8 rounded-full transition ${aiPreferences.enableSearch ? 'bg-[#FF9900]' : 'bg-white/20'} relative`}
-                  >
-                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${aiPreferences.enableSearch ? 'translate-x-7' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <Button onClick={handleSaveAIPreferences} variant="primary" className="w-full">
-                  Save Preferences
+            {/* Quick Actions */}
+            <div className="glass-card p-6 space-y-4 border border-zinc-800 shadow-black/50">
+              <h3 className="text-xl font-semibold text-white">Quick Actions</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Button 
+                  variant="primary" 
+                  onClick={() => router.push('/chat')}
+                  className="w-full"
+                >
+                  Browse All Rooms
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => router.push('/')}
+                  className="w-full"
+                >
+                  Create New Room
                 </Button>
               </div>
-            )}
-
-            {activeTab === 'activity' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
-                <div className="space-y-3">
-                  {activities.map((activity) => (
-                    <div key={activity.id} className="glass-panel p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">{getActivityIcon(activity.type)}</div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-white font-medium">{activity.action}</div>
-                              <div className="text-white/60 text-sm">{activity.details}</div>
-                            </div>
-                            <div className="text-white/40 text-sm">{getTimeAgo(activity.timestamp)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              
+              {/* Logout Section */}
+              <div className="border-t border-zinc-800 pt-4">
+                <Button 
+                  variant="glass" 
+                  onClick={() => {
+                    localStorage.removeItem('chat-user');
+                    localStorage.removeItem('userProfile');
+                    router.push('/');
+                  }}
+                  className="w-full text-red-400 hover:text-red-300"
+                >
+                  🚪 Logout
+                </Button>
               </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Security & Privacy</h2>
-                
-                <div className="glass-panel p-6">
-                  <h3 className="text-white font-medium mb-4">Change Password</h3>
-                  <div className="space-y-3">
-                    <Input
-                      type="password"
-                      placeholder="Current password"
-                      value={passwordData.current}
-                      onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Input
-                      type="password"
-                      placeholder="New password"
-                      value={passwordData.new}
-                      onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwordData.confirm}
-                      onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Button onClick={handleChangePassword} variant="primary">
-                      Update Password
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="glass-panel p-6 border-2 border-red-500/20">
-                  <h3 className="text-white font-medium mb-2 flex items-center gap-2">
-                    <Trash2 className="w-5 h-5 text-red-500" />
-                    Danger Zone
-                  </h3>
-                  <p className="text-white/60 text-sm mb-4">
-                    Once you delete your account, there is no going back.
-                  </p>
-                  <Button
-                    onClick={handleDeleteAccount}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    Delete Account
-                  </Button>
-                </div>
-              </div>
-            )}
+            </div>
           </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   );
