@@ -9,13 +9,18 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   format_type?: string;
-  isStreaming?: boolean; // NEW: Track if message is still streaming
+  isStreaming?: boolean;
 }
 
 interface ChatInterfaceProps {
   apiEndpoint?: string;
   className?: string;
 }
+
+// ? Generate unique conversation ID
+const generateConversationId = () => {
+  return `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+};
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   apiEndpoint = '/api/ai-stream',
@@ -24,6 +29,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState(() => generateConversationId()); // ? Track conversation ID
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -33,6 +39,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // ? Log conversation ID on mount
+  useEffect(() => {
+    console.log('?? Conversation ID initialized:', conversationId);
+  }, [conversationId]);
 
   const sendMessage = async () => {
     const trimmedInput = input.trim();
@@ -47,15 +58,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setInput('');
     setLoading(true);
     
-    console.log('Sending message:', currentInput);
+    console.log('?? Sending message:', currentInput);
+    console.log('?? Using conversation ID:', conversationId); // ? Log conversation ID
 
     try {
       const requestPayload = {
         message: currentInput,
-        conversation_history: messages.filter(m => m.role && m.content)
+        conversation_history: messages.filter(m => m.role && m.content),
+        conversation_id: conversationId, // ? Add conversation_id
+        enable_search: true
       };
       
-      console.log('Request payload:', requestPayload);
+      console.log('?? Request payload:', requestPayload);
       
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -89,20 +103,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
-                  console.log('Raw chunk:', JSON.stringify(parsed.content)); // Debug logging
+                  console.log('Raw chunk:', JSON.stringify(parsed.content));
                   assistantMessage += parsed.content;
                   setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg && lastMsg.role === 'assistant') {
                       lastMsg.content = assistantMessage;
-                      lastMsg.isStreaming = true; // Mark as streaming
+                      lastMsg.isStreaming = true;
                     } else {
                       newMessages.push({
                         role: 'assistant',
                         content: assistantMessage,
                         format_type: parsed.format_type,
-                        isStreaming: true // Mark as streaming
+                        isStreaming: true
                       });
                     }
                     return newMessages;
@@ -115,25 +129,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           }
         }
         
-        // CRITICAL: Mark streaming as complete
+        // Mark streaming as complete
         setMessages(prev => {
           const newMessages = [...prev];
           const lastMsg = newMessages[newMessages.length - 1];
           if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.isStreaming = false; // Streaming complete
+            lastMsg.isStreaming = false;
           }
           return newMessages;
         });
+        
+        console.log('? Message complete (conversation_id:', conversationId, ')'); // ? Log completion
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('? Error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '❌ Sorry, there was an error processing your message. Please try again.',
+        content: '? Sorry, there was an error processing your message. Please try again.',
       }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // ? Clear chat and reset conversation
+  const clearChat = () => {
+    setMessages([]);
+    const newConversationId = generateConversationId();
+    setConversationId(newConversationId);
+    console.log('?? Chat cleared, new conversation ID:', newConversationId);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -145,88 +169,93 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className={`flex flex-col h-full bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}>
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <AnimatePresence>
-            {messages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`p-4 rounded-xl backdrop-blur-sm ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-r from-fuchsia-500/20 to-purple-600/20 border border-fuchsia-500/30 ml-auto max-w-[85%] shadow-[0_0_20px_rgba(217,70,239,0.3)]'
-                    : 'bg-[oklch(14.7%_0.004_49.25)]/50 border border-cyan-400/20 mr-auto max-w-[90%] shadow-[0_0_20px_rgba(34,211,238,0.2)]'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">
-                    {msg.role === 'user' ? '👤' : '🤖'}
-                  </span>
-                  <strong className={`font-orbitron text-sm ${
-                    msg.role === 'user' ? 'text-fuchsia-300' : 'text-cyan-300'
-                  }`}>
-                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
-                  </strong>
-                </div>
-                <div className="text-white/90 text-base">
-                  {msg.role === 'user' ? (
-                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                  ) : msg.isStreaming ? (
-                    // Render plain text while streaming to avoid mid-stream markdown reflows
-                    <p className="whitespace-pre-wrap break-words text-white/80">{msg.content}</p>
-                  ) : (
-                    // Render markdown once the stream is complete for stable lists/formatting
-                    <MarkdownRenderer content={msg.content} />
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-cyan-400 p-4"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              >
-                <SparklesIcon className="w-5 h-5" />
-              </motion.div>
-              <span className="text-sm font-orbitron">AI is thinking...</span>
-            </motion.div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
+      {/* Header with Clear Button */}
+      <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
+        <h2 className="text-xl font-bold text-[oklch(90%_0.05_260)]">AI Chat Assistant</h2>
+        <Button
+          onClick={clearChat}
+          disabled={messages.length === 0}
+          variant="outline"
+          size="sm"
+          className="text-sm"
+        >
+          Clear Chat
+        </Button>
       </div>
 
-      {/* Input Container */}
-      <div className="border-t border-purple-600/30 bg-[oklch(14.7%_0.004_49.25)]/90 backdrop-blur-xl p-4 shadow-[0_-5px_30px_rgba(147,51,234,0.2)]">
-        <div className="max-w-4xl mx-auto flex items-end gap-3">
-          <div className="flex-1">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Type your message... (Shift+Enter for new line)"
-              disabled={loading}
-              rows={2}
-              className="min-h-[60px] max-h-[200px] bg-[oklch(10%_0.02_280)] border-cyan-400/30 text-white placeholder:text-white/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)] resize-none"
-            />
-          </div>
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AnimatePresence>
+          {messages.map((message, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg p-4 ${
+                  message.role === 'user'
+                    ? 'bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]'
+                    : 'bg-[oklch(25%_0.05_260)] text-[oklch(90%_0.05_260)] border border-[oklch(35%_0.08_260)]'
+                }`}
+              >
+                {message.role === 'assistant' ? (
+                  <MarkdownRenderer content={message.content} />
+                ) : (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                )}
+                {message.isStreaming && (
+                  <span className="inline-block ml-2 animate-pulse">?</span>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-start"
+          >
+            <div className="bg-[oklch(25%_0.05_260)] rounded-lg p-4 border border-[oklch(35%_0.08_260)]">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-4 border-t border-[oklch(30%_0.05_260)]">
+        <div className="flex gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message... (Shift+Enter for new line)"
+            className="flex-1 resize-none bg-[oklch(20%_0.03_260)] border-[oklch(35%_0.08_260)] text-[oklch(90%_0.05_260)] placeholder:text-[oklch(50%_0.05_260)] focus:border-[oklch(50%_0.15_260)] focus:ring-[oklch(50%_0.15_260)]"
+            rows={3}
+            disabled={loading}
+          />
           <Button
             onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="px-6 h-[60px] bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!input.trim() || loading}
+            className="self-end bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white"
+            size="icon"
           >
-            <PaperAirplaneIcon className="w-5 h-5" />
+            {loading ? (
+              <SparklesIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <PaperAirplaneIcon className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>
