@@ -26,10 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Transform to backend format
+    // Transform to backend format and forward flags
+    const enableSearch = typeof body.enable_search === 'boolean' ? body.enable_search : true;
+    const conversationId = body.conversation_id;
+
     const backendPayload = {
       messages: [
-        ...(Array.isArray(body.conversation_history) ? body.conversation_history : []).map((msg: any) => ({
+        ...(Array.isArray(body.conversation_history) ? body.conversation_history : []).map((msg: {role: string; content: string}) => ({
           role: msg.role,
           content: msg.content
         })),
@@ -39,10 +42,18 @@ export async function POST(request: NextRequest) {
         }
       ],
       max_tokens: 2048,
-      temperature: 0.7
+      temperature: 0.7,
+      // Forward through to backend so it can enable tools like Brave Search
+      enable_search: enableSearch,
+      ...(conversationId ? { conversation_id: conversationId } : {})
     };
 
     console.log(`[AI Stream] Calling: ${BACKEND_URL}/ai/stream/chat`);
+    console.log(`[AI Stream] Payload:`, JSON.stringify({
+      ...backendPayload,
+      // avoid dumping the entire history/log; log only sizes/flags
+      messages_preview: `${backendPayload.messages.length} messages (redacted)`
+    }, null, 2));
 
     const response = await fetch(`${BACKEND_URL}/ai/stream/chat`, {
       method: 'POST',

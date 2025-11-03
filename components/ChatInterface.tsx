@@ -175,7 +175,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <Button
           onClick={clearChat}
           disabled={messages.length === 0}
-          variant="outline"
+          variant="ghost"
           size="sm"
           className="text-sm"
         >
@@ -248,8 +248,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || loading}
-            className="self-end bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white"
-            size="icon"
+            className="self-end bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white p-3"
+            size="md"
           >
             {loading ? (
               <SparklesIcon className="h-5 w-5 animate-spin" />
