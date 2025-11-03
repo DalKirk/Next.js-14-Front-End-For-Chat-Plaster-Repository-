@@ -7,6 +7,8 @@
     font-family: 'Inter', system-ui, sans-serif;
     /* Prevent iOS from zooming on input focus */
     -webkit-text-size-adjust: 100%;
+    /* Fill available viewport height */
+    height: -webkit-fill-available;
   }
 
   body {
@@ -18,6 +20,31 @@
     overflow-y: auto;
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent viewport shift on mobile keyboard - iOS specific */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    #__next {
+      height: 100vh;
+      height: -webkit-fill-available;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  /* Prevent iOS zoom on input focus (font-size must be >= 16px) */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
   }
 
   .font-orbitron {
