@@ -20,6 +20,7 @@
     "framer-motion": "^10.16.16",
     "highlight.js": "^11.11.1",
     "hls.js": "^1.6.13",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.546.0",
     "marked": "^16.4.1",
     "next": "^14.0.4",

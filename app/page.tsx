@@ -25,6 +25,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { Copy, Check } from 'lucide-react';
 import { QuickActionBar } from '@/components/QuickActionBar';
+import Lottie from 'lottie-react';
+import cosmosAnimation from '@/public/animations/cosmos.json';
 
 interface User {
   id: string;
@@ -921,23 +923,11 @@ export default function HomePage() {
               transition={{ duration: 0.3 }}
               className="flex justify-start"
             >
-              <div className="flex gap-1">
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                  className="w-2 h-2 bg-[#FF9900] rounded-full"
-                />
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }}
-                  className="w-2 h-2 bg-[#FFB84D] rounded-full"
-                />
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}
-                  className="w-2 h-2 bg-yellow-400 rounded-full"
-                />
-              </div>
+              <Lottie 
+                animationData={cosmosAnimation}
+                loop={true}
+                style={{ width: 80, height: 80 }}
+              />
             </motion.div>
           )}
 
