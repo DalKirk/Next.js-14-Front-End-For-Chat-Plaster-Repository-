@@ -26,7 +26,7 @@ import {
 import { Copy, Check } from 'lucide-react';
 import { QuickActionBar } from '@/components/QuickActionBar';
 import Lottie from 'lottie-react';
-import cosmosAnimation from '@/public/animations/cosmos.json';
+import threeBodyAnimation from '@/public/animations/3-body-loading.json';
 
 interface User {
   id: string;
@@ -924,7 +924,7 @@ export default function HomePage() {
               className="flex justify-start"
             >
               <Lottie 
-                animationData={cosmosAnimation}
+                animationData={threeBodyAnimation}
                 loop={true}
                 style={{ width: 80, height: 80 }}
               />
