@@ -37,23 +37,23 @@ export default function DevNotesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-50 mx-2 sm:mx-4 mb-2 sm:mb-4 p-2 sm:p-4 bg-zinc-900 backdrop-blur-md border-0 rounded-b-lg shadow-lg shadow-black/50 flex items-center gap-2 sm:gap-4"
+        className="sticky top-0 z-50 mx-2 sm:mx-4 mb-2 sm:mb-4 p-2 sm:p-4 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-b-lg shadow-[0_4px_30px_rgba(0,0,0,0.9)] flex items-center gap-2 sm:gap-4"
       >
         <Button
           onClick={() => router.push('/')}
           variant="ghost"
-          className="flex items-center gap-1 sm:gap-2 text-white hover:text-[#FF9900] transition-colors px-2 sm:px-3 py-1 sm:py-2"
+          className="flex items-center gap-1 sm:gap-2 text-white hover:text-green-400 transition-colors px-2 sm:px-3 py-1 sm:py-2"
         >
           <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="hidden sm:inline">Back</span>
         </Button>
-        <DocumentTextIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF9900]" />
-        <h1 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-[#FF9900] via-[#FFB84D] to-yellow-400 bg-clip-text text-transparent">
+        <DocumentTextIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" />
+        <h1 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-green-500 via-emerald-400 to-green-400 bg-clip-text text-transparent">
           Developer Notes & Updates
         </h1>
       </motion.div>
@@ -66,10 +66,10 @@ export default function DevNotesPage() {
           className="space-y-6"
         >
           {/* Welcome Section */}
-          <div className="bg-gradient-to-br from-[#FF9900]/10 to-yellow-400/10 border border-[#FF9900]/30 rounded-xl p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-[#FF9900] mb-4">🥭 Welcome to Mango Box</h2>
-            <p className="text-zinc-300 leading-relaxed">
-              This page documents all the updates, improvements, and changes made to Mango Box. 
+          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-green-400 mb-4">🚀 Welcome to Atlas</h2>
+            <p className="text-slate-300 leading-relaxed">
+              This page documents all the updates, improvements, and changes made to Atlas. 
               Stay up to date with the latest features and enhancements!
             </p>
           </div>
@@ -82,27 +82,27 @@ export default function DevNotesPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-[#FF9900]/50 transition-all shadow-black/50"
+                className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-green-500/50 transition-all shadow-black/50"
               >
                 {/* Version Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-gradient-to-r from-[#FF9900] to-yellow-400 text-black font-bold text-sm rounded-full">
+                    <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold text-sm rounded-full">
                       {update.version}
                     </span>
                     <h3 className="text-lg sm:text-xl font-bold text-white">{update.title}</h3>
                   </div>
-                  <span className="text-sm text-zinc-400">{update.date}</span>
+                  <span className="text-sm text-slate-400">{update.date}</span>
                 </div>
 
                 {/* Notes List */}
                 <ul className="space-y-2">
                   {update.notes.map((note, noteIndex) => (
-                    <li key={noteIndex} className="flex items-start gap-3 text-zinc-300">
-                      <span className="text-[#FF9900] mt-1">•</span>
+                    <li key={noteIndex} className="flex items-start gap-3 text-slate-300">
+                      <span className="text-green-500 mt-1">•</span>
                       {note === 'Spinning gear icon' ? (
                         <span className="flex items-center gap-2">
-                          <CogIcon className="w-5 h-5 text-[#FF9900]" style={{ animation: 'spin 3s linear infinite' }} />
+                          <CogIcon className="w-5 h-5 text-green-500" style={{ animation: 'spin 3s linear infinite' }} />
                           <span className="sr-only">Loading indicator</span>
                         </span>
                       ) : (
@@ -116,8 +116,8 @@ export default function DevNotesPage() {
           </div>
 
           {/* Footer Info */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
-            <p className="text-zinc-400">
+          <div className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
+            <p className="text-slate-400">
               Have questions or suggestions?
             </p>
           </div>

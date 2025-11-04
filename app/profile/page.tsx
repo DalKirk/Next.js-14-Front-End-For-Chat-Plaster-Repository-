@@ -36,14 +36,6 @@ interface ProfileStats {
   aiChatsCount: number;
 }
 
-interface AIPreferences {
-  aiModel: 'claude-3-5-sonnet' | 'claude-3-opus';
-  temperature: number;
-  maxTokens: number;
-  enableSearch: boolean;
-  codeTheme: 'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula';
-}
-
 interface ActivityItem {
   id: string;
   type: 'chat' | 'video' | 'ai' | 'room_join';
@@ -64,7 +56,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'activity' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'activity' | 'security'>('profile');
   
   // Profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -83,15 +75,6 @@ export default function ProfilePage() {
     totalSessionTime: '0h 0m',
     lastActive: 'Just now',
     aiChatsCount: 0,
-  });
-  
-  // AI Preferences state
-  const [aiPreferences, setAiPreferences] = useState<AIPreferences>({
-    aiModel: 'claude-3-5-sonnet',
-    temperature: 0.7,
-    maxTokens: 2048,
-    enableSearch: true,
-    codeTheme: 'vscDarkPlus',
   });
   
   // Activity state
@@ -140,12 +123,6 @@ export default function ProfilePage() {
     } else {
       setProfile(mockProfile);
       setEditedProfile(mockProfile);
-    }
-
-    // Load AI preferences
-    const savedAiPrefs = localStorage.getItem('aiPreferences');
-    if (savedAiPrefs) {
-      setAiPreferences(JSON.parse(savedAiPrefs));
     }
 
     // Mock stats
@@ -240,11 +217,6 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
-  const handleSaveAIPreferences = () => {
-    localStorage.setItem('aiPreferences', JSON.stringify(aiPreferences));
-    toast.success('AI preferences saved!');
-  };
-
   const handleChangePassword = () => {
     if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
       toast.error('Please fill in all password fields');
@@ -289,26 +261,26 @@ export default function ProfilePage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'ai': return <Zap className="w-4 h-4 text-[#FF9900]" />;
-      case 'video': return <Camera className="w-4 h-4 text-blue-400" />;
-      case 'chat': return <MessageSquare className="w-4 h-4 text-purple-400" />;
-      case 'room_join': return <User className="w-4 h-4 text-green-400" />;
-      default: return <Activity className="w-4 h-4 text-white" />;
+      case 'ai': return <Zap className="w-4 h-4 text-green-400" />;
+      case 'video': return <Camera className="w-4 h-4 text-emerald-400" />;
+      case 'chat': return <MessageSquare className="w-4 h-4 text-green-500" />;
+      case 'room_join': return <User className="w-4 h-4 text-slate-400" />;
+      default: return <Activity className="w-4 h-4 text-slate-300" />;
     }
   };
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="glass-card p-6 text-center">
-          <p className="text-white">Loading profile...</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-black via-slate-950 to-black">
+        <div className="glass-card p-6 text-center border border-slate-700/50">
+          <p className="text-slate-300">Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] pt-20">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-slate-950 to-black pt-20">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Back Button */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
@@ -337,7 +309,7 @@ export default function ProfilePage() {
                 {avatarPreview ? (
                   <Image src={avatarPreview} alt="Avatar" fill className="object-cover" unoptimized />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#FF9900] to-yellow-400 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
+                  <div className="w-full h-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
                     {profile.username.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -346,7 +318,7 @@ export default function ProfilePage() {
                 <>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 p-2 sm:p-3 bg-[#FF9900] rounded-full hover:bg-[#FFB84D] transition shadow-[0_0_15px_rgba(255,153,0,0.5)]"
+                    className="absolute bottom-0 right-0 p-2 sm:p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full hover:from-green-400 hover:to-emerald-400 transition shadow-[0_0_20px_rgba(34,197,94,0.6)]"
                   >
                     <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                   </button>
@@ -389,9 +361,9 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{profile.username}</h1>
-                  <p className="text-white/60 mb-3">{profile.email}</p>
-                  {profile.bio && <p className="text-white/80 mb-4 max-w-2xl">{profile.bio}</p>}
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
+                  <p className="text-slate-400 mb-3">{profile.email}</p>
+                  {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
                   <Button onClick={() => setIsEditing(true)} variant="glass" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     Edit Profile
@@ -402,21 +374,21 @@ export default function ProfilePage() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto">
-              <div className="glass-panel p-3 sm:p-4 text-center border border-white/10 hover:border-[#FF9900]/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-[#FF9900]">{stats.messagesCount}</div>
-                <div className="text-xs sm:text-sm text-white/60">Messages</div>
+              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-green-500/50 transition">
+                <div className="text-xl sm:text-2xl font-bold text-green-400">{stats.messagesCount}</div>
+                <div className="text-xs sm:text-sm text-slate-400">Messages</div>
               </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-white/10 hover:border-purple-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-purple-400">{stats.conversationsCount}</div>
-                <div className="text-xs sm:text-sm text-white/60">Chats</div>
+              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-emerald-500/50 transition">
+                <div className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.conversationsCount}</div>
+                <div className="text-xs sm:text-sm text-slate-400">Chats</div>
               </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-white/10 hover:border-blue-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-blue-400">{stats.totalSessionTime}</div>
-                <div className="text-xs sm:text-sm text-white/60">Time</div>
+              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-green-500/50 transition">
+                <div className="text-xl sm:text-2xl font-bold text-slate-300">{stats.totalSessionTime}</div>
+                <div className="text-xs sm:text-sm text-slate-400">Time</div>
               </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-white/10 hover:border-yellow-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-yellow-400">{stats.aiChatsCount}</div>
-                <div className="text-xs sm:text-sm text-white/60">AI Chats</div>
+              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-emerald-500/50 transition">
+                <div className="text-xl sm:text-2xl font-bold text-slate-300">{stats.aiChatsCount}</div>
+                <div className="text-xs sm:text-sm text-slate-400">AI Chats</div>
               </div>
             </div>
           </div>
@@ -426,7 +398,6 @@ export default function ProfilePage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 overflow-x-auto pb-2">
           {[
             { id: 'profile', label: 'Profile', icon: User },
-            { id: 'preferences', label: 'AI Preferences', icon: Settings },
             { id: 'activity', label: 'Activity', icon: Activity },
             { id: 'security', label: 'Security', icon: Shield },
           ].map((tab) => (
@@ -435,8 +406,8 @@ export default function ProfilePage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-[#FF9900] text-black shadow-[0_0_20px_rgba(255,153,0,0.5)]'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)]'
+                  : 'bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 text-slate-400 hover:bg-green-500/10 hover:text-slate-300 border border-slate-700/50'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -456,39 +427,39 @@ export default function ProfilePage() {
           >
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white">Profile Information</h2>
+                <h2 className="text-2xl font-bold text-slate-200">Profile Information</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Joined</div>
-                    <div className="text-white">{new Date(profile.joinedDate).toLocaleDateString()}</div>
+                    <div className="text-slate-500 text-sm mb-1">Joined</div>
+                    <div className="text-slate-300">{new Date(profile.joinedDate).toLocaleDateString()}</div>
                   </div>
                   <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Total Rooms</div>
-                    <div className="text-white">{profile.totalRooms}</div>
+                    <div className="text-slate-500 text-sm mb-1">Total Rooms</div>
+                    <div className="text-slate-300">{profile.totalRooms}</div>
                   </div>
                   <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Messages Sent</div>
-                    <div className="text-white">{profile.totalMessages}</div>
+                    <div className="text-slate-500 text-sm mb-1">Messages Sent</div>
+                    <div className="text-slate-300">{profile.totalMessages}</div>
                   </div>
                   <div className="glass-panel p-4">
-                    <div className="text-white/60 text-sm mb-1">Favorite Language</div>
-                    <div className="text-white">{profile.favoriteLanguage}</div>
+                    <div className="text-slate-500 text-sm mb-1">Favorite Language</div>
+                    <div className="text-slate-300">{profile.favoriteLanguage}</div>
                   </div>
                 </div>
 
                 {recentRooms.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">Recent Rooms</h3>
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">Recent Rooms</h3>
                     <div className="space-y-3">
                       {recentRooms.map((room) => (
-                        <div key={room.id} className="glass-panel p-4 hover:bg-[#FF9900]/10 transition">
+                        <div key={room.id} className="glass-panel p-4 hover:bg-green-500/10 hover:border-green-500/30 transition border border-slate-700/50">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h4 className="font-medium text-white">{room.name}</h4>
-                              <p className="text-sm text-white/60">Last visited: {new Date(room.lastVisited).toLocaleDateString()}</p>
+                              <h4 className="font-medium text-slate-300">{room.name}</h4>
+                              <p className="text-sm text-slate-400">Last visited: {new Date(room.lastVisited).toLocaleDateString()}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-white/60">{room.messageCount} messages</p>
+                              <p className="text-sm text-slate-400">{room.messageCount} messages</p>
                             </div>
                           </div>
                         </div>
@@ -499,86 +470,21 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {activeTab === 'preferences' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">AI Preferences</h2>
-                
-                <div>
-                  <label className="block text-white mb-2">AI Model</label>
-                  <select
-                    value={aiPreferences.aiModel}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, aiModel: e.target.value as any })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  >
-                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
-                    <option value="claude-3-opus">Claude 3 Opus</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-white mb-2">Temperature: {aiPreferences.temperature}</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={aiPreferences.temperature}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, temperature: parseFloat(e.target.value) })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-white/60 mt-1">
-                    <span>Precise</span>
-                    <span>Creative</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-white mb-2">Max Response Length</label>
-                  <select
-                    value={aiPreferences.maxTokens}
-                    onChange={(e) => setAiPreferences({ ...aiPreferences, maxTokens: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  >
-                    <option value={1024}>Short (1024 tokens)</option>
-                    <option value={2048}>Medium (2048 tokens)</option>
-                    <option value={4096}>Long (4096 tokens)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium">Web Search</div>
-                    <div className="text-white/60 text-sm">Enable real-time web search</div>
-                  </div>
-                  <button
-                    onClick={() => setAiPreferences({ ...aiPreferences, enableSearch: !aiPreferences.enableSearch })}
-                    className={`w-14 h-8 rounded-full transition ${aiPreferences.enableSearch ? 'bg-[#FF9900]' : 'bg-white/20'} relative`}
-                  >
-                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${aiPreferences.enableSearch ? 'translate-x-7' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                <Button onClick={handleSaveAIPreferences} variant="primary" className="w-full">
-                  Save Preferences
-                </Button>
-              </div>
-            )}
-
             {activeTab === 'activity' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
+                <h2 className="text-2xl font-bold text-slate-200 mb-4">Recent Activity</h2>
                 <div className="space-y-3">
                   {activities.map((activity) => (
-                    <div key={activity.id} className="glass-panel p-4">
+                    <div key={activity.id} className="glass-panel p-4 border border-slate-700/50">
                       <div className="flex items-start gap-3">
                         <div className="mt-1">{getActivityIcon(activity.type)}</div>
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                             <div>
-                              <div className="text-white font-medium">{activity.action}</div>
-                              <div className="text-white/60 text-sm">{activity.details}</div>
+                              <div className="text-slate-300 font-medium">{activity.action}</div>
+                              <div className="text-slate-400 text-sm">{activity.details}</div>
                             </div>
-                            <div className="text-white/40 text-sm">{getTimeAgo(activity.timestamp)}</div>
+                            <div className="text-slate-500 text-sm">{getTimeAgo(activity.timestamp)}</div>
                           </div>
                         </div>
                       </div>
@@ -590,10 +496,10 @@ export default function ProfilePage() {
 
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Security & Privacy</h2>
+                <h2 className="text-2xl font-bold text-slate-200 mb-4">Security & Privacy</h2>
                 
-                <div className="glass-panel p-6">
-                  <h3 className="text-white font-medium mb-4">Change Password</h3>
+                <div className="glass-panel p-6 space-y-4 border border-slate-700/50">
+                  <h3 className="text-slate-300 font-medium mb-4">Change Password</h3>
                   <div className="space-y-3">
                     <Input
                       type="password"
@@ -622,13 +528,13 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="glass-panel p-6 border-2 border-red-500/20">
-                  <h3 className="text-white font-medium mb-2 flex items-center gap-2">
-                    <Trash2 className="w-5 h-5 text-red-500" />
+                <div className="glass-panel p-6 border border-red-500/30 bg-red-500/5">
+                  <h3 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                    <Trash2 className="w-5 h-5 text-red-400" />
                     Danger Zone
                   </h3>
-                  <p className="text-white/60 text-sm mb-4">
-                    Once you delete your account, there is no going back.
+                  <p className="text-slate-400 text-sm mb-4">
+                    Permanently delete your account and all associated data. This action cannot be undone.
                   </p>
                   <Button
                     onClick={handleDeleteAccount}

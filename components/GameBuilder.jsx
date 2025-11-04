@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Settings, Save, Grid, User, Box, Flag, Coins, Zap, Home, Image as ImageIcon, MousePointer2, AlignLeft, AlignRight, AlignCenter, Copy, Trash2, Layers, Brush, Wand2, Upload, Palette } from 'lucide-react';
@@ -722,7 +722,7 @@ const GameBuilder = () => {
     
     const dataStr = JSON.stringify(levelData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'berry-level-' + Date.now() + '.json';
+    const exportFileDefaultName = 'pluto-level-' + Date.now() + '.json';
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -1201,10 +1201,10 @@ const GameBuilder = () => {
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold flex items-center gap-2 sm:gap-3">
-              <span className="text-2xl sm:text-3xl md:text-4xl">🫐</span>
-              <span className="bg-gradient-to-r from-[#FF9900] via-[#FFB84D] to-yellow-400 bg-clip-text text-transparent">Berry<span className="hidden xs:inline"> - Platformer</span></span>
+              <span className="text-2xl sm:text-3xl md:text-4xl"></span>
+              <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-400 bg-clip-text text-transparent">Pluto<span className="hidden xs:inline"> - Platformer</span></span>
             </h1>
-            <p className="text-zinc-400 text-sm sm:text-base md:text-lg mt-1 sm:mt-2">Build Games With Berry</p>
+            <p className="text-zinc-400 text-sm sm:text-base md:text-lg mt-1 sm:mt-2">Build Games With Pluto</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -1228,24 +1228,24 @@ const GameBuilder = () => {
           </div>
         </div>
 
-        {/* About Berry Dropdown */}
+        {/* About Pluto Dropdown */}
         <div className="mb-4 sm:mb-6">
           <button
             onClick={() => setAboutOpen(!aboutOpen)}
-            className="w-full bg-zinc-900 border border-zinc-800 hover:border-[#FF9900]/50 rounded-lg p-3 sm:p-4 flex items-center justify-between transition-all shadow-black/50"
+            className="w-full bg-zinc-900 border border-zinc-800 hover:border-green-500/50 rounded-lg p-3 sm:p-4 flex items-center justify-between transition-all shadow-black/50"
           >
             <span className="text-white text-sm sm:text-base font-semibold flex items-center gap-2">
               <span className="text-lg sm:text-xl">ℹ️</span>
-              About Berry
+              About Pluto
             </span>
-            <span className={`text-[#FF9900] transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
+            <span className={`text-green-500 transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
               ▼
             </span>
           </button>
           {aboutOpen && (
             <div className="mt-2 bg-zinc-900 border border-zinc-800 rounded-lg p-4 sm:p-6 shadow-black/50">
               <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
-                Berry is a tiny drag and drop game engine still in development. New features will be added in future updates. Enjoy Building with Berry!
+                Pluto is a tiny drag and drop game engine still in development. New features will be added in future updates. Enjoy Building with Pluto!
               </p>
             </div>
           )}

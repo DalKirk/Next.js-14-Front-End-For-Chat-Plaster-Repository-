@@ -27,6 +27,7 @@ import { Copy, Check } from 'lucide-react';
 import { QuickActionBar } from '@/components/QuickActionBar';
 import Lottie from 'lottie-react';
 import threeBodyAnimation from '@/public/animations/3-body-loading.json';
+import mangoAnimation from '@/public/animations/mango-animation.json';
 
 interface User {
   id: string;
@@ -627,7 +628,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Sidebar Navigation */}
       <Sidebar />
 
@@ -636,16 +637,21 @@ export default function HomePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="fixed top-0 left-[56px] right-0 z-50 bg-zinc-900 backdrop-blur-xl border-b border-zinc-800 shadow-black/50 p-2 sm:p-3 md:p-4 flex items-center justify-between flex-wrap gap-2"
+        className="fixed top-0 left-[56px] right-0 z-50 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border-b border-slate-700/50 shadow-[0_4px_30px_rgba(0,0,0,0.9)] p-2 sm:p-3 md:p-4 flex items-center justify-between flex-wrap gap-2"
       >
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="text-2xl sm:text-3xl">🥭</span>
-            <h1 className="text-base sm:text-xl font-bold text-white truncate">Mangos v.1</h1>
+            <Lottie 
+              animationData={mangoAnimation}
+              loop={true}
+              style={{ width: 32, height: 32 }}
+              className="sm:w-10 sm:h-10"
+            />
+            <h1 className="text-base sm:text-xl font-bold text-white truncate">Atlas v.1</h1>
           </div>
           {aiHealth?.ai_enabled && (
-            <span className="flex text-xs bg-zinc-900 border border-[#FF9900]/30 text-[#FF9900] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
+            <span className="flex text-xs bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-green-500/50 text-green-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full items-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]" />
               <span className="hidden sm:inline">Server Online</span>
               <span className="sm:hidden">Online</span>
             </span>
@@ -660,9 +666,9 @@ export default function HomePage() {
                 className="bg-transparent border-none p-2 cursor-pointer"
               >
                 <div className="w-6 h-5 flex flex-col justify-between">
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
                 </div>
               </button>
               
@@ -670,12 +676,12 @@ export default function HomePage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="absolute right-0 mt-2 bg-zinc-900 backdrop-blur-xl border border-zinc-800 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_0_30px_rgba(0,0,0,0.5)] z-50"
+                  className="absolute right-0 mt-2 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-xl p-3 space-y-2 min-w-[200px] shadow-[0_20px_60px_rgba(0,0,0,0.9)] z-50"
                 >
-                  <div className="px-3 py-2 border-b border-zinc-800">
+                  <div className="px-3 py-2 border-b border-slate-700/50">
                     <div className="flex items-center gap-2">
-                      <UserCircleIcon className="w-5 h-5 text-[#FF9900]" />
-                      <span className="text-white font-medium text-sm">{currentUser.username}</span>
+                      <UserCircleIcon className="w-5 h-5 text-green-400" />
+                      <span className="text-slate-300 font-medium text-sm">{currentUser.username}</span>
                     </div>
                   </div>
                   <button
@@ -683,7 +689,7 @@ export default function HomePage() {
                       router.push('/profile');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] rounded-lg transition-all flex items-center gap-2"
                   >
                     <UserCircleIcon className="w-4 h-4" />
                     Profile
@@ -693,7 +699,7 @@ export default function HomePage() {
                       router.push('/chat');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] rounded-lg transition-all flex items-center gap-2"
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
                     Rooms
@@ -703,31 +709,31 @@ export default function HomePage() {
                       router.push('/games');
                       setShowUserMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#FF9900]/20 rounded-lg transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] rounded-lg transition-all flex items-center gap-2"
                   >
                     <span className="w-4 h-4 flex items-center justify-center">🎮</span>
                     Games
                   </button>
                   <button
                     onClick={() => { router.push('/profile'); setShowUserMenu(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-white/10 rounded-lg text-sm text-white/90"
+                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 rounded-lg text-sm text-slate-300"
                   >
                     Profile
                   </button>
                   <button
                     onClick={() => { router.push('/chat'); setShowUserMenu(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-white/10 rounded-lg text-sm text-white/90"
+                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 rounded-lg text-sm text-slate-300"
                   >
                     Browse Rooms
                   </button>
                   
                   {/* Code Theme Selector */}
-                  <div className="px-3 py-2 border-t border-zinc-800 mt-2 pt-3">
-                    <label className="text-xs text-zinc-400 mb-2 block">Code Theme</label>
+                  <div className="px-3 py-2 border-t border-slate-700/50 mt-2 pt-3">
+                    <label className="text-xs text-slate-500 mb-2 block">Code Theme</label>
                     <select
                       value={codeTheme}
                       onChange={(e) => setCodeTheme(e.target.value as 'vscDarkPlus' | 'oneDark' | 'tomorrow' | 'dracula')}
-                      className="w-full bg-black text-white text-sm border border-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FF9900] focus:shadow-[0_0_10px_rgba(255,153,0,0.4)]"
+                      className="w-full bg-black text-slate-300 text-sm border border-slate-700/50 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 focus:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                     >
                       <option value="vscDarkPlus">VS Code Dark+</option>
                       <option value="oneDark">One Dark</option>
@@ -745,13 +751,13 @@ export default function HomePage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 focus:border-[#FF9900] focus:shadow-[0_0_15px_rgba(255,153,0,0.3)]"
+                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border-slate-700/50 text-slate-300 placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
                 maxLength={20}
               />
               <Button
                 onClick={handleCreateUser}
                 disabled={isLoading || !username.trim()}
-                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 text-black font-semibold shadow-[0_0_20px_rgba(255,153,0,0.4)] hover:shadow-[0_0_25px_rgba(255,153,0,0.6)]"
+                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:shadow-[0_0_35px_rgba(34,197,94,0.8)]"
               >
                 {isLoading ? '...' : 'Join'}
                 <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
@@ -814,10 +820,10 @@ export default function HomePage() {
                 <motion.div 
                   whileHover={{ scale: 1.01 }}
                   transition={{ duration: 0.2 }}
-                  className={`w-full sm:max-w-3xl min-w-0 rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 backdrop-blur-sm ${
+                  className={`w-full sm:max-w-3xl min-w-0 rounded-xl sm:rounded-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 backdrop-blur-xl ${
                     msg.role === 'user' 
-                      ? 'bg-gradient-to-br from-[rgba(255,153,0,0.4)] to-[rgba(255,184,77,0.3)] border-2 sm:border-4 border-[#FF9900] text-white shadow-[0_0_30px_rgba(255,153,0,0.5)] sm:shadow-[0_0_60px_rgba(255,153,0,0.7)]' 
-                      : 'bg-zinc-900 border-2 sm:border-4 border-zinc-800 text-white shadow-black/50'
+                      ? 'bg-gradient-to-br from-green-500/30 to-emerald-500/20 border-2 sm:border-4 border-green-500/60 text-white shadow-[0_0_40px_rgba(34,197,94,0.6)] relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent before:rounded-xl before:sm:rounded-2xl' 
+                      : 'bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 border-2 sm:border-4 border-slate-700/50 text-slate-300 shadow-[0_20px_60px_rgba(0,0,0,0.9)] relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent before:rounded-xl before:sm:rounded-2xl'
                   }`}
                 >
                   <div className="prose prose-invert max-w-full break-words overflow-hidden">
@@ -941,7 +947,7 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4 }}
-        className="fixed left-[56px] right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 shadow-black/50 z-50"
+        className="fixed left-[56px] right-0 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border-t border-slate-700/50 shadow-[0_-20px_60px_rgba(0,0,0,0.9)] z-50"
         style={{ 
           bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : '0px',
           paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
@@ -952,7 +958,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span className="flex items-center gap-2">
-              <CogIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#FF9900]" style={{ animation: 'spin 3s linear infinite' }} />
+              <CogIcon className="w-7 h-7 sm:w-8 sm:h-8 text-green-500" style={{ animation: 'spin 3s linear infinite' }} />
               <span className="sr-only">Loading indicator</span>
             </span>
             <motion.button
@@ -964,7 +970,7 @@ export default function HomePage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               title="Start new conversation"
-              className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-[#FF9900]/20 hover:bg-[#FF9900]/30 border border-[#FF9900]/30 text-[#FFB84D] text-xs sm:text-sm transition-all flex items-center gap-1 sm:gap-2"
+              className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 text-xs sm:text-sm transition-all flex items-center gap-1 sm:gap-2 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
             >
               <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">New Chat</span>
@@ -982,7 +988,7 @@ export default function HomePage() {
               }}
               placeholder={aiHealth?.ai_enabled ? "Ask me anything..." : "AI is offline"}
               disabled={!aiHealth?.ai_enabled || isClaudeTyping}
-              className="flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-zinc-500 transition-all duration-300 border-b border-[#FF9900]/30 focus:border-[#FF9900] pb-1 sm:pb-2 text-base sm:text-lg"
+              className="flex-1 min-w-0 bg-transparent outline-none text-slate-300 placeholder:text-slate-600 transition-all duration-300 border-b border-green-500/30 focus:border-green-500 focus:shadow-[0_2px_20px_rgba(34,197,94,0.4)] pb-1 sm:pb-2 text-base sm:text-lg"
               style={{ fontSize: '16px' }}
               autoComplete="off"
               autoCorrect="off"
@@ -994,7 +1000,7 @@ export default function HomePage() {
               disabled={!claudeInput.trim() || !aiHealth?.ai_enabled || isClaudeTyping}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="p-2 sm:p-2.5 rounded-full bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 disabled:from-zinc-700 disabled:to-zinc-800 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(255,153,0,0.5)] hover:shadow-[0_0_25px_rgba(255,153,0,0.8)]"
+              className="p-2 sm:p-2.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 disabled:from-slate-800 disabled:to-slate-900 disabled:cursor-not-allowed transition-all shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:shadow-[0_0_35px_rgba(34,197,94,0.9)]"
             >
               <PaperAirplaneIcon className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
             </motion.button>

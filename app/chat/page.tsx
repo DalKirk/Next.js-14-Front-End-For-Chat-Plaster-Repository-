@@ -101,20 +101,20 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-black via-slate-950 to-black">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 mb-6 border border-zinc-800 shadow-black/50"
+          className="glass-card p-6 mb-6 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
         >
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-slate-200">
                 Welcome, {user.username}! 👋
               </h1>
-              <p className="text-zinc-400 mt-1">
+              <p className="text-slate-400 mt-1">
                 Choose a room to start chatting and sharing videos
               </p>
             </div>
@@ -123,7 +123,7 @@ export default function ChatPage() {
                 onClick={() => setShowCreateModal(true)}
                 variant="primary"
                 size="sm"
-                className="bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 shadow-[0_0_20px_rgba(255,153,0,0.4)]"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-[0_0_25px_rgba(34,197,94,0.6)]"
               >
                 Create Room
               </Button>
@@ -143,10 +143,10 @@ export default function ChatPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card p-6 border border-zinc-800 shadow-black/50"
+          className="glass-card p-6 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Available Rooms</h2>
+            <h2 className="text-xl font-semibold text-slate-200">Available Rooms</h2>
             <Button
               onClick={loadRooms}
               disabled={isLoading}
@@ -159,11 +159,11 @@ export default function ChatPage() {
 
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-pulse text-zinc-400">Loading rooms...</div>
+              <div className="animate-pulse text-slate-400">Loading rooms...</div>
             </div>
           ) : rooms.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-zinc-400 mb-4">No rooms available</div>
+              <div className="text-slate-400 mb-4">No rooms available</div>
               <Button
                 onClick={() => router.push('/')}
                 variant="primary"
@@ -179,25 +179,25 @@ export default function ChatPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-zinc-900 backdrop-blur-sm border border-zinc-800 rounded-lg p-4 hover:bg-[#FF9900]/10 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-all duration-200"
+                  className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg p-4 hover:bg-green-500/10 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-medium text-white truncate">
+                    <h3 className="font-medium text-slate-300 truncate">
                       {room.name}
                     </h3>
-                    <div className="flex items-center space-x-1 text-xs text-[#FF9900]">
-                      <div className="w-2 h-2 bg-[#FF9900] rounded-full animate-pulse shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
+                    <div className="flex items-center space-x-1 text-xs text-green-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
                       <span>Active</span>
                     </div>
                   </div>
                   
-                  <p className="text-sm text-zinc-400 mb-4">
+                  <p className="text-sm text-slate-400 mb-4">
                     Created {new Date(room.created_at).toLocaleDateString()}
                   </p>
                   
                   <Button
                     onClick={() => joinRoom(room)}
-                    className="w-full bg-gradient-to-r from-[#FF9900] to-yellow-400 hover:from-[#FFB84D] hover:to-yellow-400 shadow-[0_0_15px_rgba(255,153,0,0.4)] text-black font-semibold"
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-[0_0_25px_rgba(34,197,94,0.6)] text-black font-bold"
                     variant="primary"
                     size="sm"
                   >
@@ -216,26 +216,26 @@ export default function ChatPage() {
           transition={{ delay: 0.2 }}
           className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <div className="glass-card p-4 text-center border border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
             <div className="text-3xl mb-2">💬</div>
-            <h3 className="font-medium text-white mb-1">Real-time Chat</h3>
-            <p className="text-sm text-zinc-400">
+            <h3 className="font-medium text-slate-300 mb-1">Real-time Chat</h3>
+            <p className="text-sm text-slate-400">
               Instant messaging with all room members
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center border border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
             <div className="text-3xl mb-2">🔴</div>
-            <h3 className="font-medium text-white mb-1">Live Streaming</h3>
-            <p className="text-sm text-zinc-400">
+            <h3 className="font-medium text-slate-300 mb-1">Live Streaming</h3>
+            <p className="text-sm text-slate-400">
               Stream live video with RTMP support
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center border border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.3)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
             <div className="text-3xl mb-2">🎥</div>
-            <h3 className="font-medium text-white mb-1">Video Sharing</h3>
-            <p className="text-sm text-zinc-400">
+            <h3 className="font-medium text-slate-300 mb-1">Video Sharing</h3>
+            <p className="text-sm text-slate-400">
               Upload and share videos instantly
             </p>
           </div>

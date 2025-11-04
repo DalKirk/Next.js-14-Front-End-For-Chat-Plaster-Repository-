@@ -41,11 +41,11 @@ const navItems: NavItem[] = [
     label: 'Home'
   },
   {
-    name: 'Berry',
+    name: 'Pluto',
     path: '/game-builder',
     icon: SparklesIcon, // Will be replaced with emoji
     iconSolid: SparklesIconSolid, // Will be replaced with emoji
-    label: 'Berry - Game Builder'
+    label: 'Pluto - Game Builder'
   },
   {
     name: 'Image Analysis',
@@ -107,8 +107,8 @@ export function Sidebar() {
       className="sidebar-fixed"
       style={{
         backgroundColor: '#000000',
-        borderRight: '1px solid #27272a',
-        boxShadow: '2px 0 12px rgba(255, 153, 0, 0.1)',
+        borderRight: '1px solid rgb(51 65 85 / 0.5)',
+        boxShadow: '2px 0 12px rgba(34, 197, 94, 0.1)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -120,7 +120,7 @@ export function Sidebar() {
         {navItems.map((item, index) => {
           const active = isActive(item.path);
           const Icon = active ? item.iconSolid : item.icon;
-          const isBerry = item.name === 'Berry';
+          const isPluto = item.name === 'Pluto';
           const isPineapple = item.name === 'Image Analysis';
           
           return (
@@ -134,29 +134,29 @@ export function Sidebar() {
                 relative w-10 h-10 rounded-lg flex items-center justify-center
                 transition-all duration-200 group
                 ${active 
-                  ? 'bg-gradient-to-br from-[#FF9900] to-yellow-400 shadow-[0_0_15px_rgba(255,153,0,0.4)]' 
-                  : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-[#FF9900]/50'
+                  ? 'bg-gradient-to-br from-green-500 to-emerald-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' 
+                  : 'bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 hover:bg-slate-800/60 border border-slate-700/50 hover:border-green-500/50'
                 }
               `}
               title={item.label}
             >
-              {isBerry ? (
-                <span className="text-xl">🫐</span>
+              {isPluto ? (
+                <span className="text-xl">🪐</span>
               ) : isPineapple ? (
-                <span className="text-xl">🍍</span>
+                <span className="text-xl">📸</span>
               ) : (
-                <Icon 
+                <Icon
                   className={`w-5 h-5 transition-colors ${
                     active 
                       ? 'text-black' 
-                      : 'text-zinc-400 group-hover:text-[#FF9900]'
+                      : 'text-slate-400 group-hover:text-green-400'
                   }`}
                 />
               )}
 
               {/* Hover tooltip */}
-              <div className="absolute left-full ml-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-black/50">
-                <span className="text-sm text-white font-medium">{item.label}</span>
+              <div className="absolute left-full ml-2 px-3 py-1.5 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-[0_20px_60px_rgba(0,0,0,0.9)]">
+                <span className="text-sm text-slate-300 font-medium">{item.label}</span>
               </div>
             </motion.button>
           );

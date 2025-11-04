@@ -67,22 +67,22 @@ export default function GamesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-50 mx-2 sm:mx-4 mb-2 sm:mb-4 p-2 sm:p-4 bg-zinc-900 backdrop-blur-md border-0 rounded-b-lg shadow-lg shadow-black/50 flex items-center gap-2 sm:gap-4"
+        className="sticky top-0 z-50 mx-2 sm:mx-4 mb-2 sm:mb-4 p-2 sm:p-4 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border-0 rounded-b-lg shadow-[0_20px_60px_rgba(0,0,0,0.9)] border-b border-slate-700/50 flex items-center gap-2 sm:gap-4"
       >
         <Button
           onClick={() => selectedGame ? setSelectedGame(null) : router.push('/')}
           variant="ghost"
-          className="flex items-center gap-1 sm:gap-2 text-white hover:text-[#FF9900] transition-colors px-2 sm:px-3 py-1 sm:py-2"
+          className="flex items-center gap-1 sm:gap-2 text-slate-300 hover:text-green-400 transition-colors px-2 sm:px-3 py-1 sm:py-2"
         >
           <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="hidden sm:inline">{selectedGame ? 'Back to Games' : 'Back'}</span>
         </Button>
-        <h1 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-[#FF9900] via-[#FFB84D] to-yellow-400 bg-clip-text text-transparent">
+        <h1 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-green-500 via-emerald-400 to-green-400 bg-clip-text text-transparent">
           {selectedGame ? games.find(g => g.id === selectedGame)?.title : '🎮 Mini Games'}
         </h1>
       </motion.div>
@@ -119,22 +119,22 @@ export default function GamesPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedGame(game.id)}
-                  className="bg-zinc-900 backdrop-blur-sm border border-zinc-800 rounded-lg p-6 cursor-pointer hover:border-[#FF9900] hover:shadow-lg hover:shadow-[rgba(255,153,0,0.4)] transition-all shadow-black/50"
+                  className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg p-6 cursor-pointer hover:border-green-500/50 hover:shadow-lg hover:shadow-[rgba(34,197,94,0.4)] transition-all"
                 >
                   <div className="text-4xl mb-4 text-center">{game.icon}</div>
-                  <h3 className="text-xl font-bold text-white mb-2 text-center">
+                  <h3 className="text-xl font-bold text-slate-200 mb-2 text-center">
                     {game.title}
                   </h3>
-                  <p className="text-zinc-400 text-sm text-center">
+                  <p className="text-slate-400 text-sm text-center">
                     {game.description}
                   </p>
                   <div className="mt-4 text-center">
                     {game.available ? (
-                      <span className="text-xs text-[#FF9900] font-semibold">
+                      <span className="text-xs text-green-400 font-semibold">
                         ✓ Available
                       </span>
                     ) : (
-                      <span className="text-xs text-zinc-500 font-semibold">
+                      <span className="text-xs text-slate-500 font-semibold">
                         Coming Soon
                       </span>
                     )}
@@ -148,23 +148,23 @@ export default function GamesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="mt-8 p-6 bg-zinc-900 backdrop-blur-sm border border-zinc-800 rounded-lg shadow-black/50"
+              className="mt-8 p-6 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg shadow-[0_20px_60px_rgba(0,0,0,0.9)]"
             >
-              <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-[#FF9900] to-yellow-400 bg-clip-text text-transparent mb-3">
+              <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-400 bg-clip-text text-transparent mb-3">
                 🎯 About Mini Games
               </h2>
-              <p className="text-zinc-400 text-sm sm:text-base mb-4">
+              <p className="text-slate-400 text-sm sm:text-base mb-4">
                 Take a break and enjoy some quick games! More games will be added soon.
                 Each game is designed to be fun, simple, and playable in just a few minutes.
               </p>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-[#FF9900]/20 text-white rounded-full text-xs border border-[#FF9900]/30">
+                <span className="px-3 py-1 bg-green-500/20 text-slate-300 rounded-full text-xs border border-green-500/30">
                   Single Player
                 </span>
-                <span className="px-3 py-1 bg-[#FF9900]/20 text-white rounded-full text-xs border border-[#FF9900]/30">
+                <span className="px-3 py-1 bg-green-500/20 text-slate-300 rounded-full text-xs border border-green-500/30">
                   Quick Games
                 </span>
-                <span className="px-3 py-1 bg-[#FF9900]/20 text-white rounded-full text-xs border border-[#FF9900]/30">
+                <span className="px-3 py-1 bg-green-500/20 text-slate-300 rounded-full text-xs border border-green-500/30">
                   More Coming Soon
                 </span>
               </div>

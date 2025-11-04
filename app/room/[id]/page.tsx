@@ -594,12 +594,12 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col max-h-screen overflow-hidden bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a]">
+    <div className="min-h-screen flex flex-col max-h-screen overflow-hidden bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card m-2 sm:m-4 p-2 sm:p-4 border border-zinc-800 shadow-black/50 relative z-50"
+        className="glass-card m-2 sm:m-4 p-2 sm:p-4 border border-slate-700/50 shadow-black/50 relative z-50"
       >
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
@@ -616,9 +616,9 @@ export default function RoomPage() {
               <h1 className="text-sm sm:text-xl font-bold text-white truncate">{roomName}</h1>
               <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
                 <div className={`w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-[#FF9900] shadow-[0_0_8px_rgba(255,153,0,0.8)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                  wsConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                 }`}></div>
-                <span className="text-zinc-400 hidden min-[375px]:inline">
+                <span className="text-slate-400 hidden min-[375px]:inline">
                   {wsConnected ? 'Connected' : 'Disconnected'}
                 </span>
                 {!wsConnected && (
@@ -642,7 +642,7 @@ export default function RoomPage() {
                 onClick={() => setShowVideoModal(true)}
                 variant="secondary"
                 size="sm"
-                className="text-xs sm:text-sm border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_15px_rgba(255,153,0,0.4)]"
+                className="text-xs sm:text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
               >
                 <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">🔴 Live</span>
@@ -652,7 +652,7 @@ export default function RoomPage() {
                 onClick={() => setShowUploadModal(true)}
                 variant="secondary"
                 size="sm"
-                className="text-xs sm:text-sm border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_15px_rgba(255,153,0,0.4)]"
+                className="text-xs sm:text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
               >
                 <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">📹 Upload</span>
@@ -669,9 +669,9 @@ export default function RoomPage() {
                 className="bg-transparent border-transparent hover:bg-transparent p-2"
               >
                 <div className="w-6 h-5 flex flex-col justify-between">
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-[#FF9900] rounded-full shadow-[0_0_8px_rgba(255,153,0,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
                 </div>
               </Button>
               
@@ -679,7 +679,7 @@ export default function RoomPage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: -10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="absolute right-0 top-12 bg-zinc-900 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-black/50 z-[100] min-w-[180px]"
+                  className="absolute right-0 top-12 bg-gradient-to-br from-black/80 via-slate-900/80 to-black/80 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-black/50 z-[100] min-w-[180px]"
                 >
                   <div className="p-2 space-y-2">
                     <Button
@@ -689,7 +689,7 @@ export default function RoomPage() {
                       }}
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-start text-sm border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_15px_rgba(255,153,0,0.4)]"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                     >
                       <VideoCameraIcon className="w-4 h-4 mr-2" />
                       🔴 Live Stream
@@ -701,7 +701,7 @@ export default function RoomPage() {
                       }}
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-start text-sm border-zinc-800 hover:border-[#FF9900] hover:shadow-[0_0_15px_rgba(255,153,0,0.4)]"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                     >
                       <DocumentIcon className="w-4 h-4 mr-2" />
                       📹 Upload Video
@@ -720,7 +720,7 @@ export default function RoomPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-card flex-1 flex flex-col min-h-0 border border-zinc-800 shadow-black/50"
+          className="glass-card flex-1 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50"
           style={{ maxHeight: 'calc(100vh - 100px)' }}
         >
           {/* Messages List */}
@@ -738,11 +738,11 @@ export default function RoomPage() {
                 </div>
                 {!wsConnected && (
                   <div className="space-y-4">
-                    <div className="text-zinc-500 text-sm max-w-md mx-auto">
+                    <div className="text-slate-500 text-sm max-w-md mx-auto">
                       <p className="mb-2">⚠️ WebSocket unavailable - using polling mode</p>
                       <p className="text-xs">Messages will be sent via REST API and polled every 3 seconds.</p>
                       <p className="text-xs mt-2">To enable real-time chat, your backend needs WebSocket support at:</p>
-                      <code className="bg-zinc-900 px-2 py-1 rounded text-xs block mt-1">wss://your-backend/ws/{'{roomId}'}/{'{userId}'}</code>
+                      <code className="bg-slate-900 px-2 py-1 rounded text-xs block mt-1">wss://your-backend/ws/{'{roomId}'}/{'{userId}'}</code>
                     </div>
                   </div>
                 )}
@@ -763,14 +763,14 @@ export default function RoomPage() {
           </div>
 
           {/* Sticky Message Input */}
-          <div className="border-t border-zinc-800 p-2 sm:p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-black/50">
+          <div className="border-t border-slate-700/50 p-2 sm:p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-black/50">
             {/* Typing Indicator */}
             {typingUsers.size > 0 && (
-              <div className="mb-2 text-sm text-[#FFB84D] italic flex items-center gap-2">
+              <div className="mb-2 text-sm text-emerald-400 italic flex items-center gap-2">
                 <span className="flex gap-1">
-                  <span className="w-2 h-2 bg-[#FF9900] rounded-full animate-bounce shadow-[0_0_8px_rgba(255,153,0,0.8)]" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-[#FFB84D] rounded-full animate-bounce shadow-[0_0_8px_rgba(255,184,77,0.8)]" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(250,204,21,0.8)]" style={{ animationDelay: '300ms' }}></span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(52,211,153,0.8)]" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(74,222,128,0.8)]" style={{ animationDelay: '300ms' }}></span>
                 </span>
                 <span>
                   {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
@@ -799,7 +799,7 @@ export default function RoomPage() {
                 className="shrink-0 w-12 h-[60px] flex items-center justify-center bg-transparent border-transparent hover:bg-transparent hover:shadow-none disabled:opacity-50"
                 title={wsConnected ? "Send via WebSocket" : "Send via REST API (WebSocket unavailable)"}
               >
-                <PaperAirplaneIcon className="w-5 h-5 text-[#FF9900] drop-shadow-[0_0_8px_rgba(255,153,0,0.8)]" />
+                <PaperAirplaneIcon className="w-5 h-5 text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
               </Button>
             </div>
           </div>
@@ -817,10 +817,10 @@ export default function RoomPage() {
               onClick={scrollToTop}
               variant="glass"
               size="sm"
-              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-zinc-800 hover:bg-[#FF9900]/20 hover:border-[#FF9900] hover:shadow-[0_0_20px_rgba(255,153,0,0.5)]"
+              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-slate-700/50 hover:bg-green-500/20 hover:border-green-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.5)]"
               title="Scroll to top"
             >
-              <ChevronUpIcon className="w-4 h-4 text-[#FF9900]" />
+              <ChevronUpIcon className="w-4 h-4 text-green-500" />
             </Button>
             
             {!isAtBottom && (
@@ -828,7 +828,7 @@ export default function RoomPage() {
                 onClick={scrollToBottom}
                 variant="primary"
                 size="sm"
-                className="w-10 h-10 rounded-full p-0 bg-gradient-to-br from-[#FF9900] to-yellow-400 shadow-[0_0_20px_rgba(255,153,0,0.6)]"
+                className="w-10 h-10 rounded-full p-0 bg-gradient-to-br from-green-500 to-emerald-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
                 title="Scroll to bottom"
               >
                 <ChevronDownIcon className="w-4 h-4 text-black" />
@@ -933,9 +933,9 @@ export default function RoomPage() {
                 <span>Uploading...</span>
                 <span>{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-zinc-900 rounded-full h-2">
+              <div className="w-full bg-slate-900 rounded-full h-2">
                 <div 
-                  className="bg-gradient-to-r from-[#FF9900] to-yellow-400 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(255,153,0,0.5)]"
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
