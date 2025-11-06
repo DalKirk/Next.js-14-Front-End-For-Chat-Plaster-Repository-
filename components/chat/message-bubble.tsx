@@ -317,7 +317,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             )}
           </div>
         ) : (
-          <div className="text-sm text-white break-words prose prose-invert prose-sm max-w-none">
+          <div className="text-sm text-white break-words prose prose-invert prose-sm max-w-none [&_a]:!text-[oklch(0.85_0.2_160)] [&_a]:!underline [&_a:hover]:!text-[oklch(0.9_0.2_160)] [&_a]:!cursor-pointer [&_a]:!pointer-events-auto">
             {/* View Source feature for messages with code blocks */}
             {message.content?.includes('```') && (
               <details className="mb-4 rounded-lg overflow-hidden border border-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.2)]">
@@ -428,14 +428,17 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
               remarkPlugins={[remarkGfm]}
               skipHtml={false}
               components={{
-                a: ({ ...props }) => (
+                a: ({ node, children, href, ...props }) => (
                   <a
-                    {...props}
-                    className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline break-all cursor-pointer transition-colors"
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline break-all cursor-pointer transition-colors"
                     style={{ pointerEvents: 'auto' }}
-                  />
+                    {...props}
+                  >
+                    {children}
+                  </a>
                 ),
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ node, inline, className, children, ...props }: any) => {
