@@ -115,6 +115,35 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     let i = 0;
 
     while (i < text.length) {
+      // Links: [text](url)
+      if (text[i] === '[') {
+        const closeBracket = text.indexOf(']', i + 1);
+        if (closeBracket !== -1 && text[closeBracket + 1] === '(') {
+          const closeParen = text.indexOf(')', closeBracket + 2);
+          if (closeParen !== -1) {
+            if (current) {
+              parts.push(current);
+              current = '';
+            }
+            const linkText = text.slice(i + 1, closeBracket);
+            const linkUrl = text.slice(closeBracket + 2, closeParen);
+            parts.push(
+              <a 
+                key={i} 
+                href={linkUrl} 
+                className="md-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {linkText}
+              </a>
+            );
+            i = closeParen + 1;
+            continue;
+          }
+        }
+      }
+
       if (text[i] === '*' && text[i + 1] === '*') {
         if (current) {
           parts.push(current);
@@ -243,6 +272,18 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         .md-strong {
           font-weight: 600 !important;
           color: #ffffff !important;
+        }
+        
+        .md-link {
+          color: oklch(0.85 0.2 160) !important;
+          text-decoration: underline !important;
+          cursor: pointer !important;
+          transition: color 0.2s ease !important;
+        }
+        
+        .md-link:hover {
+          color: oklch(0.9 0.2 160) !important;
+          text-decoration: underline !important;
         }
         
         .md-code {
