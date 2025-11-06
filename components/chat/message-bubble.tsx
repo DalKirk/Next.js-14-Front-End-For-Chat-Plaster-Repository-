@@ -222,28 +222,41 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={cn(
-        'flex w-full mb-4',
-        isOwn ? 'justify-end' : 'justify-start'
-      )}
-    >
-      <div
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        .message-content a {
+          color: oklch(0.85 0.2 160) !important;
+          text-decoration: underline !important;
+          cursor: pointer !important;
+          font-weight: 600 !important;
+          pointer-events: auto !important;
+        }
+        .message-content a:hover {
+          color: oklch(0.9 0.2 160) !important;
+        }
+      `}} />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
         className={cn(
-          'rounded-2xl p-4 shadow-lg',
-          'backdrop-blur-sm border',
-          isOwn 
-            ? 'bg-blue-600/20 border-blue-500/30 text-white' 
-            : 'bg-white/10 border-white/20 text-white',
-          // Dynamic width based on content type
-          isVideoMessage 
-            ? 'max-w-sm lg:max-w-md xl:max-w-lg' 
-            : 'max-w-xs lg:max-w-2xl xl:max-w-3xl'
+          'flex w-full mb-4',
+          isOwn ? 'justify-end' : 'justify-start'
         )}
       >
+        <div
+          className={cn(
+            'rounded-2xl p-4 shadow-lg',
+            'backdrop-blur-sm border',
+            isOwn 
+              ? 'bg-blue-600/20 border-blue-500/30 text-white' 
+              : 'bg-white/10 border-white/20 text-white',
+            // Dynamic width based on content type
+            isVideoMessage 
+              ? 'max-w-sm lg:max-w-md xl:max-w-lg' 
+              : 'max-w-xs lg:max-w-2xl xl:max-w-3xl'
+          )}
+        >
         {/* Username, timestamp, and copy button */}
         <div className="flex items-center justify-between mb-2 gap-2">
           <span className="text-sm font-medium text-white/90">
@@ -317,7 +330,7 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             )}
           </div>
         ) : (
-          <div className="text-sm text-white break-words prose prose-invert prose-sm max-w-none [&_a]:!text-[oklch(0.85_0.2_160)] [&_a]:!underline [&_a:hover]:!text-[oklch(0.9_0.2_160)] [&_a]:!cursor-pointer [&_a]:!pointer-events-auto">
+          <div className="message-content text-sm text-white break-words max-w-none">
             {/* View Source feature for messages with code blocks */}
             {message.content?.includes('```') && (
               <details className="mb-4 rounded-lg overflow-hidden border border-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.2)]">
@@ -426,20 +439,26 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
             
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              skipHtml={false}
               components={{
-                a: ({ node, children, href, ...props }) => (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline break-all cursor-pointer transition-colors"
-                    style={{ pointerEvents: 'auto' }}
-                    {...props}
-                  >
-                    {children}
-                  </a>
-                ),
+                a: (props) => {
+                  return (
+                    <a
+                      href={props.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline cursor-pointer transition-colors font-semibold"
+                      onClick={(e) => {
+                        console.log('Link clicked:', props.href);
+                        if (props.href) {
+                          e.preventDefault();
+                          window.open(props.href, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                    >
+                      {props.children}
+                    </a>
+                  );
+                },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ node, inline, className, children, ...props }: any) => {
                   // If manual parser or auto-detection found blocks, don't render duplicates from ReactMarkdown
@@ -659,5 +678,6 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
         )}
       </div>
     </motion.div>
+    </>
   );
 }

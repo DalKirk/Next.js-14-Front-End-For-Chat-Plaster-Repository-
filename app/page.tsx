@@ -826,7 +826,10 @@ export default function HomePage() {
                       : 'bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 border-2 sm:border-4 border-slate-700/50 text-slate-300 shadow-[0_20px_60px_rgba(0,0,0,0.9)] relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/5 before:to-transparent before:rounded-xl before:sm:rounded-2xl'
                   }`}
                 >
-                  <div className="prose prose-invert max-w-full break-words overflow-hidden">
+                  <div className="prose prose-invert max-w-full break-words overflow-hidden" style={{ pointerEvents: 'auto' }}>
+                    <style dangerouslySetInnerHTML={{__html: `
+                      .prose a { pointer-events: auto !important; z-index: 10 !important; position: relative !important; }
+                    `}} />
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -901,7 +904,7 @@ export default function HomePage() {
                         h1: ({children}) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
                         h2: ({children}) => <h2 className="text-sm font-bold mb-2 mt-2">{children}</h2>,
                         h3: ({children}) => <h3 className="text-xs font-bold mb-1 mt-2">{children}</h3>,
-                        a: ({children, href}) => <a href={href} className="text-[#FF9900] hover:text-[#FFB84D] hover:underline break-words" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        a: ({children, href}) => <a href={href} className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline break-words font-semibold cursor-pointer" target="_blank" rel="noopener noreferrer">{children}</a>,
                         img: ({src, alt}) => <Image src={src || ''} alt={alt || ''} width={800} height={600} unoptimized style={{maxWidth: '100%', height: 'auto'}} />,
                         table: ({children}) => (
                           <div className="w-full overflow-x-auto">
