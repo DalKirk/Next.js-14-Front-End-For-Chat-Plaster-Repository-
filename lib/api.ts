@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Room, Message, LiveStream, VideoUpload } from './types';
+import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
 
 // Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
 // If not set, prefer the production Railway backend (safe default) before falling back
@@ -248,6 +248,36 @@ export const apiClient = {
       });
     } catch (e) {
       handleApiError(e, 'Upload video file');
+    }
+  },
+
+  // 3D Model Generation
+  generate3DModel: async (request: Generate3DModelRequest): Promise<Generate3DModelResponse> => {
+    if (!request.prompt || !request.prompt.trim()) throw new Error('Please provide a prompt');
+    try {
+      const r = await api.post('/3d/generate', request);
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Generate 3D model');
+    }
+  },
+
+  get3DModel: async (modelId: string): Promise<Model3D> => {
+    try {
+      const r = await api.get(`/3d/models/${modelId}`);
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Get 3D model');
+    }
+  },
+
+  list3DModels: async (roomId?: string): Promise<Model3D[]> => {
+    try {
+      const params = roomId ? { room_id: roomId } : {};
+      const r = await api.get('/3d/models', { params });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'List 3D models');
     }
   },
 };

@@ -55,6 +55,13 @@ const navItems: NavItem[] = [
     label: 'Snapshot Analyzer'
   },
   {
+    name: '3D Generator',
+    path: '/3d-generator',
+    icon: SparklesIcon, // Will be replaced with emoji
+    iconSolid: SparklesIconSolid, // Will be replaced with emoji
+    label: '3D Model Generator'
+  },
+  {
     name: 'Rooms',
     path: '/chat',
     icon: ChatBubbleLeftRightIcon,
@@ -122,6 +129,7 @@ export function Sidebar() {
           const Icon = active ? item.iconSolid : item.icon;
           const isPluto = item.name === 'Pluto';
           const isPineapple = item.name === 'Image Analysis';
+          const is3DGen = item.name === '3D Generator';
           
           return (
             <motion.button
@@ -144,6 +152,8 @@ export function Sidebar() {
                 <span className="text-xl">🪐</span>
               ) : isPineapple ? (
                 <span className="text-xl">📸</span>
+              ) : is3DGen ? (
+                <span className="text-xl">🧊</span>
               ) : (
                 <Icon
                   className={`w-5 h-5 transition-colors ${

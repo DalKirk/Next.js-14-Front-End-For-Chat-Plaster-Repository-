@@ -3,6 +3,14 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  webpack: (config) => {
+    // Handle Three.js examples imports
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'three/examples/jsm': 'three/examples/jsm',
+    };
+    return config;
+  },
   async redirects() {
     return [
       // Redirect legacy/unused AI chat page to home

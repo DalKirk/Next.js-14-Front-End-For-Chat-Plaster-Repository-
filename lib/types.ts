@@ -68,3 +68,35 @@ export interface ChatState {
   isConnected: boolean;
   typingUsers: string[];
 }
+
+// 3D Model Types
+export interface Model3D {
+  id: string;
+  title: string;
+  description?: string;
+  prompt?: string;
+  model_url: string;
+  preview_url?: string;
+  format: 'gltf' | 'glb';
+  file_size?: number;
+  created_at: string;
+  room_id?: string;
+  user_id?: string;
+  status: string;
+}
+
+export interface Generate3DModelRequest {
+  prompt: string;
+  room_id?: string;
+  user_id?: string;
+  style?: 'realistic' | 'low-poly' | 'stylized';
+  complexity?: 'simple' | 'medium' | 'complex';
+}
+
+export interface Generate3DModelResponse {
+  model_id: string;
+  model_url: string;
+  status: 'processing' | 'completed' | 'failed';
+  preview_url?: string;
+  estimated_time?: number;
+}
