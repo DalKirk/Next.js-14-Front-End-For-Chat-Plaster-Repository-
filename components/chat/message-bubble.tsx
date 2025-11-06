@@ -431,9 +431,10 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
                 a: ({ ...props }) => (
                   <a
                     {...props}
-                    className="text-blue-400 hover:text-blue-300 underline break-all"
+                    className="text-[oklch(0.85_0.2_160)] hover:text-[oklch(0.9_0.2_160)] underline break-all cursor-pointer transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
+                    style={{ pointerEvents: 'auto' }}
                   />
                 ),
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
