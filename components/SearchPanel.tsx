@@ -2,23 +2,10 @@
 
 import { Search, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export function SearchPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchEngine, setSearchEngine] = useState<'brave' | 'duckduckgo' | 'google'>('brave');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('preferredSearchEngine');
-    if (saved) {
-      setSearchEngine(saved as 'brave' | 'duckduckgo' | 'google');
-    }
-  }, []);
-
-  const handleEngineChange = (engine: 'brave' | 'duckduckgo' | 'google') => {
-    setSearchEngine(engine);
-    localStorage.setItem('preferredSearchEngine', engine);
-  };
 
   const openSearch = (engine: 'brave' | 'duckduckgo' | 'google') => {
     const urls = {
