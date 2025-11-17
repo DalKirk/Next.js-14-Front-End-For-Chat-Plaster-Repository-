@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { apiClient, type GPUGenerationJob } from '@/lib/api';
+import { apiClient } from '@/lib/api';
+import type { GPUGenerationJob } from '@/lib/api';
 import Model3DViewer from './Model3DViewer';
 
 interface ImageTo3DGeneratorProps {

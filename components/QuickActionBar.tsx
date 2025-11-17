@@ -2,18 +2,10 @@
 
 import { Search, Globe, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export function QuickActionBar() {
   const [isVisible, setIsVisible] = useState(true);
-  const [preferredEngine, setPreferredEngine] = useState<'brave' | 'duckduckgo'>('brave');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('preferredSearchEngine');
-    if (saved === 'brave' || saved === 'duckduckgo') {
-      setPreferredEngine(saved);
-    }
-  }, []);
 
   const openSearch = (engine: 'brave' | 'duckduckgo') => {
     const urls = {

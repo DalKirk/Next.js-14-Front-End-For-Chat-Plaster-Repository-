@@ -1,6 +1,19 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
 
+export type GPUGenerationJob = {
+  job_id: string;
+  status: 'queued' | 'processing' | 'complete' | 'failed';
+  glb_url?: string;  // NEW: For browser preview
+  model_url?: string;
+  texture_url?: string;
+  download_url?: string;
+  error?: string;
+  generation_time?: number;
+  estimated_time?: number;
+  created_at: string;
+}
+
 // Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
 // If not set, prefer the production Railway backend (safe default) before falling back
 // to same-origin. This helps deployed frontends (or dev machines without env vars)
@@ -278,6 +291,60 @@ export const apiClient = {
       return r.data;
     } catch (e) {
       handleApiError(e, 'List 3D models');
+    }
+  },
+
+  // GPU-accelerated Image to 3D Generation
+  generateModelFromImage: async (
+    params: {
+      image: File;
+      texture_resolution?: number;
+      mc_resolution?: number;
+      user_id?: string;
+      room_id?: string;
+    },
+    onProgress?: (percent: number) => void
+  ): Promise<GPUGenerationJob> => {
+    try {
+      const formData = new FormData();
+      formData.append('image', params.image);
+      if (params.texture_resolution) formData.append('texture_resolution', params.texture_resolution.toString());
+      if (params.mc_resolution) formData.append('mc_resolution', params.mc_resolution.toString());
+      if (params.user_id) formData.append('user_id', params.user_id);
+      if (params.room_id) formData.append('room_id', params.room_id);
+
+      const r = await api.post('/gpu/generate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress?.(percent);
+          }
+        },
+      });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Generate 3D model from image');
+    }
+  },
+
+  checkGPUJobStatus: async (jobId: string): Promise<GPUGenerationJob> => {
+    try {
+      const r = await api.get(`/gpu/job/${jobId}`);
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Check GPU job status');
+    }
+  },
+
+  downloadGPUModel: async (jobId: string): Promise<Blob> => {
+    try {
+      const r = await api.get(`/gpu/download/${jobId}`, {
+        responseType: 'blob',
+      });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Download GPU model');
     }
   },
 };
