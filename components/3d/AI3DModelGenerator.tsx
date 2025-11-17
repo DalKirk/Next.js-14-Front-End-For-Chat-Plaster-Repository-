@@ -48,9 +48,6 @@ export default function AI3DModelGenerator() {
       {/* Input Section */}
       <div className="p-4 sm:p-6 bg-[oklch(0.15_0.02_160/0.08)] backdrop-blur-[20px] border-b border-[oklch(0.85_0.2_160/0.15)]">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-xs sm:text-sm md:text-base font-bold text-[oklch(0.85_0.2_160)] mb-3 sm:mb-4">
-            3-D Model Generation * Primitive / AI accelerated worker under construction _ Diffusers + Zero123++ MVDream will be added soon this is a functionality demo only.
-          </h1>
           <div className="space-y-3">
             <input
               type="text"

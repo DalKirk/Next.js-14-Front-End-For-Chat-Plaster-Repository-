@@ -59,7 +59,7 @@ const navItems: NavItem[] = [
     path: '/3d-generator',
     icon: SparklesIcon, // Will be replaced with emoji
     iconSolid: SparklesIconSolid, // Will be replaced with emoji
-    label: '3D Model Generator'
+    label: 'Gen-3D'
   },
   {
     name: 'Rooms',
