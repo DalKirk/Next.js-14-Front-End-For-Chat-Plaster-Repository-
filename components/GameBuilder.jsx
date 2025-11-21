@@ -87,6 +87,12 @@ const GameBuilder = () => {
     goal: { x: 18, y: 10 }
   });
 
+  // Animation support for player character (imported JSON)
+  const [animationsList, setAnimationsList] = useState([]); // { id, name }
+  const [selectedAnimationId, setSelectedAnimationId] = useState('');
+  const [animationRaw, setAnimationRaw] = useState(null); // raw JSON object for save/load
+  const playerAnimationRef = useRef(null); // parsed animation with Image objects
+
   const canvasRef = useRef(null);
   const gameStateRef = useRef(null);
 
@@ -98,6 +104,9 @@ const GameBuilder = () => {
     score: 0,
     gameWon: false,
     onGround: false,
+    playerAnimState: 'idle',
+    playerAnimFrame: 0,
+    playerAnimElapsed: 0,
     enemies: level.enemies.map(e => ({
       x: e.x * config.gridSize,
       y: e.y * config.gridSize,
@@ -192,7 +201,26 @@ const GameBuilder = () => {
     // Draw player
     const px = gameState ? gameState.playerPos.x : level.player.x * gs;
     const py = gameState ? gameState.playerPos.y : level.player.y * gs;
-    ctx.fillText(config.playerSprite, px + gs/2, py + gs/2);
+
+    // Draw animated player if available
+    const anim = playerAnimationRef.current;
+    const currentState = gameState ? gameState.playerAnimState : 'idle';
+    if (anim && anim.states && anim.states[currentState] && anim.states[currentState].frames && anim.states[currentState].frames.length > 0) {
+      const stateAnim = anim.states[currentState];
+      const frameIndex = (gameState && gameState.playerAnimFrame != null) ? gameState.playerAnimFrame : 0;
+      const img = stateAnim.frames[frameIndex];
+      if (img && img.complete) {
+        // Draw image centered in grid cell
+        const drawW = gs;
+        const drawH = gs;
+        ctx.drawImage(img, px, py, drawW, drawH);
+      } else {
+        // Fallback to emoji while image loads
+        ctx.fillText(config.playerSprite, px + gs/2, py + gs/2);
+      }
+    } else {
+      ctx.fillText(config.playerSprite, px + gs/2, py + gs/2);
+    }
 
     // Draw layers
     if (mode === 'edit' && layerSystemRef.current) {
@@ -718,6 +746,9 @@ const GameBuilder = () => {
       tiles: tileSystemRef.current.export(),
       layers: layerSystemRef.current.export(),
       background: selectedBackground
+      ,
+      // Include imported animation raw JSON if present
+      playerAnimation: animationRaw || null
     };
     
     const dataStr = JSON.stringify(levelData, null, 2);
@@ -749,10 +780,61 @@ const GameBuilder = () => {
           layerSystemRef.current.import(levelData.layers);
         }
         if (levelData.background) setSelectedBackground(levelData.background);
+        // Restore imported animation if present
+        if (levelData.playerAnimation) {
+          try {
+            setAnimationRaw(levelData.playerAnimation);
+            // parse and load into playerAnimationRef
+            parseAnimationJSON(levelData.playerAnimation);
+            setSelectedAnimationId(levelData.playerAnimation.name || 'imported');
+          } catch (err) {
+            console.warn('Failed to restore player animation:', err);
+          }
+        }
         
         alert('Level loaded successfully!');
       } catch (err) {
         alert('Error loading level: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Parse animation JSON and populate playerAnimationRef with Image objects
+  const parseAnimationJSON = (animJson) => {
+    if (!animJson || !animJson.states) return;
+    const parsed = { name: animJson.name || 'imported', states: {} };
+    Object.entries(animJson.states).forEach(([stateName, stateObj]) => {
+      const frames = (stateObj.frames || []).map(src => {
+        const img = new Image();
+        img.src = src;
+        return img;
+      });
+      parsed.states[stateName] = { frames, frameDuration: stateObj.frameDuration || (stateObj.frameDurationMs ? stateObj.frameDurationMs : 100) };
+    });
+    playerAnimationRef.current = parsed;
+    setAnimationRaw(animJson);
+    // add to list for selection
+    setAnimationsList(prev => {
+      const id = parsed.name || `anim_${Date.now()}`;
+      if (prev.some(a => a.id === id)) return prev;
+      return [...prev, { id, name: parsed.name }];
+    });
+  };
+
+  // Handle importing animation JSON file
+  const handleImportAnimation = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target.result);
+        parseAnimationJSON(json);
+        setSelectedAnimationId(json.name || 'imported');
+        alert('Animation imported successfully');
+      } catch (err) {
+        alert('Failed to import animation JSON: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -1010,7 +1092,11 @@ const GameBuilder = () => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
+    let lastTime = performance.now();
     const gameLoop = () => {
+      const nowTick = performance.now();
+      const dt = nowTick - lastTime;
+      lastTime = nowTick;
       const state = gameStateRef.current;
       if (state.gameWon) {
         drawGame(ctx, state);
@@ -1113,6 +1199,38 @@ const GameBuilder = () => {
       cameraXRef.current = state.playerPos.x - (canvas.width / 2);
       if (parallaxBgRef.current) {
         parallaxBgRef.current.update(cameraXRef.current);
+      }
+
+      // --- Player animation state machine & frame advance ---
+      try {
+        const anim = playerAnimationRef.current;
+        if (anim) {
+          // determine state
+          let pState = 'idle';
+          const speed = Math.abs(state.playerVel.x);
+          if (!state.onGround) pState = 'jump';
+          else if (speed > config.playerSpeed * 0.7) pState = 'run';
+          else if (speed > 0.1) pState = 'walk';
+
+          if (state.playerAnimState !== pState) {
+            state.playerAnimState = pState;
+            state.playerAnimFrame = 0;
+            state.playerAnimElapsed = 0;
+          }
+
+          const stateAnim = anim.states[state.playerAnimState] || anim.states['idle'];
+          if (stateAnim && stateAnim.frames && stateAnim.frames.length > 0) {
+            state.playerAnimElapsed = (state.playerAnimElapsed || 0) + dt;
+            const dur = stateAnim.frameDuration || 100;
+            while (state.playerAnimElapsed >= dur) {
+              state.playerAnimElapsed -= dur;
+              state.playerAnimFrame = ((state.playerAnimFrame || 0) + 1) % stateAnim.frames.length;
+            }
+          }
+        }
+      } catch (err) {
+        // swallow animation errors to avoid breaking game loop
+        console.warn('Animation update error', err);
       }
 
       drawGame(ctx, state);
@@ -1292,7 +1410,36 @@ const GameBuilder = () => {
                   style={{ imageRendering: 'pixelated' }}
                 />
               </div>
-              
+
+              {/* Player Animation Import / Selection (under the game level window) */}
+              <div className="mt-4 p-3 bg-zinc-900 border border-zinc-800 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-zinc-300">Player Animation</div>
+                  <div className="text-xs text-zinc-500">Import .json animation (frames as data URLs)</div>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={selectedAnimationId}
+                    onChange={(e) => setSelectedAnimationId(e.target.value)}
+                    className="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white"
+                  >
+                    <option value="">Default</option>
+                    {animationsList.map(anim => (
+                      <option key={anim.id} value={anim.id}>{anim.name}</option>
+                    ))}
+                    {animationRaw && <option value={animationRaw.name || 'imported'}>{animationRaw.name || 'Imported'}</option>}
+                  </select>
+
+                  <label className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-3 py-2 rounded cursor-pointer">
+                    Import JSON
+                    <input type="file" accept="application/json" onChange={handleImportAnimation} className="hidden" />
+                  </label>
+
+                  <div className="text-xs text-zinc-400">Preview: {selectedAnimationId || (animationRaw ? animationRaw.name : 'Default')}</div>
+                </div>
+              </div>
+
               {mode === 'play' && (
                 <>
                   <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-[#FF9900]/10 border border-[#FF9900]/30 rounded">
