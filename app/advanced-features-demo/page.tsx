@@ -184,16 +184,19 @@ export default function AdvancedFeaturesDemo() {
     const ctrl = !!opts?.ctrl;
 
     if (brushToolRef.current) {
+      // apply() may return an object for eyedropper mode; cast to known shape
       const pickedTile = brushToolRef.current.apply(
-        tileSystemRef.current,
+        tileSystemRef.current as TileSystem,
         x,
         y,
         selectedTileset,
         selectedTileId
-      );
-      if (pickedTile && brushToolRef.current.mode === 'eyedropper') {
-        setSelectedTileset(pickedTile.tilesetName);
-        setSelectedTileId(pickedTile.tileId);
+      ) as { tilesetName?: string; tileId?: number } | null;
+
+      const mode = brushToolRef.current.getInfo?.().mode ?? 'paint';
+      if (pickedTile && mode === 'eyedropper') {
+        if (pickedTile.tilesetName) setSelectedTileset(pickedTile.tilesetName);
+        if (typeof pickedTile.tileId === 'number') setSelectedTileId(pickedTile.tileId);
         brushToolRef.current.setMode('paint');
       }
       return;
