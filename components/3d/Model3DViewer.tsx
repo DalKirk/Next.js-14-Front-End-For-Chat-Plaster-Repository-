@@ -30,7 +30,7 @@ export default function Model3DViewer({
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
+    scene.background = new THREE.Color(0x1a1a1a); // Lighter background
     
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
@@ -43,8 +43,10 @@ export default function Model3DViewer({
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false; // Disable shadows for brighter look
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 2.5; // Increase exposure
     mountRef.current.appendChild(renderer.domElement);
 
     // Controls
@@ -55,20 +57,43 @@ export default function Model3DViewer({
     controls.autoRotate = autoRotate;
     controls.autoRotateSpeed = 1.0;
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Lighting - Studio-style bright lighting from all angles
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 7);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
+    // Key light (main)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+    keyLight.position.set(5, 10, 5);
+    scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    fillLight.position.set(-5, 5, -7);
+    // Fill light (reduce shadows)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    fillLight.position.set(-5, 0, 5);
     scene.add(fillLight);
+
+    // Back light (rim lighting)
+    const backLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    backLight.position.set(0, 5, -8);
+    scene.add(backLight);
+
+    // Back light 2 (diagonal)
+    const backLight2 = new THREE.DirectionalLight(0xffffff, 2.5);
+    backLight2.position.set(5, 3, -5);
+    scene.add(backLight2);
+
+    // Back light 3 (other diagonal)
+    const backLight3 = new THREE.DirectionalLight(0xffffff, 2.5);
+    backLight3.position.set(-5, 3, -5);
+    scene.add(backLight3);
+
+    // Bottom light (eliminate bottom shadows)
+    const bottomLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    bottomLight.position.set(0, -10, 0);
+    scene.add(bottomLight);
+
+    // Hemisphere light for natural ambient
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.5);
+    scene.add(hemiLight);
 
     // Load GLTF/GLB model
     const loader = new GLTFLoader();
@@ -88,8 +113,13 @@ export default function Model3DViewer({
         // Enable shadows
         gltf.scene.traverse((child: any) => {
           if (child instanceof THREE.Mesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
+            child.castShadow = false;
+            child.receiveShadow = false;
+            // Force brighter materials
+            if (child.material) {
+              child.material.emissive = new THREE.Color(0x111111);
+              child.material.emissiveIntensity = 0.3;
+            }
           }
         });
 

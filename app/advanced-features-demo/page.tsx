@@ -777,13 +777,25 @@ export default function AdvancedFeaturesDemo() {
               ) : (
                 <SpriteEditor
                   sprite={customSprite || sampleSprite}
-                  onSave={(animation: { name: string; frames: number[]; speed: number; loop: boolean }) => {
+                  onSave={(animation: { name?: string; frames?: any[]; speed?: number; loop?: boolean; states?: any }) => {
                     console.log('Animation created:', animation);
+                    let framesSummary = '';
+                    if (Array.isArray(animation.frames)) {
+                      framesSummary = `Frames: [${animation.frames.join(', ')}]\n`;
+                    } else if (animation.states && typeof animation.states === 'object') {
+                      const parts = Object.entries(animation.states).map(([name, s]) => {
+                        const count = s?.frames?.length ?? (Array.isArray(s) ? s.length : 0);
+                        const dur = s?.frameDuration ?? s?.speed ?? '';
+                        const loop = typeof s?.loop === 'boolean' ? s.loop : '';
+                        return `${name} (${count} frames${dur ? `, ${dur}ms` : ''}${loop !== '' ? `, loop:${loop}` : ''})`;
+                      });
+                      framesSummary = `States: ${parts.join('; ')}\n`;
+                    }
                     alert(
-                      `Animation "${animation.name}" created!\n` +
-                      `Frames: [${animation.frames.join(', ')}]\n` +
-                      `Speed: ${animation.speed}ms\n` +
-                      `Loop: ${animation.loop}`
+                      `Animation "${animation.name || 'untitled'}" created!\n` +
+                      framesSummary +
+                      (animation.speed ? `Speed: ${animation.speed}ms\n` : '') +
+                      (typeof animation.loop !== 'undefined' ? `Loop: ${animation.loop}\n` : '')
                     );
                   }}
                   onClose={() => {}}

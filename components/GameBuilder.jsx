@@ -89,12 +89,22 @@ const GameBuilder = () => {
 
   // Animation support for player character (imported JSON)
   const [animationsList, setAnimationsList] = useState([]); // { id, name }
+  const [animationsMap, setAnimationsMap] = useState({}); // id/name -> raw animation JSON
   const [selectedAnimationId, setSelectedAnimationId] = useState('');
   const [animationRaw, setAnimationRaw] = useState(null); // raw JSON object for save/load
   const playerAnimationRef = useRef(null); // parsed animation with Image objects
+  const animSMRef = useRef(null); // animation state machine instance
+  const [animateOnInput, setAnimateOnInput] = useState(true);
 
   const canvasRef = useRef(null);
   const gameStateRef = useRef(null);
+  // Developer debug handles removed; not attached to window by default
+  
+  const [notification, setNotification] = useState('');
+  const showNotification = (msg, ms = 3000) => {
+    setNotification(msg);
+    if (ms) setTimeout(() => setNotification(''), ms);
+  }
 
   // Game state for playing
   const initGameState = () => ({
@@ -115,6 +125,146 @@ const GameBuilder = () => {
       startX: e.startX * config.gridSize
     }))
   });
+
+  // Helper to find a usable animation state (e.g., if 'idle' missing, fall back to another)
+  const getStateAnim = (a, stateKey) => {
+    if (!a || !a.states) return null;
+    if (stateKey && a.states[stateKey] && a.states[stateKey].frames && a.states[stateKey].frames.length > 0) return a.states[stateKey];
+    const candidates = ['idle', 'walk', 'run', 'jump'];
+    for (const k of candidates) {
+      if (a.states[k] && a.states[k].frames && a.states[k].frames.length > 0) return a.states[k];
+    }
+    const keys = Object.keys(a.states);
+    for (const k of keys) {
+      if (a.states[k] && a.states[k].frames && a.states[k].frames.length > 0) return a.states[k];
+    }
+    return null;
+  };
+
+  // Evaluate a transition condition object (simple JSON-based conditions)
+  const evaluateCondition = (cond, input, gState, cfg) => {
+    if (!cond) return false;
+    // Allow shorthand boolean or simple predicates
+    if (typeof cond === 'boolean') return cond;
+    if (typeof cond === 'string' && cond === 'always') return true;
+    // If cond is an array treat as OR
+    if (Array.isArray(cond)) return cond.some(c => evaluateCondition(c, input, gState, cfg));
+    // cond is object with known keys
+    if (typeof cond === 'object') {
+      if (cond.always) return true;
+      if (typeof cond.minHorizontal === 'number') {
+        return Math.abs(input.horizontal || 0) >= cond.minHorizontal;
+      }
+      if (typeof cond.maxHorizontal === 'number') {
+        return Math.abs(input.horizontal || 0) <= cond.maxHorizontal;
+      }
+      if (typeof cond.jumpPressed === 'boolean') return !!input.jumpPressed === !!cond.jumpPressed;
+      if (typeof cond.isGrounded === 'boolean') return !!gState.onGround === !!cond.isGrounded;
+      if (typeof cond.velocityYLessThan === 'number') return (gState.playerVel?.y || 0) < cond.velocityYLessThan;
+      if (typeof cond.velocityYGreaterThan === 'number') return (gState.playerVel?.y || 0) > cond.velocityYGreaterThan;
+      // Allow custom property checks
+      if (typeof cond.property === 'string' && typeof cond.op === 'string') {
+        const val = (gState[cond.property] !== undefined) ? gState[cond.property] : (input[cond.property] !== undefined ? input[cond.property] : null);
+        if (val === null) return false;
+        switch (cond.op) {
+          case 'eq': return val === cond.value;
+          case 'ne': return val !== cond.value;
+          case 'lt': return val < cond.value;
+          case 'gt': return val > cond.value;
+          case 'lte': return val <= cond.value;
+          case 'gte': return val >= cond.value;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Animation State Machine class - controls state transitions & frame timing
+  class AnimationStateMachine {
+    constructor(anim, opts = {}) {
+      this.setAnimation(anim);
+      this.opts = opts;
+      this.currentState = 'idle';
+      this.frameIndex = 0;
+      this.frameElapsed = 0; // ms
+    }
+
+    setAnimation(anim) {
+      this.anim = anim || null;
+      this.currentState = 'idle';
+      this.frameIndex = 0;
+      this.frameElapsed = 0;
+    }
+
+    // Determine desired state from input & game state (basic rules)
+    chooseState(input, gState, cfg) {
+      if (!this.anim || !this.anim.states) return 'idle';
+      const speed = Math.abs(gState.playerVel.x || 0);
+      // Evaluate global transitions first (anim.transitions)
+      if (this.anim.transitions) {
+        for (const [next, cond] of Object.entries(this.anim.transitions)) {
+          if (evaluateCondition(cond, input, gState, cfg)) return next;
+        }
+      }
+      // Evaluate transitions defined on the current state
+      if (this.currentState && this.anim.states[this.currentState] && this.anim.states[this.currentState].transitions) {
+        for (const [next, cond] of Object.entries(this.anim.states[this.currentState].transitions)) {
+          if (evaluateCondition(cond, input, gState, cfg)) return next;
+        }
+      }
+      // Priority: jump if not grounded (unless transitions override)
+      if (!gState.onGround) return 'jump';
+      // run, walk thresholds
+      if (speed > (cfg.playerSpeed || 5) * 0.7) return 'run';
+      if (speed > 0.1) return 'walk';
+      return 'idle';
+    }
+
+    update(dt, input, gState, opts = {}) {
+      if (!this.anim) return { state: 'idle', frameIndex: 0 };
+      const cfg = opts.config || { playerSpeed: 5 };
+      const desiredState = this.chooseState(input, gState, cfg);
+      // If desired state doesn't exist on animation, pick fallback
+      const stateToUse = getStateAnim(this.anim, desiredState) ? desiredState : (getStateAnim(this.anim, 'idle') ? 'idle' : (Object.keys(this.anim.states)[0] || desiredState));
+      if (this.currentState !== stateToUse) {
+        this.currentState = stateToUse;
+        this.frameIndex = 0;
+        this.frameElapsed = 0;
+      }
+
+      // Get the state anim and frame duration
+      const sAnim = getStateAnim(this.anim, this.currentState);
+      if (!sAnim || !sAnim.frames || sAnim.frames.length === 0) {
+        return { state: this.currentState, frameIndex: 0 };
+      }
+
+      // Should we animate? If opts.animateOnInput is true, require movement input
+      let shouldAnimate = true;
+      if (opts.animateOnInput) {
+        const movingInput = (input && input.horizontal && Math.abs(input.horizontal) > 0.05) || ((gState && gState.playerVel && Math.abs(gState.playerVel.x) > 0.05));
+        shouldAnimate = !!movingInput;
+      }
+
+      if (shouldAnimate) {
+        this.frameElapsed += dt;
+        const dur = (sAnim.frameDuration || 100);
+        while (this.frameElapsed >= dur) {
+          this.frameElapsed -= dur;
+          this.frameIndex = this.frameIndex + 1;
+          if (sAnim.loop) {
+            this.frameIndex = this.frameIndex % sAnim.frames.length;
+          } else {
+            if (this.frameIndex >= sAnim.frames.length) this.frameIndex = sAnim.frames.length - 1;
+          }
+        }
+      } else {
+        this.frameElapsed = 0;
+        this.frameIndex = 0;
+      }
+
+      return { state: this.currentState, frameIndex: this.frameIndex };
+    }
+  }
 
   const drawGame = (ctx, gameState = null) => {
     const gs = config.gridSize;
@@ -205,8 +355,8 @@ const GameBuilder = () => {
     // Draw animated player if available
     const anim = playerAnimationRef.current;
     const currentState = gameState ? gameState.playerAnimState : 'idle';
-    if (anim && anim.states && anim.states[currentState] && anim.states[currentState].frames && anim.states[currentState].frames.length > 0) {
-      const stateAnim = anim.states[currentState];
+    const stateAnim = getStateAnim(anim, currentState);
+    if (anim && stateAnim) {
       const frameIndex = (gameState && gameState.playerAnimFrame != null) ? gameState.playerAnimFrame : 0;
       const img = stateAnim.frames[frameIndex];
       if (img && img.complete) {
@@ -748,7 +898,9 @@ const GameBuilder = () => {
       background: selectedBackground
       ,
       // Include imported animation raw JSON if present
-      playerAnimation: animationRaw || null
+      playerAnimation: animationRaw || null,
+      // Persist animation playback preference
+      animateOnInput: !!animateOnInput
     };
     
     const dataStr = JSON.stringify(levelData, null, 2);
@@ -791,10 +943,13 @@ const GameBuilder = () => {
             console.warn('Failed to restore player animation:', err);
           }
         }
+        if (typeof levelData.animateOnInput !== 'undefined') {
+          setAnimateOnInput(!!levelData.animateOnInput);
+        }
         
-        alert('Level loaded successfully!');
+        showNotification('Level loaded successfully!');
       } catch (err) {
-        alert('Error loading level: ' + err.message);
+        showNotification('Error loading level: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -802,24 +957,119 @@ const GameBuilder = () => {
 
   // Parse animation JSON and populate playerAnimationRef with Image objects
   const parseAnimationJSON = (animJson) => {
-    if (!animJson || !animJson.states) return;
-    const parsed = { name: animJson.name || 'imported', states: {} };
+    if (!animJson) return;
+    // Backwards compatibility: support top-level `frames` shape by converting to a simple `states.idle`.
+    if (!animJson.states && Array.isArray(animJson.frames)) {
+      animJson = {
+        ...animJson,
+        states: {
+          idle: {
+            frames: animJson.frames,
+            frameDuration: animJson.frameDuration || animJson.speed || 100,
+            loop: typeof animJson.loop === 'boolean' ? animJson.loop : true,
+            transitions: animJson.transitions || {}
+          }
+        }
+      };
+    }
+    // If there are states but no top-level frames, ensure frames metadata is available (for legacy consumers)
+    if (!animJson.frames && animJson.states) {
+      if (animJson.states.idle && Array.isArray(animJson.states.idle.frames)) {
+        animJson.frames = animJson.states.idle.frames;
+      } else {
+        const firstKey = Object.keys(animJson.states)[0];
+        if (firstKey) animJson.frames = animJson.states[firstKey].frames || [];
+      }
+    }
+    console.log('GameBuilder: parseAnimationJSON called for:', animJson && animJson.name, 'states:', animJson && Object.keys(animJson.states).length);
+    const parsed = { name: animJson.name || 'imported', states: {}, _meta: { loaded: 0, failed: 0, total: 0 } };
     Object.entries(animJson.states).forEach(([stateName, stateObj]) => {
-      const frames = (stateObj.frames || []).map(src => {
+      const framesRaw = stateObj.frames || [];
+      const frames = framesRaw.map((f, idx) => {
+        let src = null;
+        // Support multiple frame formats: string (data URL or filename), object with src/dataUrl
+        if (typeof f === 'string') {
+          src = f;
+        } else if (f && typeof f === 'object') {
+          src = f.dataUrl || f.src || f.url || f.filename || null;
+        }
+
+        // Resolve non-data-URL strings to likely public path or localStorage-stored assets
+        if (src && typeof src === 'string' && !src.startsWith('data:') && !src.startsWith('http') && !src.startsWith('/')) {
+          // Attempt to look up cached frame data saved by sprite editor
+          try {
+            const cached = localStorage.getItem('sprite-editor.frame.' + src);
+            if (cached) {
+              src = cached;
+            } else {
+              // Fallback to public path (common pattern); we can't guarantee this path exists
+              src = '/sprites/' + src;
+            }
+          } catch (err) {
+            // If localStorage isn't available or lookup fails, keep original src
+          }
+        }
+
         const img = new Image();
-        img.src = src;
+        // Show an example frame src in console for quick debugging
+        if (idx === 0) {
+          console.log(`GameBuilder: example frame [${stateName}][0] src:`, src);
+        }
+        try { img.crossOrigin = 'anonymous'; } catch (e) {}
+        let loaded = false;
+        if (src) {
+          img.src = src;
+        }
+        img.onload = () => {
+          parsed._meta.loaded += 1;
+          console.log('GameBuilder: loaded frame', { src, state: stateName, idx });
+        };
+        img.onerror = (err) => {
+          parsed._meta.failed += 1;
+          console.warn('GameBuilder: Failed to load animation frame', { src, state: stateName, idx, err });
+        };
         return img;
       });
-      parsed.states[stateName] = { frames, frameDuration: stateObj.frameDuration || (stateObj.frameDurationMs ? stateObj.frameDurationMs : 100) };
+      parsed.states[stateName] = {
+        frames,
+        frameDuration: stateObj.frameDuration || (stateObj.frameDurationMs ? stateObj.frameDurationMs : 100),
+        loop: typeof stateObj.loop === 'boolean' ? stateObj.loop : true,
+        transitions: stateObj.transitions || {}
+      };
+      parsed._meta.total += frames.length;
     });
     playerAnimationRef.current = parsed;
+    // Initialize or update the animation state machine instance
+    try {
+      if (!animSMRef.current) animSMRef.current = new AnimationStateMachine(parsed);
+      else animSMRef.current.setAnimation(parsed);
+    } catch (e) {
+      console.warn('GameBuilder: Failed to initialize AnimationStateMachine', e);
+    }
+    // Expose a debug handle in window for quick verification when running tests
+    // Dev debug handle not attached to window by default; keep parsing info via console
+    // keep a copy of the raw JSON for saving/export
     setAnimationRaw(animJson);
+    // store raw by name/id so we can switch between imported animations
+    const id = animJson.name || `anim_${Date.now()}`;
+    setAnimationsMap(prev => ({ ...prev, [id]: animJson }));
+    // also attach raw to the parsed ref for convenience
+    try { playerAnimationRef.current.raw = animJson; } catch (e) {}
     // add to list for selection
     setAnimationsList(prev => {
       const id = parsed.name || `anim_${Date.now()}`;
       if (prev.some(a => a.id === id)) return prev;
       return [...prev, { id, name: parsed.name }];
     });
+    // Debug: log how many frames succeeded/failed to load after a short wait
+    setTimeout(() => {
+      try {
+        console.info('GameBuilder: parsed animation', parsed.name, parsed._meta || {});
+        if (parsed._meta.total > 0 && parsed._meta.loaded === 0) {
+          showNotification('Warning: Animation frames did not load (check data URLs or sprite frame paths)');
+        }
+      } catch (e) {}
+    }, 1000);
   };
 
   // Handle importing animation JSON file
@@ -832,13 +1082,82 @@ const GameBuilder = () => {
         const json = JSON.parse(ev.target.result);
         parseAnimationJSON(json);
         setSelectedAnimationId(json.name || 'imported');
-        alert('Animation imported successfully');
+        try {
+          localStorage.setItem('gamebuilder.playerAnimation', JSON.stringify(json));
+        } catch (err) {
+          console.warn('Could not persist imported animation to localStorage', err);
+        }
+        showNotification('Animation imported successfully');
       } catch (err) {
-        alert('Failed to import animation JSON: ' + err.message);
+        showNotification('Failed to import animation JSON: ' + err.message);
       }
     };
     reader.readAsText(file);
   };
+
+  // Listen for programmatic imports (BroadcastChannel + CustomEvent)
+  useEffect(() => {
+    // Load persisted animation from localStorage if present
+    try {
+      const saved = localStorage.getItem('gamebuilder.playerAnimation');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.states) {
+          parseAnimationJSON(parsed);
+          setSelectedAnimationId(parsed.name || 'imported');
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load saved player animation from localStorage', err);
+    }
+
+    // BroadcastChannel listener for cross-tab exports
+    let bc;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        bc = new BroadcastChannel('gamebuilder-animations');
+        bc.onmessage = (ev) => {
+          try {
+            const anim = ev.data;
+            if (anim && anim.states) {
+              console.log('GameBuilder: received animation via BroadcastChannel', anim && anim.name);
+              parseAnimationJSON(anim);
+              setSelectedAnimationId(anim.name || 'imported');
+              try { localStorage.setItem('gamebuilder.playerAnimation', JSON.stringify(anim)); } catch (e) {}
+              // friendly UI feedback
+              showNotification('Animation imported from sprite editor');
+            }
+          } catch (err) {
+            console.warn('Error handling BroadcastChannel message', err);
+          }
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel initialization failed', err);
+      }
+    }
+
+    // CustomEvent fallback for same-page SPA export
+    const customHandler = (e) => {
+      try {
+        const anim = e?.detail;
+        if (anim && anim.states) {
+          console.log('GameBuilder: received animation via CustomEvent', anim && anim.name);
+          parseAnimationJSON(anim);
+          setSelectedAnimationId(anim.name || 'imported');
+          try { localStorage.setItem('gamebuilder.playerAnimation', JSON.stringify(anim)); } catch (e) {}
+          showNotification('Animation imported from sprite editor');
+        }
+      } catch (err) {
+        console.warn('Error handling custom import event', err);
+      }
+    };
+    window.addEventListener('gamebuilder:importAnimation', customHandler);
+
+    return () => {
+      try { if (bc) bc.close(); } catch (e) {}
+      window.removeEventListener('gamebuilder:importAnimation', customHandler);
+    };
+  }, []);
   
   // Keyboard shortcuts handler
   const handleKeyDown = (e) => {
@@ -1203,30 +1522,44 @@ const GameBuilder = () => {
 
       // --- Player animation state machine & frame advance ---
       try {
-        const anim = playerAnimationRef.current;
-        if (anim) {
-          // determine state
-          let pState = 'idle';
-          const speed = Math.abs(state.playerVel.x);
-          if (!state.onGround) pState = 'jump';
-          else if (speed > config.playerSpeed * 0.7) pState = 'run';
-          else if (speed > 0.1) pState = 'walk';
-
-          if (state.playerAnimState !== pState) {
-            state.playerAnimState = pState;
-            state.playerAnimFrame = 0;
-            state.playerAnimElapsed = 0;
-          }
-
-          const stateAnim = anim.states[state.playerAnimState] || anim.states['idle'];
-          if (stateAnim && stateAnim.frames && stateAnim.frames.length > 0) {
-            state.playerAnimElapsed = (state.playerAnimElapsed || 0) + dt;
-            const dur = stateAnim.frameDuration || 100;
-            while (state.playerAnimElapsed >= dur) {
-              state.playerAnimElapsed -= dur;
-              state.playerAnimFrame = ((state.playerAnimFrame || 0) + 1) % stateAnim.frames.length;
+        const animSM = animSMRef.current;
+        if (animSM) {
+          // Build input object for state machine; include mobile controls so touch controls animate properly
+          const movingInput = keys['ArrowLeft'] || keys['a'] || keys['ArrowRight'] || keys['d'] || mobile.left || mobile.right;
+          const jumpInput = keys[' '] || keys['ArrowUp'] || keys['w'] || mobile.jump;
+          const horizontalInput = (keys['ArrowLeft'] || keys['a'] || mobile.left) ? -1 : (keys['ArrowRight'] || keys['d'] || mobile.right) ? 1 : 0;
+          const inputObj = {
+            horizontal: horizontalInput,
+            jumpPressed: !!jumpInput,
+            isGrounded: !!state.onGround,
+            velocityY: state.playerVel.y || 0
+          };
+          const result = animSM.update(dt, inputObj, state, { animateOnInput, config });
+          state.playerAnimState = result.state;
+          state.playerAnimFrame = result.frameIndex;
+          // If animation doesn't change and we have at least one state and frames, output debug info so Playwright can assert
+          try {
+            const dbg = document.getElementById('pluto-debug');
+            if (dbg) {
+              dbg.setAttribute('data-player-frame', String(state.playerAnimFrame));
+              dbg.setAttribute('data-player-state', String(state.playerAnimState));
+              // Provide the first frame src as extra debug info
+              const anim = playerAnimationRef.current;
+              let firstFrameSrc = '';
+              if (anim && anim.states && anim.states[state.playerAnimState] && anim.states[state.playerAnimState].frames && anim.states[state.playerAnimState].frames[0]) {
+                const f = anim.states[state.playerAnimState].frames[0];
+                firstFrameSrc = f && (f.currentSrc || f.src) ? (f.currentSrc || f.src) : (typeof f === 'string' ? f : '');
+              }
+              dbg.setAttribute('data-player-frame-src', String(firstFrameSrc));
             }
-          }
+          } catch (e) {}
+          try {
+            const dbg = document.getElementById('pluto-debug');
+            if (dbg) {
+              dbg.setAttribute('data-player-frame', String(state.playerAnimFrame));
+              dbg.setAttribute('data-player-state', String(state.playerAnimState));
+            }
+          } catch (e) {}
         }
       } catch (err) {
         // swallow animation errors to avoid breaking game loop
@@ -1315,6 +1648,11 @@ const GameBuilder = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        {notification && (
+          <div className="fixed top-4 right-4 z-50 bg-green-600 text-black px-3 py-2 rounded shadow-sm">{notification}</div>
+        )}
+        {/* Hidden debug element for integration tests (keeps tests decoupled from global handles) */}
+        <div id="pluto-debug" className="hidden" data-player-frame="0" data-player-state="idle" />
         {/* Header with Back Button */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
@@ -1421,7 +1759,14 @@ const GameBuilder = () => {
                 <div className="flex gap-2 items-center">
                   <select
                     value={selectedAnimationId}
-                    onChange={(e) => setSelectedAnimationId(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedAnimationId(val);
+                      const anim = animationsMap[val] || (animationRaw && (animationRaw.name === val ? animationRaw : null));
+                      if (anim) {
+                        parseAnimationJSON(anim);
+                      }
+                    }}
                     className="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white"
                   >
                     <option value="">Default</option>
@@ -1436,7 +1781,24 @@ const GameBuilder = () => {
                     <input type="file" accept="application/json" onChange={handleImportAnimation} className="hidden" />
                   </label>
 
-                  <div className="text-xs text-zinc-400">Preview: {selectedAnimationId || (animationRaw ? animationRaw.name : 'Default')}</div>
+                  <div className="text-xs text-zinc-400">
+                    Preview: {selectedAnimationId || (animationRaw ? animationRaw.name : 'Default')}
+                    {playerAnimationRef.current && playerAnimationRef.current._meta ? (
+                      <span className="ml-2 text-[10px] text-zinc-500">(loaded {playerAnimationRef.current._meta.loaded} / failed {playerAnimationRef.current._meta.failed})</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={animateOnInput}
+                      onChange={(e) => setAnimateOnInput(e.target.checked)}
+                      className="accent-[#FF9900]"
+                    />
+                    Animate on input
+                  </label>
+                  <div className="text-xs text-zinc-500">(If off, animations will loop continuously)</div>
                 </div>
               </div>
 
