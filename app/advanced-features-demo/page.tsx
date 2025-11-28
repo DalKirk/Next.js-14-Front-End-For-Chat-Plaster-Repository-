@@ -459,6 +459,21 @@ export default function AdvancedFeaturesDemo() {
     });
   }
   
+  // Types for animation objects coming from the SpriteEditor onSave
+  interface AnimationStateData {
+    frames?: any[];
+    frameDuration?: number;
+    speed?: number;
+    loop?: boolean;
+  }
+  interface AnimationData {
+    name?: string;
+    frames?: any[];
+    speed?: number;
+    loop?: boolean;
+    states?: Record<string, AnimationStateData> | null;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-7xl mx-auto">
@@ -777,16 +792,17 @@ export default function AdvancedFeaturesDemo() {
               ) : (
                 <SpriteEditor
                   sprite={customSprite || sampleSprite}
-                  onSave={(animation: { name?: string; frames?: any[]; speed?: number; loop?: boolean; states?: any }) => {
+                  onSave={(animation: AnimationData) => {
                     console.log('Animation created:', animation);
                     let framesSummary = '';
                     if (Array.isArray(animation.frames)) {
                       framesSummary = `Frames: [${animation.frames.join(', ')}]\n`;
                     } else if (animation.states && typeof animation.states === 'object') {
-                      const parts = Object.entries(animation.states).map(([name, s]) => {
-                        const count = s?.frames?.length ?? (Array.isArray(s) ? s.length : 0);
-                        const dur = s?.frameDuration ?? s?.speed ?? '';
-                        const loop = typeof s?.loop === 'boolean' ? s.loop : '';
+                      const parts = Object.entries(animation.states as Record<string, AnimationStateData>).map(([name, s]) => {
+                        const ss = s as AnimationStateData;
+                        const count = ss?.frames?.length ?? (Array.isArray(ss) ? ss.length : 0);
+                        const dur = ss?.frameDuration ?? ss?.speed ?? '';
+                        const loop = typeof ss?.loop === 'boolean' ? ss.loop : '';
                         return `${name} (${count} frames${dur ? `, ${dur}ms` : ''}${loop !== '' ? `, loop:${loop}` : ''})`;
                       });
                       framesSummary = `States: ${parts.join('; ')}\n`;
@@ -794,7 +810,7 @@ export default function AdvancedFeaturesDemo() {
                     alert(
                       `Animation "${animation.name || 'untitled'}" created!\n` +
                       framesSummary +
-                      (animation.speed ? `Speed: ${animation.speed}ms\n` : '') +
+                      (typeof animation.speed === 'number' ? `Speed: ${animation.speed}ms\n` : '') +
                       (typeof animation.loop !== 'undefined' ? `Loop: ${animation.loop}\n` : '')
                     );
                   }}
