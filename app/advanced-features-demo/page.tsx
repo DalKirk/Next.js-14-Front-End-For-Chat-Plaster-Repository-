@@ -24,24 +24,24 @@ export default function AdvancedFeaturesDemo() {
   const [isMouseDown, setIsMouseDown] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tileSystemRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const brushToolRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const layerSystemRef = useRef<any>(null);
+  const tileSystemRef = useRef<TileSystem | null>(null);
+  const brushToolRef = useRef<BrushTool | null>(null);
+  const layerSystemRef = useRef<LayerSystem | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const cameraRef = useRef({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sprite editor state
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [customSprite, setCustomSprite] = useState<any>(null);
+  interface SpriteData {
+    src: string;
+    frameWidth: number;
+    frameHeight: number;
+  }
+  const [customSprite, setCustomSprite] = useState<SpriteData | null>(null);
   const [frameWidth, setFrameWidth] = useState(128);
   const [frameHeight, setFrameHeight] = useState(128);
   const [uploadedFrames, setUploadedFrames] = useState<string[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [sampleSprite, setSampleSprite] = useState<any>(null);
+  const [sampleSprite, setSampleSprite] = useState<SpriteData | null>(null);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
   const multipleFilesInputRef = useRef<HTMLInputElement>(null);
   
@@ -461,14 +461,14 @@ export default function AdvancedFeaturesDemo() {
   
   // Types for animation objects coming from the SpriteEditor onSave
   interface AnimationStateData {
-    frames?: any[];
+    frames?: string[];
     frameDuration?: number;
     speed?: number;
     loop?: boolean;
   }
   interface AnimationData {
     name?: string;
-    frames?: any[];
+    frames?: string[];
     speed?: number;
     loop?: boolean;
     states?: Record<string, AnimationStateData> | null;
