@@ -11,6 +11,7 @@ import {
   DocumentTextIcon,
   WrenchScrewdriverIcon,
   PhotoIcon,
+  CommandLineIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -20,6 +21,7 @@ import {
   DocumentTextIcon as DocumentTextIconSolid,
   WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
   PhotoIcon as PhotoIconSolid,
+  CommandLineIcon as CommandLineIconSolid,
 } from '@heroicons/react/24/solid';
 
 interface NavItem {
@@ -58,6 +60,13 @@ const navItems: NavItem[] = [
     icon: SparklesIcon, // Will be replaced with emoji
     iconSolid: SparklesIconSolid, // Will be replaced with emoji
     label: 'Gen-3D'
+  },
+  {
+    name: 'Hacking Terminal',
+    path: '/hacking-terminal',
+    icon: CommandLineIcon,
+    iconSolid: CommandLineIconSolid,
+    label: 'Penetration Testing Simulator'
   },
   {
     name: 'Rooms',
