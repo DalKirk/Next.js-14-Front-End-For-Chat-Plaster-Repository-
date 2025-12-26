@@ -705,16 +705,6 @@ export default function HomePage() {
                     Rooms
                   </button>
                   <button
-                    onClick={() => {
-                      router.push('/games');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] rounded-lg transition-all flex items-center gap-2"
-                  >
-                    <span className="w-4 h-4 flex items-center justify-center">🎮</span>
-                    Games
-                  </button>
-                  <button
                     onClick={() => { router.push('/profile'); setShowUserMenu(false); }}
                     className="w-full text-left px-3 py-2 hover:bg-green-500/10 rounded-lg text-sm text-slate-300"
                   >

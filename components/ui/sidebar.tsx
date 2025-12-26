@@ -8,7 +8,6 @@ import {
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
   SparklesIcon,
-  PuzzlePieceIcon,
   DocumentTextIcon,
   WrenchScrewdriverIcon,
   PhotoIcon,
@@ -18,7 +17,6 @@ import {
   ChatBubbleLeftRightIcon as ChatIconSolid,
   UserCircleIcon as UserIconSolid,
   SparklesIcon as SparklesIconSolid,
-  PuzzlePieceIcon as PuzzleIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
   WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
   PhotoIcon as PhotoIconSolid,
@@ -67,13 +65,6 @@ const navItems: NavItem[] = [
     icon: ChatBubbleLeftRightIcon,
     iconSolid: ChatIconSolid,
     label: 'Chat Rooms'
-  },
-  {
-    name: 'Games',
-    path: '/games',
-    icon: PuzzlePieceIcon,
-    iconSolid: PuzzleIconSolid,
-    label: 'Mini Games'
   },
   {
     name: 'Profile',
