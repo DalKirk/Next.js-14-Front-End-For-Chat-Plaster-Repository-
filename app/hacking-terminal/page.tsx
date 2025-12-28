@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 
 const HackingTerminal = dynamic(
-  () => import('../3d-generator/hacking-terminal-sidebyside'),
+  () => import('./HackingTerminal'),
   { ssr: false }
 );
 
