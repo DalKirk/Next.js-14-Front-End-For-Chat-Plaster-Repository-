@@ -114,10 +114,13 @@ export const apiClient = {
     }
   },
 
-  createRoom: async (name: string): Promise<Room> => {
+  createRoom: async (name: string, thumbnailUrl?: string): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
-      const r = await api.post('/rooms', { name });
+      const payload: Record<string, unknown> = { name: name.trim() };
+      if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
+      console.log('📤 Creating room with payload:', payload);
+      const r = await api.post('/rooms', payload);
       return r.data;
     } catch (e) {
       // Fallback to mock room when backend is unavailable
@@ -133,9 +136,12 @@ export const apiClient = {
 
   joinRoom: async (roomId: string, userId: string, username?: string, avatarUrl?: string): Promise<void> => {
     try {
-      const payload: Record<string, unknown> = { user_id: userId };
-      if (username && username.length >= 2) payload.username = username;
-      if (avatarUrl && /^https?:\/\//.test(avatarUrl)) payload.avatar_url = avatarUrl;
+      const payload: Record<string, unknown> = { 
+        user_id: userId,
+        username: username || 'Anonymous',
+        avatar_url: avatarUrl || `https://i.pravatar.cc/150?u=${userId}`
+      };
+      console.log('📤 Joining room with payload:', payload);
       await api.post(`/rooms/${roomId}/join`, payload);
     } catch (e) {
       // If endpoint doesn't exist (404), that's okay - room page will handle it

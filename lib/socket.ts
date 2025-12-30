@@ -33,9 +33,12 @@ class SocketManager {
     const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://web-production-3ba7e.up.railway.app';
     const qp: string[] = [];
     if (this.username) qp.push(`username=${encodeURIComponent(this.username)}`);
-    if (this.avatarUrl && /^https?:\/\//.test(this.avatarUrl)) qp.push(`avatar_url=${encodeURIComponent(this.avatarUrl)}`);
+    // Always include avatar_url - use provided or fallback to pravatar
+    const finalAvatarUrl = this.avatarUrl || `https://i.pravatar.cc/150?u=${userId}`;
+    qp.push(`avatar_url=${encodeURIComponent(finalAvatarUrl)}`);
     const query = qp.length ? `?${qp.join('&')}` : '';
     const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}${query}`;
+    console.log('🔗 WebSocket URL includes avatar_url:', finalAvatarUrl.substring(0, 50) + '...');
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,

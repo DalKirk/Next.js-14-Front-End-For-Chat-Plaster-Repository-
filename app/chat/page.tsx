@@ -103,20 +103,20 @@ export default function ChatPage() {
     }
     setIsCreating(true);
     try {
-      // Store room data in localStorage temporarily (backend will store it later)
-      const room = await apiClient.createRoom(roomData.name);
-      
       // Compress thumbnail to reduce storage (90% size reduction)
       let thumbnail = roomData.thumbnailData;
       if (thumbnail && thumbnail.startsWith('data:image/')) {
         thumbnail = await StorageManager.compressImage(thumbnail);
       }
       
+      // Send thumbnail to backend when creating room
+      const room = await apiClient.createRoom(roomData.name, thumbnail);
+      
       // Enhance room with additional data
       const enhancedRoom = {
         ...room,
         description: roomData.description,
-        thumbnail,
+        thumbnail: room.thumbnail_url || thumbnail, // Prefer backend thumbnail_url
         thumbnailPreset: roomData.thumbnailPreset,
         privacy: roomData.privacy,
         maxMembers: roomData.maxMembers,
@@ -240,9 +240,12 @@ export default function ChatPage() {
                 const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
                 const roomData = roomsData[room.id] || room;
                 
+                // Prefer backend thumbnail_url over localStorage thumbnail
+                const thumbnailUrl = room.thumbnail_url || roomData.thumbnail;
+                
                 const getThumbnailStyle = () => {
-                  if (roomData.thumbnail) {
-                    return { backgroundImage: `url(${roomData.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+                  if (thumbnailUrl) {
+                    return { backgroundImage: `url(${thumbnailUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' };
                   } else if (roomData.thumbnailPreset) {
                     const preset = THUMBNAIL_PRESETS.find(p => p.id === roomData.thumbnailPreset);
                     return { background: preset?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' };

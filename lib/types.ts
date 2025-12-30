@@ -12,6 +12,7 @@ export interface Room {
   created_at: string;
   description?: string;
   thumbnail?: string;
+  thumbnail_url?: string; // Backend field for persistent thumbnails
   thumbnailPreset?: string;
   privacy?: 'public' | 'private' | 'password';
   password?: string;
