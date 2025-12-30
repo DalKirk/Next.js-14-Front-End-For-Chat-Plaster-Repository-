@@ -38,8 +38,8 @@ export interface Message {
   title?: string;
   playback_id?: string;
   stream_key?: string;
-  // Optional user avatar
-  avatar?: string;
+  // User avatar - ALWAYS present (fallback generated if not cached)
+  avatar: string;
 }
 
 export interface LiveStream {

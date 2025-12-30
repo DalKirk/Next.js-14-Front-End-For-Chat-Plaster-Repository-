@@ -64,13 +64,6 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
   const videoMessage = message as VideoMessage;
   // Host information now comes from props (isHost) so host identity can be tracked across messages
   
-  // Debug: Log avatar status
-  if (message.avatar) {
-    console.log('💬 Message from', message.username, 'has avatar:', message.avatar.substring(0, 50) + '...');
-  } else {
-    console.log('💬 Message from', message.username, 'has NO avatar');
-  }
-  
   const handleAvatarClick = () => {
     // Route to profile page - could be enhanced to show specific user profiles
     router.push('/profile');
@@ -271,23 +264,13 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
         {/* Username, timestamp, and copy button */}
         <div className="flex items-center justify-between mb-2 gap-2">
           <div className="flex items-center gap-2">
-            {message.avatar ? (
-              <button 
-                onClick={handleAvatarClick}
-                className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
-                title={`View ${message.username}'s profile`}
-              >
-                <img src={message.avatar} alt="Avatar" className="w-full h-full object-cover" />
-              </button>
-            ) : (
-              <button
-                onClick={handleAvatarClick}
-                className={`w-6 h-6 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
-                title={`View ${message.username}'s profile`}
-              >
-                <span className="text-xs text-green-400 font-bold">{message.username.charAt(0).toUpperCase()}</span>
-              </button>
-            )}
+            <button 
+              onClick={handleAvatarClick}
+              className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
+              title={`View ${message.username}'s profile`}
+            >
+              <img src={message.avatar} alt={`${message.username}'s avatar`} className="w-full h-full object-cover" />
+            </button>
             <div className="flex items-center gap-2">
               {/* Username: highlight differently for host or for your own username (visible only to you) */}
               <span className={`text-sm font-medium ${isHost ? 'text-emerald-400' : isOwn ? 'text-green-300 font-semibold' : 'text-white/90'}`}>

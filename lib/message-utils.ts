@@ -75,8 +75,20 @@ export function applyMessageForRender(
   const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
   const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
 
-  // Resolve final avatar
-  const finalAvatar = avatar || byId[incomingUserId] || byName[username] || (opts.currentUser && username === opts.currentUser.username ? opts.currentUserAvatar || undefined : undefined);
+  // Resolve final avatar with guaranteed fallback
+  let finalAvatar = avatar || byId[incomingUserId] || byName[username];
+  
+  // If still no avatar for current user, use their stored avatar
+  if (!finalAvatar && opts.currentUser && username === opts.currentUser.username) {
+    finalAvatar = opts.currentUserAvatar || undefined;
+  }
+  
+  // CRITICAL: If we still have no avatar, generate a fallback using ui-avatars
+  // This ensures avatars NEVER disappear or become undefined
+  if (!finalAvatar) {
+    const displayName = username || 'User';
+    finalAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=128`;
+  }
 
   return {
     id: payload.id || payload.message_id || `msg-${Date.now()}-${Math.random()}`,
@@ -88,6 +100,6 @@ export function applyMessageForRender(
     type: (payload.type || payload.message_type || 'message') as Message['type'],
     title: payload.title,
     playback_id: payload.playback_id,
-    avatar: finalAvatar || undefined,
+    avatar: finalAvatar, // Now ALWAYS defined - never undefined
   };
 }
