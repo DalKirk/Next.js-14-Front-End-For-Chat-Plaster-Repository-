@@ -76,6 +76,7 @@ export interface SocketMessage {
   timestamp: string;
   playback_id?: string;
   title?: string;
+  avatar_url?: string;
 }
 
 export interface ChatState {

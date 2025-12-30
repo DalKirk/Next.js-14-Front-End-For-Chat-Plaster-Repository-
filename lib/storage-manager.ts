@@ -67,7 +67,7 @@ export class StorageManager {
   /**
    * Safe localStorage setItem with quota handling and auto-cleanup
    */
-  static setItem(key: string, value: any): boolean {
+  static setItem(key: string, value: unknown): boolean {
     try {
       const serialized = JSON.stringify(value);
       localStorage.setItem(key, serialized);

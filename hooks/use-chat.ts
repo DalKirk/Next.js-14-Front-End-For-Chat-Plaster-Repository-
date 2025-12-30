@@ -50,15 +50,20 @@ export function useChat({ roomId, user }: UseChatProps) {
     const messageType = socketMessage.type === 'user_joined' || socketMessage.type === 'user_left' 
       ? 'system' 
       : socketMessage.type || 'message';
+    
+    // Generate avatar with fallback
+    const username = socketMessage.username || 'System';
+    const avatar = socketMessage.avatar_url || user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&size=128`;
       
     const message: Message = {
       id: Date.now().toString(),
       room_id: roomId,
       user_id: user.id,
-      username: socketMessage.username || 'System',
+      username,
       content: socketMessage.content || socketMessage.message || '',
       timestamp: socketMessage.timestamp,
       type: messageType,
+      avatar,
     };
 
     setMessages((prev: Message[]) => [...prev, message]);
