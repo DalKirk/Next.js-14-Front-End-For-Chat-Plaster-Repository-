@@ -154,7 +154,7 @@ export default function RoomPage() {
       
       // Initialize WebSocket connection after user is set
       setTimeout(() => {
-        initializeWebSocket(userData);
+        initializeWebSocket(userData, loadedAvatar);
       }, 100);
     } else {
       router.push('/');
@@ -172,7 +172,7 @@ export default function RoomPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]); // Removed 'router' from dependencies to prevent re-renders
 
-  const initializeWebSocket = async (userData?: User) => {
+  const initializeWebSocket = async (userData?: User, avatarOverride?: string | null) => {
     const currentUser = userData || user;
     if (!currentUser) return;
     
@@ -200,9 +200,15 @@ export default function RoomPage() {
       // Resolve an avatar URL for backend - prefer actual user avatar over fallback
       const resolveAvatarUrl = (): string | undefined => {
         // Always prefer the actual user avatar if available (data URLs or HTTPS)
-        if (userAvatar) return userAvatar;
+        const currentAvatar = avatarOverride !== undefined ? avatarOverride : userAvatar;
+        if (currentAvatar) {
+          console.log('✅ Using custom avatar:', currentAvatar.substring(0, 50) + '...');
+          return currentAvatar;
+        }
         // Fallback only if no avatar exists: generate a deterministic avatar URL
-        return `https://i.pravatar.cc/150?u=${encodeURIComponent(currentUser.id)}`;
+        const fallbackUrl = `https://i.pravatar.cc/150?u=${encodeURIComponent(currentUser.id)}`;
+        console.log('⚠️ No custom avatar, using fallback:', fallbackUrl);
+        return fallbackUrl;
       };
       const avatarUrl = resolveAvatarUrl();
 
