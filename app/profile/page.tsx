@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { apiClient } from '@/lib/api';
+import { StorageUtils } from '@/lib/storage-utils';
 import toast from 'react-hot-toast';
 import { 
   Camera, Settings, Activity, Shield, Trash2,
@@ -294,7 +296,7 @@ function ProfilePageContent() {
           ...profile,
           ...editedProfile,
           username: result.user.username,
-          avatar: result.user.avatar_url || editedProfile.avatar
+          avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         
         setProfile(updatedProfile);

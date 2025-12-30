@@ -3,6 +3,8 @@ export interface User {
   id: string;
   username: string;
   email?: string;
+  avatar_url?: string; // Avatar URL from backend
+  display_name?: string; // Display name (if different from username)
   created_at: string;
 }
 
