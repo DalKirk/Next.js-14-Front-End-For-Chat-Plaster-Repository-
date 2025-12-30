@@ -177,20 +177,11 @@ export const apiClient = {
     }
   },
 
+  // NOTE: Messages are sent via WebSocket ONLY - backend doesn't have REST endpoint
+  // Use socketManager.sendMessage() instead
+  // This function is deprecated and should not be used
   sendRoomMessage: async (roomId: string, userId: string, content: string, username?: string, avatarUrl?: string): Promise<Message> => {
-    if (!content || !content.trim()) throw new Error('Message cannot be empty');
-    try {
-      const payload: Record<string, unknown> = {
-        user_id: userId,
-        content: content.trim(),
-      };
-      if (username) payload.username = username;
-      if (avatarUrl) payload.avatar_url = avatarUrl;
-      const r = await api.post(`/rooms/${roomId}/messages`, payload);
-      return r.data;
-    } catch (e) {
-      handleApiError(e, 'Send message');
-    }
+    throw new Error('❌ Messages must be sent via WebSocket. Backend does not support POST /messages endpoint.');
   },
 
   // User Profile Management
@@ -242,19 +233,15 @@ export const apiClient = {
 
   updateProfile: async (userId: string, displayName?: string, avatarUrl?: string): Promise<{ success: boolean; user: User }> => {
     try {
-      // Validate avatar (accept compressed base64 up to 100KB or URLs)
-      if (avatarUrl) {
-        if (avatarUrl.startsWith('data:')) {
-          // Compressed base64 image - check size
-          const sizeKB = (avatarUrl.length * 0.75) / 1024;
-          if (sizeKB > 100) {
-            throw new Error(`❌ Compressed avatar too large (${sizeKB.toFixed(0)}KB). Maximum 100KB. Try reducing image dimensions.`);
-          }
-          console.log(`✅ Uploading compressed avatar (${sizeKB.toFixed(0)}KB)`);
-        } else if (avatarUrl.length > 2000) {
-          throw new Error('❌ Avatar URL too long. Maximum 2000 characters.');
-        }
+      // Backend ONLY accepts URLs, not base64 data
+      if (avatarUrl && avatarUrl.startsWith('data:')) {
+        throw new Error('⚠️ Avatar must be a URL, not base64 data. Please upload the image and provide a URL.');
       }
+      
+      if (avatarUrl && avatarUrl.length > 2000) {
+        throw new Error('❌ Avatar URL too long. Maximum 2000 characters.');
+      }
+      
       if (displayName && displayName.length < 2) {
         throw new Error('❌ Display name must be at least 2 characters.');
       }
@@ -265,6 +252,7 @@ export const apiClient = {
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);
+      return r.data;
       return r.data;
     } catch (e) {
       if (axios.isAxiosError(e) && e.response?.status === 404) {

@@ -551,31 +551,23 @@ export default function RoomPage() {
     }
     
     if (wsConnected && socketManager.isConnected()) {
-      // Send via WebSocket
+      // Send via WebSocket ONLY - backend doesn't have REST endpoint for messages
       try {
         socketManager.sendMessage(content, userAvatar || undefined);
         console.log('📤 Message sent via WebSocket with avatar:', !!userAvatar);
       } catch (error) {
         console.error('❌ Failed to send message via WebSocket:', error);
-        toast.error('WebSocket unavailable, showing message locally only');
+        toast.error('Failed to send message');
+        return;
       }
       // Show message immediately (optimistic update)
       addLocalMessage(content);
-      // Persist message via REST to ensure cross-device visibility
-      try {
-        await apiClient.sendRoomMessage(roomId, user.id, content, user.username, userAvatar || undefined);
-        console.log('💾 Persisted message via REST for reliability');
-      } catch (persistErr) {
-        console.warn('⚠️ Failed to persist message via REST:', persistErr);
-      }
     } else {
       // Backend unavailable - show message locally only
-      console.log('⚠️ Backend unavailable - adding message locally');
-      toast('Message visible locally only (backend offline)', { 
-        icon: '⚠️',
-        duration: 2000 
+      console.log('⚠️ WebSocket not connected - cannot send message');
+      toast.error('Not connected to chat. Please wait for connection...', { 
+        duration: 3000 
       });
-      addLocalMessage(content);
     }
   };
 

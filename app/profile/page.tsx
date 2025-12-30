@@ -238,25 +238,26 @@ function ProfilePageContent() {
       return;
     }
 
-    // Compress image before uploading
+    // Show preview locally, but backend requires URLs
     const reader = new FileReader();
     reader.onloadend = async () => {
       const result = reader.result as string;
       
-      toast.loading('🔧 Compressing image...', { id: 'compress' });
+      toast.loading('🔧 Processing image...', { id: 'compress' });
       
       try {
-        // Compress to ~30KB (90% size reduction)
+        // Compress for preview only
         const compressed = await StorageManager.compressImage(result);
         const sizeBefore = (result.length * 0.75) / 1024; // Approximate KB
         const sizeAfter = (compressed.length * 0.75) / 1024;
         
         setAvatarPreview(compressed);
+        // Store base64 locally for preview, but we'll generate URL for backend
         setEditedProfile({ ...editedProfile, avatar: compressed });
         
         toast.success(
-          `✅ Compressed ${sizeBefore.toFixed(0)}KB → ${sizeAfter.toFixed(0)}KB`,
-          { id: 'compress', duration: 3000 }
+          `✅ Preview ready (${sizeAfter.toFixed(0)}KB). Note: Backend requires hosted image URL.`,
+          { id: 'compress', duration: 4000 }
         );
       } catch (error) {
         toast.error('Failed to compress image', { id: 'compress' });
@@ -282,11 +283,20 @@ function ProfilePageContent() {
       console.log('💾 Saving profile to backend...');
       setIsEditing(false); // Show loading state
       
-      // Save to backend (compressed avatars are accepted)
+      // Convert avatar to URL if it's base64
+      let avatarUrlToSend = editedProfile.avatar;
+      if (avatarUrlToSend && avatarUrlToSend.startsWith('data:')) {
+        // Generate ui-avatars URL instead of sending base64
+        const name = editedProfile.username || profile.username || 'User';
+        avatarUrlToSend = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random`;
+        console.log('🔄 Converted base64 avatar to URL:', avatarUrlToSend);
+      }
+      
+      // Save to backend with URL only
       const result = await apiClient.updateProfile(
         profile.id,
         editedProfile.username,
-        editedProfile.avatar || undefined
+        avatarUrlToSend || undefined
       );
       
       if (result.success) {
@@ -294,7 +304,7 @@ function ProfilePageContent() {
           ...profile,
           ...editedProfile,
           username: result.user.username,
-          avatar: result.user.avatar_url || editedProfile.avatar || ''
+          avatar: result.user.avatar_url || avatarUrlToSend || ''
         };
         
         setProfile(updatedProfile);

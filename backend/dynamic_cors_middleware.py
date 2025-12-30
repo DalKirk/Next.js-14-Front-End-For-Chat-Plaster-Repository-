@@ -13,8 +13,10 @@ class DynamicCORSMiddleware:
     from backend.dynamic_cors_middleware import DynamicCORSMiddleware
 
     WHITELIST = {
-        "https://video-chat-frontend-ruby.vercel.app",
-        "https://next-js-14-front-end-for-chat-plast.vercel.app",
+        # Production frontends
+        "https://video-chat-frontend-iio886s1j-dalkirks-projects.vercel.app",
+        "https://video-chat-frontend-seven.vercel.app",
+        # Local dev
         "http://localhost:3000",
     }
 
