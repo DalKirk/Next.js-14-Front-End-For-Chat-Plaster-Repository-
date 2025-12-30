@@ -5,7 +5,7 @@
 
 import { apiClient } from './api';
 import { StorageUtils } from './storage-utils';
-import type { User } from '@/types';
+import type { User } from './types';
 
 export class UserValidator {
   /**
