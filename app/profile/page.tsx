@@ -129,7 +129,47 @@ function ProfilePageContent() {
         setAvatarPreview(fullProfile.avatar || null);
         
       } catch (error) {
-        console.warn('⚠️ Backend profile not found, using localStorage fallback');
+        // Check if user doesn't exist on backend
+        if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+          console.warn('⚠️ User not found on backend, recreating...');
+          try {
+            // Recreate user on backend
+            const newUser = await apiClient.createUser(userData.username || 'Guest');
+            console.log('✅ User recreated on backend:', newUser);
+            
+            // Update localStorage with new user ID
+            StorageUtils.safeSetItem('chat-user', JSON.stringify(newUser));
+            
+            // Create profile with new user
+            const fullProfile: UserProfile = {
+              id: newUser.id,
+              username: newUser.username,
+              email: userData.email || `${newUser.username}@chatplaster.com`,
+              bio: 'Developer passionate about real-time collaboration and clean code.',
+              avatar: '',
+              joinedDate: new Date(newUser.created_at).toISOString().split('T')[0],
+              totalRooms: 3,
+              totalMessages: 127,
+              favoriteLanguage: 'JavaScript',
+              theme: 'purple',
+              notifications: true
+            };
+            
+            setProfile(fullProfile);
+            setEditedProfile(fullProfile);
+            toast.success('Profile recreated successfully!');
+          } catch (recreateError) {
+            console.error('❌ Failed to recreate user:', recreateError);
+            toast.error('Failed to load profile. Please log in again.');
+            // Clear localStorage and redirect to home
+            StorageUtils.safeRemoveItem('chat-user');
+            StorageUtils.safeRemoveItem('userProfile');
+            router.push('/');
+          }
+          return;
+        }
+        
+        console.warn('⚠️ Backend profile error, using localStorage fallback');
         
         // Fallback to localStorage
         const existingProfile = StorageUtils.safeGetItem('userProfile');
@@ -321,6 +361,49 @@ function ProfilePageContent() {
       }
     } catch (error) {
       console.error('❌ Failed to save profile:', error);
+      
+      // Check if user doesn't exist on backend
+      if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+        toast.error('User not found. Recreating your profile...', { duration: 3000 });
+        try {
+          // Recreate user on backend
+          const newUser = await apiClient.createUser(editedProfile.username || profile?.username || 'Guest');
+          console.log('✅ User recreated:', newUser);
+          
+          // Update localStorage with new user ID
+          StorageUtils.safeSetItem('chat-user', JSON.stringify(newUser));
+          
+          // Retry profile update with new user ID
+          const avatarUrlToSend = editedProfile.avatar?.startsWith('data:') 
+            ? `https://ui-avatars.com/api/?name=${encodeURIComponent(editedProfile.username || 'User')}&size=200&background=random`
+            : editedProfile.avatar;
+            
+          const result = await apiClient.updateProfile(
+            newUser.id,
+            editedProfile.username,
+            avatarUrlToSend || undefined
+          );
+          
+          if (result.success) {
+            const updatedProfile = {
+              ...profile,
+              ...editedProfile,
+              id: newUser.id,
+              username: result.user.username,
+              avatar: result.user.avatar_url || avatarUrlToSend || ''
+            };
+            
+            setProfile(updatedProfile);
+            toast.success('✅ Profile recreated and saved!');
+          }
+        } catch (recreateError) {
+          console.error('❌ Failed to recreate user:', recreateError);
+          toast.error('Failed to save profile. Please log in again.', { duration: 5000 });
+          setIsEditing(true);
+        }
+        return;
+      }
+      
       const errorMsg = error instanceof Error ? error.message : 'Failed to save profile';
       toast.error(errorMsg, { duration: 5000 });
       setIsEditing(true); // Re-enable editing

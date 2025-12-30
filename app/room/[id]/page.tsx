@@ -124,7 +124,27 @@ export default function RoomPage() {
       console.log('👤 Loaded user from localStorage:', userData);
       console.log('   - ID:', userData.id);
       console.log('   - Username:', userData.username);
-      setUser(userData);
+      
+      // Validate user exists on backend
+      try {
+        console.log('🔍 Validating user exists on backend...');
+        const exists = await apiClient.validateUser(userData.id);
+        if (!exists) {
+          console.warn('⚠️ User does not exist on backend, recreating...');
+          const recreated = await apiClient.createUser(userData.username || 'Guest');
+          console.log('✅ User recreated:', recreated);
+          localStorage.setItem('chat-user', JSON.stringify(recreated));
+          setUser(recreated);
+          userData.id = recreated.id;
+          userData.username = recreated.username;
+        } else {
+          console.log('✅ User exists on backend');
+          setUser(userData);
+        }
+      } catch (validationError) {
+        console.warn('⚠️ Could not validate user, assuming exists:', validationError);
+        setUser(userData);
+      }
       
       // Load user avatar BEFORE loading messages (critical for avatar display)
       const storedProfile = localStorage.getItem('userProfile');

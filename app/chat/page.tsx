@@ -25,6 +25,33 @@ export default function ChatPage() {
     const savedUser = localStorage.getItem('chat-user');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
+      
+      // Check if this is a mock user
+      if (parsed.id && parsed.id.startsWith('mock-')) {
+        console.warn('⚠️ Detected mock user in chat page, redirecting to home...');
+        localStorage.removeItem('chat-user');
+        localStorage.removeItem('userProfile');
+        router.push('/');
+        return;
+      }
+      
+      // Validate user exists on backend (async)
+      (async () => {
+        try {
+          const exists = await apiClient.validateUser(parsed.id);
+          if (!exists) {
+            console.warn('⚠️ User does not exist on backend, clearing and redirecting...');
+            localStorage.removeItem('chat-user');
+            localStorage.removeItem('userProfile');
+            router.push('/');
+            return;
+          }
+          console.log('✅ User validated on backend');
+        } catch (error) {
+          console.warn('Could not validate user:', error);
+        }
+      })();
+      
       setUser(parsed);
       // Load user avatar from profile, fallback to caches
       let avatarUrl: string | null = null;

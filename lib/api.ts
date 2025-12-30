@@ -80,16 +80,12 @@ export const apiClient = {
     if (!username || !username.trim()) throw new Error('Please provide a username');
     try {
       const r = await api.post('/users', { username });
+      console.log('✅ User created on backend:', r.data);
       return r.data;
     } catch (e) {
-      // Fallback to mock user when backend is unavailable
-      console.warn('Backend unavailable, creating mock user:', e);
-      const mockUser: User = {
-        id: `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        username: username.trim(),
-        created_at: new Date().toISOString(),
-      };
-      return mockUser;
+      console.error('❌ Failed to create user on backend:', e);
+      handleApiError(e, 'Create user');
+      throw e;
     }
   },
 
@@ -188,46 +184,15 @@ export const apiClient = {
   getProfile: async (userId: string): Promise<User> => {
     try {
       const r = await api.get(`/users/${userId}`);
+      console.log('✅ Profile loaded from backend:', r.data);
       return r.data;
     } catch (e) {
-      // If backend doesn't have profile (404), synthesize a user from local data
       if (axios.isAxiosError(e) && e.response?.status === 404) {
-        console.warn('⚠️ Backend profile endpoint missing - using local/synthetic profile');
-        // Prefer locally saved minimal profile
-        const localProfileRaw = StorageUtils.safeGetItem('userProfile');
-        if (localProfileRaw) {
-          try {
-            const parsed = JSON.parse(localProfileRaw);
-            const syntheticUser: User = {
-              id: parsed.id || userId,
-              username: parsed.username || 'Anonymous',
-              avatar_url: parsed.avatar, // may be undefined
-              created_at: parsed.created_at || new Date().toISOString(),
-            };
-            return syntheticUser;
-          } catch {}
-        }
-        // Fallback to chat-user cache
-        const chatUserRaw = StorageUtils.safeGetItem('chat-user');
-        if (chatUserRaw) {
-          try {
-            const parsed = JSON.parse(chatUserRaw);
-            const syntheticUser: User = {
-              id: parsed.id || userId,
-              username: parsed.username || 'Anonymous',
-              created_at: new Date().toISOString(),
-            };
-            return syntheticUser;
-          } catch {}
-        }
-        // Final fallback: generic synthetic user
-        return {
-          id: userId,
-          username: 'Anonymous',
-          created_at: new Date().toISOString(),
-        };
+        console.error('❌ User not found on backend. User ID:', userId);
+        throw new Error('USER_NOT_FOUND');
       }
       handleApiError(e, 'Get profile');
+      throw e;
     }
   },
 
@@ -252,44 +217,43 @@ export const apiClient = {
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);
-      return r.data;
+      console.log('✅ Profile updated on backend:', r.data);
       return r.data;
     } catch (e) {
       if (axios.isAxiosError(e) && e.response?.status === 404) {
-        console.warn('⚠️ Profile endpoint not found - backend may not support profiles yet');
-        // Fallback to localStorage with compression
-        const localProfile = localStorage.getItem('userProfile');
-        if (localProfile) {
-          const parsed = JSON.parse(localProfile);
-          if (displayName) parsed.username = displayName;
-          if (avatarUrl) parsed.avatar = avatarUrl;
-          // Use safe storage to handle quota
-          StorageUtils.safeSetItem('userProfile', JSON.stringify(parsed));
-          // Return synthetic success user shaped like backend User
-          const syntheticUser: User = {
-            id: userId,
-            username: parsed.username,
-            avatar_url: parsed.avatar,
-            created_at: new Date().toISOString(),
-          };
-          return { success: true, user: syntheticUser };
-        }
-        // No local profile exists — construct a synthetic user from inputs and persist minimal data
-        const minimal = {
-          id: userId,
-          username: displayName || 'Anonymous',
-          email: '',
-        };
-        StorageUtils.safeSetItem('userProfile', JSON.stringify(minimal));
-        const syntheticUserNoLocal: User = {
-          id: userId,
-          username: displayName || 'Anonymous',
-          avatar_url: avatarUrl,
-          created_at: new Date().toISOString(),
-        };
-        return { success: true, user: syntheticUserNoLocal };
+        console.error('❌ User not found on backend. User ID:', userId);
+        throw new Error('USER_NOT_FOUND');
       }
       handleApiError(e, 'Update profile');
+      throw e;
+    }
+  },
+
+  // Validate user exists on backend
+  validateUser: async (userId: string): Promise<boolean> => {
+    try {
+      await api.get(`/users/${userId}`);
+      return true;
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        return false;
+      }
+      // Other errors (network, etc) - assume user might exist
+      console.warn('Could not validate user:', e);
+      return true;
+    }
+  },
+
+  // Recreate user on backend if they don't exist
+  recreateUser: async (username: string): Promise<User> => {
+    try {
+      console.log('🔄 Recreating user on backend:', username);
+      const user = await apiClient.createUser(username);
+      console.log('✅ User recreated:', user);
+      return user;
+    } catch (e) {
+      console.error('❌ Failed to recreate user:', e);
+      throw e;
     }
   },
 
