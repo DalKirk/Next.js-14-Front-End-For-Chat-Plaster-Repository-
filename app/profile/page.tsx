@@ -91,42 +91,74 @@ function ProfilePageContent() {
   });
 
   useEffect(() => {
-    // Load profile from localStorage or API
-    const storedUser = localStorage.getItem('chat-user');
+    // Load profile from backend API
+    const storedUser = StorageUtils.safeGetItem('chat-user');
     if (!storedUser) {
       router.push('/');
       return;
     }
 
     const userData = JSON.parse(storedUser);
-    const existingProfile = localStorage.getItem('userProfile');
+    
+    // Try to load from backend first
+    async function loadProfile() {
+      try {
+        console.log('📥 Loading profile from backend...');
+        const backendProfile = await apiClient.getProfile(userData.id);
+        
+        const fullProfile: UserProfile = {
+          id: backendProfile.id,
+          username: backendProfile.username,
+          email: userData.email || `${backendProfile.username}@chatplaster.com`,
+          bio: 'Developer passionate about real-time collaboration and clean code.',
+          avatar: backendProfile.avatar_url || '',
+          joinedDate: new Date(backendProfile.created_at).toISOString().split('T')[0],
+          totalRooms: 3,
+          totalMessages: 127,
+          favoriteLanguage: 'JavaScript',
+          theme: 'purple',
+          notifications: true
+        };
+        
+        console.log('✅ Profile loaded from backend:', fullProfile);
+        setProfile(fullProfile);
+        setEditedProfile(fullProfile);
+        setAvatarPreview(fullProfile.avatar || null);
+        
+      } catch (error) {
+        console.warn('⚠️ Backend profile not found, using localStorage fallback');
+        
+        // Fallback to localStorage
+        const existingProfile = StorageUtils.safeGetItem('userProfile');
+        const mockProfile: UserProfile = {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email || `${userData.username}@chatplaster.com`,
+          bio: 'Developer passionate about real-time collaboration and clean code.',
+          avatar: '',
+          joinedDate: new Date().toISOString().split('T')[0],
+          totalRooms: 3,
+          totalMessages: 127,
+          favoriteLanguage: 'JavaScript',
+          theme: 'purple',
+          notifications: true
+        };
 
-    // Mock profile data
-    const mockProfile: UserProfile = {
-      id: userData.id,
-      username: userData.username,
-      email: userData.email || `${userData.username}@chatplaster.com`,
-      bio: 'Developer passionate about real-time collaboration and clean code.',
-      avatar: '',
-      joinedDate: new Date().toISOString().split('T')[0],
-      totalRooms: 3,
-      totalMessages: 127,
-      favoriteLanguage: 'JavaScript',
-      theme: 'purple',
-      notifications: true
-    };
-
-    if (existingProfile) {
-      const savedProfile = JSON.parse(existingProfile);
-      setProfile({ ...mockProfile, ...savedProfile });
-      setEditedProfile({ ...mockProfile, ...savedProfile });
-      if (savedProfile.avatar) {
-        setAvatarPreview(savedProfile.avatar);
+        if (existingProfile) {
+          const savedProfile = JSON.parse(existingProfile);
+          setProfile({ ...mockProfile, ...savedProfile });
+          setEditedProfile({ ...mockProfile, ...savedProfile });
+          if (savedProfile.avatar) {
+            setAvatarPreview(savedProfile.avatar);
+          }
+        } else {
+          setProfile(mockProfile);
+          setEditedProfile(mockProfile);
+        }
       }
-    } else {
-      setProfile(mockProfile);
-      setEditedProfile(mockProfile);
     }
+    
+    loadProfile();
 
     // If route includes ?edit=true, open edit mode automatically (used after signup or direct links)
     try {
@@ -195,7 +227,11 @@ function ProfilePageContent() {
 
   const processAvatarFile = (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+      toast.error('❌ File too large! Please use an image URL instead.');
+      toast(
+        '💡 Tip: Upload to imgbb.com or use pravatar.cc for avatars',
+        { duration: 5000, icon: '💡' }
+      );
       return;
     }
     if (!file.type.startsWith('image/')) {
@@ -203,12 +239,20 @@ function ProfilePageContent() {
       return;
     }
 
+    // Show preview but warn about storage
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
       setAvatarPreview(result);
-      setEditedProfile({ ...editedProfile, avatar: result });
-      toast.success('Avatar updated!');
+      
+      toast.error(
+        '⚠️ Base64 images cause storage quota errors. Please enter an image URL instead.',
+        { duration: 6000 }
+      );
+      toast(
+        '💡 Use imgbb.com, imgur.com, or paste a direct image URL',
+        { duration: 6000, icon: '💡' }
+      );
     };
     reader.readAsDataURL(file);
   };
@@ -222,13 +266,54 @@ function ProfilePageContent() {
     }
   };
 
-  const handleSaveProfile = () => {
-    if (profile && editedProfile) {
-      const updatedProfile = { ...profile, ...editedProfile };
-      setProfile(updatedProfile);
-      localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-      toast.success('Profile updated successfully!');
-      setIsEditing(false);
+  const handleSaveProfile = async () => {
+    if (!profile || !editedProfile) return;
+    
+    try {
+      // Validate avatar URL
+      if (editedProfile.avatar && editedProfile.avatar.startsWith('data:')) {
+        toast.error(
+          '❌ Cannot save base64 avatars. Please use an image URL.',
+          { duration: 5000 }
+        );
+        return;
+      }
+      
+      console.log('💾 Saving profile to backend...');
+      setIsEditing(false); // Show loading state
+      
+      // Save to backend
+      const result = await apiClient.updateProfile(
+        profile.id,
+        editedProfile.username,
+        editedProfile.avatar || undefined
+      );
+      
+      if (result.success) {
+        const updatedProfile = {
+          ...profile,
+          ...editedProfile,
+          username: result.user.username,
+          avatar: result.user.avatar_url || editedProfile.avatar
+        };
+        
+        setProfile(updatedProfile);
+        
+        // Only store minimal data in localStorage (no avatars!)
+        StorageUtils.safeSetItem('userProfile', JSON.stringify({
+          id: updatedProfile.id,
+          username: updatedProfile.username,
+          email: updatedProfile.email
+        }));
+        
+        toast.success('✅ Profile saved successfully!');
+        console.log('✅ Profile saved to backend');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save profile:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to save profile';
+      toast.error(errorMsg, { duration: 5000 });
+      setIsEditing(true); // Re-enable editing
     }
   };
 
@@ -394,6 +479,23 @@ function ProfilePageContent() {
                     rows={3}
                     className="bg-white/5"
                   />
+                  
+                  {/* Avatar URL Input */}
+                  <div className="space-y-2">
+                    <Input
+                      label="Avatar URL (Recommended)"
+                      placeholder="https://example.com/avatar.jpg or https://i.pravatar.cc/150"
+                      value={editedProfile.avatar || ''}
+                      onChange={(e) => {
+                        setEditedProfile({...editedProfile, avatar: e.target.value});
+                        setAvatarPreview(e.target.value);
+                      }}
+                      className="bg-white/5"
+                    />
+                    <p className="text-xs text-slate-400">
+                      💡 Tip: Use <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">imgbb.com</a>, <a href="https://imgur.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">imgur.com</a>, or <a href="https://i.pravatar.cc/150" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">pravatar.cc</a> for avatars
+                    </p>
+                  </div>
                   
                   {/* Security Section - Only visible when editing */}
                   <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4">

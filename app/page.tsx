@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Sidebar } from '@/components/ui/sidebar';
 import { apiClient } from '@/lib/api';
 import { claudeAPI, clearConversationHistory } from '@/lib/api/claude';
+import { StorageUtils } from '@/lib/storage-utils';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -67,6 +68,10 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Run storage cleanup on mount to prevent quota errors
+    StorageUtils.cleanup();
+    StorageUtils.logStorageUsage();
+    
     const storedUser = localStorage.getItem('chat-user');
     if (storedUser) {
       try {

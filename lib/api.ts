@@ -185,6 +185,64 @@ export const apiClient = {
     }
   },
 
+  // User Profile Management
+  getProfile: async (userId: string): Promise<User> => {
+    try {
+      const r = await api.get(`/users/${userId}`);
+      return r.data;
+    } catch (e) {
+      // If backend doesn't have profile, return from localStorage
+      console.warn('Backend profile not found, checking localStorage:', e);
+      const localProfile = localStorage.getItem('userProfile');
+      if (localProfile) {
+        const parsed = JSON.parse(localProfile);
+        return {
+          id: parsed.id,
+          username: parsed.username,
+          created_at: parsed.created_at || new Date().toISOString(),
+        };
+      }
+      handleApiError(e, 'Get profile');
+    }
+  },
+
+  updateProfile: async (userId: string, displayName?: string, avatarUrl?: string): Promise<{ success: boolean; user: User }> => {
+    try {
+      // Validate avatar URL (no base64)
+      if (avatarUrl && avatarUrl.startsWith('data:')) {
+        throw new Error('❌ Cannot save base64 avatars. Please use an image URL or upload to an image hosting service.');
+      }
+      if (avatarUrl && avatarUrl.length > 2000) {
+        throw new Error('❌ Avatar URL too long. Maximum 2000 characters.');
+      }
+      if (displayName && displayName.length < 2) {
+        throw new Error('❌ Display name must be at least 2 characters.');
+      }
+
+      const payload: Record<string, string> = {};
+      if (displayName) payload.display_name = displayName;
+      if (avatarUrl) payload.avatar_url = avatarUrl;
+
+      console.log('📤 Updating profile on backend:', payload);
+      const r = await api.put(`/users/${userId}/profile`, payload);
+      return r.data;
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        console.warn('⚠️ Profile endpoint not found - backend may not support profiles yet');
+        // Fallback to localStorage
+        const localProfile = localStorage.getItem('userProfile');
+        if (localProfile) {
+          const parsed = JSON.parse(localProfile);
+          if (displayName) parsed.username = displayName;
+          if (avatarUrl) parsed.avatar = avatarUrl;
+          localStorage.setItem('userProfile', JSON.stringify(parsed));
+          return { success: true, user: parsed };
+        }
+      }
+      handleApiError(e, 'Update profile');
+    }
+  },
+
   createLiveStream: async (roomId: string, title: string): Promise<LiveStream> => {
     if (!title || !title.trim()) throw new Error('Please provide a title');
     try {
