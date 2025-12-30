@@ -109,13 +109,18 @@ function ProfilePageContent() {
         console.log('📥 Loading profile from backend...');
         const backendProfile = await apiClient.getProfile(userData.id);
         
+        // Handle missing or invalid created_at
+        const joinedDate = backendProfile.created_at 
+          ? new Date(backendProfile.created_at).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        
         const fullProfile: UserProfile = {
           id: backendProfile.id,
           username: backendProfile.username,
           email: userData.email || `${backendProfile.username}@chatplaster.com`,
           bio: 'Developer passionate about real-time collaboration and clean code.',
           avatar: backendProfile.avatar_url || '',
-          joinedDate: new Date(backendProfile.created_at).toISOString().split('T')[0],
+          joinedDate,
           totalRooms: 3,
           totalMessages: 127,
           favoriteLanguage: 'JavaScript',
@@ -140,14 +145,18 @@ function ProfilePageContent() {
             // Update localStorage with new user ID
             StorageUtils.safeSetItem('chat-user', JSON.stringify(newUser));
             
-            // Create profile with new user
+            // Create profile with new user - handle missing created_at gracefully
+            const joinedDate = newUser.created_at 
+              ? new Date(newUser.created_at).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0];
+            
             const fullProfile: UserProfile = {
               id: newUser.id,
               username: newUser.username,
               email: userData.email || `${newUser.username}@chatplaster.com`,
               bio: 'Developer passionate about real-time collaboration and clean code.',
               avatar: '',
-              joinedDate: new Date(newUser.created_at).toISOString().split('T')[0],
+              joinedDate,
               totalRooms: 3,
               totalMessages: 127,
               favoriteLanguage: 'JavaScript',
