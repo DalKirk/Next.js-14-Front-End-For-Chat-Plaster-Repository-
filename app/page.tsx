@@ -76,35 +76,7 @@ export default function HomePage() {
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        
-        // Check if this is a mock user (created when backend was down)
-        if (userData.id && userData.id.startsWith('mock-')) {
-          console.warn('⚠️ Detected mock user, clearing...', userData.id);
-          localStorage.removeItem('chat-user');
-          localStorage.removeItem('userProfile');
-          return;
-        }
-        
-        // Validate user exists on backend (async, don't block render)
-        (async () => {
-          try {
-            const exists = await apiClient.validateUser(userData.id);
-            if (!exists) {
-              console.warn('⚠️ User does not exist on backend, clearing localStorage');
-              localStorage.removeItem('chat-user');
-              localStorage.removeItem('userProfile');
-              setCurrentUser(null);
-            } else {
-              console.log('✅ User validated on backend');
-              setCurrentUser(userData);
-            }
-          } catch (error) {
-            console.warn('Could not validate user:', error);
-            // Assume user exists if validation fails (network error, etc)
-            setCurrentUser(userData);
-          }
-        })();
-        
+        setCurrentUser(userData);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('chat-user');

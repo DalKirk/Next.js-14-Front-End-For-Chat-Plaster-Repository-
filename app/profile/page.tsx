@@ -103,82 +103,53 @@ function ProfilePageContent() {
 
     const userData = JSON.parse(storedUser);
     
-    // Try to load from backend first
+    // Load profile - try backend first, fallback to local
     async function loadProfile() {
+      // Start with local data
+      const existingProfile = StorageUtils.safeGetItem('userProfile');
+      const localProfile: UserProfile = existingProfile 
+        ? JSON.parse(existingProfile)
+        : {
+            id: userData.id,
+            username: userData.username,
+            email: userData.email || `${userData.username}@chatplaster.com`,
+            bio: 'Developer passionate about real-time collaboration and clean code.',
+            avatar: '',
+            joinedDate: new Date().toISOString().split('T')[0],
+            totalRooms: 3,
+            totalMessages: 127,
+            favoriteLanguage: 'JavaScript',
+            theme: 'purple',
+            notifications: true
+          };
+      
+      // Set local profile immediately
+      setProfile(localProfile);
+      setEditedProfile(localProfile);
+      setAvatarPreview(localProfile.avatar || null);
+      
+      // Try to sync with backend in background (non-blocking)
       try {
-        console.log('📥 Loading profile from backend...');
+        console.log('📥 Syncing profile with backend...');
         const backendProfile = await apiClient.getProfile(userData.id);
         
-        // Handle missing or invalid created_at
         const joinedDate = backendProfile.created_at 
           ? new Date(backendProfile.created_at).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0];
+          : localProfile.joinedDate;
         
         const fullProfile: UserProfile = {
-          id: backendProfile.id,
+          ...localProfile,
           username: backendProfile.username,
-          email: userData.email || `${backendProfile.username}@chatplaster.com`,
-          bio: 'Developer passionate about real-time collaboration and clean code.',
-          avatar: backendProfile.avatar_url || '',
-          joinedDate,
-          totalRooms: 3,
-          totalMessages: 127,
-          favoriteLanguage: 'JavaScript',
-          theme: 'purple',
-          notifications: true
+          avatar: backendProfile.avatar_url || localProfile.avatar,
+          joinedDate
         };
         
-        console.log('✅ Profile loaded from backend:', fullProfile);
+        console.log('✅ Profile synced from backend');
         setProfile(fullProfile);
         setEditedProfile(fullProfile);
         setAvatarPreview(fullProfile.avatar || null);
-        
       } catch (error) {
-        // Check if user doesn't exist on backend
-        if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
-          console.warn('⚠️ User not found on backend, recreating...');
-          try {
-            // Recreate user on backend
-            const newUser = await apiClient.createUser(userData.username || 'Guest');
-            console.log('✅ User recreated on backend:', newUser);
-            
-            // Update localStorage with new user ID
-            StorageUtils.safeSetItem('chat-user', JSON.stringify(newUser));
-            
-            // Create profile with new user - handle missing created_at gracefully
-            const joinedDate = newUser.created_at 
-              ? new Date(newUser.created_at).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0];
-            
-            const fullProfile: UserProfile = {
-              id: newUser.id,
-              username: newUser.username,
-              email: userData.email || `${newUser.username}@chatplaster.com`,
-              bio: 'Developer passionate about real-time collaboration and clean code.',
-              avatar: '',
-              joinedDate,
-              totalRooms: 3,
-              totalMessages: 127,
-              favoriteLanguage: 'JavaScript',
-              theme: 'purple',
-              notifications: true
-            };
-            
-            setProfile(fullProfile);
-            setEditedProfile(fullProfile);
-            toast.success('Profile recreated successfully!');
-          } catch (recreateError) {
-            console.error('❌ Failed to recreate user:', recreateError);
-            toast.error('Failed to load profile. Please log in again.');
-            // Clear localStorage and redirect to home
-            StorageUtils.safeRemoveItem('chat-user');
-            StorageUtils.safeRemoveItem('userProfile');
-            router.push('/');
-          }
-          return;
-        }
-        
-        console.warn('⚠️ Backend profile error, using localStorage fallback');
+        console.warn('⚠️ Could not sync with backend, using local profile');
         
         // Fallback to localStorage
         const existingProfile = StorageUtils.safeGetItem('userProfile');
@@ -369,53 +340,26 @@ function ProfilePageContent() {
         console.log('✅ Profile saved to backend');
       }
     } catch (error) {
-      console.error('❌ Failed to save profile:', error);
+      console.error('❌ Failed to save profile to backend:', error);
       
-      // Check if user doesn't exist on backend
-      if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
-        toast.error('User not found. Recreating your profile...', { duration: 3000 });
-        try {
-          // Recreate user on backend
-          const newUser = await apiClient.createUser(editedProfile.username || profile?.username || 'Guest');
-          console.log('✅ User recreated:', newUser);
-          
-          // Update localStorage with new user ID
-          StorageUtils.safeSetItem('chat-user', JSON.stringify(newUser));
-          
-          // Retry profile update with new user ID
-          const avatarUrlToSend = editedProfile.avatar?.startsWith('data:') 
-            ? `https://ui-avatars.com/api/?name=${encodeURIComponent(editedProfile.username || 'User')}&size=200&background=random`
-            : editedProfile.avatar;
-            
-          const result = await apiClient.updateProfile(
-            newUser.id,
-            editedProfile.username,
-            avatarUrlToSend || undefined
-          );
-          
-          if (result.success) {
-            const updatedProfile = {
-              ...profile,
-              ...editedProfile,
-              id: newUser.id,
-              username: result.user.username,
-              avatar: result.user.avatar_url || avatarUrlToSend || ''
-            };
-            
-            setProfile(updatedProfile);
-            toast.success('✅ Profile recreated and saved!');
-          }
-        } catch (recreateError) {
-          console.error('❌ Failed to recreate user:', recreateError);
-          toast.error('Failed to save profile. Please log in again.', { duration: 5000 });
-          setIsEditing(true);
-        }
-        return;
-      }
+      // Save locally even if backend fails
+      const updatedProfile = {
+        ...profile,
+        ...editedProfile,
+        avatar: editedProfile.avatar
+      };
       
-      const errorMsg = error instanceof Error ? error.message : 'Failed to save profile';
-      toast.error(errorMsg, { duration: 5000 });
-      setIsEditing(true); // Re-enable editing
+      setProfile(updatedProfile);
+      
+      StorageUtils.safeSetItem('userProfile', JSON.stringify({
+        id: updatedProfile.id,
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+        avatar: updatedProfile.avatar
+      }));
+      
+      toast.success('✅ Profile saved locally!', { duration: 3000 });
+      console.log('✅ Profile saved to localStorage');
     }
   };
 
