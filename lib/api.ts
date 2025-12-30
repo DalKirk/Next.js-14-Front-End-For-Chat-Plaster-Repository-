@@ -192,15 +192,41 @@ export const apiClient = {
       const r = await api.get(`/users/${userId}`);
       return r.data;
     } catch (e) {
-      // If backend doesn't have profile, return from localStorage
-      console.warn('Backend profile not found, checking localStorage:', e);
-      const localProfile = localStorage.getItem('userProfile');
-      if (localProfile) {
-        const parsed = JSON.parse(localProfile);
+      // If backend doesn't have profile (404), synthesize a user from local data
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        console.warn('⚠️ Backend profile endpoint missing - using local/synthetic profile');
+        // Prefer locally saved minimal profile
+        const localProfileRaw = StorageUtils.safeGetItem('userProfile');
+        if (localProfileRaw) {
+          try {
+            const parsed = JSON.parse(localProfileRaw);
+            const syntheticUser: User = {
+              id: parsed.id || userId,
+              username: parsed.username || 'Anonymous',
+              avatar_url: parsed.avatar, // may be undefined
+              created_at: parsed.created_at || new Date().toISOString(),
+            };
+            return syntheticUser;
+          } catch {}
+        }
+        // Fallback to chat-user cache
+        const chatUserRaw = StorageUtils.safeGetItem('chat-user');
+        if (chatUserRaw) {
+          try {
+            const parsed = JSON.parse(chatUserRaw);
+            const syntheticUser: User = {
+              id: parsed.id || userId,
+              username: parsed.username || 'Anonymous',
+              created_at: new Date().toISOString(),
+            };
+            return syntheticUser;
+          } catch {}
+        }
+        // Final fallback: generic synthetic user
         return {
-          id: parsed.id,
-          username: parsed.username,
-          created_at: parsed.created_at || new Date().toISOString(),
+          id: userId,
+          username: 'Anonymous',
+          created_at: new Date().toISOString(),
         };
       }
       handleApiError(e, 'Get profile');
@@ -244,8 +270,29 @@ export const apiClient = {
           if (avatarUrl) parsed.avatar = avatarUrl;
           // Use safe storage to handle quota
           StorageUtils.safeSetItem('userProfile', JSON.stringify(parsed));
-          return { success: true, user: parsed };
+          // Return synthetic success user shaped like backend User
+          const syntheticUser: User = {
+            id: userId,
+            username: parsed.username,
+            avatar_url: parsed.avatar,
+            created_at: new Date().toISOString(),
+          };
+          return { success: true, user: syntheticUser };
         }
+        // No local profile exists — construct a synthetic user from inputs and persist minimal data
+        const minimal = {
+          id: userId,
+          username: displayName || 'Anonymous',
+          email: '',
+        };
+        StorageUtils.safeSetItem('userProfile', JSON.stringify(minimal));
+        const syntheticUserNoLocal: User = {
+          id: userId,
+          username: displayName || 'Anonymous',
+          avatar_url: avatarUrl,
+          created_at: new Date().toISOString(),
+        };
+        return { success: true, user: syntheticUserNoLocal };
       }
       handleApiError(e, 'Update profile');
     }
