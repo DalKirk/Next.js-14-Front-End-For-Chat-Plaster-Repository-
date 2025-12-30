@@ -131,9 +131,12 @@ export const apiClient = {
     }
   },
 
-  joinRoom: async (roomId: string, userId: string): Promise<void> => {
+  joinRoom: async (roomId: string, userId: string, username?: string, avatarUrl?: string): Promise<void> => {
     try {
-      await api.post(`/rooms/${roomId}/join`, { user_id: userId });
+      const payload: Record<string, unknown> = { user_id: userId };
+      if (username && username.length >= 2) payload.username = username;
+      if (avatarUrl && /^https?:\/\//.test(avatarUrl)) payload.avatar_url = avatarUrl;
+      await api.post(`/rooms/${roomId}/join`, payload);
     } catch (e) {
       // If endpoint doesn't exist (404), that's okay - room page will handle it
       if (axios.isAxiosError(e) && e.response?.status === 404) {
@@ -345,6 +348,44 @@ export const apiClient = {
       return r.data;
     } catch (e) {
       handleApiError(e, 'Download GPU model');
+    }
+  },
+
+  // Authentication endpoints
+  login: async (username: string, password: string): Promise<{ user: User; token: string }> => {
+    try {
+      const r = await api.post('/auth/login', { username, password });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Login');
+    }
+  },
+
+  signup: async (username: string, email: string, password: string): Promise<{ user: User; token: string }> => {
+    try {
+      const r = await api.post('/auth/signup', { username, email, password });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Sign up');
+    }
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      handleApiError(e, 'Logout');
+    }
+  },
+
+  getCurrentUser: async (token: string): Promise<User> => {
+    try {
+      const r = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Get current user');
     }
   },
 };

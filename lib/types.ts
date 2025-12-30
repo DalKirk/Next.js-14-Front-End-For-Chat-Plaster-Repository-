@@ -2,6 +2,7 @@
 export interface User {
   id: string;
   username: string;
+  email?: string;
   created_at: string;
 }
 
@@ -9,6 +10,17 @@ export interface Room {
   id: string;
   name: string;
   created_at: string;
+  description?: string;
+  thumbnail?: string;
+  thumbnailPreset?: string;
+  privacy?: 'public' | 'private' | 'password';
+  password?: string;
+  maxMembers?: number;
+  memberCount?: number;
+  onlineCount?: number;
+  category?: string;
+  tags?: string[];
+  createdBy?: string;
 }
 
 export interface Message {
@@ -23,6 +35,8 @@ export interface Message {
   title?: string;
   playback_id?: string;
   stream_key?: string;
+  // Optional user avatar
+  avatar?: string;
 }
 
 export interface LiveStream {

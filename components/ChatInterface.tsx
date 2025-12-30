@@ -86,6 +86,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = '';
+      let hasError = false;
 
       if (reader) {
         while (true) {
@@ -98,10 +99,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
-              if (data === '[DONE]') continue;
+              if (data === '[DONE]') {
+                console.log('📍 Received [DONE] signal');
+                continue;
+              }
               
               try {
                 const parsed = JSON.parse(data);
+                console.log('📍 Frontend parsed:', parsed);
+                
+                // Handle error responses from backend
+                if (parsed.error) {
+                  console.error('❌ Backend error:', parsed.error);
+                  assistantMessage = `⚠️ AI Error: ${parsed.error}\n\nPlease try again or contact support if the issue persists.`;
+                  hasError = true;
+                  setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: assistantMessage,
+                  }]);
+                  console.log('📍 Error message set, breaking loop');
+                  break; // Exit the line processing loop
+                }
+                
                 if (parsed.content) {
                   console.log('Raw chunk:', JSON.stringify(parsed.content));
                   assistantMessage += parsed.content;
@@ -127,17 +146,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               }
             }
           }
+          
+          // If error encountered, break the read loop
+          if (hasError) break;
         }
         
-        // Mark streaming as complete
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMsg = newMessages[newMessages.length - 1];
-          if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.isStreaming = false;
-          }
-          return newMessages;
-        });
+        // Mark streaming as complete (unless it was an error)
+        if (!hasError) {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMsg = newMessages[newMessages.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+              lastMsg.isStreaming = false;
+            }
+            return newMessages;
+          });
+        }
         
         console.log('? Message complete (conversation_id:', conversationId, ')'); // ? Log completion
       }

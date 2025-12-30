@@ -25,6 +25,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Copy, Check } from 'lucide-react';
 import { QuickActionBar } from '@/components/QuickActionBar';
+import { AuthModal } from '@/components/auth/AuthModal';
 import Lottie from 'lottie-react';
 import threeBodyAnimation from '@/public/animations/3-body-loading.json';
 import mangoAnimation from '@/public/animations/mango-animation.json';
@@ -46,6 +47,9 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   
   // Claude AI State
   const [claudeMessages, setClaudeMessages] = useState<ClaudeMessage[]>([]);
@@ -72,6 +76,33 @@ export default function HomePage() {
         localStorage.removeItem('chat-user');
       }
     }
+    
+    // Load user avatar
+    const storedProfile = localStorage.getItem('userProfile');
+    if (storedProfile) {
+      try {
+        const profile = JSON.parse(storedProfile);
+        if (profile.avatar) {
+          setUserAvatar(profile.avatar);
+        }
+      } catch (error) {
+        console.error('Error parsing user profile:', error);
+      }
+    }
+
+    // Fallback: if userProfile missing, try cached avatars by id/username
+    try {
+      const user = storedUser ? JSON.parse(storedUser) as User : null;
+      if (!storedProfile && user) {
+        const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+        const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+        const cached = byId[user.id] || byName[user.username];
+        if (cached) setUserAvatar(cached);
+      }
+    } catch (e) {
+      console.warn('Avatar cache fallback failed', e);
+    }
+    
     checkAIHealth();
   }, []);
   
@@ -92,6 +123,48 @@ export default function HomePage() {
   useEffect(() => {
     scrollToBottom();
   }, [claudeMessages]);
+
+  // Listen for profile updates (including avatar changes)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedProfile = localStorage.getItem('userProfile');
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          if (profile.avatar) {
+            setUserAvatar(profile.avatar);
+          } else {
+            // Fallback to caches when profile lacks avatar
+            if (currentUser) {
+              const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+              const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+              const cached = byId[currentUser.id] || byName[currentUser.username];
+              setUserAvatar(cached || null);
+            } else {
+              setUserAvatar(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing user profile:', error);
+        }
+      }
+    };
+
+    // Listen for storage events (updates from other tabs/windows)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically when user menu is open (for same-tab updates)
+    const interval = setInterval(() => {
+      if (showUserMenu) {
+        handleStorageChange();
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [showUserMenu]);
 
 
 
@@ -525,8 +598,77 @@ export default function HomePage() {
     }
   };
 
+  const handleLogin = async (credentials: { username: string; password: string }) => {
+    setIsAuthLoading(true);
+    try {
+      const { user, token } = await apiClient.login(credentials.username, credentials.password);
+      setCurrentUser(user);
+      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('auth-token', token);
+      toast.success(`Welcome back, ${user.username}!`);
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error('Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleSignUp = async (credentials: { username: string; email: string; password: string }) => {
+    setIsAuthLoading(true);
+    try {
+      const { user, token } = await apiClient.signup(credentials.username, credentials.email, credentials.password);
+      setCurrentUser(user);
+      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('auth-token', token);
+      toast.success(`Account created! Welcome, ${user.username}!`);
+      setShowAuthModal(false);
+      // Mark onboarding to show once after redirect
+      try {
+        localStorage.setItem('showProfileOnboard', 'true');
+      } catch (e) {
+        // ignore storage failures
+      }
+      // Direct new users to the profile edit view to complete their profile
+      router.push('/profile?edit=true');
+    } catch (error) {
+      console.error('Signup error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        await apiClient.logout();
+      }
+      setCurrentUser(null);
+      setUserAvatar(null);
+      localStorage.removeItem('chat-user');
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('userProfile');
+      toast.success('Logged out successfully');
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
+  };
+
   const handleAskClaude = async () => {
-    if (!claudeInput.trim() || !aiHealth?.ai_enabled) return;
+    if (!claudeInput.trim()) return;
+    if (aiHealth && !aiHealth.ai_enabled) {
+      toast.error('AI is offline');
+      return;
+    }
     
     const userMessage: ClaudeMessage = {
       id: Date.now().toString(),
@@ -564,6 +706,7 @@ export default function HomePage() {
         body: JSON.stringify({
           message: promptText,
           conversation_history: conversation_history,
+          conversation_id: claudeAPI.getConversationId(), // Add conversation ID for memory
           // Hint backend to enable web search/tooling when appropriate
           enable_search: true
         }),
@@ -576,39 +719,78 @@ export default function HomePage() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let hasError = false;
+      let buffer = '';
 
       if (reader) {
+        console.log('📍 Starting to read streaming response...');
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log('📍 Stream reading complete');
+            break;
+          }
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullContent += parsed.content;
-                  setClaudeMessages(prev => 
-                    prev.map(msg => 
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: fullContent }
-                        : msg
-                    )
-                  );
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
+            console.log('📍 Processing line:', line);
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6);
+            console.log('📍 Raw data from backend:', data);
+            if (data === '[DONE]') {
+              console.log('📍 Received [DONE] signal');
+              continue;
             }
+
+            try {
+              const parsed = JSON.parse(data);
+              console.log('📍 Parsed data on home page:', parsed);
+
+              // Handle error responses
+              if (parsed.error) {
+                console.error('❌ AI Error:', parsed.error);
+                const errorMsg = `⚠️ AI Error: ${parsed.error}\n\nPlease try again or contact support if the issue persists.`;
+                setClaudeMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId
+                      ? { ...msg, content: errorMsg }
+                      : msg
+                  )
+                );
+                console.log('📍 Error message set to:', errorMsg);
+                hasError = true;
+                break; // Exit the line processing loop
+              }
+
+              const chunkText = parsed.content || parsed.text || (parsed.delta && (parsed.delta.text || parsed.delta.content));
+              if (chunkText) {
+                fullContent += chunkText;
+                setClaudeMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId
+                      ? { ...msg, content: fullContent }
+                      : msg
+                  )
+                );
+              }
+            } catch (e) {
+              // If not JSON, log and continue
+              console.warn('Failed to parse SSE data:', data);
+            }
+          }
+
+          // If error encountered, break the read loop
+          if (hasError) {
+            console.log('📍 Breaking reader loop due to error');
+            break;
           }
         }
       }
+      
+      console.log('📍 Stream reading complete, hasError:', hasError);
       
       toast.success('Response complete!');
     } catch (error) {
@@ -631,6 +813,15 @@ export default function HomePage() {
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Sidebar Navigation */}
       <Sidebar />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        isLoading={isAuthLoading}
+      />
 
       {/* Top Navigation Bar */}
       <motion.div
@@ -680,7 +871,13 @@ export default function HomePage() {
                 >
                   <div className="px-3 py-2 border-b border-slate-700/50">
                     <div className="flex items-center gap-2">
-                      <UserCircleIcon className="w-5 h-5 text-green-400" />
+                      {userAvatar ? (
+                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-green-400/50">
+                          <Image src={userAvatar} alt="Avatar" fill className="object-cover" unoptimized />
+                        </div>
+                      ) : (
+                        <UserCircleIcon className="w-5 h-5 text-green-400" />
+                      )}
                       <span className="text-slate-300 font-medium text-sm">{currentUser.username}</span>
                     </div>
                   </div>
@@ -694,6 +891,18 @@ export default function HomePage() {
                     <UserCircleIcon className="w-4 h-4" />
                     Profile
                   </button>
+
+                  <button
+                    onClick={() => {
+                      // Navigate directly to profile in edit mode for the logged-in user
+                      router.push('/profile?edit=true');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-green-500/20 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] rounded-lg transition-all flex items-center gap-2"
+                  >
+                    <UserCircleIcon className="w-4 h-4" />
+                    Edit Profile
+                  </button>
                   <button
                     onClick={() => {
                       router.push('/chat');
@@ -704,17 +913,14 @@ export default function HomePage() {
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
                     Rooms
                   </button>
+                  
+                  {/* Logout Button */}
                   <button
-                    onClick={() => { router.push('/profile'); setShowUserMenu(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 rounded-lg text-sm text-slate-300"
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] rounded-lg transition-all flex items-center gap-2 border-t border-slate-700/50 mt-2 pt-3"
                   >
-                    Profile
-                  </button>
-                  <button
-                    onClick={() => { router.push('/chat'); setShowUserMenu(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-green-500/10 rounded-lg text-sm text-slate-300"
-                  >
-                    Browse Rooms
+                    <ArrowRightIcon className="w-4 h-4 rotate-180" />
+                    Logout
                   </button>
                   
                   {/* Code Theme Selector */}
@@ -735,21 +941,19 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Input
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreateUser()}
-                className="w-20 xs:w-24 sm:w-32 text-xs sm:text-sm bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border-slate-700/50 text-slate-300 placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-                maxLength={20}
-              />
+            <div className="flex items-center gap-2">
               <Button
-                onClick={handleCreateUser}
-                disabled={isLoading || !username.trim()}
-                className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:shadow-[0_0_35px_rgba(34,197,94,0.8)]"
+                onClick={() => setShowAuthModal(true)}
+                variant="outline"
+                className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4 bg-transparent border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]"
               >
-                {isLoading ? '...' : 'Join'}
+                Login
+              </Button>
+              <Button
+                onClick={() => setShowAuthModal(true)}
+                className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:shadow-[0_0_35px_rgba(34,197,94,0.8)]"
+              >
+                Sign Up
                 <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
               </Button>
             </div>

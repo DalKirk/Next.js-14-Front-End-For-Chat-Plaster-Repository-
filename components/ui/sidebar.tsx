@@ -9,7 +9,6 @@ import {
   UserCircleIcon,
   SparklesIcon,
   DocumentTextIcon,
-  WrenchScrewdriverIcon,
   PhotoIcon,
   CommandLineIcon,
 } from '@heroicons/react/24/outline';
@@ -19,7 +18,6 @@ import {
   UserCircleIcon as UserIconSolid,
   SparklesIcon as SparklesIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
-  WrenchScrewdriverIcon as WrenchScrewdriverIconSolid,
   PhotoIcon as PhotoIconSolid,
   CommandLineIcon as CommandLineIconSolid,
 } from '@heroicons/react/24/solid';
@@ -62,18 +60,18 @@ const navItems: NavItem[] = [
     label: 'Gen-3D'
   },
   {
-    name: 'Hacking Terminal',
-    path: '/hacking-terminal',
-    icon: CommandLineIcon,
-    iconSolid: CommandLineIconSolid,
-    label: 'Penetration Testing Simulator'
-  },
-  {
     name: 'Rooms',
     path: '/chat',
     icon: ChatBubbleLeftRightIcon,
     iconSolid: ChatIconSolid,
     label: 'Chat Rooms'
+  },
+  {
+    name: 'Pentest Simulator',
+    path: '/pentest-simulator',
+    icon: CommandLineIcon,
+    iconSolid: CommandLineIconSolid,
+    label: 'Penetration Testing Simulator'
   },
   {
     name: 'Profile',
@@ -88,13 +86,6 @@ const navItems: NavItem[] = [
     icon: DocumentTextIcon,
     iconSolid: DocumentTextIconSolid,
     label: 'Developer Notes & Updates'
-  },
-  {
-    name: 'Tools',
-    path: '/tools',
-    icon: WrenchScrewdriverIcon,
-    iconSolid: WrenchScrewdriverIconSolid,
-    label: 'Tools & Settings'
   },
 ];
 

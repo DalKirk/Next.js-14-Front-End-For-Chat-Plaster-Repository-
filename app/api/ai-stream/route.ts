@@ -69,25 +69,40 @@ export async function POST(request: NextRequest) {
     const transformStream = new TransformStream({
       transform(chunk, controller) {
         const text = new TextDecoder().decode(chunk);
+        console.log('[AI Stream] Raw backend chunk:', text);
         
         for (const line of text.split('\n')) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              console.log('[AI Stream] Parsed data:', data);
               
-              if (data.type === 'content' && data.text) {
-                controller.enqueue(
-                  new TextEncoder().encode(`data: ${JSON.stringify({ content: data.text })}\n\n`)
-                );
+              // Normalize various backend chunk formats to { content }
+              const textChunk =
+                (data && typeof data === 'object' && data.text) ||
+                (data && typeof data === 'object' && data.content) ||
+                (data && typeof data === 'object' && data.delta && (data.delta.text || data.delta.content));
+
+              if (textChunk) {
+                const transformed = `data: ${JSON.stringify({ content: textChunk })}\n\n`;
+                console.log('[AI Stream] Sending content chunk');
+                controller.enqueue(new TextEncoder().encode(transformed));
               } else if (data.type === 'done') {
+                console.log('[AI Stream] Sending DONE signal');
                 controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
               } else if (data.type === 'error') {
+                console.log('[AI Stream] Sending error:', data.error);
                 controller.enqueue(
                   new TextEncoder().encode(`data: ${JSON.stringify({ error: data.error })}\n\n`)
                 );
+                // Also send DONE after error
+                controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+              } else {
+                // Unknown chunk type: ignore or log for diagnostics
+                console.log('[AI Stream] Unknown chunk format, ignoring');
               }
             } catch (e) {
-              // Skip parse errors
+              console.error('[AI Stream] Parse error:', e);
             }
           }
         }

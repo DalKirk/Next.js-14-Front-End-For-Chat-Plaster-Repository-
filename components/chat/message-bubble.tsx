@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -13,6 +14,7 @@ import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 interface MessageBubbleProps {
   message: Message;
   isOwn?: boolean;
+  isHost?: boolean; // If true, this message is from a host and should be fully highlighted
 }
 
 // Function to parse URLs in text and make them clickable
@@ -53,12 +55,26 @@ const parseMessageWithLinks = (text: string) => {
   });
 };
 
-export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn = false, isHost = false }: MessageBubbleProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const router = useRouter();
 
   const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
   const videoMessage = message as VideoMessage;
+  // Host information now comes from props (isHost) so host identity can be tracked across messages
+  
+  // Debug: Log avatar status
+  if (message.avatar) {
+    console.log('💬 Message from', message.username, 'has avatar:', message.avatar.substring(0, 50) + '...');
+  } else {
+    console.log('💬 Message from', message.username, 'has NO avatar');
+  }
+  
+  const handleAvatarClick = () => {
+    // Route to profile page - could be enhanced to show specific user profiles
+    router.push('/profile');
+  };
 
   // Auto-detect code blocks without backticks
   const detectCodeBlocks = (content: string) => {
@@ -240,28 +256,49 @@ export function MessageBubble({ message, isOwn = false }: MessageBubbleProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          'flex w-full mb-4',
-          isOwn ? 'justify-end' : 'justify-start'
+          'flex w-full mb-4 justify-start'
         )}
       >
         <div
           className={cn(
-            'rounded-2xl p-4 shadow-lg',
-            'backdrop-blur-sm border',
-            isOwn 
-              ? 'bg-blue-600/20 border-blue-500/30 text-white' 
-              : 'bg-white/10 border-white/20 text-white',
+            // If host, add a light emerald highlight; otherwise keep minimal look
+            isHost ? 'bg-emerald-900/10 border-l-4 border-emerald-400/20 rounded-md p-3' : 'p-0',
+            isOwn ? 'text-white' : 'text-white/90',
             // Dynamic width based on content type
-            isVideoMessage 
-              ? 'max-w-sm lg:max-w-md xl:max-w-lg' 
-              : 'max-w-xs lg:max-w-2xl xl:max-w-3xl'
+            isVideoMessage ? 'max-w-sm lg:max-w-md xl:max-w-lg' : 'max-w-xs lg:max-w-2xl xl:max-w-3xl'
           )}
         >
         {/* Username, timestamp, and copy button */}
         <div className="flex items-center justify-between mb-2 gap-2">
-          <span className="text-sm font-medium text-white/90">
-            {message.username}
-          </span>
+          <div className="flex items-center gap-2">
+            {message.avatar ? (
+              <button 
+                onClick={handleAvatarClick}
+                className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
+                title={`View ${message.username}'s profile`}
+              >
+                <img src={message.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              </button>
+            ) : (
+              <button
+                onClick={handleAvatarClick}
+                className={`w-6 h-6 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
+                title={`View ${message.username}'s profile`}
+              >
+                <span className="text-xs text-green-400 font-bold">{message.username.charAt(0).toUpperCase()}</span>
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              {/* Username: highlight differently for host or for your own username (visible only to you) */}
+              <span className={`text-sm font-medium ${isHost ? 'text-emerald-400' : isOwn ? 'text-green-300 font-semibold' : 'text-white/90'}`}>
+                {message.username}
+              </span>
+              {/* Host badge for video uploader/stream creator */}
+              {isHost && (
+                <span className="text-[10px] text-emerald-200 bg-emerald-800/10 px-2 py-0.5 rounded-full font-medium">HOST</span>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/60">
               {formatTimestamp(message.timestamp)}

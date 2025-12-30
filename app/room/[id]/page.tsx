@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { MessageBubble } from '@/components/chat/message-bubble';
-// import { VideoPlayer } from '@/components/video/video-player'; // Reserved for future use
+import { StorageManager } from '@/lib/storage-manager';
+import { VideoPlayer } from '@/components/video/video-player';
 // import { useChat } from '@/hooks/use-chat'; // Reserved for future use
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
+import { applyMessageForRender, cacheUserProfile } from '@/lib/message-utils';
 import toast from 'react-hot-toast';
 import { 
   PaperAirplaneIcon, 
@@ -32,8 +34,11 @@ export default function RoomPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Track which user IDs are hosts (started/uploaded a video). Messages from these users are highlighted
+  const [hosts, setHosts] = useState<Set<string>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
   const [message, setMessage] = useState('');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
@@ -96,6 +101,8 @@ export default function RoomPage() {
   // Filter messages based on search term - reserved for future use
   // const filteredMessages = messages;
 
+  // Avatar is now loaded synchronously in the main useEffect to prevent race conditions
+
   useEffect(() => {
     // Only auto-scroll if user is at bottom (not browsing history)
     if (isAtBottom) {
@@ -114,13 +121,36 @@ export default function RoomPage() {
     const savedUser = localStorage.getItem('chat-user');
     if (savedUser) {
       const userData = JSON.parse(savedUser);
+      console.log('👤 Loaded user from localStorage:', userData);
+      console.log('   - ID:', userData.id);
+      console.log('   - Username:', userData.username);
       setUser(userData);
+      
+      // Load user avatar BEFORE loading messages (critical for avatar display)
+      const storedProfile = localStorage.getItem('userProfile');
+      let loadedAvatar: string | null = null;
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          if (profile.avatar) {
+            loadedAvatar = profile.avatar;
+            setUserAvatar(profile.avatar);
+            console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
+          } else {
+            console.log('⚠️ No avatar found in profile');
+          }
+        } catch (error) {
+          console.error('Error parsing user profile:', error);
+        }
+      } else {
+        console.log('⚠️ No userProfile in localStorage');
+      }
       
       // Mark as initialized
       isInitializedRef.current = true;
       
-      // Load initial messages
-      loadMessages();
+      // Load initial messages with avatar available
+      loadMessages(userData, loadedAvatar);
       
       // Initialize WebSocket connection after user is set
       setTimeout(() => {
@@ -150,10 +180,34 @@ export default function RoomPage() {
       console.log('🔌 Initializing chat connection...');
       console.log('👤 User:', currentUser.id, currentUser.username);
       console.log('🏠 Room:', roomId);
+      // Seed local avatar caches for the current user so history and early messages resolve
+      if (userAvatar && currentUser.username) {
+        try {
+          const avatarCacheSeed = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+          const avatarCacheByIdSeed = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+          avatarCacheSeed[currentUser.username] = userAvatar;
+          avatarCacheByIdSeed[currentUser.id] = userAvatar;
+          localStorage.setItem('userAvatarCache', JSON.stringify(avatarCacheSeed));
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(avatarCacheByIdSeed));
+          console.log('🌱 Seeded avatar cache for current user');
+        } catch (storageError) {
+          console.warn('⚠️ Failed to seed avatar cache (localStorage quota exceeded):', storageError);
+          // Continue without cache seeding
+        }
+      }
       
       // STEP 1: Try to join room on backend (REQUIRED for WebSocket to work)
+      // Resolve an avatar URL for backend - prefer actual user avatar over fallback
+      const resolveAvatarUrl = (): string | undefined => {
+        // Always prefer the actual user avatar if available (data URLs or HTTPS)
+        if (userAvatar) return userAvatar;
+        // Fallback only if no avatar exists: generate a deterministic avatar URL
+        return `https://i.pravatar.cc/150?u=${encodeURIComponent(currentUser.id)}`;
+      };
+      const avatarUrl = resolveAvatarUrl();
+
       try {
-        await apiClient.joinRoom(roomId, currentUser.id);
+        await apiClient.joinRoom(roomId, currentUser.id, currentUser.username, avatarUrl);
         console.log('✅ Joined room on backend successfully - WebSocket should now work');
       } catch (joinError) {
         console.error('❌ Failed to join room:', joinError);
@@ -165,7 +219,13 @@ export default function RoomPage() {
 
       // STEP 2: Connect WebSocket (works even if join endpoint doesn't exist)
       setConnectionAttempts(prev => prev + 1);
-      socketManager.connect(roomId, currentUser.id);
+      console.log('🔌 Connecting WebSocket with:', { 
+        roomId, 
+        userId: currentUser.id, 
+        username: currentUser.username,
+        avatar_url: avatarUrl
+      });
+      socketManager.connect(roomId, currentUser.id, currentUser.username, avatarUrl);
       
       // Handle connection status
       socketManager.onConnect((connected: boolean) => {
@@ -189,29 +249,73 @@ export default function RoomPage() {
       });
       
       // Handle incoming messages - IMPROVED VERSION
-      socketManager.onMessage((socketMessage: { type?: string; content?: string; message?: string; id?: string; message_id?: string; user_id?: string; sender_id?: string; username?: string; sender?: string; timestamp?: string; created_at?: string; message_type?: string; title?: string; playback_id?: string }) => {
+      socketManager.onMessage((socketMessage: { type?: string; content?: string; message?: string; id?: string; message_id?: string; user_id?: string; sender_id?: string; username?: string; sender?: string; timestamp?: string; created_at?: string; message_type?: string; title?: string; playback_id?: string; avatar?: string; avatar_url?: string }) => {
         // Ignore system messages like keep_alive, ping, pong
         if (socketMessage.type && ['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
         }
         
-        // Handle different message formats from backend
-        const messageContent = socketMessage.content || socketMessage.message || '';
-        const messageId = socketMessage.id || socketMessage.message_id || `msg-${Date.now()}-${Math.random()}`;
+        // Derive identity from server payload, then correct for own messages
+        const incomingUserId = socketMessage.user_id || socketMessage.sender_id;
+        let username = socketMessage.username || socketMessage.sender || 'Unknown User';
+        let avatar = socketMessage.avatar_url || socketMessage.avatar;
+
+        // If the incoming message is from the current user, ALWAYS use real profile avatar
+        if (user && incomingUserId && incomingUserId === user.id) {
+          username = user.username;
+          // Force use of actual user avatar, don't trust server's generic fallback
+          avatar = userAvatar || avatar;
+        }
         
-        const newMessage: Message = {
-          id: messageId,
-          room_id: roomId,
-          user_id: socketMessage.user_id || socketMessage.sender_id || 'unknown',
-          username: socketMessage.username || socketMessage.sender || 'Unknown User',
-          content: messageContent,
-          timestamp: socketMessage.timestamp || socketMessage.created_at || new Date().toISOString(),
-          type: (socketMessage.type || socketMessage.message_type || 'message') as Message['type'],
-          title: socketMessage.title,
-          playback_id: socketMessage.playback_id
-        };
+        console.log('📬 Received WebSocket message:', { 
+          username, 
+          avatar: avatar ? 'YES (' + avatar.substring(0, 30) + '...)' : 'NO',
+          content: (socketMessage.content || socketMessage.message || '').substring(0, 50) + '...',
+          rawMessage: socketMessage
+        });
+        
+        // Cache avatar/profile from message
+        cacheUserProfile(incomingUserId, username, avatar);
+        
+        const newMessage: Message = applyMessageForRender(socketMessage, {
+          roomId,
+          currentUser: user,
+          currentUserAvatar: userAvatar,
+        });
+
+        // If this message indicates a video upload/start, add the user to hosts set so all their messages are highlighted
+        if (newMessage.playback_id || newMessage.type === 'video_ready' || newMessage.type === 'live_stream_created') {
+          setHosts(prev => {
+            const copy = new Set(prev);
+            if (newMessage.user_id) copy.add(newMessage.user_id);
+            return copy;
+          });
+        }
         
         setMessages(prev => {
+          // Replace local optimistic message with server echo to avoid duplicates
+          const localMsgIdx = prev.findIndex(m => 
+            m.id.startsWith('local-') && 
+            m.username === newMessage.username && 
+            m.content === newMessage.content
+          );
+          
+          if (localMsgIdx >= 0) {
+            const localMsg = prev[localMsgIdx];
+            
+            // ALWAYS preserve the local message's avatar - it has the real profile picture
+            // The server only has a generic fallback
+            if (localMsg.avatar) {
+              console.log('✅ Preserving local avatar over server avatar');
+              newMessage.avatar = localMsg.avatar;
+            }
+            
+            // Replace the local message with the server one (but keeping local avatar)
+            const updated = [...prev];
+            updated[localMsgIdx] = newMessage;
+            return updated;
+          }
+          
           // Avoid duplicate messages by ID
           const exists = prev.some(msg => msg.id === newMessage.id);
           if (exists) {
@@ -221,12 +325,20 @@ export default function RoomPage() {
         });
       });
       
+      // Cache avatars from join/leave/typing notifications for future messages
+      socketManager.onNotification((data: { type?: string; user_id?: string; username?: string; avatar_url?: string }) => {
+        if (!data) return;
+        if (data.type === 'user_joined' || data.type === 'typing_start' || data.type === 'typing_stop') {
+          cacheUserProfile(data.user_id, data.username, data.avatar_url);
+        }
+      });
+      
       // Handle typing indicators
       socketManager.onTyping((data: { type?: string; user_id?: string; username?: string }) => {
         const typingUserId = data.user_id;
         const typingUsername = data.username || 'Someone';
         
-        if (typingUserId === currentUser.id) return; // Ignore own typing
+        if (user && typingUserId === user.id) return; // Ignore own typing
         
         if (data.type === 'typing_start') {
           setTypingUsers(prev => {
@@ -252,25 +364,66 @@ export default function RoomPage() {
     }
   };
 
-  const loadMessages = async () => {
+  const loadMessages = async (currentUser?: User, currentAvatar?: string | null) => {
+    const effectiveUser = currentUser || user;
+    const effectiveAvatar = currentAvatar !== undefined ? currentAvatar : userAvatar;
+    
     try {
       const roomMessages = await apiClient.getRoomMessages(roomId);
       
-      // Validate and sanitize messages - ensure all have valid timestamps
-      const validMessages = roomMessages.map(msg => ({
-        ...msg,
-        // Ensure timestamp is valid, fallback to current time
-        timestamp: msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
-          ? msg.timestamp 
-          : new Date().toISOString()
+      // Normalize and sanitize messages for rendering
+      const validMessages = roomMessages.map(msg => applyMessageForRender(msg as any, {
+        roomId,
+        currentUser: effectiveUser,
+        currentUserAvatar: effectiveAvatar,
       }));
+
+      // Update host list (any message that has playback_id or is a video notification)
+      const computedHosts = new Set<string>();
+      validMessages.forEach(m => {
+        if (m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created') {
+          computedHosts.add(m.user_id);
+        }
+      });
+      setHosts(computedHosts);
       
-      setMessages(validMessages);
+      setMessages(prev => {
+        // Preserve local message avatars when reloading from backend
+        const merged = validMessages.map(newMsg => {
+          const existing = prev.find(m => m.id === newMsg.id);
+          if (existing && existing.avatar && !newMsg.avatar) {
+            console.log('🔄 Preserving existing avatar for message', newMsg.id);
+            return { ...newMsg, avatar: existing.avatar };
+          }
+          return newMsg;
+        });
+        return merged;
+      });
       console.log('✅ Loaded and validated messages from backend:', validMessages.length);
     } catch (error) {
       console.error('❌ Failed to load messages from backend:', error);
-      toast.error('Failed to connect to server. Please check your connection.');
-      setMessages([]);
+      
+      // Load local messages as fallback
+      const localMessages = JSON.parse(localStorage.getItem(`room-${roomId}-messages`) || '[]');
+      if (localMessages.length > 0) {
+        console.log('📦 Loaded', localMessages.length, 'messages from localStorage');
+        setMessages(localMessages);
+        // Compute hosts from local messages as well
+        const localHosts = new Set<string>();
+        localMessages.forEach((m: Message) => {
+          if (m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created') {
+            localHosts.add(m.user_id);
+          }
+        });
+        setHosts(localHosts);
+        toast('Backend offline - showing local messages only', { 
+          icon: '⚠️',
+          duration: 3000 
+        });
+      } else {
+        toast.error('Backend unavailable - no messages to show');
+        setMessages([]);
+      }
     }
   };
 
@@ -289,33 +442,87 @@ export default function RoomPage() {
   const sendMessage = async (content: string) => {
     if (!content.trim() || !user) return;
     
-    if (wsConnected && socketManager.isConnected()) {
-      // Send via WebSocket - message will appear when server broadcasts it back
+    // Cache current user's avatar before sending (with error handling)
+    if (userAvatar && user.username) {
       try {
-        socketManager.sendMessage(content);
-        console.log('📤 Message sent via WebSocket:', content);
-        // Message will appear in chat when received from server (no optimistic update)
-      } catch (error) {
-        console.error('❌ Failed to send message via WebSocket:', error);
-        toast.error('Failed to send message. Check your connection.');
-        throw error; // Re-throw to be caught by handleSendMessage
-      }
-    } else {
-      // Fallback to REST API when WebSocket is not available
-      console.log('📤 Sending message via REST API (WebSocket unavailable)');
-      try {
-        const newMessage = await apiClient.sendRoomMessage(roomId, user.id, content);
-        console.log('✅ Message sent via REST API:', newMessage);
+        const avatarCache = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+        const avatarCacheById = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+        avatarCache[user.username] = userAvatar;
+        avatarCacheById[user.id] = userAvatar;
         
-        // Add message to local state immediately
-        setMessages(prev => [...prev, newMessage]);
-        toast.success('Message sent (polling mode)', { duration: 1000 });
-      } catch (error) {
-        console.error('❌ Failed to send message via REST API:', error);
-        toast.error('Failed to send message. Check backend connection.');
-        throw error;
+        // Limit cache size to prevent quota errors - keep only last 50 entries
+        const cacheEntries = Object.entries(avatarCache);
+        if (cacheEntries.length > 50) {
+          const recentCache = Object.fromEntries(cacheEntries.slice(-50));
+          localStorage.setItem('userAvatarCache', JSON.stringify(recentCache));
+        } else {
+          localStorage.setItem('userAvatarCache', JSON.stringify(avatarCache));
+        }
+        
+        const cacheByIdEntries = Object.entries(avatarCacheById);
+        if (cacheByIdEntries.length > 50) {
+          const recentCacheById = Object.fromEntries(cacheByIdEntries.slice(-50));
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(recentCacheById));
+        } else {
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(avatarCacheById));
+        }
+        
+        console.log('💾 Cached avatar for', user.username);
+      } catch (storageError) {
+        console.warn('⚠️ Failed to cache avatar (localStorage quota exceeded):', storageError);
+        // Continue sending message even if caching fails
       }
     }
+    
+    if (wsConnected && socketManager.isConnected()) {
+      // Send via WebSocket
+      try {
+        socketManager.sendMessage(content, userAvatar || undefined);
+        console.log('📤 Message sent via WebSocket with avatar:', !!userAvatar);
+      } catch (error) {
+        console.error('❌ Failed to send message via WebSocket:', error);
+        toast.error('WebSocket unavailable, showing message locally only');
+      }
+      // Show message immediately (optimistic update)
+      addLocalMessage(content);
+    } else {
+      // Backend unavailable - show message locally only
+      console.log('⚠️ Backend unavailable - adding message locally');
+      toast('Message visible locally only (backend offline)', { 
+        icon: '⚠️',
+        duration: 2000 
+      });
+      addLocalMessage(content);
+    }
+  };
+
+  const addLocalMessage = (content: string) => {
+    if (!user) return;
+    
+    const newMessage: Message = {
+      id: `local-${Date.now()}-${Math.random()}`,
+      room_id: roomId,
+      user_id: user.id,
+      username: user.username,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      type: 'message',
+      avatar: userAvatar || undefined
+    };
+    
+    console.log('💬 Adding local message:', {
+      username: newMessage.username,
+      avatar: newMessage.avatar ? 'YES' : 'NO',
+      content: content.substring(0, 50)
+    });
+    
+    setMessages(prev => [...prev, newMessage]);
+    
+    // Store in localStorage with automatic quota management
+    const messageKey = `room-${roomId}-messages`;
+    const localMessages = StorageManager.getItem(messageKey, []);
+    localMessages.push(newMessage);
+    StorageManager.setItem(messageKey, localMessages); // Auto-limits to 100 messages
   };
 
   const handleSendMessage = async () => {
@@ -716,13 +923,16 @@ export default function RoomPage() {
 
       {/* Messages Area */}
       <div className="flex-1 mx-2 sm:mx-4 mb-2 sm:mb-4 flex flex-col relative min-h-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card flex-1 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50"
-          style={{ maxHeight: 'calc(100vh - 100px)' }}
-        >
+        {/* Split screen container: messages on left, video on right */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+          {/* Messages column */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass-card w-full lg:w-1/2 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50"
+            style={{ maxHeight: 'calc(100vh - 100px)' }}
+          >
           {/* Messages List */}
           <div 
             ref={messagesContainerRef}
@@ -749,13 +959,17 @@ export default function RoomPage() {
               </div>
             ) : (
               <>
-                {messages.map((msg, index) => (
-                  <MessageBubble
-                    key={index}
-                    message={msg}
-                    isOwn={msg.username === user.username}
-                  />
-                ))}
+                <div className="space-y-2">
+                  {messages.map((msg, index) => (
+                    <div key={index} className="mb-2">
+                      <MessageBubble
+                        message={msg}
+                        isOwn={msg.user_id === user?.id}
+                        isHost={hosts.has(msg.user_id)}
+                      />
+                    </div>
+                  ))}
+                </div>
                 {/* Invisible element to scroll to */}
                 <div ref={messagesEndRef} />
               </>
@@ -805,8 +1019,27 @@ export default function RoomPage() {
           </div>
         </motion.div>
 
-        {/* Floating Scroll Controls */}
-        {showScrollControls && (
+        {/* Video column */}
+        <div className="w-full lg:w-1/2 flex flex-col min-h-0">
+          <div className="glass-card flex-1 border border-slate-700/50 shadow-black/50 p-4 flex flex-col min-h-0">
+            <h3 className="text-slate-300 font-semibold mb-3">Video</h3>
+            <div className="flex-1 min-h-0">
+              {/* VideoPlayer will render the most recent video message (playback_id) */}
+              {(() => {
+                const latestVideo = [...messages].reverse().find(m => m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created');
+                if (latestVideo && latestVideo.playback_id) {
+                  return (
+                    <VideoPlayer playbackId={latestVideo.playback_id} title={latestVideo.title} autoPlay muted className="w-full h-full" />
+                  );
+                }
+                return (
+                  <div className="h-full w-full flex items-center justify-center text-slate-500">No video available</div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>        {showScrollControls && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}

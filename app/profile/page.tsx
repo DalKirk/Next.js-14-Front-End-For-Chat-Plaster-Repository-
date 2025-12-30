@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -53,10 +54,12 @@ interface RecentRoom {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showOnboardModal, setShowOnboardModal] = useState(false);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'activity' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
   
   // Profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -124,6 +127,24 @@ export default function ProfilePage() {
       setProfile(mockProfile);
       setEditedProfile(mockProfile);
     }
+
+    // If route includes ?edit=true, open edit mode automatically (used after signup or direct links)
+    try {
+      if (searchParams?.get('edit') === 'true') {
+        setIsEditing(true);
+        try { router.replace('/profile'); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore */ }
+
+    // One-time onboarding after signup: check localStorage flag
+    try {
+      if (localStorage.getItem('showProfileOnboard') === 'true') {
+        // Open edit mode and show onboarding modal, then clear the flag
+        setIsEditing(true);
+        setShowOnboardModal(true);
+        localStorage.removeItem('showProfileOnboard');
+      }
+    } catch (e) { /* ignore storage errors */ }
 
     // Mock stats
     setStats({
@@ -281,6 +302,25 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-slate-950 to-black pt-20">
+      {/* Onboarding modal (one-time after signup) */}
+      {showOnboardModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowOnboardModal(false)} />
+          <div className="relative bg-[#0b1020] p-6 rounded-lg shadow-lg w-full max-w-md z-50">
+            <h3 className="text-lg font-semibold text-white mb-2">Welcome — finish your profile</h3>
+            <p className="text-slate-400 mb-4">Add a profile photo, display name, and short bio so others can recognize you in chats.</p>
+            <ul className="list-disc list-inside text-slate-300 mb-4">
+              <li>Add a photo</li>
+              <li>Choose a display name</li>
+              <li>Write a short bio</li>
+            </ul>
+            <div className="flex justify-end gap-2">
+              <Button variant="glass" onClick={() => setShowOnboardModal(false)}>Skip</Button>
+              <Button variant="primary" onClick={() => setShowOnboardModal(false)}>Got it</Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Back Button */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
@@ -322,8 +362,8 @@ export default function ProfilePage() {
                   >
                     <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                   </button>
+                  <p className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-white/80 font-medium whitespace-nowrap">UPLOAD</p>
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                  <p className="text-xs text-white/60 mt-2 text-center">Drag & drop or click</p>
                 </>
               )}
             </div>
@@ -354,6 +394,55 @@ export default function ProfilePage() {
                     rows={3}
                     className="bg-white/5"
                   />
+                  
+                  {/* Security Section - Only visible when editing */}
+                  <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4">
+                    <h3 className="text-lg font-semibold text-slate-200">Security & Privacy</h3>
+                    <div className="space-y-3">
+                      <Input
+                        type="password"
+                        placeholder="Current password"
+                        value={passwordData.current}
+                        onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
+                        className="bg-white/5"
+                      />
+                      <Input
+                        type="password"
+                        placeholder="New password"
+                        value={passwordData.new}
+                        onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
+                        className="bg-white/5"
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={passwordData.confirm}
+                        onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}
+                        className="bg-white/5"
+                      />
+                      <Button onClick={handleChangePassword} variant="glass" size="sm">
+                        Update Password
+                      </Button>
+                    </div>
+                    
+                    <div className="mt-4 p-4 border border-red-500/30 bg-red-500/5 rounded-lg">
+                      <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                        Danger Zone
+                      </h4>
+                      <p className="text-slate-400 text-sm mb-3">
+                        Permanently delete your account and all associated data.
+                      </p>
+                      <Button
+                        onClick={handleDeleteAccount}
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Delete Account
+                      </Button>
+                    </div>
+                  </div>
+                  
                   <div className="flex gap-2">
                     <Button onClick={handleSaveProfile} variant="primary">Save Profile</Button>
                     <Button onClick={handleCancelEdit} variant="glass">Cancel</Button>
@@ -364,189 +453,17 @@ export default function ProfilePage() {
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
                   <p className="text-slate-400 mb-3">{profile.email}</p>
                   {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
-                  <Button onClick={() => setIsEditing(true)} variant="glass" className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Edit Profile
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Search Chat Rooms
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto">
-              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-green-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-green-400">{stats.messagesCount}</div>
-                <div className="text-xs sm:text-sm text-slate-400">Messages</div>
-              </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-emerald-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-emerald-400">{stats.conversationsCount}</div>
-                <div className="text-xs sm:text-sm text-slate-400">Chats</div>
-              </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-green-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-slate-300">{stats.totalSessionTime}</div>
-                <div className="text-xs sm:text-sm text-slate-400">Time</div>
-              </div>
-              <div className="glass-panel p-3 sm:p-4 text-center border border-slate-700/50 hover:border-emerald-500/50 transition">
-                <div className="text-xl sm:text-2xl font-bold text-slate-300">{stats.aiChatsCount}</div>
-                <div className="text-xs sm:text-sm text-slate-400">AI Chats</div>
-              </div>
-            </div>
           </div>
         </motion.div>
-
-        {/* Tabs */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 overflow-x-auto pb-2">
-          {[
-            { id: 'profile', label: 'Profile', icon: User },
-            { id: 'activity', label: 'Activity', icon: Activity },
-            { id: 'security', label: 'Security', icon: Shield },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)]'
-                  : 'bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 text-slate-400 hover:bg-green-500/10 hover:text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span className="text-sm sm:text-base">{tab.label}</span>
-            </button>
-          ))}
-        </motion.div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="glass-card p-4 sm:p-6 lg:p-8"
-          >
-            {activeTab === 'profile' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-200">Profile Information</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="glass-panel p-4">
-                    <div className="text-slate-500 text-sm mb-1">Joined</div>
-                    <div className="text-slate-300">{new Date(profile.joinedDate).toLocaleDateString()}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-slate-500 text-sm mb-1">Total Rooms</div>
-                    <div className="text-slate-300">{profile.totalRooms}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-slate-500 text-sm mb-1">Messages Sent</div>
-                    <div className="text-slate-300">{profile.totalMessages}</div>
-                  </div>
-                  <div className="glass-panel p-4">
-                    <div className="text-slate-500 text-sm mb-1">Favorite Language</div>
-                    <div className="text-slate-300">{profile.favoriteLanguage}</div>
-                  </div>
-                </div>
-
-                {recentRooms.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-slate-200 mb-4">Recent Rooms</h3>
-                    <div className="space-y-3">
-                      {recentRooms.map((room) => (
-                        <div key={room.id} className="glass-panel p-4 hover:bg-green-500/10 hover:border-green-500/30 transition border border-slate-700/50">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-medium text-slate-300">{room.name}</h4>
-                              <p className="text-sm text-slate-400">Last visited: {new Date(room.lastVisited).toLocaleDateString()}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-slate-400">{room.messageCount} messages</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'activity' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-200 mb-4">Recent Activity</h2>
-                <div className="space-y-3">
-                  {activities.map((activity) => (
-                    <div key={activity.id} className="glass-panel p-4 border border-slate-700/50">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">{getActivityIcon(activity.type)}</div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-slate-300 font-medium">{activity.action}</div>
-                              <div className="text-slate-400 text-sm">{activity.details}</div>
-                            </div>
-                            <div className="text-slate-500 text-sm">{getTimeAgo(activity.timestamp)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-200 mb-4">Security & Privacy</h2>
-                
-                <div className="glass-panel p-6 space-y-4 border border-slate-700/50">
-                  <h3 className="text-slate-300 font-medium mb-4">Change Password</h3>
-                  <div className="space-y-3">
-                    <Input
-                      type="password"
-                      placeholder="Current password"
-                      value={passwordData.current}
-                      onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Input
-                      type="password"
-                      placeholder="New password"
-                      value={passwordData.new}
-                      onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwordData.confirm}
-                      onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}
-                      className="bg-white/5"
-                    />
-                    <Button onClick={handleChangePassword} variant="primary">
-                      Update Password
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="glass-panel p-6 border border-red-500/30 bg-red-500/5">
-                  <h3 className="text-slate-200 font-medium mb-2 flex items-center gap-2">
-                    <Trash2 className="w-5 h-5 text-red-400" />
-                    Danger Zone
-                  </h3>
-                  <p className="text-slate-400 text-sm mb-4">
-                    Permanently delete your account and all associated data. This action cannot be undone.
-                  </p>
-                  <Button
-                    onClick={handleDeleteAccount}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    Delete Account
-                  </Button>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
       </div>
     </div>
   );

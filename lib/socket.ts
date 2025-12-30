@@ -8,12 +8,16 @@ class SocketManager {
   private reconnectDelay = 1000;
   private roomId: string = '';
   private userId: string = '';
+  private username: string = '';
+  private avatarUrl: string | undefined;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private keepAliveIntervalMs = 10000; // Send keep-alive every 10 seconds
 
-  connect(roomId: string, userId: string): void {
+  connect(roomId: string, userId: string, username?: string, avatarUrl?: string): void {
     this.roomId = roomId;
     this.userId = userId;
+    this.username = username || '';
+    this.avatarUrl = avatarUrl;
     
     // If already connected to the same room, don't reconnect
     if (this.socket?.readyState === WebSocket.OPEN && this.roomId === roomId && this.userId === userId) {
@@ -27,7 +31,11 @@ class SocketManager {
 
     // Use environment variable for WebSocket URL, fallback to hardcoded
     const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://web-production-3ba7e.up.railway.app';
-    const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}`;
+    const qp: string[] = [];
+    if (this.username) qp.push(`username=${encodeURIComponent(this.username)}`);
+    if (this.avatarUrl && /^https?:\/\//.test(this.avatarUrl)) qp.push(`avatar_url=${encodeURIComponent(this.avatarUrl)}`);
+    const query = qp.length ? `?${qp.join('&')}` : '';
+    const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}${query}`;
     
     console.log('🔧 WebSocket Configuration:', {
       NODE_ENV: process.env.NODE_ENV,
@@ -156,9 +164,20 @@ class SocketManager {
     }
   }
 
-  sendMessage(content: string): void {
+  sendMessage(content: string, avatar?: string): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      const message = JSON.stringify({ content });
+      const message = JSON.stringify({ 
+        content, 
+        avatar,
+        username: this.username,
+        user_id: this.userId
+      });
+      console.log('📤 Sending WebSocket message:', { 
+        content: content.substring(0, 50) + '...', 
+        avatar: avatar ? 'YES (' + avatar.substring(0, 30) + '...)' : 'NO',
+        username: this.username,
+        user_id: this.userId
+      });
       this.socket.send(message);
     } else {
       console.error('❌ Cannot send message - WebSocket not connected');
