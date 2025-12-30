@@ -5,7 +5,7 @@ export interface User {
   email?: string;
   avatar_url?: string; // Avatar URL from backend
   display_name?: string; // Display name (if different from username)
-  created_at: string;
+  created_at?: string; // Make optional since it may not always be present
 }
 
 export interface Room {

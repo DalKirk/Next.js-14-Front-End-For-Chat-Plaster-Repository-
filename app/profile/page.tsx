@@ -21,13 +21,13 @@ import Image from 'next/image';
 interface UserProfile {
   id: string;
   username: string;
-  email: string;
-  bio: string;
-  avatar: string;
+  email?: string;
+  bio?: string;
+  avatar?: string;  // Make optional
   joinedDate: string;
-  totalRooms: number;
-  totalMessages: number;
-  favoriteLanguage: string;
+  totalRooms?: number;
+  totalMessages?: number;
+  favoriteLanguage?: string;
   theme: 'purple' | 'blue' | 'green';
   notifications: boolean;
 }
@@ -140,7 +140,7 @@ function ProfilePageContent() {
         const fullProfile: UserProfile = {
           ...localProfile,
           username: backendProfile.username,
-          avatar: backendProfile.avatar_url || localProfile.avatar,
+          avatar: backendProfile.avatar_url || localProfile.avatar || '',
           joinedDate
         };
         
@@ -158,7 +158,7 @@ function ProfilePageContent() {
           username: userData.username,
           email: userData.email || `${userData.username}@chatplaster.com`,
           bio: 'Developer passionate about real-time collaboration and clean code.',
-          avatar: '',
+          avatar: '',  // Always provide string, even if empty
           joinedDate: new Date().toISOString().split('T')[0],
           totalRooms: 3,
           totalMessages: 127,
