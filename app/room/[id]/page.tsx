@@ -25,6 +25,26 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
+// Interface for WebSocket messages
+interface WebSocketMessage {
+  type?: string;
+  content?: string;
+  message?: string;
+  id?: string;
+  message_id?: string;
+  user_id?: string;
+  sender_id?: string;
+  username?: string;
+  sender?: string;
+  timestamp?: string;
+  created_at?: string;
+  message_type?: string;
+  title?: string;
+  playback_id?: string;
+  avatar?: string;
+  avatar_url?: string;
+}
+
 export default function RoomPage() {
   const router = useRouter();
   const params = useParams();
@@ -312,7 +332,7 @@ export default function RoomPage() {
       });
       
       // Handle incoming messages - IMPROVED VERSION
-      socketManager.onMessage((socketMessage: { type?: string; content?: string; message?: string; id?: string; message_id?: string; user_id?: string; sender_id?: string; username?: string; sender?: string; timestamp?: string; created_at?: string; message_type?: string; title?: string; playback_id?: string; avatar?: string; avatar_url?: string }) => {
+      socketManager.onMessage((socketMessage: WebSocketMessage) => {
         // Ignore system messages like keep_alive, ping, pong
         if (socketMessage.type && ['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
@@ -574,6 +594,9 @@ export default function RoomPage() {
   const addLocalMessage = (content: string) => {
     if (!user) return;
     
+    // Generate fallback avatar if none exists
+    const finalAvatar = userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random&size=128`;
+    
     const newMessage: Message = {
       id: `local-${Date.now()}-${Math.random()}`,
       room_id: roomId,
@@ -582,7 +605,7 @@ export default function RoomPage() {
       content: content.trim(),
       timestamp: new Date().toISOString(),
       type: 'message',
-      avatar: userAvatar || undefined
+      avatar: finalAvatar
     };
     
     console.log('💬 Adding local message:', {
