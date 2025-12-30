@@ -520,7 +520,7 @@ export default function RoomPage() {
     
     // Store in localStorage with automatic quota management
     const messageKey = `room-${roomId}-messages`;
-    const localMessages = StorageManager.getItem(messageKey, []);
+    const localMessages = StorageManager.getItem(messageKey, []) as Message[];
     localMessages.push(newMessage);
     StorageManager.setItem(messageKey, localMessages); // Auto-limits to 100 messages
   };

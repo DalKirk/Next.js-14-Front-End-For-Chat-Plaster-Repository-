@@ -127,7 +127,7 @@ export default function ChatPage() {
       };
       
       // Store extended data in localStorage with quota handling
-      const roomsData = StorageManager.getItem('rooms-data', {});
+      const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
       roomsData[room.id] = enhancedRoom;
       const success = StorageManager.setItem('rooms-data', roomsData);
       

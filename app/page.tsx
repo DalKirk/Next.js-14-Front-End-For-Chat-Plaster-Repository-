@@ -944,7 +944,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => setShowAuthModal(true)}
-                variant="outline"
+                variant="ghost"
                 className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4 bg-transparent border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]"
               >
                 Login
