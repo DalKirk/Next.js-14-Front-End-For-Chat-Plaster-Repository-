@@ -33,8 +33,11 @@ class SocketManager {
     const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://web-production-3ba7e.up.railway.app';
     const qp: string[] = [];
     if (this.username) qp.push(`username=${encodeURIComponent(this.username)}`);
-    // Always include avatar_url - use provided or fallback to pravatar
-    const finalAvatarUrl = this.avatarUrl || `https://i.pravatar.cc/150?u=${userId}`;
+    // Always include avatar_url - use provided or fallback to ui-avatars (first letter)
+    const finalAvatarUrl = this.avatarUrl || (() => {
+      const name = (this.username || userId || 'User').toString();
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+    })();
     qp.push(`avatar_url=${encodeURIComponent(finalAvatarUrl)}`);
     const query = qp.length ? `?${qp.join('&')}` : '';
     const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}${query}`;

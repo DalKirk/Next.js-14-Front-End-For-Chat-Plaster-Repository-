@@ -137,34 +137,38 @@ export const apiClient = {
 
   joinRoom: async (roomId: string, userId: string, username?: string, avatarUrl?: string): Promise<void> => {
     try {
+      const defaultAvatar = (() => {
+        const name = (username || 'Anonymous').trim();
+        const safeName = encodeURIComponent(name);
+        return `https://ui-avatars.com/api/?name=${safeName}&background=random`;
+      })();
       const payload: Record<string, unknown> = { 
         user_id: userId,
         username: username || 'Anonymous',
-        avatar_url: avatarUrl || `https://i.pravatar.cc/150?u=${userId}`
+        avatar_url: avatarUrl || defaultAvatar
       };
       console.log('📤 Joining room with payload:', payload);
       await api.post(`/rooms/${roomId}/join`, payload);
     } catch (e) {
-      // If endpoint doesn't exist (404), that's okay - room page will handle it
-      if (axios.isAxiosError(e) && e.response?.status === 404) {
-        console.warn('⚠️ Join room endpoint not found - room page will handle joining');
-        return;
-      }
-      // If user not found (400/422), that's also okay - WebSocket might still work
-      if (axios.isAxiosError(e) && (e.response?.status === 400 || e.response?.status === 422)) {
-        const errorMsg = e.response?.data?.detail || '';
-        if (errorMsg.includes('User not found')) {
-          console.warn('⚠️ User not found in backend - WebSocket might still accept connection');
-          return; // Don't throw error, let WebSocket try to connect
+      // Strict mode: joining must succeed before WebSocket connect
+      if (axios.isAxiosError(e)) {
+        const status = e.response?.status;
+        const detail = e.response?.data?.detail || extractMessage(e);
+        if (status === 404) {
+          throw new Error('Join endpoint missing on backend (404). Please create /rooms/{room_id}/join.');
+        }
+        if (status === 400 || status === 422) {
+          throw new Error(`Join failed (${status}): ${detail}`);
         }
       }
       handleApiError(e, 'Join room');
     }
   },
 
-  getRoomMessages: async (roomId: string): Promise<Message[]> => {
+  getRoomMessages: async (roomId: string, limit?: number): Promise<Message[]> => {
     try {
-      const r = await api.get(`/rooms/${roomId}/messages`);
+      const params = limit ? { limit } : undefined;
+      const r = await api.get(`/rooms/${roomId}/messages`, { params });
       return r.data;
     } catch (e) {
       // Fallback to empty messages when backend is unavailable
@@ -173,13 +177,16 @@ export const apiClient = {
     }
   },
 
-  sendRoomMessage: async (roomId: string, userId: string, content: string): Promise<Message> => {
+  sendRoomMessage: async (roomId: string, userId: string, content: string, username?: string, avatarUrl?: string): Promise<Message> => {
     if (!content || !content.trim()) throw new Error('Message cannot be empty');
     try {
-      const r = await api.post(`/rooms/${roomId}/messages`, {
+      const payload: Record<string, unknown> = {
         user_id: userId,
         content: content.trim(),
-      });
+      };
+      if (username) payload.username = username;
+      if (avatarUrl) payload.avatar_url = avatarUrl;
+      const r = await api.post(`/rooms/${roomId}/messages`, payload);
       return r.data;
     } catch (e) {
       handleApiError(e, 'Send message');

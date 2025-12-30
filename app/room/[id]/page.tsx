@@ -157,8 +157,44 @@ export default function RoomPage() {
         initializeWebSocket(userData, loadedAvatar);
       }, 100);
     } else {
-      router.push('/');
-      return;
+      // No local user: strictly create one on backend, then proceed
+      try {
+        const localProfileRaw = localStorage.getItem('userProfile');
+        let desiredName = 'Guest';
+        if (localProfileRaw) {
+          try {
+            const parsed = JSON.parse(localProfileRaw);
+            if (parsed.username && typeof parsed.username === 'string') {
+              desiredName = parsed.username;
+            }
+          } catch {}
+        }
+        // Ensure minimal uniqueness
+        const uniqueName = `${desiredName}-${Math.random().toString(36).slice(2, 6)}`;
+        const created = await apiClient.createUser(uniqueName);
+        console.log('👤 Created backend user:', created);
+        localStorage.setItem('chat-user', JSON.stringify(created));
+        setUser(created);
+        // Load avatar from profile if present
+        const storedProfile = localStorage.getItem('userProfile');
+        if (storedProfile) {
+          try {
+            const profile = JSON.parse(storedProfile);
+            if (profile.avatar) {
+              setUserAvatar(profile.avatar);
+              console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
+            }
+          } catch {}
+        }
+        isInitializedRef.current = true;
+        // Load messages and init WS
+        loadMessages(created, userAvatar);
+        setTimeout(() => initializeWebSocket(created, userAvatar), 100);
+      } catch (createErr) {
+        console.error('❌ Failed to auto-create user:', createErr);
+        router.push('/');
+        return;
+      }
     }
     
     // Cleanup WebSocket on unmount
@@ -215,12 +251,31 @@ export default function RoomPage() {
       try {
         await apiClient.joinRoom(roomId, currentUser.id, currentUser.username, avatarUrl);
         console.log('✅ Joined room on backend successfully - WebSocket should now work');
-      } catch (joinError) {
+      } catch (joinError: any) {
         console.error('❌ Failed to join room:', joinError);
-        console.warn('⚠️ Your backend needs a POST /rooms/{roomId}/join endpoint that accepts {user_id}');
-        console.warn('⚠️ Without this, WebSocket will reject the connection because user is not in room');
-        toast.error('Cannot join room - backend endpoint missing', { duration: 5000 });
-        // Continue anyway - maybe backend auto-registers on WS connect
+        const msg = (joinError?.message || '').toLowerCase();
+        // If backend reports user missing, create user then retry join once
+        if (msg.includes('user not found')) {
+          try {
+            console.log('👤 Creating missing user, then retrying join...');
+            const created = await apiClient.createUser(currentUser.username || 'Guest');
+            localStorage.setItem('chat-user', JSON.stringify(created));
+            setUser(created);
+            await apiClient.joinRoom(roomId, created.id, created.username, avatarUrl);
+            console.log('✅ Joined after creating user');
+          } catch (retryErr) {
+            console.error('❌ Retry join failed:', retryErr);
+            toast.error('Cannot join room. Please create user and room first.', { duration: 5000 });
+            setIsConnected(false);
+            setWsConnected(false);
+            return;
+          }
+        } else {
+          toast.error('Cannot join room. Please create user and room first.', { duration: 5000 });
+          setIsConnected(false);
+          setWsConnected(false);
+          return;
+        }
       }
 
       // STEP 2: Connect WebSocket (works even if join endpoint doesn't exist)
@@ -375,7 +430,7 @@ export default function RoomPage() {
     const effectiveAvatar = currentAvatar !== undefined ? currentAvatar : userAvatar;
     
     try {
-      const roomMessages = await apiClient.getRoomMessages(roomId);
+      const roomMessages = await apiClient.getRoomMessages(roomId, 100);
       
       // Normalize and sanitize messages for rendering
       const validMessages = roomMessages.map(msg => applyMessageForRender(msg as any, {
@@ -394,16 +449,29 @@ export default function RoomPage() {
       setHosts(computedHosts);
       
       setMessages(prev => {
-        // Preserve local message avatars when reloading from backend
-        const merged = validMessages.map(newMsg => {
-          const existing = prev.find(m => m.id === newMsg.id);
+        // Merge fetched messages with existing ones, preserving local optimistic messages
+        const byId = new Map<string, Message>();
+        // Start with previous messages to keep local- optimistic ones until replaced
+        for (const m of prev) {
+          byId.set(m.id, m);
+        }
+        // Overlay fetched messages; preserve avatar if previous had one
+        for (const newMsg of validMessages) {
+          const existing = byId.get(newMsg.id);
           if (existing && existing.avatar && !newMsg.avatar) {
-            console.log('🔄 Preserving existing avatar for message', newMsg.id);
-            return { ...newMsg, avatar: existing.avatar };
+            byId.set(newMsg.id, { ...newMsg, avatar: existing.avatar });
+          } else {
+            byId.set(newMsg.id, newMsg);
           }
-          return newMsg;
+        }
+        const result = Array.from(byId.values());
+        // Sort by timestamp/created_at to keep chronological order
+        result.sort((a, b) => {
+          const ta = new Date(a.timestamp || (a as any).created_at || 0).getTime();
+          const tb = new Date(b.timestamp || (b as any).created_at || 0).getTime();
+          return ta - tb;
         });
-        return merged;
+        return result;
       });
       console.log('✅ Loaded and validated messages from backend:', validMessages.length);
     } catch (error) {
@@ -491,6 +559,13 @@ export default function RoomPage() {
       }
       // Show message immediately (optimistic update)
       addLocalMessage(content);
+      // Persist message via REST to ensure cross-device visibility
+      try {
+        await apiClient.sendRoomMessage(roomId, user.id, content, user.username, userAvatar || undefined);
+        console.log('💾 Persisted message via REST for reliability');
+      } catch (persistErr) {
+        console.warn('⚠️ Failed to persist message via REST:', persistErr);
+      }
     } else {
       // Backend unavailable - show message locally only
       console.log('⚠️ Backend unavailable - adding message locally');
