@@ -158,43 +158,45 @@ export default function RoomPage() {
       }, 100);
     } else {
       // No local user: strictly create one on backend, then proceed
-      try {
-        const localProfileRaw = localStorage.getItem('userProfile');
-        let desiredName = 'Guest';
-        if (localProfileRaw) {
-          try {
-            const parsed = JSON.parse(localProfileRaw);
-            if (parsed.username && typeof parsed.username === 'string') {
-              desiredName = parsed.username;
-            }
-          } catch {}
+      (async () => {
+        try {
+          const localProfileRaw = localStorage.getItem('userProfile');
+          let desiredName = 'Guest';
+          if (localProfileRaw) {
+            try {
+              const parsed = JSON.parse(localProfileRaw);
+              if (parsed.username && typeof parsed.username === 'string') {
+                desiredName = parsed.username;
+              }
+            } catch {}
+          }
+          // Ensure minimal uniqueness
+          const uniqueName = `${desiredName}-${Math.random().toString(36).slice(2, 6)}`;
+          const created = await apiClient.createUser(uniqueName);
+          console.log('👤 Created backend user:', created);
+          localStorage.setItem('chat-user', JSON.stringify(created));
+          setUser(created);
+          // Load avatar from profile if present
+          const storedProfile = localStorage.getItem('userProfile');
+          if (storedProfile) {
+            try {
+              const profile = JSON.parse(storedProfile);
+              if (profile.avatar) {
+                setUserAvatar(profile.avatar);
+                console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
+              }
+            } catch {}
+          }
+          isInitializedRef.current = true;
+          // Load messages and init WS
+          loadMessages(created, userAvatar);
+          setTimeout(() => initializeWebSocket(created, userAvatar), 100);
+        } catch (createErr) {
+          console.error('❌ Failed to auto-create user:', createErr);
+          router.push('/');
+          return;
         }
-        // Ensure minimal uniqueness
-        const uniqueName = `${desiredName}-${Math.random().toString(36).slice(2, 6)}`;
-        const created = await apiClient.createUser(uniqueName);
-        console.log('👤 Created backend user:', created);
-        localStorage.setItem('chat-user', JSON.stringify(created));
-        setUser(created);
-        // Load avatar from profile if present
-        const storedProfile = localStorage.getItem('userProfile');
-        if (storedProfile) {
-          try {
-            const profile = JSON.parse(storedProfile);
-            if (profile.avatar) {
-              setUserAvatar(profile.avatar);
-              console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
-            }
-          } catch {}
-        }
-        isInitializedRef.current = true;
-        // Load messages and init WS
-        loadMessages(created, userAvatar);
-        setTimeout(() => initializeWebSocket(created, userAvatar), 100);
-      } catch (createErr) {
-        console.error('❌ Failed to auto-create user:', createErr);
-        router.push('/');
-        return;
-      }
+      })();
     }
     
     // Cleanup WebSocket on unmount
