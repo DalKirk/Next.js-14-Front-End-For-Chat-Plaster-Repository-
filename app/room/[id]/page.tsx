@@ -737,7 +737,8 @@ export default function RoomPage() {
         type: 'live_stream_created',
         title: videoTitle,
         playback_id: stream.playback_id,
-        stream_key: stream.stream_key
+        stream_key: stream.stream_key,
+        avatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random&size=128`
       };
       
       // Add to messages immediately
@@ -826,7 +827,8 @@ export default function RoomPage() {
         timestamp: new Date().toISOString(),
         type: 'video_ready',
         title: videoTitle,
-        playback_id: upload.playback_id
+        playback_id: upload.playback_id,
+        avatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random&size=128`
       };
       
       // Add to messages immediately
