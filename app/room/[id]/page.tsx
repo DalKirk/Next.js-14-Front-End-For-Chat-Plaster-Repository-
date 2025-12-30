@@ -126,7 +126,7 @@ export default function RoomPage() {
       console.log('   - Username:', userData.username);
       
       // Validate user exists on backend (async wrapper)
-      (async () => {
+      (async function validateUser() {
         try {
           console.log('🔍 Validating user exists on backend...');
           const exists = await apiClient.validateUser(userData.id);
@@ -177,7 +177,7 @@ export default function RoomPage() {
         setTimeout(() => {
           initializeWebSocket(userData, loadedAvatar);
         }, 100);
-      })(); // Close async IIFE
+      })(); // Close async function
     } else {
       // No local user: strictly create one on backend, then proceed
       (async () => {
