@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
+import { StorageUtils } from './storage-utils';
 
 export type GPUGenerationJob = {
   job_id: string;
@@ -208,12 +209,18 @@ export const apiClient = {
 
   updateProfile: async (userId: string, displayName?: string, avatarUrl?: string): Promise<{ success: boolean; user: User }> => {
     try {
-      // Validate avatar URL (no base64)
-      if (avatarUrl && avatarUrl.startsWith('data:')) {
-        throw new Error('❌ Cannot save base64 avatars. Please use an image URL or upload to an image hosting service.');
-      }
-      if (avatarUrl && avatarUrl.length > 2000) {
-        throw new Error('❌ Avatar URL too long. Maximum 2000 characters.');
+      // Validate avatar (accept compressed base64 up to 100KB or URLs)
+      if (avatarUrl) {
+        if (avatarUrl.startsWith('data:')) {
+          // Compressed base64 image - check size
+          const sizeKB = (avatarUrl.length * 0.75) / 1024;
+          if (sizeKB > 100) {
+            throw new Error(`❌ Compressed avatar too large (${sizeKB.toFixed(0)}KB). Maximum 100KB. Try reducing image dimensions.`);
+          }
+          console.log(`✅ Uploading compressed avatar (${sizeKB.toFixed(0)}KB)`);
+        } else if (avatarUrl.length > 2000) {
+          throw new Error('❌ Avatar URL too long. Maximum 2000 characters.');
+        }
       }
       if (displayName && displayName.length < 2) {
         throw new Error('❌ Display name must be at least 2 characters.');
@@ -223,19 +230,20 @@ export const apiClient = {
       if (displayName) payload.display_name = displayName;
       if (avatarUrl) payload.avatar_url = avatarUrl;
 
-      console.log('📤 Updating profile on backend:', payload);
+      console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);
       return r.data;
     } catch (e) {
       if (axios.isAxiosError(e) && e.response?.status === 404) {
         console.warn('⚠️ Profile endpoint not found - backend may not support profiles yet');
-        // Fallback to localStorage
+        // Fallback to localStorage with compression
         const localProfile = localStorage.getItem('userProfile');
         if (localProfile) {
           const parsed = JSON.parse(localProfile);
           if (displayName) parsed.username = displayName;
           if (avatarUrl) parsed.avatar = avatarUrl;
-          localStorage.setItem('userProfile', JSON.stringify(parsed));
+          // Use safe storage to handle quota
+          StorageUtils.safeSetItem('userProfile', JSON.stringify(parsed));
           return { success: true, user: parsed };
         }
       }

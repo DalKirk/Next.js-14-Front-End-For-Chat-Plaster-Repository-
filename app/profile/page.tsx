@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
+import { StorageManager } from '@/lib/storage-manager';
 import toast from 'react-hot-toast';
 import { 
   Camera, Settings, Activity, Shield, Trash2,
@@ -227,13 +228,9 @@ function ProfilePageContent() {
     if (file) processAvatarFile(file);
   };
 
-  const processAvatarFile = (file: File) => {
+  const processAvatarFile = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('❌ File too large! Please use an image URL instead.');
-      toast(
-        '💡 Tip: Upload to imgbb.com or use pravatar.cc for avatars',
-        { duration: 5000, icon: '💡' }
-      );
+      toast.error('❌ File too large! Maximum 5MB');
       return;
     }
     if (!file.type.startsWith('image/')) {
@@ -241,20 +238,30 @@ function ProfilePageContent() {
       return;
     }
 
-    // Show preview but warn about storage
+    // Compress image before uploading
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const result = reader.result as string;
-      setAvatarPreview(result);
       
-      toast.error(
-        '⚠️ Base64 images cause storage quota errors. Please enter an image URL instead.',
-        { duration: 6000 }
-      );
-      toast(
-        '💡 Use imgbb.com, imgur.com, or paste a direct image URL',
-        { duration: 6000, icon: '💡' }
-      );
+      toast.loading('🔧 Compressing image...', { id: 'compress' });
+      
+      try {
+        // Compress to ~30KB (90% size reduction)
+        const compressed = await StorageManager.compressImage(result);
+        const sizeBefore = (result.length * 0.75) / 1024; // Approximate KB
+        const sizeAfter = (compressed.length * 0.75) / 1024;
+        
+        setAvatarPreview(compressed);
+        setEditedProfile({ ...editedProfile, avatar: compressed });
+        
+        toast.success(
+          `✅ Compressed ${sizeBefore.toFixed(0)}KB → ${sizeAfter.toFixed(0)}KB`,
+          { id: 'compress', duration: 3000 }
+        );
+      } catch (error) {
+        toast.error('Failed to compress image', { id: 'compress' });
+        console.error('Compression error:', error);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -272,19 +279,10 @@ function ProfilePageContent() {
     if (!profile || !editedProfile) return;
     
     try {
-      // Validate avatar URL
-      if (editedProfile.avatar && editedProfile.avatar.startsWith('data:')) {
-        toast.error(
-          '❌ Cannot save base64 avatars. Please use an image URL.',
-          { duration: 5000 }
-        );
-        return;
-      }
-      
       console.log('💾 Saving profile to backend...');
       setIsEditing(false); // Show loading state
       
-      // Save to backend
+      // Save to backend (compressed avatars are accepted)
       const result = await apiClient.updateProfile(
         profile.id,
         editedProfile.username,
