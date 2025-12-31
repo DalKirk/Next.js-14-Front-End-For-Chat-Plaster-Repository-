@@ -181,6 +181,35 @@ export const apiClient = {
   },
 
   // User Profile Management
+  
+  // Ensure user exists on backend, create if not found
+  ensureUserExists: async (userId: string, username: string): Promise<User> => {
+    try {
+      // Try to get existing user
+      const r = await api.get(`/users/${userId}`);
+      console.log('✅ User exists on backend:', r.data);
+      return r.data;
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        // User not found, create them
+        console.log('👤 Creating user on backend:', { userId, username });
+        try {
+          const createResponse = await api.post('/users', { 
+            id: userId,
+            username: username 
+          });
+          console.log('✅ User created on backend:', createResponse.data);
+          return createResponse.data;
+        } catch (createError) {
+          console.error('❌ Failed to create user on backend:', createError);
+          throw new Error('Failed to initialize user on backend');
+        }
+      }
+      handleApiError(e, 'Ensure user exists');
+      throw e;
+    }
+  },
+  
   getProfile: async (userId: string): Promise<User> => {
     try {
       const r = await api.get(`/users/${userId}`);
@@ -474,13 +503,19 @@ export const apiClient = {
    * 
    * @param userId - User ID
    * @param file - Image file (JPEG, PNG, GIF, WebP - max 10MB)
+   * @param username - Username (optional, used to create user if not exists)
    * @returns Avatar URLs object with all sizes
    * 
    * @example
-   * const avatarUrls = await apiClient.uploadAvatar('user-123', fileObject);
+   * const avatarUrls = await apiClient.uploadAvatar('user-123', fileObject, 'john_doe');
    * // Returns: { thumbnail: "...", small: "...", medium: "...", large: "..." }
    */
-  uploadAvatar: async (userId: string, file: File): Promise<AvatarUploadResponse> => {
+  uploadAvatar: async (userId: string, file: File, username?: string): Promise<AvatarUploadResponse> => {
+    // Ensure user exists on backend before uploading avatar
+    if (username) {
+      await apiClient.ensureUserExists(userId, username);
+    }
+
     const { ImageProcessor } = await import('./image-processor');
 
     // Validate image dimensions

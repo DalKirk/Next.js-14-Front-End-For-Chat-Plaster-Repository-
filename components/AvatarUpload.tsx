@@ -50,7 +50,7 @@ export function AvatarUpload({
 
     try {
       // Upload with multi-size processing
-      const response = await apiClient.uploadAvatar(userId, file);
+      const response = await apiClient.uploadAvatar(userId, file, username);
 
       setUploadProgress('Upload complete!');
       onAvatarChange(response.avatar_urls);
