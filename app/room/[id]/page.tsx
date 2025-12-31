@@ -273,9 +273,9 @@ export default function RoomPage() {
       try {
         await apiClient.joinRoom(roomId, currentUser.id, currentUser.username, avatarUrl);
         console.log('✅ Joined room on backend successfully - WebSocket should now work');
-      } catch (joinError: any) {
+      } catch (joinError: unknown) {
         console.error('❌ Failed to join room:', joinError);
-        const msg = (joinError?.message || '').toLowerCase();
+        const msg = (joinError instanceof Error ? joinError.message : String(joinError || '')).toLowerCase();
         // If backend reports user missing, create user then retry join once
         if (msg.includes('user not found')) {
           try {
@@ -455,7 +455,7 @@ export default function RoomPage() {
       const roomMessages = await apiClient.getRoomMessages(roomId, 100);
       
       // Normalize and sanitize messages for rendering
-      const validMessages = roomMessages.map(msg => applyMessageForRender(msg as any, {
+      const validMessages = roomMessages.map(msg => applyMessageForRender(msg as import('@/types/backend').BackendMessage, {
         roomId,
         currentUser: effectiveUser,
         currentUserAvatar: effectiveAvatar,
@@ -489,8 +489,8 @@ export default function RoomPage() {
         const result = Array.from(byId.values());
         // Sort by timestamp/created_at to keep chronological order
         result.sort((a, b) => {
-          const ta = new Date(a.timestamp || (a as any).created_at || 0).getTime();
-          const tb = new Date(b.timestamp || (b as any).created_at || 0).getTime();
+          const ta = new Date(a.timestamp ?? (a as { created_at?: string }).created_at ?? 0).getTime();
+          const tb = new Date(b.timestamp ?? (b as { created_at?: string }).created_at ?? 0).getTime();
           return ta - tb;
         });
         return result;

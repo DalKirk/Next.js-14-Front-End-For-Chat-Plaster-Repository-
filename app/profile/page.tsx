@@ -18,7 +18,7 @@ import {
   Camera, Activity, Trash2,
   User, MessageSquare, Zap
 } from 'lucide-react';
-import Image from 'next/image';
+// Image not used; remove import to satisfy lint
 
 interface UserProfile {
   id: string;
@@ -40,38 +40,25 @@ interface UserProfile {
   notifications: boolean;
 }
 
-interface ProfileStats {
-  messagesCount: number;
-  conversationsCount: number;
-  totalSessionTime: string;
-  lastActive: string;
-  aiChatsCount: number;
-}
-
-interface ActivityItem {
-  id: string;
-  type: 'chat' | 'video' | 'ai' | 'room_join';
-  action: string;
-  details: string;
-  timestamp: string;
-}
-
-interface RecentRoom {
-  id: string;
-  name: string;
-  lastVisited: string;
-  messageCount: number;
-}
+// Remove unused interfaces (ProfileStats, ActivityItem, RecentRoom) to reduce lint noise
 
 function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showOnboardModal, setShowOnboardModal] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const viewedUserId = (() => {
+    try { return searchParams?.get('userId') || null; } catch { return null; }
+  })();
+  const viewedUsername = (() => {
+    try { return searchParams?.get('username') || null; } catch { return null; }
+  })();
   
   // Profile state
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   // Security state
@@ -84,17 +71,23 @@ function ProfilePageContent() {
   useEffect(() => {
     // Load profile from backend API
     const storedUser = StorageUtils.safeGetItem('chat-user');
-    if (!storedUser) {
+    const userData = storedUser ? JSON.parse(storedUser) : null;
+
+    // Determine if viewing another user's profile
+    const viewingOtherUser = viewedUserId && (!userData || viewedUserId !== userData.id);
+    setIsViewOnly(Boolean(viewingOtherUser));
+
+    // If not viewing another user and no local user, redirect to home
+    if (!viewingOtherUser && !storedUser) {
       router.push('/');
       return;
     }
-
-    const userData = JSON.parse(storedUser);
     
     // Ensure user exists in backend
     async function ensureUserExists() {
       try {
-        // Try to get user from backend by ID
+        if (!userData) return false;
+        // Try to get user from backend by ID (current user only)
         const backendUser = await apiClient.getProfile(userData.id);
         console.log('✅ User exists in backend:', backendUser.id);
         return true;
@@ -104,7 +97,7 @@ function ProfilePageContent() {
         // User might exist but with different ID (e.g., after failed signup attempt)
         // Try to create/get user by username
         try {
-          const newUser = await apiClient.createUser(userData.username);
+          const newUser = await apiClient.createUser(userData!.username);
           console.log('✅ User created in backend:', newUser.id);
           
           // Update local storage with backend user ID
@@ -112,12 +105,12 @@ function ProfilePageContent() {
           StorageUtils.safeSetItem('chat-user', JSON.stringify(updatedUserData));
           
           return true;
-        } catch (createError: any) {
+        } catch (createError: unknown) {
           // If username already exists, backend should return the existing user
           // But if it just returns error, we need to clear localStorage and redirect to login
           console.error('❌ Failed to sync user with backend:', createError);
           
-          const errorMsg = createError?.message || '';
+          const errorMsg = (createError instanceof Error ? createError.message : String(createError || ''));
           if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
             console.error('💥 Username exists but with different ID. Clearing localStorage and redirecting to login.');
             toast.error('Session mismatch. Please log in again.');
@@ -135,7 +128,9 @@ function ProfilePageContent() {
     // Load profile - try backend first, fallback to local
     async function loadProfile() {
       // First ensure user exists
-      await ensureUserExists();
+      if (!viewingOtherUser) {
+        await ensureUserExists();
+      }
       
       // Clean up any base64 avatars from localStorage (migration)
       const storedAvatar = localStorage.getItem('userAvatar');
@@ -164,9 +159,9 @@ function ProfilePageContent() {
       const localProfile: UserProfile = existingProfile 
         ? JSON.parse(existingProfile)
         : {
-            id: userData.id,
-            username: userData.username,
-            email: userData.email || `${userData.username}@chatplaster.com`,
+            id: userData?.id || viewedUserId || 'unknown',
+            username: userData?.username || viewedUsername || 'User',
+            email: (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : `${viewedUsername || 'user'}@chatplaster.com`)),
             bio: 'Developer passionate about real-time collaboration and clean code.',
             avatar: '',
             joinedDate: new Date().toISOString().split('T')[0],
@@ -185,7 +180,7 @@ function ProfilePageContent() {
       // Try to sync with backend in background (non-blocking)
       try {
         console.log('📥 Syncing profile with backend...');
-        const backendProfile = await apiClient.getProfile(userData.id);
+        const backendProfile = await apiClient.getProfile(viewingOtherUser ? (viewedUserId as string) : userData!.id);
         
         const joinedDate = backendProfile.created_at 
           ? new Date(backendProfile.created_at).toISOString().split('T')[0]
@@ -204,27 +199,29 @@ function ProfilePageContent() {
         setEditedProfile(fullProfile);
         setAvatarPreview(fullProfile.avatar || null);
         
-        // Save CDN URL to localStorage for WebSocket usage and persist to chat-user
-        try {
-          if (fullProfile.avatar) {
-            localStorage.setItem('userAvatar', fullProfile.avatar);
-          }
-          const chatUserRaw = localStorage.getItem('chat-user');
-          if (chatUserRaw) {
-            const chatUser = JSON.parse(chatUserRaw);
-            const updated = { ...chatUser, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
-            localStorage.setItem('chat-user', JSON.stringify(updated));
-          }
-        } catch {}
+        // Persist avatar only for current user context
+        if (!viewingOtherUser) {
+          try {
+            if (fullProfile.avatar) {
+              localStorage.setItem('userAvatar', fullProfile.avatar);
+            }
+            const chatUserRaw = localStorage.getItem('chat-user');
+            if (chatUserRaw) {
+              const chatUser = JSON.parse(chatUserRaw);
+              const updated = { ...chatUser, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
+              localStorage.setItem('chat-user', JSON.stringify(updated));
+            }
+          } catch {}
+        }
       } catch (error) {
         console.warn('⚠️ Could not sync with backend, using local profile');
         
         // Fallback to localStorage
         const existingProfile = StorageUtils.safeGetItem('userProfile');
         const mockProfile: UserProfile = {
-          id: userData.id,
-          username: userData.username,
-          email: userData.email || `${userData.username}@chatplaster.com`,
+          id: userData?.id || viewedUserId || 'unknown',
+          username: userData?.username || viewedUsername || 'User',
+          email: (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : `${viewedUsername || 'user'}@chatplaster.com`)),
           bio: 'Developer passionate about real-time collaboration and clean code.',
           avatar: '',  // Always provide string, even if empty
           joinedDate: new Date().toISOString().split('T')[0],
@@ -253,7 +250,7 @@ function ProfilePageContent() {
 
     // If route includes ?edit=true, open edit mode automatically (used after signup or direct links)
     try {
-      if (searchParams?.get('edit') === 'true') {
+      if (!viewingOtherUser && searchParams?.get('edit') === 'true') {
         setIsEditing(true);
         try { router.replace('/profile'); } catch (e) { /* ignore */ }
       }
@@ -268,11 +265,12 @@ function ProfilePageContent() {
         localStorage.removeItem('showProfileOnboard');
       }
     } catch (e) { /* ignore storage errors */ }
-  }, [router]);
+  }, [router, searchParams, viewedUserId, viewedUsername]);
 
   // Avatar handling with Bunny.net CDN - Multi-size support
   const handleAvatarChange = async (avatarUrls: AvatarUrls | null) => {
     if (!profile) return;
+    if (isViewOnly) return; // No edits when viewing another user's profile
     
     if (avatarUrls) {
       // Update local state with multi-size CDN URLs
@@ -462,8 +460,8 @@ function ProfilePageContent() {
           className="glass-card p-6 sm:p-8"
         >
           <div className="flex flex-col lg:flex-row items-start gap-6">
-            {/* Avatar - Show AvatarUpload when editing, otherwise show display avatar */}
-            {isEditing ? (
+            {/* Avatar - Show AvatarUpload when editing (only for own profile), otherwise show display avatar */}
+            {isEditing && !isViewOnly ? (
               <div className="w-full lg:w-auto">
                 <AvatarUpload
                   userId={profile.id}
@@ -476,7 +474,7 @@ function ProfilePageContent() {
               <div className="relative">
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
                   <ResponsiveAvatar
-                    avatarUrls={profile.avatar_urls}
+                    avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
                     username={profile.username}
                     size="large"
                     className="w-full h-full object-cover"
@@ -487,7 +485,7 @@ function ProfilePageContent() {
 
             {/* User Info */}
             <div className="flex-1">
-              {isEditing ? (
+              {isEditing && !isViewOnly ? (
                 <div className="space-y-4">
                   <Input
                     label="Display Name"

@@ -66,8 +66,14 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
   // Host information now comes from props (isHost) so host identity can be tracked across messages
   
   const handleAvatarClick = () => {
-    // Route to profile page - could be enhanced to show specific user profiles
-    router.push('/profile');
+    // Route to the clicked user's profile (view-only if not current user)
+    try {
+      const targetUserId = message.user_id || 'unknown';
+      const targetUsername = message.username || 'User';
+      router.push(`/profile?userId=${encodeURIComponent(targetUserId)}&username=${encodeURIComponent(targetUsername)}`);
+    } catch {
+      router.push('/profile');
+    }
   };
 
   // Auto-detect code blocks without backticks
