@@ -71,6 +71,7 @@ export default function RoomPage() {
   const [, setConnectionAttempts] = useState(0);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [avatarDirectory, setAvatarDirectory] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -436,6 +437,36 @@ export default function RoomPage() {
         if (socketMessage.type && ['keep_alive', 'ping', 'pong', 'error'].includes(socketMessage.type)) {
           return; // Don't add these to chat
         }
+
+        // Handle profile/avatar update notifications pushed by backend for cross-device sync
+        if (socketMessage.type && (socketMessage.type === 'profile_updated' || socketMessage.type === 'avatar_updated')) {
+          const updatedUserId = socketMessage.user_id || socketMessage.sender_id;
+          const updatedUsername = socketMessage.username || socketMessage.sender;
+          const newAvatar = socketMessage.avatar_url || socketMessage.avatar;
+          if (updatedUserId && newAvatar) {
+            try {
+              // Seed caches
+              const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+              const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+              byId[updatedUserId] = newAvatar;
+              if (updatedUsername) byName[updatedUsername] = newAvatar;
+              localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+              localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+            } catch {}
+            const synthesize = (url: string) => ({ thumbnail: url, small: url, medium: url, large: url });
+            // Patch in-memory history
+            setMessages(prev => prev.map(m => (m.user_id === updatedUserId)
+              ? { ...m, avatar: newAvatar, avatar_urls: synthesize(newAvatar) }
+              : m));
+            // If this update is for current user, reflect in state
+            if (user && updatedUserId === user.id) {
+              setUserAvatar(newAvatar);
+            }
+            // Persist across all room histories
+            try { updateAvatarEverywhere(updatedUserId, updatedUsername || '', newAvatar); } catch {}
+          }
+          return; // Do not treat as chat message
+        }
         
         // Derive identity from server payload, then correct for own messages
         const incomingUserId = socketMessage.user_id || socketMessage.sender_id;
@@ -595,6 +626,52 @@ export default function RoomPage() {
         return result;
       });
       console.log('✅ Loaded and validated messages from backend:', validMessages.length);
+
+      // Fetch latest avatars for all distinct users in this room to ensure history reflects updates across devices
+      try {
+        const userIds = Array.from(new Set(validMessages.map(m => m.user_id).filter((id): id is string => !!id)));
+        if (userIds.length > 0) {
+          const synthesize = (url: string) => ({ thumbnail: url, small: url, medium: url, large: url });
+          const results = await Promise.allSettled(userIds.map(async (id) => {
+            const profile = await apiClient.getProfile(id);
+            const latest = profile.avatar_urls?.medium || profile.avatar_urls?.large || profile.avatar_url || null;
+            return { id, latest };
+          }));
+          const directoryUpdates: Record<string, string> = {};
+          results.forEach(r => {
+            if (r.status === 'fulfilled' && r.value.latest) {
+              directoryUpdates[r.value.id] = r.value.latest;
+            }
+          });
+          if (Object.keys(directoryUpdates).length > 0) {
+            setAvatarDirectory(prev => ({ ...prev, ...directoryUpdates }));
+            // Patch messages in-memory to reflect latest avatars
+            setMessages(prev => prev.map(m => {
+              const latest = directoryUpdates[m.user_id || ''];
+              if (latest && m.avatar !== latest) {
+                return { ...m, avatar: latest, avatar_urls: synthesize(latest) };
+              }
+              return m;
+            }));
+            // Seed caches for future loads
+            try {
+              const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+              const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+              const nameMap: Record<string, string> = {};
+              validMessages.forEach(m => { if (m.user_id && m.username) nameMap[m.user_id] = m.username; });
+              Object.entries(directoryUpdates).forEach(([id, url]) => {
+                byId[id] = url;
+                const name = nameMap[id];
+                if (name) byName[name] = url;
+              });
+              localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+              localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to refresh avatars for history:', e);
+      }
     } catch (error) {
       console.error('❌ Failed to load messages from backend:', error);
       
@@ -621,6 +698,41 @@ export default function RoomPage() {
       }
     }
   };
+
+  // Periodically refresh avatars for users present in history to capture cross-device changes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const userIds = Array.from(new Set(messages.map(m => m.user_id).filter((id): id is string => !!id)));
+        if (userIds.length === 0) return;
+        const synthesize = (url: string) => ({ thumbnail: url, small: url, medium: url, large: url });
+        const results = await Promise.allSettled(userIds.map(async (id) => {
+          const profile = await apiClient.getProfile(id);
+          const latest = profile.avatar_urls?.medium || profile.avatar_urls?.large || profile.avatar_url || null;
+          return { id, latest };
+        }));
+        const directoryUpdates: Record<string, string> = {};
+        results.forEach(r => {
+          if (r.status === 'fulfilled' && r.value.latest) {
+            directoryUpdates[r.value.id] = r.value.latest;
+          }
+        });
+        if (Object.keys(directoryUpdates).length > 0) {
+          setAvatarDirectory(prev => ({ ...prev, ...directoryUpdates }));
+          setMessages(prev => prev.map(m => {
+            const latest = directoryUpdates[m.user_id || ''];
+            if (latest && m.avatar !== latest) {
+              return { ...m, avatar: latest, avatar_urls: synthesize(latest) };
+            }
+            return m;
+          }));
+        }
+      } catch (e) {
+        console.warn('⚠️ Avatar periodic refresh failed:', e);
+      }
+    }, 10000); // every 10s
+    return () => clearInterval(interval);
+  }, [messages]);
 
   // Polling fallback when WebSocket is disconnected
   useEffect(() => {
