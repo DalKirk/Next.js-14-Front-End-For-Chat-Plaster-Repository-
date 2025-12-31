@@ -465,7 +465,7 @@ function ProfilePageContent() {
               <div className="w-full lg:w-auto">
                 <AvatarUpload
                   userId={profile.id}
-                  currentAvatar={editedProfile.avatar_urls || profile.avatar_urls || undefined}
+                  currentAvatar={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
                   username={editedProfile.username || profile.username}
                   onAvatarChange={handleAvatarChange}
                 />

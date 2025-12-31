@@ -69,13 +69,17 @@ export function ResponsiveAvatar({
   const imageUrl = getImageUrl();
 
   return (
-    <div className={`relative flex-shrink-0 ${className}`} style={{ width: pixelSize, height: pixelSize }}>
+    <div
+      className={`relative flex-shrink-0 overflow-hidden rounded-full ${className}`}
+      style={{ width: pixelSize, height: pixelSize }}
+    >
       <Image
         src={imageUrl}
         alt={`${username}'s avatar`}
         width={pixelSize}
         height={pixelSize}
-        className="rounded-full object-cover"
+        className="rounded-full object-cover object-center"
+        style={{ objectPosition: 'center' }}
         onError={() => setImageError(true)}
         loading="lazy"
         unoptimized
