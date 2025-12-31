@@ -304,6 +304,15 @@ function ProfilePageContent() {
             localStorage.setItem('chat-user', JSON.stringify(updated));
           }
         } catch {}
+
+        // Notify other routes/pages to refresh avatar immediately
+        try {
+          const detail = { userId: profile.id, username: profile.username, avatar: avatarUrls.medium };
+          window.dispatchEvent(new CustomEvent('avatar-updated', { detail }));
+          const bc = new BroadcastChannel('avatar-updates');
+          bc.postMessage(detail);
+          bc.close();
+        } catch {}
       } catch (error) {
         console.error('❌ Failed to update profile with new avatar:', error);
         toast.error('Failed to save avatar to profile');

@@ -270,7 +270,57 @@ export default function RoomPage() {
       }
     };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    // Also listen for profile page custom event and broadcast channel
+    const onAvatarUpdated = (ev: Event) => {
+      try {
+        const anyEv = ev as CustomEvent<{ userId: string; username: string; avatar: string }>;
+        const detail = anyEv.detail;
+        if (!detail) return;
+        if (user && (detail.userId === user.id || detail.username === user.username)) {
+          const newAvatar = detail.avatar;
+          setUserAvatar(newAvatar);
+          try {
+            const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+            const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+            byId[user.id] = newAvatar;
+            byName[user.username] = newAvatar;
+            localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+            localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+          } catch {}
+          setMessages(prev => prev.map(m => m.user_id === user.id
+            ? { ...m, avatar: newAvatar, avatar_urls: { thumbnail: newAvatar, small: newAvatar, medium: newAvatar, large: newAvatar } }
+            : m));
+        }
+      } catch {}
+    };
+    window.addEventListener('avatar-updated', onAvatarUpdated);
+
+    const bc = new BroadcastChannel('avatar-updates');
+    bc.onmessage = (msg: MessageEvent) => {
+      const data = msg.data as { userId?: string; username?: string; avatar?: string };
+      if (!data || !data.avatar) return;
+      if (user && (data.userId === user.id || data.username === user.username)) {
+        const newAvatar = data.avatar;
+        setUserAvatar(newAvatar);
+        try {
+          const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+          const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+          byId[user.id] = newAvatar;
+          byName[user.username] = newAvatar;
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+          localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+        } catch {}
+        setMessages(prev => prev.map(m => m.user_id === user.id
+          ? { ...m, avatar: newAvatar, avatar_urls: { thumbnail: newAvatar, small: newAvatar, medium: newAvatar, large: newAvatar } }
+          : m));
+      }
+    };
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('avatar-updated', onAvatarUpdated);
+      bc.close();
+    };
   }, [user]);
 
   const initializeWebSocket = async (userData?: User, avatarOverride?: string | null) => {
