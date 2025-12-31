@@ -217,15 +217,16 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="w-5 h-5" />
-                  ) : (
                     <EyeIcon className="w-5 h-5" />
+                  ) : (
+                    <EyeSlashIcon className="w-5 h-5" />
                   )}
                 </button>
               </div>
               {errors.password && (
                 <p className="mt-1 text-xs text-red-400">{errors.password}</p>
               )}
+
             </div>
 
             {/* Confirm Password (signup only) */}
@@ -250,9 +251,9 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                   >
                     {showConfirmPassword ? (
-                      <EyeSlashIcon className="w-5 h-5" />
-                    ) : (
                       <EyeIcon className="w-5 h-5" />
+                    ) : (
+                      <EyeSlashIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>

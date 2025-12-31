@@ -485,10 +485,10 @@ function ProfilePageContent() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6 sm:p-8"
         >
-          <div className="flex flex-col lg:flex-row items-start gap-6">
+          <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6">
             {/* Avatar - Show AvatarUpload when editing (only for own profile), otherwise show display avatar */}
             {isEditing && !isViewOnly ? (
-              <div className="w-full lg:w-auto">
+              <div className="w-full lg:w-auto mx-auto">
                 <AvatarUpload
                   userId={profile.id}
                   currentAvatar={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}

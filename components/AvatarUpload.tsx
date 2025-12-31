@@ -107,7 +107,7 @@ export function AvatarUpload({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Avatar Preview */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 justify-center sm:justify-start">
         <ResponsiveAvatar
           avatarUrls={currentAvatar}
           username={username}
