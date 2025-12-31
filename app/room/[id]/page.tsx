@@ -330,6 +330,57 @@ export default function RoomPage() {
     };
   }, [user]);
 
+  // Listen for profile updates (username/email/avatar) and update local state in real time
+  useEffect(() => {
+    if (!user) return;
+    const onProfileUpdated = (ev: Event) => {
+      try {
+        const anyEv = ev as CustomEvent;
+        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; avatar?: string };
+        if (!detail) return;
+        if (detail.userId && detail.userId !== user.id) return;
+        setUser(prev => prev ? { ...prev, username: detail.username || prev.username, email: detail.email || prev.email } : prev);
+        if (detail.avatar) {
+          const newAvatar = detail.avatar;
+          setUserAvatar(newAvatar);
+          try {
+            const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+            const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+            byId[user.id] = newAvatar;
+            byName[user.username] = newAvatar;
+            localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+            localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+          } catch {}
+        }
+      } catch {}
+    };
+    window.addEventListener('profile-updated', onProfileUpdated);
+    const bc = new BroadcastChannel('profile-updates');
+    bc.onmessage = (msg: MessageEvent) => {
+      const data = msg.data as { userId?: string; username?: string; email?: string; avatar?: string };
+      if (!data) return;
+      if (data.userId && data.userId !== user.id) return;
+      setUser(prev => prev ? { ...prev, username: data.username || prev.username, email: data.email || prev.email } : prev);
+      if (data.avatar) {
+        const newAvatar = data.avatar;
+        setUserAvatar(newAvatar);
+        try {
+          const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+          const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+          byId[user.id] = newAvatar;
+          byName[user.username] = newAvatar;
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+          localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+        } catch {}
+      }
+    };
+
+    return () => {
+      window.removeEventListener('profile-updated', onProfileUpdated);
+      bc.close();
+    };
+  }, [user]);
+
   const initializeWebSocket = async (userData?: User, avatarOverride?: string | null) => {
     const currentUser = userData || user;
     if (!currentUser) return;

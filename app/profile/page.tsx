@@ -160,8 +160,11 @@ function ProfilePageContent() {
         ? JSON.parse(existingProfile)
         : {
             id: userData?.id || viewedUserId || 'unknown',
-            username: userData?.username || viewedUsername || 'User',
-            email: (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : `${viewedUsername || 'user'}@chatplaster.com`)),
+            username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
+            // When viewing another user's profile, do NOT use the current user's email
+            email: viewingOtherUser
+              ? ((viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined) || undefined)
+              : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
             bio: 'Developer passionate about real-time collaboration and clean code.',
             avatar: '',
             joinedDate: new Date().toISOString().split('T')[0],
@@ -188,7 +191,9 @@ function ProfilePageContent() {
         
         const fullProfile: UserProfile = {
           ...localProfile,
-          username: backendProfile.username,
+          username: backendProfile.display_name || backendProfile.username,
+          // Prefer backend-provided email when available; otherwise derive from username being viewed
+          email: backendProfile.email || localProfile.email || (backendProfile.username ? `${backendProfile.username}@chatplaster.com` : undefined),
           avatar: backendProfile.avatar_url || localProfile.avatar || '',
           avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
           joinedDate
@@ -199,7 +204,7 @@ function ProfilePageContent() {
         setEditedProfile(fullProfile);
         setAvatarPreview(fullProfile.avatar || null);
         
-        // Persist avatar only for current user context
+        // Persist avatar and basic profile only for current user context
         if (!viewingOtherUser) {
           try {
             if (fullProfile.avatar) {
@@ -208,9 +213,11 @@ function ProfilePageContent() {
             const chatUserRaw = localStorage.getItem('chat-user');
             if (chatUserRaw) {
               const chatUser = JSON.parse(chatUserRaw);
-              const updated = { ...chatUser, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
+              const updated = { ...chatUser, username: fullProfile.username, email: fullProfile.email, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
               localStorage.setItem('chat-user', JSON.stringify(updated));
             }
+            // Also store minimal profile for quick reads
+            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username, email: fullProfile.email }));
           } catch {}
         }
       } catch (error) {
@@ -220,8 +227,10 @@ function ProfilePageContent() {
         const existingProfile = StorageUtils.safeGetItem('userProfile');
         const mockProfile: UserProfile = {
           id: userData?.id || viewedUserId || 'unknown',
-          username: userData?.username || viewedUsername || 'User',
-          email: (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : `${viewedUsername || 'user'}@chatplaster.com`)),
+          username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
+          email: viewingOtherUser
+            ? ((viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined) || undefined)
+            : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
           bio: 'Developer passionate about real-time collaboration and clean code.',
           avatar: '',  // Always provide string, even if empty
           joinedDate: new Date().toISOString().split('T')[0],
@@ -351,7 +360,7 @@ function ProfilePageContent() {
         const updatedProfile = {
           ...profile,
           ...editedProfile,
-          username: result.user.username,
+          username: result.user.display_name || result.user.username,
           avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         
@@ -362,13 +371,29 @@ function ProfilePageContent() {
         StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
           username: updatedProfile.username,
-          email: updatedProfile.email
+          email: updatedProfile.email,
+          bio: updatedProfile.bio
         }));
         
         // Store avatar URL separately for WebSocket
         if (updatedProfile.avatar) {
           localStorage.setItem('userAvatar', updatedProfile.avatar);
         }
+
+        // Update chat-user cache and broadcast profile changes for real-time updates
+        try {
+          const chatUserRaw = localStorage.getItem('chat-user');
+          if (chatUserRaw) {
+            const chatUser = JSON.parse(chatUserRaw);
+            const merged = { ...chatUser, username: updatedProfile.username, email: updatedProfile.email, avatar_url: updatedProfile.avatar, avatar_urls: updatedProfile.avatar_urls };
+            localStorage.setItem('chat-user', JSON.stringify(merged));
+          }
+          const detail = { userId: updatedProfile.id, username: updatedProfile.username, email: updatedProfile.email, bio: updatedProfile.bio, avatar: updatedProfile.avatar };
+          window.dispatchEvent(new CustomEvent('profile-updated', { detail }));
+          const bc = new BroadcastChannel('profile-updates');
+          bc.postMessage(detail);
+          bc.close();
+        } catch {}
         
         toast.success('✅ Profile saved successfully!');
         console.log('✅ Profile saved to backend');

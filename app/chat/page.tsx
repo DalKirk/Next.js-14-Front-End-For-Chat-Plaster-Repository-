@@ -61,7 +61,46 @@ export default function ChatPage() {
       StorageManager.cleanupStorage();
     }, 5 * 60 * 1000);
     
-    return () => clearInterval(cleanupInterval);
+    // Listen for profile updates (username/email/avatar) and update local state in real time
+    const onProfileUpdated = (ev: Event) => {
+      try {
+        const anyEv = ev as CustomEvent;
+        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; avatar?: string };
+        if (!detail) return;
+        const { userId, username, email, avatar } = detail;
+        setUser(prev => {
+          if (!prev) return prev;
+          if (userId && prev.id !== userId) return prev;
+          const next = { ...prev } as User;
+          if (username) next.username = username;
+          if (email) next.email = email;
+          return next;
+        });
+        if (avatar) setUserAvatar(avatar);
+      } catch {}
+    };
+    window.addEventListener('profile-updated', onProfileUpdated);
+    const bc = new BroadcastChannel('profile-updates');
+    bc.onmessage = (msg: MessageEvent) => {
+      const data = msg.data as { userId?: string; username?: string; email?: string; avatar?: string };
+      if (!data) return;
+      const { userId, username, email, avatar } = data;
+      setUser(prev => {
+        if (!prev) return prev;
+        if (userId && prev.id !== userId) return prev;
+        const next = { ...prev } as User;
+        if (username) next.username = username;
+        if (email) next.email = email;
+        return next;
+      });
+      if (avatar) setUserAvatar(avatar);
+    };
+
+    return () => {
+      clearInterval(cleanupInterval);
+      window.removeEventListener('profile-updated', onProfileUpdated);
+      bc.close();
+    };
   }, [router]);
 
   const loadRooms = async () => {
