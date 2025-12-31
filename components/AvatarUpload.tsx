@@ -8,7 +8,7 @@ interface AvatarUploadProps {
   userId: string;
   currentAvatar?: string;
   username: string;
-  onAvatarChange: (url: string) => void;
+  onAvatarChange: (url: string | null) => void;
   className?: string;
 }
 
