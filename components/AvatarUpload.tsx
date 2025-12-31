@@ -107,14 +107,15 @@ export function AvatarUpload({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Avatar Preview */}
-      <div className="flex items-center gap-4 justify-center sm:justify-start">
+      <div className="w-full flex items-center justify-center sm:justify-start gap-0 sm:gap-4 py-2">
         <ResponsiveAvatar
           avatarUrls={currentAvatar}
           username={username}
-          size="large"
+          size="medium"
+          className="w-24 h-24 sm:w-32 sm:h-32 ring-1 ring-white/10"
         />
 
-        <div className="flex-1">
+        <div className="hidden sm:block flex-1">
           <p className="text-sm font-medium text-white">{username}</p>
           <p className="text-xs text-gray-400">
             {currentAvatar ? 'Custom avatar' : 'Generated avatar'}
