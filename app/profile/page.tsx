@@ -297,6 +297,8 @@ function ProfilePageContent() {
 
   // Avatar handling with Bunny.net CDN
   const handleAvatarChange = async (newAvatarUrl: string | null) => {
+    if (!profile) return;
+    
     if (newAvatarUrl) {
       // Update local state with CDN URL
       setEditedProfile({ ...editedProfile, avatar: newAvatarUrl });

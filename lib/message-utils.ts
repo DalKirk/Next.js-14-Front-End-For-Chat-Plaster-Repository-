@@ -90,12 +90,21 @@ export function applyMessageForRender(
     finalAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=128`;
   }
 
+  // Extract content with fallback
+  let content = payload.content || '';
+  if (!content && typeof payload === 'object') {
+    const payloadObj = payload as Record<string, unknown>;
+    if (typeof payloadObj.message === 'string') {
+      content = payloadObj.message;
+    }
+  }
+
   return {
     id: payload.id || payload.message_id || `msg-${Date.now()}-${Math.random()}`,
     room_id: opts.roomId,
     user_id: incomingUserId,
     username,
-    content: payload.content || (typeof payload === 'object' && (payload as any).message) || '',
+    content,
     timestamp: payload.timestamp || payload.created_at || new Date().toISOString(),
     type: (payload.type || payload.message_type || 'message') as Message['type'],
     title: payload.title,
