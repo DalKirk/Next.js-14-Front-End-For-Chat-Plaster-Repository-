@@ -191,15 +191,29 @@ export const apiClient = {
       return r.data;
     } catch (e) {
       if (axios.isAxiosError(e) && e.response?.status === 404) {
-        // User not found, create them
-        console.log('👤 Creating user on backend:', { userId, username });
+        // User not found, create them (let backend assign the ID)
+        console.log('👤 Creating user on backend (no client ID):', { username });
         try {
-          const createResponse = await api.post('/users', { 
-            id: userId,
-            username: username 
-          });
-          console.log('✅ User created on backend:', createResponse.data);
-          return createResponse.data;
+          const createResponse = await api.post('/users', { username });
+          const createdUser: User = createResponse.data;
+          console.log('✅ User created on backend:', createdUser);
+
+          // Save backend-returned user to localStorage for consistency
+          if (typeof window !== 'undefined') {
+            try {
+              const existing = window.localStorage.getItem('chat-user');
+              // Keep any extra fields, but replace id/username with backend values
+              const merged = existing ? { ...JSON.parse(existing), ...createdUser } : createdUser;
+              window.localStorage.setItem('chat-user', JSON.stringify(merged));
+              window.localStorage.setItem('userId', createdUser.id);
+              window.localStorage.setItem('username', createdUser.username);
+              console.log('💾 LocalStorage updated with backend user ID:', createdUser.id);
+            } catch (storageErr) {
+              console.warn('LocalStorage update failed:', storageErr);
+            }
+          }
+
+          return createdUser;
         } catch (createError) {
           console.error('❌ Failed to create user on backend:', createError);
           throw new Error('Failed to initialize user on backend');
@@ -511,10 +525,9 @@ export const apiClient = {
    * // Returns: { thumbnail: "...", small: "...", medium: "...", large: "..." }
    */
   uploadAvatar: async (userId: string, file: File, username?: string): Promise<AvatarUploadResponse> => {
-    // Only ensure user exists if they're NOT an authenticated user (no auth token)
-    // Authenticated users (from /auth/signup or /auth/login) already exist in backend
-    const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-    if (username && !authToken) {
+    // Always ensure user exists on backend before uploading avatar
+    // If the `/users/{id}` record is missing, create via POST /users and persist backend ID
+    if (username) {
       await apiClient.ensureUserExists(userId, username);
     }
 
