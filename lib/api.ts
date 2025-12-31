@@ -466,6 +466,102 @@ export const apiClient = {
       handleApiError(e, 'Get current user');
     }
   },
+
+  /**
+   * Upload avatar to Bunny.net CDN
+   * 
+   * @param userId - User ID
+   * @param file - Image file (JPEG, PNG, GIF, WebP - max 5MB)
+   * @returns CDN URL of uploaded avatar
+   * 
+   * @example
+   * const cdnUrl = await apiClient.uploadAvatar('user-123', fileObject);
+   * // Returns: "https://videochat-avatars.b-cdn.net/avatars/user-123/abc.jpg"
+   */
+  uploadAvatar: async (userId: string, file: File): Promise<string> => {
+    // Client-side validation
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Image format not supported. Use JPEG, PNG, GIF, or WebP');
+    }
+
+    if (file.size > 5_000_000) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      throw new Error(`Image too large (${sizeMB}MB). Maximum: 5MB`);
+    }
+
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload to backend (which uploads to Bunny.net)
+      const response = await api.post(`/avatars/upload/${userId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 30000, // 30 second timeout for upload
+      });
+
+      console.log('✅ Avatar uploaded to Bunny.net CDN:', {
+        url: response.data.avatar_url,
+        size: `${response.data.size_mb}MB`
+      });
+
+      return response.data.avatar_url;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload avatar';
+        throw new Error(errorMsg);
+      }
+      throw new Error('Failed to upload avatar');
+    }
+  },
+
+  /**
+   * Delete user's avatar from Bunny.net CDN
+   * 
+   * @param userId - User ID
+   * 
+   * @example
+   * await apiClient.deleteAvatar('user-123');
+   */
+  deleteAvatar: async (userId: string): Promise<void> => {
+    try {
+      await api.delete(`/avatars/delete/${userId}`);
+      console.log('🗑️ Avatar deleted from Bunny.net CDN');
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const errorMsg = e.response?.data?.detail || e.message || 'Failed to delete avatar';
+        throw new Error(errorMsg);
+      }
+      throw new Error('Failed to delete avatar');
+    }
+  },
+
+  /**
+   * Check if Bunny.net CDN is configured and healthy
+   * 
+   * @returns Health status
+   */
+  checkAvatarHealth: async (): Promise<{
+    status: 'healthy' | 'not_configured';
+    bunny_net_configured: boolean;
+    storage_zone: string | null;
+    cdn_hostname: string | null;
+    timestamp: string;
+  }> => {
+    try {
+      const response = await api.get('/avatars/health');
+      return response.data;
+    } catch (e) {
+      throw new Error('Failed to check avatar health');
+    }
+  },
 };
 
 export default apiClient;
