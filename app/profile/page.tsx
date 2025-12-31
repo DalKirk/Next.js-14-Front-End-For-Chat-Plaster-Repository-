@@ -69,6 +69,7 @@ function ProfilePageContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   // Stats state
   const [stats, setStats] = useState<ProfileStats>({
@@ -129,6 +130,28 @@ function ProfilePageContent() {
     async function loadProfile() {
       // First ensure user exists
       await ensureUserExists();
+      
+      // Clean up any base64 avatars from localStorage (migration)
+      const storedAvatar = localStorage.getItem('userAvatar');
+      if (storedAvatar && storedAvatar.startsWith('data:')) {
+        console.log('🧹 Removing base64 avatar from localStorage');
+        localStorage.removeItem('userAvatar');
+      }
+      
+      // Check userProfile for base64 avatars too
+      const existingProfileStr = StorageUtils.safeGetItem('userProfile');
+      if (existingProfileStr) {
+        try {
+          const existingProfile = JSON.parse(existingProfileStr);
+          if (existingProfile.avatar && existingProfile.avatar.startsWith('data:')) {
+            console.log('🧹 Removing base64 avatar from userProfile');
+            delete existingProfile.avatar;
+            StorageUtils.safeSetItem('userProfile', JSON.stringify(existingProfile));
+          }
+        } catch (e) {
+          console.error('Failed to parse userProfile:', e);
+        }
+      }
       
       // Start with local data
       const existingProfile = StorageUtils.safeGetItem('userProfile');
