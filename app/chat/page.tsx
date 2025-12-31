@@ -103,6 +103,26 @@ export default function ChatPage() {
     };
   }, [router]);
 
+  // Cross-device profile sync: periodically fetch current user's profile
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const backendUser = await apiClient.getProfile(user.id);
+        if (cancelled) return;
+        const nextUsername = backendUser.display_name || backendUser.username;
+        const nextEmail = backendUser.email;
+        const nextAvatar = backendUser.avatar_url || userAvatar || undefined;
+        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email } : prev);
+        if (nextAvatar && nextAvatar !== userAvatar) setUserAvatar(nextAvatar);
+      } catch (e) {
+        // ignore transient errors
+      }
+    }, 30000); // 30s cadence
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id]);
+
   const loadRooms = async () => {
     setIsLoading(true);
     try {

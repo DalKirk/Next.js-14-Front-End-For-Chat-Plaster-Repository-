@@ -330,6 +330,37 @@ export default function RoomPage() {
     };
   }, [user]);
 
+  // Cross-device profile sync: periodically fetch current user's profile
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const backendUser = await apiClient.getProfile(user.id);
+        if (cancelled) return;
+        const nextUsername = backendUser.display_name || backendUser.username;
+        const nextEmail = backendUser.email;
+        const nextAvatar = backendUser.avatar_url || userAvatar || undefined;
+        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email } : prev);
+        if (nextAvatar && nextAvatar !== userAvatar) {
+          const newAvatar = nextAvatar;
+          setUserAvatar(newAvatar);
+          try {
+            const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+            const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+            byId[user.id] = newAvatar;
+            byName[user.username] = newAvatar;
+            localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+            localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+          } catch {}
+        }
+      } catch (e) {
+        // ignore transient errors
+      }
+    }, 30000); // 30s cadence
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id]);
+
   // Listen for profile updates (username/email/avatar) and update local state in real time
   useEffect(() => {
     if (!user) return;

@@ -255,7 +255,11 @@ export const apiClient = {
       }
 
       const payload: Record<string, any> = {};
-      if (displayName) payload.display_name = displayName;
+      if (displayName) {
+        // Prefer backend display_name; also set username for backends that use that field
+        payload.display_name = displayName;
+        payload.username = displayName;
+      }
       if (avatarUrl) payload.avatar_url = avatarUrl;
       if (avatarUrls) payload.avatar_urls = avatarUrls;
 
