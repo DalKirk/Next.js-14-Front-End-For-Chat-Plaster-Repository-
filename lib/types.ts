@@ -3,6 +3,7 @@ export interface User {
   id: string;
   username: string;
   email?: string;
+  bio?: string;
   avatar_url?: string; // Avatar URL from backend (legacy)
   avatar_urls?: {
     thumbnail?: string;

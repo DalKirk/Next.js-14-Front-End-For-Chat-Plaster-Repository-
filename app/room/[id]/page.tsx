@@ -340,8 +340,9 @@ export default function RoomPage() {
         if (cancelled) return;
         const nextUsername = backendUser.display_name || backendUser.username;
         const nextEmail = backendUser.email;
+        const nextBio = (backendUser as any).bio;
         const nextAvatar = backendUser.avatar_url || userAvatar || undefined;
-        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email } : prev);
+        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email, bio: nextBio ?? (prev as any).bio } : prev);
         if (nextAvatar && nextAvatar !== userAvatar) {
           const newAvatar = nextAvatar;
           setUserAvatar(newAvatar);
@@ -367,10 +368,10 @@ export default function RoomPage() {
     const onProfileUpdated = (ev: Event) => {
       try {
         const anyEv = ev as CustomEvent;
-        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; avatar?: string };
+        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
         if (!detail) return;
         if (detail.userId && detail.userId !== user.id) return;
-        setUser(prev => prev ? { ...prev, username: detail.username || prev.username, email: detail.email || prev.email } : prev);
+        setUser(prev => prev ? { ...prev, username: detail.username || prev.username, email: detail.email || prev.email, bio: detail.bio ?? (prev as any).bio } : prev);
         if (detail.avatar) {
           const newAvatar = detail.avatar;
           setUserAvatar(newAvatar);
@@ -388,10 +389,10 @@ export default function RoomPage() {
     window.addEventListener('profile-updated', onProfileUpdated);
     const bc = new BroadcastChannel('profile-updates');
     bc.onmessage = (msg: MessageEvent) => {
-      const data = msg.data as { userId?: string; username?: string; email?: string; avatar?: string };
+      const data = msg.data as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
       if (!data) return;
       if (data.userId && data.userId !== user.id) return;
-      setUser(prev => prev ? { ...prev, username: data.username || prev.username, email: data.email || prev.email } : prev);
+      setUser(prev => prev ? { ...prev, username: data.username || prev.username, email: data.email || prev.email, bio: data.bio ?? (prev as any).bio } : prev);
       if (data.avatar) {
         const newAvatar = data.avatar;
         setUserAvatar(newAvatar);

@@ -65,15 +65,16 @@ export default function ChatPage() {
     const onProfileUpdated = (ev: Event) => {
       try {
         const anyEv = ev as CustomEvent;
-        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; avatar?: string };
+        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
         if (!detail) return;
-        const { userId, username, email, avatar } = detail;
+        const { userId, username, email, bio, avatar } = detail;
         setUser(prev => {
           if (!prev) return prev;
           if (userId && prev.id !== userId) return prev;
           const next = { ...prev } as User;
           if (username) next.username = username;
           if (email) next.email = email;
+          if (bio !== undefined) next.bio = bio;
           return next;
         });
         if (avatar) setUserAvatar(avatar);
@@ -84,13 +85,14 @@ export default function ChatPage() {
     bc.onmessage = (msg: MessageEvent) => {
       const data = msg.data as { userId?: string; username?: string; email?: string; avatar?: string };
       if (!data) return;
-      const { userId, username, email, avatar } = data;
+      const { userId, username, email, bio, avatar } = data as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
       setUser(prev => {
         if (!prev) return prev;
         if (userId && prev.id !== userId) return prev;
         const next = { ...prev } as User;
         if (username) next.username = username;
         if (email) next.email = email;
+        if (bio !== undefined) next.bio = bio;
         return next;
       });
       if (avatar) setUserAvatar(avatar);
@@ -113,8 +115,9 @@ export default function ChatPage() {
         if (cancelled) return;
         const nextUsername = backendUser.display_name || backendUser.username;
         const nextEmail = backendUser.email;
+        const nextBio = backendUser.bio;
         const nextAvatar = backendUser.avatar_url || userAvatar || undefined;
-        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email } : prev);
+        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email, bio: nextBio ?? prev.bio } : prev);
         if (nextAvatar && nextAvatar !== userAvatar) setUserAvatar(nextAvatar);
       } catch (e) {
         // ignore transient errors

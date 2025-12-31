@@ -163,7 +163,7 @@ function ProfilePageContent() {
             username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
             // When viewing another user's profile, do NOT infer or use current user's email
             email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
-            bio: 'Developer passionate about real-time collaboration and clean code.',
+        bio: undefined,
             avatar: '',
             joinedDate: new Date().toISOString().split('T')[0],
             totalRooms: 3,
@@ -192,6 +192,7 @@ function ProfilePageContent() {
           username: backendProfile.display_name || backendProfile.username,
           // Prefer backend email; do not derive placeholder when viewing others
           email: backendProfile.email ?? localProfile.email,
+          bio: backendProfile.bio ?? localProfile.bio,
           avatar: backendProfile.avatar_url || localProfile.avatar || '',
           avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
           joinedDate
@@ -227,7 +228,7 @@ function ProfilePageContent() {
           id: userData?.id || viewedUserId || 'unknown',
           username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
           email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
-          bio: 'Developer passionate about real-time collaboration and clean code.',
+          bio: undefined,
           avatar: '',  // Always provide string, even if empty
           joinedDate: new Date().toISOString().split('T')[0],
           totalRooms: 3,
@@ -349,7 +350,10 @@ function ProfilePageContent() {
       const result = await apiClient.updateProfile(
         profile.id,
         editedProfile.username,
-        editedProfile.avatar || undefined
+        editedProfile.avatar || undefined,
+        editedProfile.avatar_urls,
+        editedProfile.bio,
+        editedProfile.email
       );
       
       if (result.success) {
@@ -357,6 +361,7 @@ function ProfilePageContent() {
           ...profile,
           ...editedProfile,
           username: result.user.display_name || result.user.username,
+          bio: result.user.bio ?? editedProfile.bio,
           avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         

@@ -239,7 +239,14 @@ export const apiClient = {
     }
   },
 
-  updateProfile: async (userId: string, displayName?: string, avatarUrl?: string, avatarUrls?: AvatarUrls): Promise<{ success: boolean; user: User }> => {
+  updateProfile: async (
+    userId: string,
+    displayName?: string,
+    avatarUrl?: string,
+    avatarUrls?: AvatarUrls,
+    bio?: string,
+    email?: string,
+  ): Promise<{ success: boolean; user: User }> => {
     try {
       // Backend ONLY accepts URLs, not base64 data
       if (avatarUrl && avatarUrl.startsWith('data:')) {
@@ -262,6 +269,8 @@ export const apiClient = {
       }
       if (avatarUrl) payload.avatar_url = avatarUrl;
       if (avatarUrls) payload.avatar_urls = avatarUrls;
+      if (bio !== undefined) payload.bio = bio;
+      if (email !== undefined) payload.email = email;
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);
