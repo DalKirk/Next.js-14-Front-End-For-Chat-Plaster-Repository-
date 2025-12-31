@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
+import { updateUsernameEverywhere } from '@/lib/message-utils';
 import { StorageUtils } from '@/lib/storage-utils';
 import toast from 'react-hot-toast';
 import { AvatarUrls } from '@/types/backend';
@@ -345,6 +346,7 @@ function ProfilePageContent() {
     
     try {
       console.log('💾 Saving profile to backend...');
+      const prevUsername = profile.username;
       
       // Save to backend (avatar already uploaded via AvatarUpload component)
       const result = await apiClient.updateProfile(
@@ -368,6 +370,9 @@ function ProfilePageContent() {
         setProfile(updatedProfile);
         setIsEditing(false);
         
+        // Patch username across message history and caches
+        try { updateUsernameEverywhere(updatedProfile.id, prevUsername, updatedProfile.username!); } catch {}
+
         // Only store minimal data in localStorage
         StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
@@ -389,7 +394,7 @@ function ProfilePageContent() {
             const merged = { ...chatUser, username: updatedProfile.username, email: updatedProfile.email, avatar_url: updatedProfile.avatar, avatar_urls: updatedProfile.avatar_urls };
             localStorage.setItem('chat-user', JSON.stringify(merged));
           }
-          const detail = { userId: updatedProfile.id, username: updatedProfile.username, email: updatedProfile.email, bio: updatedProfile.bio, avatar: updatedProfile.avatar };
+          const detail = { userId: updatedProfile.id, username: updatedProfile.username, prevUsername, email: updatedProfile.email, bio: updatedProfile.bio, avatar: updatedProfile.avatar };
           window.dispatchEvent(new CustomEvent('profile-updated', { detail }));
           const bc = new BroadcastChannel('profile-updates');
           bc.postMessage(detail);

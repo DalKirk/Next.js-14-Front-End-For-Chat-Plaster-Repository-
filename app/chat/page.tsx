@@ -65,9 +65,9 @@ export default function ChatPage() {
     const onProfileUpdated = (ev: Event) => {
       try {
         const anyEv = ev as CustomEvent;
-        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
+        const detail = anyEv.detail as { userId?: string; username?: string; prevUsername?: string; email?: string; bio?: string; avatar?: string };
         if (!detail) return;
-        const { userId, username, email, bio, avatar } = detail;
+        const { userId, username, prevUsername, email, bio, avatar } = detail;
         setUser(prev => {
           if (!prev) return prev;
           if (userId && prev.id !== userId) return prev;
@@ -83,9 +83,9 @@ export default function ChatPage() {
     window.addEventListener('profile-updated', onProfileUpdated);
     const bc = new BroadcastChannel('profile-updates');
     bc.onmessage = (msg: MessageEvent) => {
-      const data = msg.data as { userId?: string; username?: string; email?: string; avatar?: string };
+      const data = msg.data as { userId?: string; username?: string; prevUsername?: string; email?: string; bio?: string; avatar?: string };
       if (!data) return;
-      const { userId, username, email, bio, avatar } = data as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
+      const { userId, username, prevUsername, email, bio, avatar } = data;
       setUser(prev => {
         if (!prev) return prev;
         if (userId && prev.id !== userId) return prev;

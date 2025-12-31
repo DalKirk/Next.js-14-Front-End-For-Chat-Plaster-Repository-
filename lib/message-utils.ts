@@ -185,3 +185,59 @@ export function updateAvatarEverywhere(
     console.warn('updateAvatarEverywhere failed:', e);
   }
 }
+
+// Update username for a given user across all locally stored room messages.
+// Also migrate avatar caches keyed by the old username to the new username.
+export function updateUsernameEverywhere(
+  userId: string,
+  oldUsername: string | undefined,
+  newUsername: string
+): void {
+  try {
+    // Migrate avatar cache entries from old to new username
+    try {
+      const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+      if (oldUsername && byName[oldUsername]) {
+        byName[newUsername] = byName[oldUsername];
+        delete byName[oldUsername];
+        localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+      }
+      const nameMapRaw = localStorage.getItem('userNameMap');
+      if (nameMapRaw) {
+        const map = JSON.parse(nameMapRaw);
+        map[userId] = newUsername;
+        localStorage.setItem('userNameMap', JSON.stringify(map));
+      }
+    } catch {}
+
+    // Patch all room message lists in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || '';
+      if (!key.startsWith('room-') || !key.endsWith('-messages')) continue;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const msgs: Message[] = JSON.parse(raw);
+        let changed = false;
+        const updated = msgs.map(m => {
+          if (m.user_id === userId || (oldUsername && m.username === oldUsername)) {
+            changed = true;
+            return {
+              ...m,
+              username: newUsername,
+            };
+          }
+          return m;
+        });
+        if (changed) {
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch {
+        // ignore malformed entries
+      }
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('updateUsernameEverywhere failed:', e);
+  }
+}

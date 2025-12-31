@@ -368,10 +368,14 @@ export default function RoomPage() {
     const onProfileUpdated = (ev: Event) => {
       try {
         const anyEv = ev as CustomEvent;
-        const detail = anyEv.detail as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
+        const detail = anyEv.detail as { userId?: string; username?: string; prevUsername?: string; email?: string; bio?: string; avatar?: string };
         if (!detail) return;
         if (detail.userId && detail.userId !== user.id) return;
         setUser(prev => prev ? { ...prev, username: detail.username || prev.username, email: detail.email || prev.email, bio: detail.bio ?? (prev as any).bio } : prev);
+        // Patch current room messages with new username immediately
+        if (detail.username && (detail.prevUsername || user.id)) {
+          setMessages(prev => prev.map(m => (m.user_id === user.id || (detail.prevUsername && m.username === detail.prevUsername)) ? { ...m, username: detail.username! } : m));
+        }
         if (detail.avatar) {
           const newAvatar = detail.avatar;
           setUserAvatar(newAvatar);
@@ -389,10 +393,13 @@ export default function RoomPage() {
     window.addEventListener('profile-updated', onProfileUpdated);
     const bc = new BroadcastChannel('profile-updates');
     bc.onmessage = (msg: MessageEvent) => {
-      const data = msg.data as { userId?: string; username?: string; email?: string; bio?: string; avatar?: string };
+      const data = msg.data as { userId?: string; username?: string; prevUsername?: string; email?: string; bio?: string; avatar?: string };
       if (!data) return;
       if (data.userId && data.userId !== user.id) return;
       setUser(prev => prev ? { ...prev, username: data.username || prev.username, email: data.email || prev.email, bio: data.bio ?? (prev as any).bio } : prev);
+      if (data.username && (data.prevUsername || user.id)) {
+        setMessages(prev => prev.map(m => (m.user_id === user.id || (data.prevUsername && m.username === data.prevUsername)) ? { ...m, username: data.username! } : m));
+      }
       if (data.avatar) {
         const newAvatar = data.avatar;
         setUserAvatar(newAvatar);
