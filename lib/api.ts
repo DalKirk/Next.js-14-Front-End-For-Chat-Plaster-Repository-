@@ -511,8 +511,10 @@ export const apiClient = {
    * // Returns: { thumbnail: "...", small: "...", medium: "...", large: "..." }
    */
   uploadAvatar: async (userId: string, file: File, username?: string): Promise<AvatarUploadResponse> => {
-    // Ensure user exists on backend before uploading avatar
-    if (username) {
+    // Only ensure user exists if they're NOT an authenticated user (no auth token)
+    // Authenticated users (from /auth/signup or /auth/login) already exist in backend
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    if (username && !authToken) {
       await apiClient.ensureUserExists(userId, username);
     }
 
@@ -544,7 +546,7 @@ export const apiClient = {
       formData.append('large', processed.large.blob, 'large.jpg');
 
       // Upload all sizes to backend
-      const response = await api.post<AvatarUploadResponse>(`/avatars/upload/${userId}`, formData, {
+      const response = await api.post<AvatarUploadResponse>(`/users/${userId}/avatar`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
