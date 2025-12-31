@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 // import { ServerStatus } from '@/components/ui/server-status'; // Reserved for future use
 import { Sidebar } from '@/components/ui/sidebar';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
+import { updateAvatarEverywhere } from '@/lib/message-utils';
 import { apiClient } from '@/lib/api';
 import { claudeAPI, clearConversationHistory } from '@/lib/api/claude';
 import { StorageUtils } from '@/lib/storage-utils';
@@ -168,6 +169,41 @@ export default function HomePage() {
       clearInterval(interval);
     };
   }, [showUserMenu]);
+
+  // Listen for avatar updates via custom event and BroadcastChannel
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const onAvatarUpdated = (ev: Event) => {
+      try {
+        const anyEv = ev as CustomEvent<{ userId: string; username: string; avatar: string }>;
+        const detail = anyEv.detail;
+        if (!detail) return;
+        if (detail.userId === currentUser.id || detail.username === currentUser.username) {
+          const newAvatar = detail.avatar;
+          setUserAvatar(newAvatar);
+          try { updateAvatarEverywhere(currentUser.id, currentUser.username, newAvatar); } catch {}
+        }
+      } catch {}
+    };
+    window.addEventListener('avatar-updated', onAvatarUpdated);
+
+    const bc = new BroadcastChannel('avatar-updates');
+    bc.onmessage = (msg: MessageEvent) => {
+      const data = msg.data as { userId?: string; username?: string; avatar?: string };
+      if (!data || !data.avatar) return;
+      if (data.userId === currentUser.id || data.username === currentUser.username) {
+        const newAvatar = data.avatar;
+        setUserAvatar(newAvatar);
+        try { updateAvatarEverywhere(currentUser.id, currentUser.username, newAvatar); } catch {}
+      }
+    };
+
+    return () => {
+      window.removeEventListener('avatar-updated', onAvatarUpdated);
+      bc.close();
+    };
+  }, [currentUser]);
 
 
 
@@ -874,10 +910,10 @@ export default function HomePage() {
                 >
                   <div className="px-3 py-2 border-b border-slate-700/50">
                     <div className="flex items-center gap-2">
-                      {currentUser.avatar_urls || currentUser.avatar_url ? (
+                      {userAvatar || currentUser.avatar_urls || currentUser.avatar_url ? (
                         <div className="relative w-5 h-5 rounded-full overflow-hidden border border-green-400/50">
                           <ResponsiveAvatar
-                            avatarUrls={currentUser.avatar_urls}
+                            avatarUrls={userAvatar ? { thumbnail: userAvatar, small: userAvatar, medium: userAvatar, large: userAvatar } : currentUser.avatar_urls}
                             username={currentUser.username}
                             size="small"
                             className="w-full h-full object-cover"

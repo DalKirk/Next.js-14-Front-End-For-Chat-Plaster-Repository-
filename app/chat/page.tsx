@@ -10,6 +10,7 @@ import { StorageManager } from '@/lib/storage-manager';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import toast from 'react-hot-toast';
 import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoomModal';
+import { updateAvatarEverywhere } from '@/lib/message-utils';
 import { Lock, Users, Globe, Key } from 'lucide-react';
 
 export default function ChatPage() {
@@ -180,7 +181,7 @@ export default function ChatPage() {
               {/* User avatar preview */}
               <div className="relative w-8 h-8 rounded-full overflow-hidden border border-green-400/50">
                 <ResponsiveAvatar
-                  avatarUrls={user.avatar_urls || (userAvatar ? { thumbnail: userAvatar, small: userAvatar, medium: userAvatar, large: userAvatar } : undefined)}
+                  avatarUrls={userAvatar ? { thumbnail: userAvatar, small: userAvatar, medium: userAvatar, large: userAvatar } : user.avatar_urls}
                   username={user.username}
                   size="small"
                   className="w-full h-full object-cover"

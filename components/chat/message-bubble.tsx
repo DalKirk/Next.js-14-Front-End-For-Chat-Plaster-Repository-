@@ -282,7 +282,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
               title={`View ${message.username}'s profile`}
             >
               <ResponsiveAvatar 
-                avatarUrls={message.avatar_urls} 
+                avatarUrls={message.avatar_urls || (message.avatar ? { thumbnail: message.avatar, small: message.avatar, medium: message.avatar, large: message.avatar } : undefined)} 
                 username={message.username} 
                 size="thumbnail" 
                 className="w-full h-full object-cover" 

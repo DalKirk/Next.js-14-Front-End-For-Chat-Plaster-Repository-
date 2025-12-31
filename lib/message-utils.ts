@@ -135,3 +135,53 @@ export function applyMessageForRender(
     avatar_urls: resolvedAvatarUrls,
   };
 }
+
+// Update avatar for a given user across all locally stored room messages
+// Ensures historical messages reflect the latest avatar immediately when changed.
+export function updateAvatarEverywhere(
+  userId: string,
+  username: string,
+  newAvatar: string
+): void {
+  try {
+    // Update caches by id and username
+    const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+    const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+    byId[userId] = newAvatar;
+    byName[username] = newAvatar;
+    localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+    localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+
+    // Patch all room message lists in localStorage
+    const synthesize = (url: string) => ({ thumbnail: url, small: url, medium: url, large: url });
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || '';
+      if (!key.startsWith('room-') || !key.endsWith('-messages')) continue;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const msgs: Message[] = JSON.parse(raw);
+        let changed = false;
+        const updated = msgs.map(m => {
+          if (m.user_id === userId || m.username === username) {
+            changed = true;
+            return {
+              ...m,
+              avatar: newAvatar,
+              avatar_urls: synthesize(newAvatar),
+            };
+          }
+          return m;
+        });
+        if (changed) {
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch {
+        // Ignore malformed entries
+      }
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('updateAvatarEverywhere failed:', e);
+  }
+}

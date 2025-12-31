@@ -14,7 +14,7 @@ import { VideoPlayer } from '@/components/video/video-player';
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
-import { applyMessageForRender, cacheUserProfile } from '@/lib/message-utils';
+import { applyMessageForRender, cacheUserProfile, updateAvatarEverywhere } from '@/lib/message-utils';
 import toast from 'react-hot-toast';
 import { 
   PaperAirplaneIcon, 
@@ -266,6 +266,8 @@ export default function RoomPage() {
             }
             return m;
           }));
+          // Also patch all stored room histories so other rooms reflect updates
+          try { updateAvatarEverywhere(user.id, user.username, newAvatar); } catch {}
         }
       }
     };
@@ -290,6 +292,8 @@ export default function RoomPage() {
           setMessages(prev => prev.map(m => m.user_id === user.id
             ? { ...m, avatar: newAvatar, avatar_urls: { thumbnail: newAvatar, small: newAvatar, medium: newAvatar, large: newAvatar } }
             : m));
+          // Patch all stored room histories
+          try { updateAvatarEverywhere(user.id, user.username, newAvatar); } catch {}
         }
       } catch {}
     };
@@ -313,6 +317,8 @@ export default function RoomPage() {
         setMessages(prev => prev.map(m => m.user_id === user.id
           ? { ...m, avatar: newAvatar, avatar_urls: { thumbnail: newAvatar, small: newAvatar, medium: newAvatar, large: newAvatar } }
           : m));
+        // Patch all stored room histories
+        try { updateAvatarEverywhere(user.id, user.username, newAvatar); } catch {}
       }
     };
 
