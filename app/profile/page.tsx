@@ -155,16 +155,14 @@ function ProfilePageContent() {
       }
       
       // Start with local data
-      const existingProfile = StorageUtils.safeGetItem('userProfile');
+      const existingProfile = !viewingOtherUser ? StorageUtils.safeGetItem('userProfile') : null;
       const localProfile: UserProfile = existingProfile 
         ? JSON.parse(existingProfile)
         : {
             id: userData?.id || viewedUserId || 'unknown',
             username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
-            // When viewing another user's profile, do NOT use the current user's email
-            email: viewingOtherUser
-              ? ((viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined) || undefined)
-              : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
+            // When viewing another user's profile, do NOT infer or use current user's email
+            email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
             bio: 'Developer passionate about real-time collaboration and clean code.',
             avatar: '',
             joinedDate: new Date().toISOString().split('T')[0],
@@ -192,8 +190,8 @@ function ProfilePageContent() {
         const fullProfile: UserProfile = {
           ...localProfile,
           username: backendProfile.display_name || backendProfile.username,
-          // Prefer backend-provided email when available; otherwise derive from username being viewed
-          email: backendProfile.email || localProfile.email || (backendProfile.username ? `${backendProfile.username}@chatplaster.com` : undefined),
+          // Prefer backend email; do not derive placeholder when viewing others
+          email: backendProfile.email ?? localProfile.email,
           avatar: backendProfile.avatar_url || localProfile.avatar || '',
           avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
           joinedDate
@@ -228,9 +226,7 @@ function ProfilePageContent() {
         const mockProfile: UserProfile = {
           id: userData?.id || viewedUserId || 'unknown',
           username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
-          email: viewingOtherUser
-            ? ((viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined) || undefined)
-            : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
+          email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
           bio: 'Developer passionate about real-time collaboration and clean code.',
           avatar: '',  // Always provide string, even if empty
           joinedDate: new Date().toISOString().split('T')[0],
@@ -617,7 +613,9 @@ function ProfilePageContent() {
               ) : (
                 <>
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
-                  <p className="text-slate-400 mb-3">{profile.email}</p>
+                  {profile.email && (
+                    <p className="text-slate-400 mb-3">{profile.email}</p>
+                  )}
                   {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
