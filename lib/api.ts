@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
-import { StorageUtils } from './storage-utils';
 
 export type GPUGenerationJob = {
   job_id: string;
@@ -176,7 +175,7 @@ export const apiClient = {
   // NOTE: Messages are sent via WebSocket ONLY - backend doesn't have REST endpoint
   // Use socketManager.sendMessage() instead
   // This function is deprecated and should not be used
-  sendRoomMessage: async (roomId: string, userId: string, content: string, username?: string, avatarUrl?: string): Promise<Message> => {
+  sendRoomMessage: async (_roomId: string, _userId: string, _content: string, _username?: string, _avatarUrl?: string): Promise<Message> => {
     throw new Error('❌ Messages must be sent via WebSocket. Backend does not support POST /messages endpoint.');
   },
 

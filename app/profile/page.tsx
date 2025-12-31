@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
-import { StorageManager } from '@/lib/storage-manager';
 import toast from 'react-hot-toast';
 import { 
-  Camera, Settings, Activity, Shield, Trash2,
-  User, MessageSquare, Clock, Zap, Code, Globe
+  Camera, Activity, Trash2,
+  User, MessageSquare, Zap
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -61,27 +60,11 @@ function ProfilePageContent() {
   const searchParams = useSearchParams();
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
-  
   // Profile state
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
-  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  
-  // Stats state
-  const [stats, setStats] = useState<ProfileStats>({
-    messagesCount: 0,
-    conversationsCount: 0,
-    totalSessionTime: '0h 0m',
-    lastActive: 'Just now',
-    aiChatsCount: 0,
-  });
-  
-  // Activity state
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
   
   // Security state
   const [passwordData, setPasswordData] = useState({
@@ -402,6 +385,8 @@ function ProfilePageContent() {
     }
   };
 
+  // Utility functions for future features
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTimeAgo = (timestamp: string) => {
     const now = new Date().getTime();
     const then = new Date(timestamp).getTime();
@@ -417,6 +402,7 @@ function ProfilePageContent() {
     return `${days} day${days !== 1 ? 's' : ''} ago`;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'ai': return <Zap className="w-4 h-4 text-green-400" />;
