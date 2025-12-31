@@ -94,14 +94,16 @@ function ProfilePageContent() {
     // Ensure user exists in backend
     async function ensureUserExists() {
       try {
-        // Try to get user from backend
+        // Try to get user from backend by ID
         const backendUser = await apiClient.getProfile(userData.id);
         console.log('✅ User exists in backend:', backendUser.id);
         return true;
       } catch (error) {
-        console.warn('⚠️ User not found, creating in backend...');
+        console.warn('⚠️ User not found by ID, checking if user exists with this username...');
+        
+        // User might exist but with different ID (e.g., after failed signup attempt)
+        // Try to create/get user by username
         try {
-          // Create user in backend
           const newUser = await apiClient.createUser(userData.username);
           console.log('✅ User created in backend:', newUser.id);
           
@@ -110,8 +112,21 @@ function ProfilePageContent() {
           StorageUtils.safeSetItem('chat-user', JSON.stringify(updatedUserData));
           
           return true;
-        } catch (createError) {
-          console.error('❌ Failed to create user in backend:', createError);
+        } catch (createError: any) {
+          // If username already exists, backend should return the existing user
+          // But if it just returns error, we need to clear localStorage and redirect to login
+          console.error('❌ Failed to sync user with backend:', createError);
+          
+          const errorMsg = createError?.message || '';
+          if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
+            console.error('💥 Username exists but with different ID. Clearing localStorage and redirecting to login.');
+            toast.error('Session mismatch. Please log in again.');
+            localStorage.removeItem('chat-user');
+            localStorage.removeItem('auth-token');
+            router.push('/');
+            return false;
+          }
+          
           return false;
         }
       }
