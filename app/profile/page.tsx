@@ -236,46 +236,6 @@ function ProfilePageContent() {
         localStorage.removeItem('showProfileOnboard');
       }
     } catch (e) { /* ignore storage errors */ }
-
-    // Mock stats
-    setStats({
-      messagesCount: 127,
-      conversationsCount: 23,
-      totalSessionTime: '14h 32m',
-      lastActive: 'Just now',
-      aiChatsCount: 18,
-    });
-
-    // Mock activities
-    setActivities([
-      { 
-        id: '1', 
-        type: 'ai', 
-        action: 'AI Chat', 
-        details: 'Asked about mobile keyboard optimization',
-        timestamp: new Date(Date.now() - 120000).toISOString() 
-      },
-      { 
-        id: '2', 
-        type: 'video', 
-        action: 'Video Call', 
-        details: 'Called with User #1234',
-        timestamp: new Date(Date.now() - 3600000).toISOString() 
-      },
-      { 
-        id: '3', 
-        type: 'ai', 
-        action: 'AI Chat', 
-        details: 'Discussed project planning',
-        timestamp: new Date(Date.now() - 10800000).toISOString() 
-      },
-    ]);
-
-    // Mock recent rooms
-    setRecentRooms([
-      { id: '1', name: 'Frontend Team', lastVisited: '2024-11-01', messageCount: 45 },
-      { id: '2', name: 'Code Review', lastVisited: '2024-10-31', messageCount: 23 },
-    ]);
   }, [router]);
 
   // Avatar handling with Bunny.net CDN
