@@ -3,7 +3,13 @@ export interface User {
   id: string;
   username: string;
   email?: string;
-  avatar_url?: string; // Avatar URL from backend
+  avatar_url?: string; // Avatar URL from backend (legacy)
+  avatar_urls?: {
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
   display_name?: string; // Display name (if different from username)
   created_at?: string; // Make optional since it may not always be present
 }
@@ -40,6 +46,12 @@ export interface Message {
   stream_key?: string;
   // User avatar - ALWAYS present (fallback generated if not cached)
   avatar: string;
+  avatar_urls?: {
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
 }
 
 export interface LiveStream {

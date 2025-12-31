@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 // import { ServerStatus } from '@/components/ui/server-status'; // Reserved for future use
 import { Sidebar } from '@/components/ui/sidebar';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
 import { claudeAPI, clearConversationHistory } from '@/lib/api/claude';
 import { StorageUtils } from '@/lib/storage-utils';
+import { User } from '@/lib/types';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -30,11 +32,6 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import Lottie from 'lottie-react';
 import threeBodyAnimation from '@/public/animations/3-body-loading.json';
 import mangoAnimation from '@/public/animations/mango-animation.json';
-
-interface User {
-  id: string;
-  username: string;
-}
 
 interface ClaudeMessage {
   id: string;
@@ -877,9 +874,14 @@ export default function HomePage() {
                 >
                   <div className="px-3 py-2 border-b border-slate-700/50">
                     <div className="flex items-center gap-2">
-                      {userAvatar ? (
+                      {currentUser.avatar_urls || currentUser.avatar_url ? (
                         <div className="relative w-5 h-5 rounded-full overflow-hidden border border-green-400/50">
-                          <Image src={userAvatar} alt="Avatar" fill className="object-cover" unoptimized />
+                          <ResponsiveAvatar
+                            avatarUrls={currentUser.avatar_urls}
+                            username={currentUser.username}
+                            size="small"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       ) : (
                         <UserCircleIcon className="w-5 h-5 text-green-400" />

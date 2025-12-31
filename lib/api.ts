@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
+import type { AvatarUploadResponse, AvatarUrls } from '../types/backend';
 
 export type GPUGenerationJob = {
   job_id: string;
@@ -195,7 +196,7 @@ export const apiClient = {
     }
   },
 
-  updateProfile: async (userId: string, displayName?: string, avatarUrl?: string): Promise<{ success: boolean; user: User }> => {
+  updateProfile: async (userId: string, displayName?: string, avatarUrl?: string, avatarUrls?: AvatarUrls): Promise<{ success: boolean; user: User }> => {
     try {
       // Backend ONLY accepts URLs, not base64 data
       if (avatarUrl && avatarUrl.startsWith('data:')) {
@@ -210,9 +211,10 @@ export const apiClient = {
         throw new Error('❌ Display name must be at least 2 characters.');
       }
 
-      const payload: Record<string, string> = {};
+      const payload: Record<string, any> = {};
       if (displayName) payload.display_name = displayName;
       if (avatarUrl) payload.avatar_url = avatarUrl;
+      if (avatarUrls) payload.avatar_urls = avatarUrls;
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);
@@ -467,54 +469,60 @@ export const apiClient = {
   },
 
   /**
-   * Upload avatar to Bunny.net CDN
+   * Upload avatar with multi-size processing
+   * Client processes image into 4 sizes before upload (Facebook/Instagram style)
    * 
    * @param userId - User ID
-   * @param file - Image file (JPEG, PNG, GIF, WebP - max 5MB)
-   * @returns CDN URL of uploaded avatar
+   * @param file - Image file (JPEG, PNG, GIF, WebP - max 10MB)
+   * @returns Avatar URLs object with all sizes
    * 
    * @example
-   * const cdnUrl = await apiClient.uploadAvatar('user-123', fileObject);
-   * // Returns: "https://videochat-avatars.b-cdn.net/avatars/user-123/abc.jpg"
+   * const avatarUrls = await apiClient.uploadAvatar('user-123', fileObject);
+   * // Returns: { thumbnail: "...", small: "...", medium: "...", large: "..." }
    */
-  uploadAvatar: async (userId: string, file: File): Promise<string> => {
-    // Client-side validation
-    if (!file.type.startsWith('image/')) {
-      throw new Error('File must be an image');
+  uploadAvatar: async (userId: string, file: File): Promise<AvatarUploadResponse> => {
+    const { ImageProcessor } = await import('./image-processor');
+
+    // Validate image dimensions
+    const validation = await ImageProcessor.validateImage(file);
+    if (!validation.valid) {
+      throw new Error(validation.error || 'Invalid image');
     }
 
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('Image format not supported. Use JPEG, PNG, GIF, or WebP');
-    }
+    // Process image into multiple sizes
+    const processed = await ImageProcessor.processAvatar(file);
+    const totalSize = ImageProcessor.getTotalSize(processed);
 
-    if (file.size > 5_000_000) {
-      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-      throw new Error(`Image too large (${sizeMB}MB). Maximum: 5MB`);
-    }
+    console.log(`📸 Processed avatar into 4 sizes (${totalSize}KB total):`, {
+      thumbnail: `${processed.thumbnail.sizeKB}KB`,
+      small: `${processed.small.sizeKB}KB`,
+      medium: `${processed.medium.sizeKB}KB`,
+      large: `${processed.large.sizeKB}KB`,
+    });
 
     try {
-      // Create form data
+      // Create form data with all sizes
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('thumbnail', processed.thumbnail.blob, 'thumbnail.jpg');
+      formData.append('small', processed.small.blob, 'small.jpg');
+      formData.append('medium', processed.medium.blob, 'medium.jpg');
+      formData.append('large', processed.large.blob, 'large.jpg');
 
-      // Upload to backend (which uploads to Bunny.net)
-      const response = await api.post(`/avatars/upload/${userId}`, formData, {
+      // Upload all sizes to backend
+      const response = await api.post<AvatarUploadResponse>(`/avatars/upload/${userId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000, // 30 second timeout for upload
+        timeout: 30000,
       });
 
-      console.log('✅ Avatar uploaded to Bunny.net CDN:', {
-        url: response.data.avatar_url,
-        size: `${response.data.size_mb}MB`
-      });
+      console.log('✅ All avatar sizes uploaded to Bunny.net CDN:', response.data.avatar_urls);
 
-      return response.data.avatar_url;
+      return response.data;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload avatar';
+        console.error('❌ Avatar upload error:', errorMsg);
         throw new Error(errorMsg);
       }
       throw new Error('Failed to upload avatar');

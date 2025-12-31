@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
@@ -269,7 +270,12 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
               className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
               title={`View ${message.username}'s profile`}
             >
-              <img src={message.avatar} alt={`${message.username}'s avatar`} className="w-full h-full object-cover" />
+              <ResponsiveAvatar 
+                avatarUrls={message.avatar_urls} 
+                username={message.username} 
+                size="thumbnail" 
+                className="w-full h-full object-cover" 
+              />
             </button>
             <div className="flex items-center gap-2">
               {/* Username: highlight differently for host or for your own username (visible only to you) */}

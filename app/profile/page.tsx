@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
 import toast from 'react-hot-toast';
+import { AvatarUrls } from '@/types/backend';
 import { 
   Camera, Activity, Trash2,
   User, MessageSquare, Zap
@@ -23,7 +25,13 @@ interface UserProfile {
   username: string;
   email?: string;
   bio?: string;
-  avatar?: string;  // Make optional
+  avatar?: string;  // Legacy
+  avatar_urls?: {    // Multi-size support
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
   joinedDate: string;
   totalRooms?: number;
   totalMessages?: number;
@@ -238,29 +246,31 @@ function ProfilePageContent() {
     } catch (e) { /* ignore storage errors */ }
   }, [router]);
 
-  // Avatar handling with Bunny.net CDN
-  const handleAvatarChange = async (newAvatarUrl: string | null) => {
+  // Avatar handling with Bunny.net CDN - Multi-size support
+  const handleAvatarChange = async (avatarUrls: AvatarUrls | null) => {
     if (!profile) return;
     
-    if (newAvatarUrl) {
-      // Update local state with CDN URL
-      setEditedProfile({ ...editedProfile, avatar: newAvatarUrl });
-      setAvatarPreview(newAvatarUrl);
+    if (avatarUrls) {
+      // Update local state with multi-size CDN URLs
+      setEditedProfile({ ...editedProfile, avatar_urls: avatarUrls, avatar: avatarUrls.medium });
+      setAvatarPreview((avatarUrls.large || avatarUrls.medium || avatarUrls.small) ?? null);
       
-      // Save to localStorage for WebSocket
-      localStorage.setItem('userAvatar', newAvatarUrl);
+      // Save to localStorage for WebSocket (use medium size as default)
+      if (avatarUrls.medium) {
+        localStorage.setItem('userAvatar', avatarUrls.medium);
+      }
       
-      // Update backend profile
+      // Update backend profile with all sizes
       try {
-        await apiClient.updateProfile(profile.id, editedProfile.username, newAvatarUrl);
-        toast.success('Avatar uploaded to CDN successfully!');
+        await apiClient.updateProfile(profile.id, editedProfile.username, avatarUrls.medium, avatarUrls);
+        toast.success('Avatar uploaded to CDN (4 optimized sizes)!');
       } catch (error) {
         console.error('❌ Failed to update profile with new avatar:', error);
         toast.error('Failed to save avatar to profile');
       }
     } else {
       // Avatar deleted
-      setEditedProfile({ ...editedProfile, avatar: '' });
+      setEditedProfile({ ...editedProfile, avatar: '', avatar_urls: undefined });
       setAvatarPreview(null);
       localStorage.removeItem('userAvatar');
       toast.success('Avatar removed');
@@ -424,7 +434,7 @@ function ProfilePageContent() {
               <div className="w-full lg:w-auto">
                 <AvatarUpload
                   userId={profile.id}
-                  currentAvatar={editedProfile.avatar || profile.avatar || undefined}
+                  currentAvatar={editedProfile.avatar_urls || profile.avatar_urls || undefined}
                   username={editedProfile.username || profile.username}
                   onAvatarChange={handleAvatarChange}
                 />
@@ -432,13 +442,12 @@ function ProfilePageContent() {
             ) : (
               <div className="relative">
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
-                  {profile.avatar ? (
-                    <Image src={profile.avatar} alt="Avatar" fill className="object-cover" unoptimized />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
-                      {profile.username.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <ResponsiveAvatar
+                    avatarUrls={profile.avatar_urls}
+                    username={profile.username}
+                    size="large"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
             )}

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
 import { Room, User } from '@/lib/types';
 import { StorageManager } from '@/lib/storage-manager';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import toast from 'react-hot-toast';
 import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoomModal';
 import { Lock, Users, Globe, Key } from 'lucide-react';
@@ -178,14 +179,12 @@ export default function ChatPage() {
             <div className="flex items-center gap-3 flex-wrap">
               {/* User avatar preview */}
               <div className="relative w-8 h-8 rounded-full overflow-hidden border border-green-400/50">
-                {userAvatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
-                    <span className="text-xs text-green-400 font-bold">{user.username.charAt(0).toUpperCase()}</span>
-                  </div>
-                )}
+                <ResponsiveAvatar
+                  avatarUrls={user.avatar_urls}
+                  username={user.username}
+                  size="small"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <Button
                 onClick={() => setShowCreateModal(true)}

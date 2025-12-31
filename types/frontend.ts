@@ -1,10 +1,13 @@
+import { AvatarUrls } from './backend';
+
 /**
  * Frontend user profile type
  */
 export interface UserProfile {
   id: string;
   username: string;
-  avatar?: string;      // Mapped from backend avatar_url
+  avatar?: string;           // Deprecated - use avatar_urls.medium
+  avatar_urls?: AvatarUrls;  // Multi-size avatar support
   email?: string;
   bio?: string;
   displayName?: string;

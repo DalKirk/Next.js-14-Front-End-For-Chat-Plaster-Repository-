@@ -2,193 +2,188 @@
 
 import { useState } from 'react';
 import { apiClient } from '@/lib/api';
-import Image from 'next/image';
+import { ResponsiveAvatar } from './ResponsiveAvatar';
+import { AvatarUrls } from '@/types/backend';
 
 interface AvatarUploadProps {
   userId: string;
-  currentAvatar?: string;
+  currentAvatar?: AvatarUrls;
   username: string;
-  onAvatarChange: (url: string | null) => void;
+  onAvatarChange: (avatarUrls: AvatarUrls | null) => void;
   className?: string;
 }
 
 /**
- * Avatar upload component with Bunny.net CDN integration
- * 
- * Features:
- * - Upload images to Bunny.net CDN
- * - Delete avatars from CDN
- * - Client-side validation (type, size)
- * - Loading states
- * - Error handling
- * - Fallback to UI Avatars
+ * Multi-size avatar upload component with Bunny.net CDN
+ * Processes images into 4 sizes (40x40 to 400x400) before upload
+ * Mimics Facebook/Instagram architecture
  * 
  * @example
  * <AvatarUpload
  *   userId={user.id}
- *   currentAvatar={user.avatar}
+ *   currentAvatar={user.avatar_urls}
  *   username={user.username}
- *   onAvatarChange={(url) => setUser({ ...user, avatar: url })}
+ *   onAvatarChange={handleAvatarChange}
  * />
  */
-export function AvatarUpload({ 
-  userId, 
-  currentAvatar, 
+export function AvatarUpload({
+  userId,
+  currentAvatar,
   username,
   onAvatarChange,
-  className = ''
+  className = '',
 }: AvatarUploadProps) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string>('');
 
-  // Display current avatar or fallback
-  const displayAvatar = currentAvatar || 
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=random`;
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setError(null);
+    setIsUploading(true);
+    setError('');
+    setUploadProgress('Processing image...');
 
     try {
-      // Upload to Bunny.net via backend
-      const cdnUrl = await apiClient.uploadAvatar(userId, file);
-      
-      // Update parent component
-      onAvatarChange(cdnUrl);
-      
-      // Clear file input
-      e.target.value = '';
-      
+      // Upload with multi-size processing
+      const response = await apiClient.uploadAvatar(userId, file);
+
+      setUploadProgress('Upload complete!');
+      onAvatarChange(response.avatar_urls);
+
+      // Clear success message after 2s
+      setTimeout(() => setUploadProgress(''), 2000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload avatar';
+      setError(message);
       console.error('Avatar upload error:', err);
-      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
-      setUploading(false);
+      setIsUploading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!currentAvatar) return;
-    
-    const confirmed = window.confirm(
-      'Delete your avatar? This cannot be undone.'
-    );
-    
-    if (!confirmed) return;
+    if (!confirm('Delete your avatar? You can upload a new one anytime.')) {
+      return;
+    }
 
-    setUploading(true);
-    setError(null);
+    setIsUploading(true);
+    setError('');
 
     try {
       await apiClient.deleteAvatar(userId);
-      
-      // Clear avatar in parent component
-      onAvatarChange('');
-      
+      onAvatarChange(null);
     } catch (err) {
-      console.error('Avatar delete error:', err);
-      setError(err instanceof Error ? err.message : 'Delete failed');
+      const message = err instanceof Error ? err.message : 'Failed to delete avatar';
+      setError(message);
     } finally {
-      setUploading(false);
+      setIsUploading(false);
     }
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <div className={`flex flex-col items-center gap-4 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {/* Avatar Preview */}
-      <div className="relative group">
-        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 dark:border-gray-700 shadow-lg">
-          <Image
-            src={displayAvatar}
-            alt={`${username}'s avatar`}
-            width={128}
-            height={128}
-            className="w-full h-full object-cover"
-            unoptimized // For external URLs
-          />
+      <div className="flex items-center gap-4">
+        <ResponsiveAvatar
+          avatarUrls={currentAvatar}
+          username={username}
+          size="large"
+        />
+
+        <div className="flex-1">
+          <p className="text-sm font-medium text-white">{username}</p>
+          <p className="text-xs text-gray-400">
+            {currentAvatar ? 'Custom avatar' : 'Generated avatar'}
+          </p>
         </div>
-
-        {/* Loading Overlay */}
-        {uploading && (
-          <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent" />
-              <span className="sr-only">Uploading...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Hover Overlay (when not uploading) */}
-        {!uploading && (
-          <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <p className="text-white text-sm font-medium">
-              {currentAvatar ? 'Change' : 'Upload'}
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        <label className={`
-          px-4 py-2 
-          bg-blue-500 hover:bg-blue-600 
-          text-white rounded-lg 
-          cursor-pointer transition-colors
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
-        `}>
-          {uploading ? 'Uploading...' : currentAvatar ? 'Change Avatar' : 'Upload Avatar'}
-          <input
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-            onChange={handleUpload}
-            disabled={uploading}
-            className="hidden"
-            aria-label="Upload avatar"
-          />
-        </label>
+      {/* Upload Area */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        className={`
+          relative border-2 border-dashed rounded-lg p-6 text-center transition-colors
+          ${isDragging ? 'border-green-500 bg-green-500/10' : 'border-gray-600 hover:border-gray-500'}
+          ${isUploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
+        `}
+      >
+        <input
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileSelect(file);
+          }}
+          disabled={isUploading}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
 
-        {currentAvatar && !uploading && (
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-            aria-label="Delete avatar"
-          >
-            Delete
-          </button>
-        )}
+        <div className="space-y-2">
+          {isUploading ? (
+            <>
+              <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm text-gray-300">{uploadProgress}</p>
+            </>
+          ) : (
+            <>
+              <svg className="w-10 h-10 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-sm text-gray-300">
+                <span className="text-green-400 font-medium">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-gray-500">
+                JPEG, PNG, GIF or WebP (max 10MB)
+              </p>
+              <p className="text-xs text-gray-500">
+                Will be optimized into 4 sizes automatically
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div 
-          className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-lg border border-red-200 dark:border-red-800"
-          role="alert"
+      {/* Actions */}
+      {currentAvatar && !isUploading && (
+        <button
+          onClick={handleDelete}
+          className="w-full px-4 py-2 text-sm text-red-400 hover:text-red-300 border border-red-400/50 hover:border-red-300 rounded-lg transition-colors"
         >
-          <strong>⚠️ Error:</strong> {error}
-        </div>
+          Remove Avatar
+        </button>
       )}
 
-      {/* Info Text */}
-      <div className="text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-xs">
-          Max 5MB • JPEG, PNG, GIF, WebP
-        </p>
-        <p className="text-blue-500 dark:text-blue-400 text-xs font-medium mt-1">
-          Hosted on Bunny.net CDN 🐰
-        </p>
-      </div>
-
-      {/* Current URL (for debugging - remove in production) */}
-      {process.env.NODE_ENV === 'development' && currentAvatar && (
-        <details className="text-xs text-gray-400 max-w-xs">
-          <summary className="cursor-pointer">CDN URL</summary>
-          <code className="break-all">{currentAvatar}</code>
-        </details>
+      {/* Error */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
       )}
     </div>
   );
