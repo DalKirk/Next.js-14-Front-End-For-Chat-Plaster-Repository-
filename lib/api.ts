@@ -546,7 +546,8 @@ export const apiClient = {
       formData.append('large', processed.large.blob, 'large.jpg');
 
       // Upload all sizes to backend
-      const response = await api.post<AvatarUploadResponse>(`/users/${userId}/avatar`, formData, {
+      // Try PUT first (common for avatar updates), fallback to POST if needed
+      const response = await api.put<AvatarUploadResponse>(`/users/${userId}/avatar`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
