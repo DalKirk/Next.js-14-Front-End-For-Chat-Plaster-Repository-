@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [],
+    // Allow external avatar/CDN hosts
+    domains: [
+      'videochat-avatars.b-cdn.net',
+      'ui-avatars.com',
+      'i.pravatar.cc'
+    ],
   },
   webpack: (config) => {
     // Handle Three.js examples imports

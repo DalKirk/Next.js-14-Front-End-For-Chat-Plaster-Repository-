@@ -197,8 +197,13 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
     if (!timestamp) return 'Now';
     
     try {
-      const isoTimestamp = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
-      const date = new Date(isoTimestamp);
+      let ts = String(timestamp);
+      // Truncate fractional seconds to milliseconds if longer than 3 digits (JS Date limitation)
+      ts = ts.replace(/\.(\d{3})\d+([+-]\d{2}:\d{2}|Z)?$/, '.$1$2');
+      // Only append Z if there is no timezone designator
+      const hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(ts);
+      if (!hasTz) ts += 'Z';
+      const date = new Date(ts);
       
       if (isNaN(date.getTime())) {
         console.warn('Invalid timestamp:', timestamp);

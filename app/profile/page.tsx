@@ -195,6 +195,7 @@ function ProfilePageContent() {
           ...localProfile,
           username: backendProfile.username,
           avatar: backendProfile.avatar_url || localProfile.avatar || '',
+          avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
           joinedDate
         };
         
@@ -203,10 +204,18 @@ function ProfilePageContent() {
         setEditedProfile(fullProfile);
         setAvatarPreview(fullProfile.avatar || null);
         
-        // Save CDN URL to localStorage for WebSocket usage
-        if (fullProfile.avatar) {
-          localStorage.setItem('userAvatar', fullProfile.avatar);
-        }
+        // Save CDN URL to localStorage for WebSocket usage and persist to chat-user
+        try {
+          if (fullProfile.avatar) {
+            localStorage.setItem('userAvatar', fullProfile.avatar);
+          }
+          const chatUserRaw = localStorage.getItem('chat-user');
+          if (chatUserRaw) {
+            const chatUser = JSON.parse(chatUserRaw);
+            const updated = { ...chatUser, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
+            localStorage.setItem('chat-user', JSON.stringify(updated));
+          }
+        } catch {}
       } catch (error) {
         console.warn('⚠️ Could not sync with backend, using local profile');
         
@@ -277,8 +286,17 @@ function ProfilePageContent() {
       
       // Update backend profile with all sizes
       try {
-        await apiClient.updateProfile(profile.id, editedProfile.username, avatarUrls.medium, avatarUrls);
+        const result = await apiClient.updateProfile(profile.id, editedProfile.username, avatarUrls.medium, avatarUrls);
         toast.success('Avatar uploaded to CDN (4 optimized sizes)!');
+        // Persist avatar_urls to chat-user for cross-device/session use
+        try {
+          const chatUserRaw = localStorage.getItem('chat-user');
+          if (chatUserRaw) {
+            const chatUser = JSON.parse(chatUserRaw);
+            const updated = { ...chatUser, avatar_url: result.user?.avatar_url || avatarUrls.medium, avatar_urls: result.user?.avatar_urls || avatarUrls };
+            localStorage.setItem('chat-user', JSON.stringify(updated));
+          }
+        } catch {}
       } catch (error) {
         console.error('❌ Failed to update profile with new avatar:', error);
         toast.error('Failed to save avatar to profile');

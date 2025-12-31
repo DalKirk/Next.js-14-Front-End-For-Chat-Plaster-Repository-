@@ -53,6 +53,12 @@ export function applyMessageForRender(
     playback_id?: string;
     avatar?: string;
     avatar_url?: string;
+    avatar_urls?: {
+      thumbnail?: string;
+      small?: string;
+      medium?: string;
+      large?: string;
+    };
   },
   opts: {
     roomId: string;
@@ -99,6 +105,22 @@ export function applyMessageForRender(
     }
   }
 
+  // Prefer multi-size avatar URLs if provided by backend; otherwise synthesize from single URL
+  const resolvedAvatarUrls = (() => {
+    if (payload.avatar_urls && (payload.avatar_urls.thumbnail || payload.avatar_urls.small || payload.avatar_urls.medium || payload.avatar_urls.large)) {
+      return payload.avatar_urls;
+    }
+    if (finalAvatar) {
+      return {
+        thumbnail: finalAvatar,
+        small: finalAvatar,
+        medium: finalAvatar,
+        large: finalAvatar,
+      };
+    }
+    return undefined;
+  })();
+
   return {
     id: payload.id || payload.message_id || `msg-${Date.now()}-${Math.random()}`,
     room_id: opts.roomId,
@@ -110,5 +132,6 @@ export function applyMessageForRender(
     title: payload.title,
     playback_id: payload.playback_id,
     avatar: finalAvatar, // Now ALWAYS defined - never undefined
+    avatar_urls: resolvedAvatarUrls,
   };
 }

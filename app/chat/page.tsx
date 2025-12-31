@@ -180,7 +180,7 @@ export default function ChatPage() {
               {/* User avatar preview */}
               <div className="relative w-8 h-8 rounded-full overflow-hidden border border-green-400/50">
                 <ResponsiveAvatar
-                  avatarUrls={user.avatar_urls}
+                  avatarUrls={user.avatar_urls || (userAvatar ? { thumbnail: userAvatar, small: userAvatar, medium: userAvatar, large: userAvatar } : undefined)}
                   username={user.username}
                   size="small"
                   className="w-full h-full object-cover"
