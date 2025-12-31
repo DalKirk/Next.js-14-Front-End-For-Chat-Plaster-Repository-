@@ -197,15 +197,22 @@ export default function RoomPage() {
           localStorage.setItem('chat-user', JSON.stringify(created));
           setUser(created);
           // Load avatar from profile if present
-          const storedProfile = localStorage.getItem('userProfile');
-          if (storedProfile) {
-            try {
-              const profile = JSON.parse(storedProfile);
-              if (profile.avatar) {
-                setUserAvatar(profile.avatar);
-                console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
-              }
-            } catch {}
+          // Prefer dedicated avatar key (updated by profile page), fallback to userProfile
+          const storedAvatar = localStorage.getItem('userAvatar');
+          if (storedAvatar) {
+            setUserAvatar(storedAvatar);
+            console.log('🖼️ User avatar loaded:', storedAvatar.substring(0, 50) + '...');
+          } else {
+            const storedProfile = localStorage.getItem('userProfile');
+            if (storedProfile) {
+              try {
+                const profile = JSON.parse(storedProfile);
+                if (profile.avatar) {
+                  setUserAvatar(profile.avatar);
+                  console.log('🖼️ User avatar loaded:', profile.avatar.substring(0, 50) + '...');
+                }
+              } catch {}
+            }
           }
           isInitializedRef.current = true;
           // Load messages and init WS
@@ -229,6 +236,42 @@ export default function RoomPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]); // Removed 'router' from dependencies to prevent re-renders
+
+  // React to avatar changes from profile page (localStorage updates)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'userAvatar') {
+        const newAvatar = e.newValue;
+        setUserAvatar(newAvatar);
+        // Update caches for current user
+        if (user && newAvatar) {
+          try {
+            const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+            const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+            byId[user.id] = newAvatar;
+            byName[user.username] = newAvatar;
+            localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+            localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+          } catch {}
+        }
+        // Update existing messages to reflect new avatar immediately
+        if (user && newAvatar) {
+          setMessages(prev => prev.map(m => {
+            if (m.user_id === user.id) {
+              return {
+                ...m,
+                avatar: newAvatar,
+                avatar_urls: { thumbnail: newAvatar, small: newAvatar, medium: newAvatar, large: newAvatar }
+              };
+            }
+            return m;
+          }));
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [user]);
 
   const initializeWebSocket = async (userData?: User, avatarOverride?: string | null) => {
     const currentUser = userData || user;

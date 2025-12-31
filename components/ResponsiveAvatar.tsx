@@ -50,6 +50,7 @@ export function ResponsiveAvatar({
   const [imageError, setImageError] = useState(false);
 
   const pixelSize = SIZE_MAP[size];
+  const hasExplicitSize = className.includes('w-') || className.includes('h-');
 
   const getImageUrl = (): string => {
     if (imageError || !avatarUrls) {
@@ -71,13 +72,13 @@ export function ResponsiveAvatar({
   return (
     <div
       className={`relative flex-shrink-0 overflow-hidden rounded-full ${className}`}
-      style={{ width: pixelSize, height: pixelSize }}
+      style={hasExplicitSize ? { width: '100%', height: '100%' } : { width: pixelSize, height: pixelSize }}
     >
       <Image
         src={imageUrl}
         alt={`${username}'s avatar`}
-        width={pixelSize}
-        height={pixelSize}
+        fill
+        sizes="100%"
         className="rounded-full object-cover object-center"
         style={{ objectPosition: 'center' }}
         onError={() => setImageError(true)}

@@ -280,6 +280,15 @@ function ProfilePageContent() {
       // Save to localStorage for WebSocket (use medium size as default)
       if (avatarUrls.medium) {
         localStorage.setItem('userAvatar', avatarUrls.medium);
+        // Update avatar caches for real-time message resolution
+        try {
+          const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+          const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+          byId[profile.id] = avatarUrls.medium;
+          byName[profile.username] = avatarUrls.medium;
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+          localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+        } catch {}
       }
       
       // Update backend profile with all sizes
@@ -304,6 +313,14 @@ function ProfilePageContent() {
       setEditedProfile({ ...editedProfile, avatar: '', avatar_urls: undefined });
       setAvatarPreview(null);
       localStorage.removeItem('userAvatar');
+      try {
+        const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
+        const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
+        delete byId[profile.id];
+        delete byName[profile.username];
+        localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
+        localStorage.setItem('userAvatarCache', JSON.stringify(byName));
+      } catch {}
       toast.success('Avatar removed');
     }
   };
