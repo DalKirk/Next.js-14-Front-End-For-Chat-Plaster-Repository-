@@ -1241,7 +1241,7 @@ export default function RoomPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card w-full lg:w-1/2 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50"
+            className="glass-card w-full lg:w-1/2 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50 order-2 lg:order-1"
             style={{ maxHeight: 'calc(100vh - 100px)' }}
           >
           {/* Messages List */}
@@ -1331,7 +1331,7 @@ export default function RoomPage() {
         </motion.div>
 
         {/* Video column */}
-        <div className="w-full lg:w-1/2 flex flex-col min-h-0">
+        <div className="w-full lg:w-1/2 flex flex-col min-h-0 order-1 lg:order-2">
           <div className="glass-card flex-1 border border-slate-700/50 shadow-black/50 p-4 flex flex-col min-h-0">
             <h3 className="text-slate-300 font-semibold mb-3">Video</h3>
             <div className="flex-1 min-h-0">
