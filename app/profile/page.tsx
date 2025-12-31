@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AvatarUpload } from '@/components/AvatarUpload';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
 import { StorageManager } from '@/lib/storage-manager';
@@ -58,7 +59,6 @@ interface RecentRoom {
 function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   
   // Tab state
@@ -69,10 +69,6 @@ function ProfilePageContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
-  
-  // Avatar state
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   
   // Stats state
   const [stats, setStats] = useState<ProfileStats>({
@@ -103,8 +99,37 @@ function ProfilePageContent() {
 
     const userData = JSON.parse(storedUser);
     
+    // Ensure user exists in backend
+    async function ensureUserExists() {
+      try {
+        // Try to get user from backend
+        const backendUser = await apiClient.getProfile(userData.id);
+        console.log('✅ User exists in backend:', backendUser.id);
+        return true;
+      } catch (error) {
+        console.warn('⚠️ User not found, creating in backend...');
+        try {
+          // Create user in backend
+          const newUser = await apiClient.createUser(userData.username);
+          console.log('✅ User created in backend:', newUser.id);
+          
+          // Update local storage with backend user ID
+          const updatedUserData = { ...userData, id: newUser.id };
+          StorageUtils.safeSetItem('chat-user', JSON.stringify(updatedUserData));
+          
+          return true;
+        } catch (createError) {
+          console.error('❌ Failed to create user in backend:', createError);
+          return false;
+        }
+      }
+    }
+    
     // Load profile - try backend first, fallback to local
     async function loadProfile() {
+      // First ensure user exists
+      await ensureUserExists();
+      
       // Start with local data
       const existingProfile = StorageUtils.safeGetItem('userProfile');
       const localProfile: UserProfile = existingProfile 
@@ -148,6 +173,11 @@ function ProfilePageContent() {
         setProfile(fullProfile);
         setEditedProfile(fullProfile);
         setAvatarPreview(fullProfile.avatar || null);
+        
+        // Save CDN URL to localStorage for WebSocket usage
+        if (fullProfile.avatar) {
+          localStorage.setItem('userAvatar', fullProfile.avatar);
+        }
       } catch (error) {
         console.warn('⚠️ Could not sync with backend, using local profile');
         
@@ -242,57 +272,30 @@ function ProfilePageContent() {
     ]);
   }, [router]);
 
-  // Avatar handling
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processAvatarFile(file);
-  };
-
-  const processAvatarFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('❌ File too large! Maximum 5MB');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
-      return;
-    }
-
-    // Show preview locally, but backend requires URLs
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const result = reader.result as string;
+  // Avatar handling with Bunny.net CDN
+  const handleAvatarChange = async (newAvatarUrl: string | null) => {
+    if (newAvatarUrl) {
+      // Update local state with CDN URL
+      setEditedProfile({ ...editedProfile, avatar: newAvatarUrl });
+      setAvatarPreview(newAvatarUrl);
       
-      toast.loading('🔧 Processing image...', { id: 'compress' });
+      // Save to localStorage for WebSocket
+      localStorage.setItem('userAvatar', newAvatarUrl);
       
+      // Update backend profile
       try {
-        // Compress for preview only
-        const compressed = await StorageManager.compressImage(result);
-        const sizeBefore = (result.length * 0.75) / 1024; // Approximate KB
-        const sizeAfter = (compressed.length * 0.75) / 1024;
-        
-        setAvatarPreview(compressed);
-        // Store base64 locally for preview, but we'll generate URL for backend
-        setEditedProfile({ ...editedProfile, avatar: compressed });
-        
-        toast.success(
-          `✅ Preview ready (${sizeAfter.toFixed(0)}KB). Note: Backend requires hosted image URL.`,
-          { id: 'compress', duration: 4000 }
-        );
+        await apiClient.updateProfile(profile.id, editedProfile.username, newAvatarUrl);
+        toast.success('Avatar uploaded to CDN successfully!');
       } catch (error) {
-        toast.error('Failed to compress image', { id: 'compress' });
-        console.error('Compression error:', error);
+        console.error('❌ Failed to update profile with new avatar:', error);
+        toast.error('Failed to save avatar to profile');
       }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      processAvatarFile(file);
+    } else {
+      // Avatar deleted
+      setEditedProfile({ ...editedProfile, avatar: '' });
+      setAvatarPreview(null);
+      localStorage.removeItem('userAvatar');
+      toast.success('Avatar removed');
     }
   };
 
@@ -301,22 +304,12 @@ function ProfilePageContent() {
     
     try {
       console.log('💾 Saving profile to backend...');
-      setIsEditing(false); // Show loading state
       
-      // Convert avatar to URL if it's base64
-      let avatarUrlToSend = editedProfile.avatar;
-      if (avatarUrlToSend && avatarUrlToSend.startsWith('data:')) {
-        // Generate ui-avatars URL instead of sending base64
-        const name = editedProfile.username || profile.username || 'User';
-        avatarUrlToSend = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=random`;
-        console.log('🔄 Converted base64 avatar to URL:', avatarUrlToSend);
-      }
-      
-      // Save to backend with URL only
+      // Save to backend (avatar already uploaded via AvatarUpload component)
       const result = await apiClient.updateProfile(
         profile.id,
         editedProfile.username,
-        avatarUrlToSend || undefined
+        editedProfile.avatar || undefined
       );
       
       if (result.success) {
@@ -324,48 +317,36 @@ function ProfilePageContent() {
           ...profile,
           ...editedProfile,
           username: result.user.username,
-          avatar: result.user.avatar_url || avatarUrlToSend || ''
+          avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         
         setProfile(updatedProfile);
+        setIsEditing(false);
         
-        // Only store minimal data in localStorage (no avatars!)
+        // Only store minimal data in localStorage
         StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
           username: updatedProfile.username,
           email: updatedProfile.email
         }));
         
+        // Store avatar URL separately for WebSocket
+        if (updatedProfile.avatar) {
+          localStorage.setItem('userAvatar', updatedProfile.avatar);
+        }
+        
         toast.success('✅ Profile saved successfully!');
         console.log('✅ Profile saved to backend');
       }
     } catch (error) {
       console.error('❌ Failed to save profile to backend:', error);
-      
-      // Save locally even if backend fails
-      const updatedProfile = {
-        ...profile,
-        ...editedProfile,
-        avatar: editedProfile.avatar
-      };
-      
-      setProfile(updatedProfile);
-      
-      StorageUtils.safeSetItem('userProfile', JSON.stringify({
-        id: updatedProfile.id,
-        username: updatedProfile.username,
-        email: updatedProfile.email,
-        avatar: updatedProfile.avatar
-      }));
-      
-      toast.success('✅ Profile saved locally!', { duration: 3000 });
-      console.log('✅ Profile saved to localStorage');
+      toast.error('Failed to save profile');
+      setIsEditing(false);
     }
   };
 
   const handleCancelEdit = () => {
     setEditedProfile(profile || {});
-    setAvatarPreview(profile?.avatar || null);
     setIsEditing(false);
   };
 
@@ -467,37 +448,29 @@ function ProfilePageContent() {
           className="glass-card p-6 sm:p-8"
         >
           <div className="flex flex-col lg:flex-row items-start gap-6">
-            {/* Avatar */}
-            <div className="relative">
-              <div
-                className={`relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 ${
-                  isDragging ? 'border-[#FF9900]' : 'border-white/20'
-                } transition-all`}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-              >
-                {avatarPreview ? (
-                  <Image src={avatarPreview} alt="Avatar" fill className="object-cover" unoptimized />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
-                    {profile.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
+            {/* Avatar - Show AvatarUpload when editing, otherwise show display avatar */}
+            {isEditing ? (
+              <div className="w-full lg:w-auto">
+                <AvatarUpload
+                  userId={profile.id}
+                  currentAvatar={editedProfile.avatar || profile.avatar || null}
+                  username={editedProfile.username || profile.username}
+                  onAvatarChange={handleAvatarChange}
+                />
               </div>
-              {isEditing && (
-                <>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 p-2 sm:p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full hover:from-green-400 hover:to-emerald-400 transition shadow-[0_0_20px_rgba(34,197,94,0.6)]"
-                  >
-                    <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-                  </button>
-                  <p className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-white/80 font-medium whitespace-nowrap">UPLOAD</p>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                </>
-              )}
-            </div>
+            ) : (
+              <div className="relative">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
+                  {profile.avatar ? (
+                    <Image src={profile.avatar} alt="Avatar" fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-4xl sm:text-5xl font-bold text-black">
+                      {profile.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* User Info */}
             <div className="flex-1">
@@ -525,23 +498,6 @@ function ProfilePageContent() {
                     rows={3}
                     className="bg-white/5"
                   />
-                  
-                  {/* Avatar URL Input */}
-                  <div className="space-y-2">
-                    <Input
-                      label="Avatar URL (Recommended)"
-                      placeholder="https://example.com/avatar.jpg or https://i.pravatar.cc/150"
-                      value={editedProfile.avatar || ''}
-                      onChange={(e) => {
-                        setEditedProfile({...editedProfile, avatar: e.target.value});
-                        setAvatarPreview(e.target.value);
-                      }}
-                      className="bg-white/5"
-                    />
-                    <p className="text-xs text-slate-400">
-                      💡 Tip: Use <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">imgbb.com</a>, <a href="https://imgur.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">imgur.com</a>, or <a href="https://i.pravatar.cc/150" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">pravatar.cc</a> for avatars
-                    </p>
-                  </div>
                   
                   {/* Security Section - Only visible when editing */}
                   <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4">
