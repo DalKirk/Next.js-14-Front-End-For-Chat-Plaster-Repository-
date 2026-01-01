@@ -1,3 +1,4 @@
+import os
 import asyncio
 import uuid
 from datetime import datetime
@@ -33,6 +34,17 @@ rooms: Dict[str, Dict[str, Any]] = {}
 room_connections: Dict[str, Set[WebSocket]] = {}
 rooms_lock = asyncio.Lock()
 
+# Minimal in-memory user directory for profile/password updates
+users: Dict[str, Dict[str, Any]] = {}
+users_lock = asyncio.Lock()
+
+# Pluggable user storage (in-memory or Postgres)
+try:
+    from backend.storage import create_user_store  # type: ignore
+except Exception:
+    create_user_store = None
+user_store = None
+
 
 router = APIRouter()
 
@@ -40,6 +52,104 @@ router = APIRouter()
 @router.get("/")
 async def root():
     return {"status": "ok", "time": datetime.utcnow().isoformat()}
+
+
+@router.get("/users/{user_id}")
+async def get_user(user_id: str):
+    """Return user profile data from storage for verification."""
+    try:
+        if user_store is not None:
+            profile = await user_store.get_user(user_id)
+        else:
+            async with users_lock:
+                profile = users.get(user_id, {})
+        return {"user_id": user_id, "profile": profile}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/users/{user_id}/profile")
+async def update_profile(user_id: str, payload: Dict[str, Any]):
+    """Minimal durable profile update with real-time broadcast.
+    Accepts display_name, username, bio, email, avatar_url.
+    """
+    try:
+        # Normalize payload
+        if payload.get("display_name") and not payload.get("username"):
+            payload["username"] = payload["display_name"]
+
+        # Persist via storage (DB when configured)
+        profile: Dict[str, Any]
+        if user_store is not None:
+            profile = await user_store.upsert_profile(user_id, payload)
+        else:
+            async with users_lock:
+                profile = users.get(user_id, {})
+                for key in ("display_name", "username", "bio", "email", "avatar_url"):
+                    if key in payload and payload[key] is not None:
+                        profile[key] = payload[key]
+                users[user_id] = profile
+
+        # Broadcast to room subscribers for instant sync
+        broadcast_payload = {
+            "type": "profile_updated",
+            "user_id": user_id,
+            "username": profile.get("display_name") or profile.get("username") or "Anonymous",
+            "email": profile.get("email"),
+            "bio": profile.get("bio"),
+            "avatar_url": profile.get("avatar_url"),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        for room_id, room in rooms.items():
+            if user_id in room.get("users", {}):
+                for ws in list(room_connections.get(room_id, set())):
+                    try:
+                        await ws.send_json(broadcast_payload)
+                    except Exception:
+                        room_connections[room_id].discard(ws)
+
+        return {"success": True, "user": profile}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/users/{user_id}/password")
+async def update_password(user_id: str, payload: Dict[str, Any]):
+    """Update password with non-blocking hashing. Stores hash only."""
+    try:
+        new_password = payload.get("new_password")
+        if not new_password or len(new_password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+        # Hash password off the event loop
+        hashed: str = await asyncio.to_thread(_hash_password, new_password)
+
+        if user_store is not None:
+            await user_store.set_password_hash(user_id, hashed)
+        else:
+            async with users_lock:
+                profile = users.get(user_id, {})
+                profile["password_hash"] = hashed
+                users[user_id] = profile
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _hash_password(password: str) -> str:
+    """Synchronous helper used with asyncio.to_thread for hashing."""
+    try:
+        # Avoid hard dependency error if passlib isn't installed; simple placeholder
+        from passlib.context import CryptContext
+        ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return ctx.hash(password)
+    except Exception:
+        # Fallback: DO NOT USE IN PRODUCTION
+        import hashlib
+        return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 @router.post("/rooms/{room_id}/join")
@@ -210,6 +320,44 @@ async def websocket_endpoint(
                             room_connections[room_id].discard(ws)
                     continue
 
+                # Handle profile/avatar updates for real-time cross-device sync
+                if ptype in ("profile_updated", "avatar_updated"):
+                    # Update in-memory user directory
+                    new_username = payload.get("username") or username
+                    new_avatar = payload.get("avatar") or payload.get("avatar_url") or avatar_url
+                    async with rooms_lock:
+                        try:
+                            rooms[room_id]["users"].setdefault(user_id, {})
+                            if new_username:
+                                rooms[room_id]["users"][user_id]["username"] = new_username
+                                username = new_username
+                            if new_avatar:
+                                rooms[room_id]["users"][user_id]["avatar_url"] = new_avatar
+                                avatar_url = new_avatar
+                        except Exception:
+                            pass
+
+                    # Broadcast update to all clients in this room
+                    broadcast_payload = {
+                        "type": ptype,
+                        "room_id": room_id,
+                        "user_id": user_id,
+                        "username": new_username or (username or "Anonymous"),
+                        # Provide both keys for frontend compatibility
+                        "avatar_url": new_avatar,
+                        "avatar": new_avatar,
+                        "prevUsername": payload.get("prevUsername"),
+                        "email": payload.get("email"),
+                        "bio": payload.get("bio"),
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                    for ws in list(room_connections.get(room_id, set())):
+                        try:
+                            await ws.send_json(broadcast_payload)
+                        except Exception:
+                            room_connections[room_id].discard(ws)
+                    continue
+
                 # Treat as message
                 content = payload.get("content")
                 msg_avatar = payload.get("avatar") or avatar_url
@@ -258,3 +406,17 @@ async def websocket_endpoint(
                 })
             except Exception:
                 room_connections[room_id].discard(ws)
+
+
+# Initialize storage on startup (Postgres when DATABASE_URL is set)
+@app.on_event("startup")
+async def _init_storage():
+    global user_store
+    try:
+        if create_user_store is not None:
+            user_store = await create_user_store()
+        else:
+            user_store = None
+    except Exception:
+        # Fallback to in-memory on any init error
+        user_store = None

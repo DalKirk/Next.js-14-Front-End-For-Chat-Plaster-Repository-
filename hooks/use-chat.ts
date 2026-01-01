@@ -48,7 +48,7 @@ export function useChat({ roomId, user }: UseChatProps) {
   }, [roomId, user.id]);
 
   const handleMessage = (socketMessage: SocketMessage) => {
-    const incomingType = socketMessage.type || 'message';
+    const incomingType: SocketMessage['type'] = socketMessage.type || 'message';
 
     // Handle live profile and avatar updates: patch history + caches
     if (incomingType === 'profile_updated' || incomingType === 'avatar_updated') {
