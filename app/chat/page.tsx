@@ -354,35 +354,38 @@ export default function ChatPage() {
                         </h3>
                       </div>
 
-                      {roomData.description && (
-                        <p className="text-sm text-slate-400 mb-3 line-clamp-2">
-                          {roomData.description}
-                        </p>
-                      )}
+                      {/* Topic / Description */}
+                      <p className="text-sm text-slate-400 mb-3 line-clamp-2">
+                        <span className="text-slate-500">Topic:</span> {roomData.topic || roomData.description || 'No topic yet'}
+                      </p>
 
                       {/* Category & Tags */}
-                      {(roomData.category || roomData.tags?.length > 0) && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {roomData.category && (
-                            <span className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
-                              {roomData.category}
-                            </span>
-                          )}
-                          {roomData.tags?.slice(0, 2).map((tag: string) => (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {roomData.category && (
+                          <span className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
+                            {roomData.category}
+                          </span>
+                        )}
+                        {(roomData.tags && roomData.tags.length > 0) ? (
+                          roomData.tags.slice(0, 4).map((tag: string) => (
                             <span key={tag} className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
                               {tag}
                             </span>
-                          ))}
-                        </div>
-                      )}
+                          ))
+                        ) : (
+                          <span className="px-2 py-1 bg-gray-800/50 text-gray-500 rounded text-xs border border-gray-700/50">No tags</span>
+                        )}
+                      </div>
 
                       {/* Member count */}
-                      {roomData.maxMembers && (
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                          <Users size={14} />
+                      <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+                        <Users size={14} />
+                        {roomData.maxMembers ? (
                           <span>{roomData.memberCount || 0}/{roomData.maxMembers} members</span>
-                        </div>
-                      )}
+                        ) : (
+                          <span>{roomData.memberCount ?? roomData.onlineCount ?? 0} members</span>
+                        )}
+                      </div>
                       
                       <Button
                         onClick={() => joinRoom(room)}
