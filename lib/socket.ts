@@ -203,6 +203,41 @@ class SocketManager {
     }
   }
 
+  // Emit profile updates so the backend can broadcast to all room clients
+  sendProfileUpdate(update: { username?: string; prevUsername?: string; email?: string; bio?: string; avatar_url?: string; avatar?: string }): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot send profile update - WebSocket not connected');
+      return;
+    }
+    const payload = {
+      type: 'profile_updated',
+      user_id: this.userId,
+      room_id: this.roomId,
+      username: update.username ?? this.username,
+      prevUsername: update.prevUsername,
+      email: update.email,
+      bio: update.bio,
+      avatar: update.avatar ?? update.avatar_url ?? this.avatarUrl,
+    };
+    this.socket.send(JSON.stringify(payload));
+  }
+
+  // Emit avatar-only updates
+  sendAvatarUpdate(avatarUrl: string): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot send avatar update - WebSocket not connected');
+      return;
+    }
+    const payload = {
+      type: 'avatar_updated',
+      user_id: this.userId,
+      room_id: this.roomId,
+      avatar: avatarUrl,
+      username: this.username,
+    };
+    this.socket.send(JSON.stringify(payload));
+  }
+
   onConnect(callback: (connected: boolean) => void): void {
     this.callbacks.set('connect', callback);
   }
