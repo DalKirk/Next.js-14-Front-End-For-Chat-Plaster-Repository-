@@ -2,6 +2,15 @@ import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
 import type { AvatarUploadResponse, AvatarUrls } from '../types/backend';
 
+type ProfileUpdatePayload = {
+  display_name?: string;
+  username?: string;
+  avatar_url?: string;
+  avatar_urls?: AvatarUrls;
+  bio?: string;
+  email?: string;
+};
+
 export type GPUGenerationJob = {
   job_id: string;
   status: 'queued' | 'processing' | 'complete' | 'failed';
@@ -274,7 +283,7 @@ export const apiClient = {
         throw new Error('❌ Display name must be at least 2 characters.');
       }
 
-      const payload: Record<string, any> = {};
+      const payload: ProfileUpdatePayload = {};
       if (displayName) {
         // Prefer backend display_name; also set username for backends that use that field
         payload.display_name = displayName;
