@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
+import { socketManager } from '@/lib/socket';
 import { updateUsernameEverywhere } from '@/lib/message-utils';
 import { StorageUtils } from '@/lib/storage-utils';
 import toast from 'react-hot-toast';
@@ -68,6 +69,7 @@ function ProfilePageContent() {
     new: '',
     confirm: '',
   });
+  const [passwordSupported, setPasswordSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Load profile from backend API
@@ -255,6 +257,16 @@ function ProfilePageContent() {
     
     loadProfile();
 
+    // Detect if backend supports password updates and toggle UI accordingly
+    (async () => {
+      try {
+        const supported = await apiClient.checkPasswordRouteAvailable();
+        setPasswordSupported(supported);
+      } catch {
+        setPasswordSupported(false);
+      }
+    })();
+
     // If route includes ?edit=true, open edit mode automatically (used after signup or direct links)
     try {
       if (!viewingOtherUser && searchParams?.get('edit') === 'true') {
@@ -399,6 +411,18 @@ function ProfilePageContent() {
           const bc = new BroadcastChannel('profile-updates');
           bc.postMessage(detail);
           bc.close();
+          // If connected to a room, also emit a WebSocket profile update for instant cross-device sync
+          try {
+            if (socketManager.isConnected()) {
+              socketManager.sendProfileUpdate({
+                username: updatedProfile.username,
+                prevUsername,
+                email: updatedProfile.email,
+                bio: updatedProfile.bio,
+                avatar_url: updatedProfile.avatar,
+              });
+            }
+          } catch {}
         } catch {}
         
         toast.success('✅ Profile saved successfully!');
@@ -416,7 +440,12 @@ function ProfilePageContent() {
     setIsEditing(false);
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!profile) return;
+    if (passwordSupported === false) {
+      toast.error('Password updates are not enabled on the backend yet.');
+      return;
+    }
     if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
       toast.error('Please fill in all password fields');
       return;
@@ -429,8 +458,22 @@ function ProfilePageContent() {
       toast.error('Password must be at least 8 characters');
       return;
     }
-    toast.success('Password updated successfully!');
-    setPasswordData({ current: '', new: '', confirm: '' });
+    try {
+      const result = await apiClient.updatePassword(profile.id, passwordData.new);
+      if (result?.notSupported) {
+        toast.error('Password updates are not enabled on the backend yet.');
+        return;
+      }
+      if (result?.success) {
+        toast.success('Password updated successfully!');
+        setPasswordData({ current: '', new: '', confirm: '' });
+      } else {
+        toast.error('Failed to update password');
+      }
+    } catch (e) {
+      console.error('Failed to update password', e);
+      toast.error('Failed to update password');
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -570,32 +613,43 @@ function ProfilePageContent() {
                   {/* Security Section - Only visible when editing */}
                   <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4">
                     <h3 className="text-lg font-semibold text-slate-200">Security & Privacy</h3>
-                    <div className="space-y-3">
-                      <Input
-                        type="password"
-                        placeholder="Current password"
-                        value={passwordData.current}
-                        onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
-                        className="bg-white/5"
-                      />
-                      <Input
-                        type="password"
-                        placeholder="New password"
-                        value={passwordData.new}
-                        onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
-                        className="bg-white/5"
-                      />
-                      <Input
-                        type="password"
-                        placeholder="Confirm new password"
-                        value={passwordData.confirm}
-                        onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}
-                        className="bg-white/5"
-                      />
-                      <Button onClick={handleChangePassword} variant="glass" size="sm">
-                        Update Password
-                      </Button>
-                    </div>
+                    {passwordSupported === false ? (
+                      <div className="p-3 border border-yellow-500/30 bg-yellow-500/5 rounded">
+                        <p className="text-yellow-300 text-sm">
+                          Password updates are not enabled on the backend yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Input
+                          type="password"
+                          placeholder="Current password"
+                          value={passwordData.current}
+                          onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
+                          className="bg-white/5"
+                          disabled={passwordSupported === null}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="New password"
+                          value={passwordData.new}
+                          onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
+                          className="bg-white/5"
+                          disabled={passwordSupported === null}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={passwordData.confirm}
+                          onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}
+                          className="bg-white/5"
+                          disabled={passwordSupported === null}
+                        />
+                        <Button onClick={handleChangePassword} variant="glass" size="sm" disabled={passwordSupported === null}>
+                          Update Password
+                        </Button>
+                      </div>
+                    )}
                     
                     <div className="mt-4 p-4 border border-red-500/30 bg-red-500/5 rounded-lg">
                       <h4 className="text-slate-200 font-medium mb-2 flex items-center gap-2">

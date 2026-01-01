@@ -75,6 +75,19 @@ export const checkServerHealth = async (): Promise<boolean> => {
 
 export const apiClient = {
   checkHealth: checkServerHealth,
+  // Detect if backend has the password route by inspecting FastAPI OpenAPI
+  checkPasswordRouteAvailable: async (): Promise<boolean> => {
+    try {
+      const r = await api.get('/openapi.json');
+      const paths = (r.data && r.data.paths) || {};
+      const route = paths['/users/{user_id}/password'] || paths['/users/{userId}/password'];
+      const hasPut = route && (route.put || route['PUT']);
+      return Boolean(hasPut);
+    } catch (e) {
+      console.warn('Could not load OpenAPI spec to check password route:', e);
+      return false;
+    }
+  },
 
   createUser: async (username: string): Promise<User> => {
     if (!username || !username.trim()) throw new Error('Please provide a username');
@@ -283,6 +296,24 @@ export const apiClient = {
       }
       handleApiError(e, 'Update profile');
       throw e;
+    }
+  },
+
+  updatePassword: async (
+    userId: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; notSupported?: boolean }> => {
+    try {
+      if (!newPassword || newPassword.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+      const r = await api.put(`/users/${userId}/password`, { new_password: newPassword });
+      return r.data;
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 405) {
+        return { success: false, notSupported: true };
+      }
+      handleApiError(e, 'Update password');
     }
   },
 
