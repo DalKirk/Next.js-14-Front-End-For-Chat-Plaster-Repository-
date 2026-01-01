@@ -197,10 +197,6 @@ export const apiClient = {
 
   // NOTE: Messages are sent via WebSocket ONLY - backend doesn't have REST endpoint
   // Use socketManager.sendMessage() instead
-  // This function is deprecated and should not be used
-  sendRoomMessage: async (_roomId: string, _userId: string, _content: string): Promise<Message> => {
-    throw new Error('❌ Messages must be sent via WebSocket. Backend does not support POST /messages endpoint.');
-  },
 
   // User Profile Management
   
