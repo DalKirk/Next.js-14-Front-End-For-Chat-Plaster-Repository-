@@ -40,7 +40,7 @@ export interface Message {
   username: string;
   content: string;
   timestamp: string;
-  type: 'message' | 'system' | 'video_ready' | 'live_stream_created' | 'user_joined' | 'user_left';
+  type: 'message' | 'system' | 'video_ready' | 'live_stream_created' | 'user_joined' | 'user_left' | 'profile_updated' | 'avatar_updated';
   // Optional video-related fields
   title?: string;
   playback_id?: string;
@@ -82,7 +82,7 @@ export interface VideoMessage extends Message {
 }
 
 export interface SocketMessage {
-  type: 'message' | 'video_ready' | 'live_stream_created' | 'user_joined' | 'user_left';
+  type: 'message' | 'video_ready' | 'live_stream_created' | 'user_joined' | 'user_left' | 'profile_updated' | 'avatar_updated';
   message?: string;
   username?: string;
   content?: string;
@@ -90,6 +90,11 @@ export interface SocketMessage {
   playback_id?: string;
   title?: string;
   avatar_url?: string;
+  avatar?: string;
+  user_id?: string;
+  prevUsername?: string;
+  email?: string;
+  bio?: string;
 }
 
 export interface ChatState {
