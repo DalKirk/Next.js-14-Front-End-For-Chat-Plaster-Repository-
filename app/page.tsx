@@ -18,8 +18,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { apiClient } from "@/lib/api";
-import Lottie from "lottie-react";
-import mangoAnimation from "@/public/animations/mango-animation.json";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -829,17 +827,8 @@ export default function HomePage() {
         >
           {/* Orbital rings removed (replaced by background effect) */}
 
-          {/* Center Lottie (hub removed) */}
-          <div
-            className="absolute z-[60] pointer-events-none"
-            style={{ width: 280 * viewportScale, height: 280 * viewportScale }}
-          >
-            <Lottie
-              animationData={mangoAnimation}
-              loop={true}
-              style={{ width: "100%", height: "100%" }}
-            />
-          </div>
+          {/* Center visual removed (Lottie)
+              Keeping space for future non-blocking visual */}
         </div>
       </div>
 
