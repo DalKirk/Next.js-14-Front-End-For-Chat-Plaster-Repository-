@@ -528,6 +528,9 @@ export const apiClient = {
       const r = await api.post('/auth/login', { username, password });
       return r.data;
     } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 401) {
+        throw new Error('Invalid username or password');
+      }
       handleApiError(e, 'Login');
     }
   },

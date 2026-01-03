@@ -23,6 +23,10 @@ export default function LoginPage() {
       toast.error('Please enter username and password');
       return;
     }
+    if (username.includes('@')) {
+      toast.error('Use your profile name, not email, to log in');
+      return;
+    }
     setIsLoading(true);
     try {
       const { user, token } = await apiClient.login(username, password);
@@ -50,10 +54,12 @@ export default function LoginPage() {
               name="username"
               autoComplete="username"
               id="login-username"
+              autoCorrect="off"
+              spellCheck={false}
               autoCapitalize="none"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="yourusername"
+              placeholder="your profile name"
               className="bg-black/60 border-slate-700/60 text-slate-200"
             />
           </div>
@@ -65,6 +71,8 @@ export default function LoginPage() {
                 name="password"
                 autoComplete="current-password"
                 id="login-password"
+                autoCorrect="off"
+                spellCheck={false}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
