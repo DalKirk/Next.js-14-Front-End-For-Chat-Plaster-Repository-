@@ -28,10 +28,13 @@ export const clearConversationHistory = () => {
   }
 };
 
+const DEFAULT_SYSTEM_PROMPT = `You are the Starcyeed AI assistant. Do not self-identify as "Claude" or mention model/provider names unless explicitly asked. Avoid greetings like "Hi" or "I'm ...". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.`;
+
 interface GenerateOptions {
   maxTokens?: number;
   temperature?: number;
   conversationId?: string; // Optional: override default conversation ID
+  systemPrompt?: string; // Optional: override default system prompt
 }
 
 interface ModerationResult {
@@ -75,6 +78,7 @@ export const claudeAPI = {
           conversation_id: conversationId, // NEW: Include conversation ID
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
+          system_prompt: options.systemPrompt || DEFAULT_SYSTEM_PROMPT,
         }),
       });
 
@@ -113,6 +117,7 @@ export const claudeAPI = {
           conversation_id: conversationId, // NEW: Include conversation ID
           max_tokens: options.maxTokens || 1000,
           temperature: options.temperature || 0.7,
+          system_prompt: options.systemPrompt || DEFAULT_SYSTEM_PROMPT,
         }),
       });
 

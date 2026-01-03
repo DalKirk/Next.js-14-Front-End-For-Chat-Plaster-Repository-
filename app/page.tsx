@@ -428,6 +428,21 @@ export default function HomePage() {
   };
 
   // Claude AI Functions
+  const AI_SYSTEM_PROMPT = `You are the Starcyeed AI assistant. Do not self-identify as "Claude" or mention model/provider names unless explicitly asked. Avoid greetings like "Hi" or "I'm ...". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.`;
+
+  const stripSelfIdentificationIntro = (text: string): string => {
+    const lines = text.split('\n');
+    if (lines.length > 0 && /\bi'?m\s+claude\b/i.test(lines[0])) {
+      lines.shift();
+      return lines.join('\n').trimStart();
+    }
+    // Also catch generic greeting plus self-identification in first line
+    if (lines.length > 0 && /\b(hi|hello|hey)[^\n]*i'?m\s+claude\b/i.test(lines[0])) {
+      lines.shift();
+      return lines.join('\n').trimStart();
+    }
+    return text;
+  };
   const checkAIHealth = async () => {
     try {
       const response = await fetch('/api/health');
@@ -495,7 +510,8 @@ export default function HomePage() {
           message: promptText,
           conversation_history: conversation_history,
           conversation_id: `conv_${Date.now()}`, // Generate conversation ID
-          enable_search: true
+          enable_search: true,
+          system_prompt: AI_SYSTEM_PROMPT
         }),
       });
 
@@ -553,7 +569,10 @@ export default function HomePage() {
 
               // Handle content updates
               if (parsed.content || parsed.text) {
-                const newContent = parsed.content || parsed.text;
+                let newContent = parsed.content || parsed.text;
+                if (!fullContent) {
+                  newContent = stripSelfIdentificationIntro(newContent);
+                }
                 fullContent += newContent;
                 setClaudeMessages(prev => 
                   prev.map(msg => 
