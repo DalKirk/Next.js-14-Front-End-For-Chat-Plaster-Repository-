@@ -1004,7 +1004,8 @@ export default function HomePage() {
                               </a>
                             );
                           },
-                          code({ node, inline, className, children, ...props }) {
+                          code({ className, children, ...props }: any) {
+                            const inline = !className;
                             const match = /language-(\w+)/.exec(className || '');
                             const language = match ? match[1] : '';
                             const codeString = String(children).replace(/\n$/, '');
