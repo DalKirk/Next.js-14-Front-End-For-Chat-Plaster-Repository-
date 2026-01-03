@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 import { AvatarUrls } from '@/types/backend';
 import { 
   Camera, Activity, Trash2,
-  User, MessageSquare, Zap
+  User, MessageSquare, Zap, Pencil, X
 } from 'lucide-react';
 // Image not used; remove import to satisfy lint
 
@@ -787,6 +787,8 @@ export default function ProfilePage() {
 // Render gallery grid using stored URLs
 function UserGalleryGrid() {
   const [urls, setUrls] = useState<string[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
 
   useEffect(() => {
     try {
@@ -801,10 +803,39 @@ function UserGalleryGrid() {
     try { StorageUtils.safeSetItem('userGallery', JSON.stringify(next)); } catch {}
   };
 
-  const removeUrl = (i: number) => {
+  const removeUrl = async (i: number) => {
     const next = urls.slice();
-    next.splice(i, 1);
+    const removed = next.splice(i, 1)[0];
     persist(next);
+    // Attempt backend delete if we can infer an ID
+    try {
+      const chatUserRaw = localStorage.getItem('chat-user');
+      const chatUser = chatUserRaw ? JSON.parse(chatUserRaw) : null;
+      const userId = chatUser?.id;
+      if (userId) {
+        const itemId = removed?.includes('id=') ? removed.split('id=')[1] : `local-${i}`;
+        await apiClient.deleteGalleryItem(userId, itemId);
+      }
+    } catch {}
+  };
+
+  const beginEdit = (i: number) => {
+    setEditingIndex(i);
+    setEditingTitle('');
+  };
+
+  const saveTitle = async (i: number) => {
+    setEditingIndex(null);
+    try {
+      const chatUserRaw = localStorage.getItem('chat-user');
+      const chatUser = chatUserRaw ? JSON.parse(chatUserRaw) : null;
+      const userId = chatUser?.id;
+      if (userId) {
+        const itemId = `local-${i}`;
+        await apiClient.updateGalleryItem(userId, itemId, { title: editingTitle });
+      }
+    } catch {}
+    setEditingTitle('');
   };
 
   return (
@@ -821,6 +852,25 @@ function UserGalleryGrid() {
                 onClick={() => removeUrl(i)}
                 className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded"
               >Remove</button>
+              {editingIndex === i ? (
+                <div className="absolute bottom-2 left-2 right-2 bg-black/60 p-2 rounded flex items-center gap-2">
+                  <input
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    placeholder="Title"
+                    className="flex-1 bg-transparent text-slate-200 text-xs border-b border-slate-500/50 focus:outline-none"
+                  />
+                  <button onClick={() => saveTitle(i)} className="text-xs px-2 py-1 bg-cyan-500/30 text-cyan-200 rounded">Save</button>
+                  <button onClick={() => setEditingIndex(null)} className="text-xs px-2 py-1 bg-slate-700/50 text-slate-200 rounded"><X className="w-3 h-3" /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => beginEdit(i)}
+                  className="absolute bottom-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" /> Edit Title
+                </button>
+              )}
             </div>
           ))}
         </div>

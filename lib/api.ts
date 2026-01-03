@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
-import type { AvatarUploadResponse, AvatarUrls } from '../types/backend';
+import type { AvatarUploadResponse, AvatarUrls, GalleryItem } from '../types/backend';
 import { sanitizeUserForStorage } from './utils';
 
 type ProfileUpdatePayload = {
@@ -673,6 +673,74 @@ export const apiClient = {
         throw new Error(errorMsg);
       }
       throw new Error('Failed to upload gallery image');
+    }
+  },
+
+  /** List gallery items for a user */
+  listGallery: async (userId: string): Promise<GalleryItem[]> => {
+    try {
+      const r = await api.get(`/users/${userId}/gallery`);
+      return r.data;
+    } catch (e) {
+      console.warn('Gallery list failed, falling back to local storage:', e);
+      // Fallback: local storage URLs without IDs
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = window.localStorage.getItem('userGallery') || '[]';
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            return arr.filter((u: unknown) => typeof u === 'string').map((u: string) => ({
+              id: `local-${Math.random().toString(36).slice(2)}`,
+              image_urls: { medium: u },
+              title: undefined,
+              created_at: new Date().toISOString(),
+            }));
+          }
+        } catch {}
+      }
+      return [];
+    }
+  },
+
+  /** Update gallery item metadata (e.g., title) */
+  updateGalleryItem: async (userId: string, itemId: string, data: { title?: string }): Promise<GalleryItem> => {
+    try {
+      const r = await api.put(`/users/${userId}/gallery/${itemId}`, data);
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Update gallery item');
+    }
+  },
+
+  /** Update gallery order */
+  updateGalleryOrder: async (userId: string, itemIds: string[]): Promise<{ success: boolean }> => {
+    try {
+      const r = await api.put(`/users/${userId}/gallery/order`, { ids: itemIds });
+      return r.data;
+    } catch (e) {
+      handleApiError(e, 'Update gallery order');
+    }
+  },
+
+  /** Delete gallery item */
+  deleteGalleryItem: async (userId: string, itemId: string): Promise<{ success: boolean }> => {
+    try {
+      const r = await api.delete(`/users/${userId}/gallery/${itemId}`);
+      return r.data;
+    } catch (e) {
+      // If backend route missing, fallback by removing from local storage
+      if (axios.isAxiosError(e) && e.response?.status === 404 && typeof window !== 'undefined') {
+        try {
+          const raw = window.localStorage.getItem('userGallery') || '[]';
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const next = arr.filter((u: unknown) => typeof u === 'string' && !String(u).includes(itemId));
+            window.localStorage.setItem('userGallery', JSON.stringify(next));
+          }
+        } catch {}
+        return { success: true };
+      }
+      handleApiError(e, 'Delete gallery item');
     }
   },
 

@@ -65,3 +65,13 @@ export interface AvatarHealthResponse {
   cdn_hostname: string | null;
   timestamp: string;
 }
+
+/**
+ * User gallery item stored on CDN (multi-size URLs)
+ */
+export interface GalleryItem {
+  id: string;
+  image_urls: AvatarUrls;
+  title?: string;
+  created_at: string;
+}
