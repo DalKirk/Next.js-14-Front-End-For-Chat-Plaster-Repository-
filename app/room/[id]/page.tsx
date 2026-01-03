@@ -359,7 +359,7 @@ export default function RoomPage() {
       }
     }, 30000); // 30s cadence
     return () => { cancelled = true; clearInterval(interval); };
-  }, [user?.id, user.username, userAvatar]);
+  }, [user?.id, user?.username, userAvatar]);
 
   // Listen for profile updates (username/email/avatar) and update local state in real time
   useEffect(() => {
