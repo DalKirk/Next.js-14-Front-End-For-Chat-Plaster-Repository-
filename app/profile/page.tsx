@@ -215,11 +215,11 @@ function ProfilePageContent() {
             const chatUserRaw = localStorage.getItem('chat-user');
             if (chatUserRaw) {
               const chatUser = JSON.parse(chatUserRaw);
-              const updated = { ...chatUser, username: fullProfile.username, email: fullProfile.email, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
+              const updated = { ...chatUser, username: fullProfile.username, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
               localStorage.setItem('chat-user', JSON.stringify(updated));
             }
-            // Also store minimal profile for quick reads
-            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username, email: fullProfile.email }));
+            // Also store minimal profile for quick reads (no email)
+            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username }));
           } catch {}
         }
       } catch (error) {
@@ -388,9 +388,7 @@ function ProfilePageContent() {
         // Only store minimal data in localStorage
         StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
-          username: updatedProfile.username,
-          email: updatedProfile.email,
-          bio: updatedProfile.bio
+          username: updatedProfile.username
         }));
         
         // Store avatar URL separately for WebSocket
@@ -403,7 +401,7 @@ function ProfilePageContent() {
           const chatUserRaw = localStorage.getItem('chat-user');
           if (chatUserRaw) {
             const chatUser = JSON.parse(chatUserRaw);
-            const merged = { ...chatUser, username: updatedProfile.username, email: updatedProfile.email, avatar_url: updatedProfile.avatar, avatar_urls: updatedProfile.avatar_urls };
+            const merged = { ...chatUser, username: updatedProfile.username, avatar_url: updatedProfile.avatar, avatar_urls: updatedProfile.avatar_urls };
             localStorage.setItem('chat-user', JSON.stringify(merged));
           }
           const detail = { userId: updatedProfile.id, username: updatedProfile.username, prevUsername, email: updatedProfile.email, bio: updatedProfile.bio, avatar: updatedProfile.avatar };

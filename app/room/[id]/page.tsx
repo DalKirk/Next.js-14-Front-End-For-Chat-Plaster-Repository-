@@ -15,6 +15,7 @@ import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
 import { applyMessageForRender, cacheUserProfile, updateAvatarEverywhere } from '@/lib/message-utils';
+import { sanitizeUserForStorage } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { 
   VideoCameraIcon, 
@@ -194,7 +195,7 @@ export default function RoomPage() {
           const uniqueName = `${desiredName}-${Math.random().toString(36).slice(2, 6)}`;
           const created = await apiClient.createUser(uniqueName);
           console.log('👤 Created backend user:', created);
-          localStorage.setItem('chat-user', JSON.stringify(created));
+          localStorage.setItem('chat-user', JSON.stringify(sanitizeUserForStorage(created)));
           setUser(created);
           // Load avatar from profile if present
           // Prefer dedicated avatar key (updated by profile page), fallback to userProfile
@@ -470,7 +471,7 @@ export default function RoomPage() {
           try {
             console.log('👤 Creating missing user, then retrying join...');
             const created = await apiClient.createUser(currentUser.username || 'Guest');
-            localStorage.setItem('chat-user', JSON.stringify(created));
+            localStorage.setItem('chat-user', JSON.stringify(sanitizeUserForStorage(created)));
             setUser(created);
             await apiClient.joinRoom(roomId, created.id, created.username, avatarUrl);
             console.log('✅ Joined after creating user');
