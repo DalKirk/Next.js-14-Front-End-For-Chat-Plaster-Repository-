@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { GalleryUpload } from '@/components/GalleryUpload';
+import type { GalleryItem } from '@/types/backend';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
@@ -757,17 +758,20 @@ function ProfilePageContent() {
                       <GalleryUpload
                         userId={profile.id}
                         username={profile.username}
-                        onItemsAdded={(items) => {
+                        onItemsAdded={(items: GalleryItem[]) => {
                           try {
                             const raw = StorageUtils.safeGetItem('userGallery') || '[]';
                             const arr = JSON.parse(raw);
-                            const next = Array.isArray(arr) ? [...items.map((i) => i.medium || i.large || i.small || i.thumbnail), ...arr] : items.map((i) => i.medium || i.large || i.small || i.thumbnail);
+                            const urls = items.map((i) => i.url);
+                            const next = Array.isArray(arr) ? [...urls, ...arr] : urls;
                             StorageUtils.safeSetItem('userGallery', JSON.stringify(next));
+                            // Notify grid to refresh
+                            window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length } }));
                           } catch {}
                         }}
                       />
                     ) : null}
-                    <UserGalleryGrid isViewOnly={isViewOnly} />
+                    <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} />
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
@@ -794,38 +798,47 @@ export default function ProfilePage() {
 }
 
 // Render gallery grid using stored URLs
-function UserGalleryGrid({ isViewOnly }: { isViewOnly: boolean }) {
-  const [urls, setUrls] = useState<string[]>([]);
+function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: string }) {
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
 
-  useEffect(() => {
+  const refresh = async () => {
     try {
-      const raw = StorageUtils.safeGetItem('userGallery') || '[]';
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) setUrls(arr.filter((u: unknown) => typeof u === 'string'));
-    } catch {}
-  }, []);
-
-  const persist = (next: string[]) => {
-    setUrls(next);
-    try { StorageUtils.safeSetItem('userGallery', JSON.stringify(next)); } catch {}
+      const list = await apiClient.listGallery(userId);
+      setItems(list);
+    } catch {
+      try {
+        const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          setItems(arr.filter((u: unknown) => typeof u === 'string').map((u: string, idx: number) => ({ id: `local-${idx}`, url: u, caption: undefined, created_at: new Date().toISOString() })));
+        }
+      } catch {}
+    }
   };
 
-  const removeUrl = async (i: number) => {
-    const next = urls.slice();
-    const removed = next.splice(i, 1)[0];
-    persist(next);
-    // Attempt backend delete if we can infer an ID
+  useEffect(() => {
+    refresh();
+    const onUpdate = () => refresh();
+    try { window.addEventListener('gallery-updated', onUpdate as any); } catch {}
+    return () => { try { window.removeEventListener('gallery-updated', onUpdate as any); } catch {} };
+  }, [userId]);
+
+  const persistLocal = (nextUrls: string[]) => {
+    try { StorageUtils.safeSetItem('userGallery', JSON.stringify(nextUrls)); } catch {}
+  };
+
+  const removeItem = async (i: number) => {
+    const item = items[i];
+    if (!item) return;
     try {
-      const chatUserRaw = localStorage.getItem('chat-user');
-      const chatUser = chatUserRaw ? JSON.parse(chatUserRaw) : null;
-      const userId = chatUser?.id;
-      if (userId) {
-        const itemId = removed?.includes('id=') ? removed.split('id=')[1] : `local-${i}`;
-        await apiClient.deleteGalleryItem(userId, itemId);
-      }
+      await apiClient.deleteGalleryItem(userId, item.id);
     } catch {}
+    const nextItems = items.slice();
+    nextItems.splice(i, 1);
+    setItems(nextItems);
+    persistLocal(nextItems.map((it) => it.url));
   };
 
   const beginEdit = (i: number) => {
@@ -836,12 +849,12 @@ function UserGalleryGrid({ isViewOnly }: { isViewOnly: boolean }) {
   const saveTitle = async (i: number) => {
     setEditingIndex(null);
     try {
-      const chatUserRaw = localStorage.getItem('chat-user');
-      const chatUser = chatUserRaw ? JSON.parse(chatUserRaw) : null;
-      const userId = chatUser?.id;
-      if (userId) {
-        const itemId = `local-${i}`;
-        await apiClient.updateGalleryItem(userId, itemId, { title: editingTitle });
+      const item = items[i];
+      if (item) {
+        await apiClient.updateGalleryItem(userId, item.id, { caption: editingTitle });
+        const next = items.slice();
+        next[i] = { ...item, caption: editingTitle };
+        setItems(next);
       }
     } catch {}
     setEditingTitle('');
@@ -849,16 +862,19 @@ function UserGalleryGrid({ isViewOnly }: { isViewOnly: boolean }) {
 
   return (
     <div className="space-y-3">
-      {urls.length === 0 ? (
+      {items.length === 0 ? (
         isViewOnly ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {urls.map((u, i) => (
-            <div key={u + i} className="relative rounded-lg overflow-hidden border border-slate-700/50">
+          {items.map((it, i) => (
+            <div key={it.id} className="relative rounded-lg overflow-hidden border border-slate-700/50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u} alt="Gallery item" className="w-full h-32 object-cover" />
+              <img src={it.url} alt="Gallery item" className="w-full h-32 object-cover" />
+              {it.caption && (
+                <div className="absolute top-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">{it.caption}</div>
+              )}
               <button
-                onClick={() => removeUrl(i)}
+                onClick={() => removeItem(i)}
                 className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded"
               >Remove</button>
               {editingIndex === i ? (

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
-import type { AvatarUploadResponse, AvatarUrls, GalleryItem } from '../types/backend';
+import type { AvatarUploadResponse, AvatarUrls, GalleryItem, GalleryListResponse } from '../types/backend';
 import { sanitizeUserForStorage } from './utils';
 
 type ProfileUpdatePayload = {
@@ -635,70 +635,53 @@ export const apiClient = {
    * Upload a gallery image using the same multi-size processing as avatars.
    * Backend should expose POST /users/{userId}/gallery that stores images to CDN.
    */
-  uploadGalleryImage: async (
+  uploadGalleryFiles: async (
     userId: string,
-    file: File,
-    username?: string
-  ): Promise<{ image_urls: AvatarUrls }> => {
-    // Ensure the user exists first
+    files: File[],
+    caption?: string,
+    username?: string,
+  ): Promise<GalleryListResponse> => {
     if (username) {
       await apiClient.ensureUserExists(userId, username);
     }
-
-    const { ImageProcessor } = await import('./image-processor');
-
-    const validation = await ImageProcessor.validateImage(file);
-    if (!validation.valid) {
-      throw new Error(validation.error || 'Invalid image');
-    }
-
-    const processed = await ImageProcessor.processAvatar(file);
-
     const formData = new FormData();
-    formData.append('thumbnail', processed.thumbnail.blob, 'thumbnail.jpg');
-    formData.append('small', processed.small.blob, 'small.jpg');
-    formData.append('medium', processed.medium.blob, 'medium.jpg');
-    formData.append('large', processed.large.blob, 'large.jpg');
+    files.forEach((file) => formData.append('files', file, file.name));
+    if (caption) formData.append('caption', caption);
 
-    // Try POST first, then gracefully fallback to PUT if server disallows POST
+    // Canonical path
     try {
-      const response = await api.post(`/users/${userId}/gallery`, formData, {
+      const r = await api.post(`/users/${userId}/media`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000,
       });
-      return response.data;
+      return r.data;
     } catch (e) {
-      if (axios.isAxiosError(e) && e.response?.status === 405) {
-        // Fallback: some backends expect PUT
-        try {
-          const response = await api.put(`/users/${userId}/gallery`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: 30000,
-          });
-          return response.data;
-        } catch (putErr) {
-          const msg = axios.isAxiosError(putErr)
-            ? (putErr.response?.data?.detail || putErr.message || 'Gallery upload method not allowed')
-            : String(putErr || 'Gallery upload method not allowed');
-          throw new Error(`Gallery upload error: ${msg}. Ensure backend route /users/{userId}/gallery accepts POST or PUT.`);
-        }
+      // Alias fallback
+      try {
+        const r2 = await api.post(`/users/${userId}/gallery`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 30000,
+        });
+        return r2.data;
+      } catch (e2) {
+        handleApiError(e2, 'Upload gallery files');
       }
-      if (axios.isAxiosError(e)) {
-        const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload gallery image';
-        console.error('❌ Gallery upload error:', errorMsg);
-        throw new Error(errorMsg);
-      }
-      throw new Error('Failed to upload gallery image');
     }
   },
 
   /** List gallery items for a user */
   listGallery: async (userId: string): Promise<GalleryItem[]> => {
     try {
-      const r = await api.get(`/users/${userId}/gallery`);
-      return r.data;
+      const r = await api.get(`/users/${userId}/media`);
+      return (r.data?.items || []) as GalleryItem[];
     } catch (e) {
-      console.warn('Gallery list failed, falling back to local storage:', e);
+      // Fallback to alias
+      try {
+        const r2 = await api.get(`/users/${userId}/gallery`);
+        return (r2.data?.items || []) as GalleryItem[];
+      } catch (aliasErr) {
+        console.warn('Gallery list failed, falling back to local storage:', aliasErr);
+      }
       // Fallback: local storage URLs without IDs
       if (typeof window !== 'undefined') {
         try {
@@ -707,8 +690,8 @@ export const apiClient = {
           if (Array.isArray(arr)) {
             return arr.filter((u: unknown) => typeof u === 'string').map((u: string) => ({
               id: `local-${Math.random().toString(36).slice(2)}`,
-              image_urls: { medium: u },
-              title: undefined,
+              url: u,
+              caption: undefined,
               created_at: new Date().toISOString(),
             }));
           }
@@ -719,30 +702,30 @@ export const apiClient = {
   },
 
   /** Update gallery item metadata (e.g., title) */
-  updateGalleryItem: async (userId: string, itemId: string, data: { title?: string }): Promise<GalleryItem> => {
+  updateGalleryItem: async (userId: string, itemId: string, data: { caption?: string }): Promise<GalleryItem> => {
     try {
-      const r = await api.put(`/users/${userId}/gallery/${itemId}`, data);
-      return r.data;
+      const r = await api.put(`/users/${userId}/media/${itemId}`, data);
+      return r.data as GalleryItem;
     } catch (e) {
       handleApiError(e, 'Update gallery item');
     }
   },
 
   /** Update gallery order */
-  updateGalleryOrder: async (userId: string, itemIds: string[]): Promise<{ success: boolean }> => {
+  updateGalleryOrder: async (userId: string, itemIds: string[]): Promise<{ user_id: string; items: GalleryItem[] }> => {
     try {
-      const r = await api.put(`/users/${userId}/gallery/order`, { ids: itemIds });
-      return r.data;
+      const r = await api.put(`/users/${userId}/media/order`, { ids: itemIds });
+      return r.data as { user_id: string; items: GalleryItem[] };
     } catch (e) {
       handleApiError(e, 'Update gallery order');
     }
   },
 
   /** Delete gallery item */
-  deleteGalleryItem: async (userId: string, itemId: string): Promise<{ success: boolean }> => {
+  deleteGalleryItem: async (userId: string, itemId: string): Promise<{ ok: boolean }> => {
     try {
-      const r = await api.delete(`/users/${userId}/gallery/${itemId}`);
-      return r.data;
+      const r = await api.delete(`/users/${userId}/media/${itemId}`);
+      return r.data as { ok: boolean };
     } catch (e) {
       // If backend route missing, fallback by removing from local storage
       if (axios.isAxiosError(e) && e.response?.status === 404 && typeof window !== 'undefined') {
@@ -754,7 +737,7 @@ export const apiClient = {
             window.localStorage.setItem('userGallery', JSON.stringify(next));
           }
         } catch {}
-        return { success: true };
+        return { ok: true };
       }
       handleApiError(e, 'Delete gallery item');
     }

@@ -71,7 +71,12 @@ export interface AvatarHealthResponse {
  */
 export interface GalleryItem {
   id: string;
-  image_urls: AvatarUrls;
-  title?: string;
+  url: string;
+  caption?: string;
   created_at: string;
+}
+
+export interface GalleryListResponse {
+  user_id: string;
+  items: GalleryItem[];
 }

@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
-import type { AvatarUrls } from '@/types/backend';
+import type { GalleryItem } from '@/types/backend';
 
 interface GalleryUploadProps {
   userId: string;
   username: string;
-  onItemsAdded?: (items: AvatarUrls[]) => void;
+  onItemsAdded?: (items: GalleryItem[]) => void;
 }
 
 /**
@@ -23,16 +23,10 @@ export function GalleryUpload({ userId, username, onItemsAdded }: GalleryUploadP
     if (!files || files.length === 0) return;
     setUploading(true);
     setError(null);
-    const results: AvatarUrls[] = [];
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const res = await apiClient.uploadGalleryImage(userId, file, username);
-        if (res?.image_urls) {
-          results.push(res.image_urls);
-        }
-      }
-      onItemsAdded?.(results);
+      const fileArray = Array.from(files);
+      const res = await apiClient.uploadGalleryFiles(userId, fileArray, undefined, username);
+      onItemsAdded?.(res.items || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
