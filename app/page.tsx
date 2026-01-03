@@ -875,7 +875,7 @@ export default function HomePage() {
                       onClick={() => {
                         window.location.href = '/image-analysis';
                       }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Launch Snapshot Analyzer
                     </button>
@@ -884,7 +884,7 @@ export default function HomePage() {
                       onClick={() => {
                         window.location.href = '/profile';
                       }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Open User Profile
                     </button>
@@ -897,7 +897,7 @@ export default function HomePage() {
                           setShowAuthModal(true);
                         }
                       }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       {currentUser ? 'Launch Chat Rooms' : 'Join Chat Rooms'}
                     </button>
@@ -906,7 +906,7 @@ export default function HomePage() {
                       onClick={() => {
                         window.location.href = '/pentest-simulator';
                       }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Launch Pentest Simulator
                     </button>
@@ -915,7 +915,7 @@ export default function HomePage() {
                       onClick={() => {
                         window.location.href = '/3d-generator';
                       }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Launch 3D Gen
                     </button>
@@ -932,7 +932,7 @@ export default function HomePage() {
                     console.log('Navigating to game builder...');
                     window.location.href = '/game-builder';
                   }}
-                  className="block mt-6 w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  className="block mt-6 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                 >
                   Launch Pluto Game Builder
                 </button>
@@ -941,7 +941,7 @@ export default function HomePage() {
                         console.log('Navigating to tile editor...');
                         window.location.href = '/advanced-features-demo?tab=tiles';
                       }}
-                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Launch Tile Editor
                     </button>
@@ -950,7 +950,7 @@ export default function HomePage() {
                         console.log('Navigating to sprite editor...');
                         window.location.href = '/advanced-features-demo?tab=sprites';
                       }}
-                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#00ffcc] to-[#0096ff] text-black font-bold rounded-lg hover:shadow-[0_0_30px_rgba(0,255,204,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
                     >
                       Launch Sprite Editor
                     </button>
