@@ -172,11 +172,28 @@ export default function HomePage() {
   useEffect(() => {
     StorageUtils.cleanup();
 
+    // Load avatar from dedicated storage first for reliability
+    try {
+      const storedAvatar = localStorage.getItem("userAvatar");
+      if (storedAvatar && typeof storedAvatar === 'string' && storedAvatar.length > 0) {
+        setUserAvatar(storedAvatar);
+      }
+    } catch (e) {
+      // noop
+    }
+
     const storedUser = localStorage.getItem("chat-user");
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
         setCurrentUser(userData);
+        // Fallback avatar from chat-user cache if not set yet
+        if (!userAvatar) {
+          const cached = (userData.avatar_urls && (userData.avatar_urls.medium || userData.avatar_urls.small || userData.avatar_urls.thumbnail || userData.avatar_urls.large)) || userData.avatar_url;
+          if (cached && typeof cached === 'string') {
+            setUserAvatar(cached);
+          }
+        }
       } catch (error) {
         console.error("Error parsing stored user:", error);
         localStorage.removeItem("chat-user");
@@ -187,13 +204,75 @@ export default function HomePage() {
     if (storedProfile) {
       try {
         const profile = JSON.parse(storedProfile);
-        if (profile.avatar) {
+        // Legacy fallback: some older builds stored avatar on userProfile
+        if (!userAvatar && profile.avatar) {
           setUserAvatar(profile.avatar);
         }
       } catch (error) {
         console.error("Error parsing user profile:", error);
       }
     }
+
+    // Live updates: listen for avatar/profile changes
+    const onAvatarUpdated = (ev: Event) => {
+      try {
+        const detail = (ev as CustomEvent).detail || {};
+        if (detail && detail.avatar && typeof detail.avatar === 'string') {
+          setUserAvatar(detail.avatar);
+          try { localStorage.setItem('userAvatar', detail.avatar); } catch {}
+        }
+      } catch {}
+    };
+    const onProfileUpdated = (ev: Event) => {
+      try {
+        const detail = (ev as CustomEvent).detail || {};
+        if (detail && detail.avatar && typeof detail.avatar === 'string') {
+          setUserAvatar(detail.avatar);
+        }
+        if (detail && detail.username && typeof detail.username === 'string') {
+          // Optionally refresh currentUser username for header
+          setCurrentUser((prev) => prev ? { ...prev, username: detail.username } : prev);
+        }
+      } catch {}
+    };
+    try {
+      window.addEventListener('avatar-updated', onAvatarUpdated);
+      window.addEventListener('profile-updated', onProfileUpdated);
+    } catch {}
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('avatar-updates');
+      bc.onmessage = (msg) => {
+        try {
+          const detail = (msg && (msg as MessageEvent).data) || {};
+          if (detail && detail.avatar && typeof detail.avatar === 'string') {
+            setUserAvatar(detail.avatar);
+          }
+        } catch {}
+      };
+    } catch {}
+
+    // Also handle storage changes (multi-tab)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'userAvatar' && e.newValue) {
+        setUserAvatar(e.newValue);
+      }
+    };
+    try { window.addEventListener('storage', onStorage); } catch {}
+
+    return () => {
+      try {
+        window.removeEventListener('avatar-updated', onAvatarUpdated);
+        window.removeEventListener('profile-updated', onProfileUpdated);
+        window.removeEventListener('storage', onStorage);
+      } catch {}
+      try {
+        if (bc) {
+          bc.close();
+          bc = null;
+        }
+      } catch {}
+    };
   }, []);
 
   useEffect(() => {

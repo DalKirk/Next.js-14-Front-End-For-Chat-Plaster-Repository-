@@ -49,6 +49,7 @@ function ProfilePageContent() {
   const searchParams = useSearchParams();
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [isViewOnly, setIsViewOnly] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const viewedUserId = (() => {
     try { return searchParams?.get('userId') || null; } catch { return null; }
   })();
@@ -256,6 +257,17 @@ function ProfilePageContent() {
     }
     
     loadProfile();
+
+    // Load privacy preference for email visibility
+    try {
+      const privacyRaw = StorageUtils.safeGetItem('userPrivacy');
+      if (privacyRaw) {
+        const privacy = JSON.parse(privacyRaw);
+        if (typeof privacy?.showEmail === 'boolean') {
+          setShowEmail(Boolean(privacy.showEmail));
+        }
+      }
+    } catch {}
 
     // Detect if backend supports password updates and toggle UI accordingly
     (async () => {
@@ -601,6 +613,25 @@ function ProfilePageContent() {
                     onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
                     className="bg-white/5"
                   />
+                  {/* Email visibility preference (local-only) */}
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <input
+                      id="show-email"
+                      type="checkbox"
+                      checked={showEmail}
+                      onChange={(e) => {
+                        const value = e.target.checked;
+                        setShowEmail(value);
+                        try {
+                          const raw = StorageUtils.safeGetItem('userPrivacy') || '{}';
+                          const obj = { ...JSON.parse(raw), showEmail: value };
+                          StorageUtils.safeSetItem('userPrivacy', JSON.stringify(obj));
+                        } catch {}
+                      }}
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    <label htmlFor="show-email" className="text-sm">Show email on my profile</label>
+                  </div>
                   <Textarea
                     label="Bio"
                     value={editedProfile.bio || ''}
@@ -609,6 +640,28 @@ function ProfilePageContent() {
                     rows={3}
                     className="bg-white/5"
                   />
+
+                  {/* Preferences: Theme selection (persist locally) */}
+                  <div className="mt-2">
+                    <label className="text-xs text-slate-500 mb-2 block">Color Theme</label>
+                    <select
+                      value={editedProfile.theme || 'purple'}
+                      onChange={(e) => {
+                        const theme = e.target.value as 'purple' | 'blue' | 'green';
+                        setEditedProfile({ ...editedProfile, theme });
+                        try {
+                          const raw = StorageUtils.safeGetItem('uiSettings') || '{}';
+                          const obj = { ...JSON.parse(raw), theme };
+                          StorageUtils.safeSetItem('uiSettings', JSON.stringify(obj));
+                        } catch {}
+                      }}
+                      className="bg-white/5 text-slate-200 rounded px-2 py-2"
+                    >
+                      <option value="purple">Purple</option>
+                      <option value="blue">Blue</option>
+                      <option value="green">Green</option>
+                    </select>
+                  </div>
                   
                   {/* Security Section - Only visible when editing */}
                   <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4">
@@ -683,10 +736,15 @@ function ProfilePageContent() {
               ) : (
                 <>
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
-                  {profile.email && (
+                  {profile.email && showEmail && (
                     <p className="text-slate-400 mb-3">{profile.email}</p>
                   )}
                   {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
+                  {/* Photo Gallery (URLs only; local persistence) */}
+                  <div className="mt-4">
+                    <h3 className="text-slate-200 text-base font-semibold mb-2">Photo Gallery</h3>
+                    <PhotoGallery />
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4" />
@@ -708,5 +766,72 @@ export default function ProfilePage() {
     <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center"><div className="text-cyan-300">Loading...</div></div>}>
       <ProfilePageContent />
     </Suspense>
+  );
+}
+
+// Lightweight client-only gallery using localStorage of URL strings
+function PhotoGallery() {
+  const [urls, setUrls] = useState<string[]>([]);
+  const [newUrl, setNewUrl] = useState('');
+
+  useEffect(() => {
+    try {
+      const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) setUrls(arr.filter((u: unknown) => typeof u === 'string'));
+    } catch {}
+  }, []);
+
+  const persist = (next: string[]) => {
+    setUrls(next);
+    try { StorageUtils.safeSetItem('userGallery', JSON.stringify(next)); } catch {}
+  };
+
+  const addUrl = () => {
+    const url = newUrl.trim();
+    if (!url) return;
+    // Basic validation: only allow http(s) URLs
+    if (!/^https?:\/\//i.test(url)) {
+      toast.error('Please enter a valid image URL (http/https)');
+      return;
+    }
+    persist([url, ...urls]);
+    setNewUrl('');
+  };
+
+  const removeUrl = (i: number) => {
+    const next = urls.slice();
+    next.splice(i, 1);
+    persist(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Paste image URL (CDN)"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          className="bg-white/5"
+        />
+        <Button onClick={addUrl} variant="glass">Add</Button>
+      </div>
+      {urls.length === 0 ? (
+        <p className="text-slate-400 text-sm">No photos yet. Add some URLs from your CDN or image host.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {urls.map((u, i) => (
+            <div key={u + i} className="relative rounded-lg overflow-hidden border border-slate-700/50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="Gallery item" className="w-full h-32 object-cover" />
+              <button
+                onClick={() => removeUrl(i)}
+                className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded"
+              >Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
