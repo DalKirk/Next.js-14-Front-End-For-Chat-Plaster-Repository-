@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
 import type { AvatarUploadResponse, AvatarUrls } from '../types/backend';
+import { sanitizeUserForStorage } from './utils';
 
 type ProfileUpdatePayload = {
   display_name?: string;
@@ -218,8 +219,9 @@ export const apiClient = {
           if (typeof window !== 'undefined') {
             try {
               const existing = window.localStorage.getItem('chat-user');
-              // Keep any extra fields, but replace id/username with backend values
-              const merged = existing ? { ...JSON.parse(existing), ...createdUser } : createdUser;
+              // Keep any extra non-sensitive fields, but always sanitize and prefer backend values
+              const mergedRaw = existing ? { ...JSON.parse(existing), ...createdUser } : createdUser;
+              const merged = sanitizeUserForStorage(mergedRaw);
               window.localStorage.setItem('chat-user', JSON.stringify(merged));
               window.localStorage.setItem('userId', createdUser.id);
               window.localStorage.setItem('username', createdUser.username);

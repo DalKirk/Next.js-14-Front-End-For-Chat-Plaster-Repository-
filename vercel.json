@@ -1,7 +1,8 @@
 {
   "env": {
     "NEXT_PUBLIC_API_URL": "https://api.starcyeed.com",
-    "NEXT_PUBLIC_WS_URL": "wss://api.starcyeed.com"
+    "NEXT_PUBLIC_WS_URL": "wss://api.starcyeed.com",
+    "NEXT_PUBLIC_SITE_URL": "https://www.starcyeed.com"
   },
   "github": {
     "enabled": true,

@@ -624,7 +624,7 @@ export default function HomePage() {
     setIsLoading(true);
     try {
       const user = await apiClient.createUser(username.trim());
-      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('chat-user', JSON.stringify((await import('@/lib/utils')).sanitizeUserForStorage(user)));
       setCurrentUser(user);
       toast.success(`Welcome, ${user.username}! Let's set up your profile.`);
       router.push('/profile');
@@ -641,7 +641,7 @@ export default function HomePage() {
     try {
       const { user, token } = await apiClient.login(credentials.username, credentials.password);
       setCurrentUser(user);
-      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('chat-user', JSON.stringify((await import('@/lib/utils')).sanitizeUserForStorage(user)));
       localStorage.setItem('auth-token', token);
       toast.success(`Welcome back, ${user.username}!`);
       setShowAuthModal(false);
@@ -660,7 +660,7 @@ export default function HomePage() {
     try {
       const { user, token } = await apiClient.signup(credentials.username, credentials.email, credentials.password);
       setCurrentUser(user);
-      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('chat-user', JSON.stringify((await import('@/lib/utils')).sanitizeUserForStorage(user)));
       localStorage.setItem('auth-token', token);
       toast.success(`Account created! Welcome, ${user.username}!`);
       setShowAuthModal(false);

@@ -54,6 +54,12 @@ function ProfilePageContent() {
   })();
   const viewedUsername = (() => {
     try { return searchParams?.get('username') || null; } catch { return null; }
+
+    export const metadata = {
+      title: 'Profile',
+      description: 'View and edit your Starcyeed profile.',
+      robots: { index: false, follow: false },
+    };
   })();
   
   // Profile state
@@ -597,6 +603,8 @@ function ProfilePageContent() {
                   <Input
                     label="Email"
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     value={editedProfile.email || ''}
                     onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
                     className="bg-white/5"
@@ -623,6 +631,8 @@ function ProfilePageContent() {
                       <div className="space-y-3">
                         <Input
                           type="password"
+                          name="current-password"
+                          autoComplete="current-password"
                           placeholder="Current password"
                           value={passwordData.current}
                           onChange={(e) => setPasswordData({...passwordData, current: e.target.value})}
@@ -631,6 +641,8 @@ function ProfilePageContent() {
                         />
                         <Input
                           type="password"
+                          name="new-password"
+                          autoComplete="new-password"
                           placeholder="New password"
                           value={passwordData.new}
                           onChange={(e) => setPasswordData({...passwordData, new: e.target.value})}
@@ -639,6 +651,8 @@ function ProfilePageContent() {
                         />
                         <Input
                           type="password"
+                          name="confirm-new-password"
+                          autoComplete="new-password"
                           placeholder="Confirm new password"
                           value={passwordData.confirm}
                           onChange={(e) => setPasswordData({...passwordData, confirm: e.target.value})}

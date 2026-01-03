@@ -7,7 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
+import { sanitizeUserForStorage } from '@/lib/utils';
 import Link from 'next/link';
+
+export const metadata = {
+  title: 'Sign Up',
+  description: 'Create your Starcyeed account to get started.',
+  robots: { index: false, follow: false },
+};
 
 export default function SignupPage() {
   const router = useRouter();
@@ -26,7 +33,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const { user, token } = await apiClient.signup(username, email, password);
-      localStorage.setItem('chat-user', JSON.stringify(user));
+      localStorage.setItem('chat-user', JSON.stringify(sanitizeUserForStorage(user)));
       localStorage.setItem('auth-token', token);
       try { localStorage.setItem('showProfileOnboard', 'true'); } catch {}
       toast.success(`Account created! Welcome, ${user.username}!`);
@@ -44,10 +51,14 @@ export default function SignupPage() {
       <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
         <h1 className="text-2xl font-bold text-slate-100 mb-4">Sign Up</h1>
         <p className="text-slate-400 mb-6 text-sm">Create your account to get started.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
           <div>
             <label className="block text-sm text-slate-400 mb-1">Username</label>
             <Input
+              name="username"
+              autoComplete="username"
+              id="signup-username"
+              autoCapitalize="none"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="yourusername"
@@ -58,6 +69,9 @@ export default function SignupPage() {
             <label className="block text-sm text-slate-400 mb-1">Email</label>
             <Input
               type="email"
+              name="email"
+              autoComplete="email"
+              id="signup-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -69,6 +83,9 @@ export default function SignupPage() {
             <div className="relative">
               <Input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete="new-password"
+                id="signup-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

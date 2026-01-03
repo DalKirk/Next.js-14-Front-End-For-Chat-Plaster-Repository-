@@ -364,7 +364,7 @@ export default function HomePage() {
         credentials.password
       );
       setCurrentUser(user);
-      localStorage.setItem("chat-user", JSON.stringify(user));
+      localStorage.setItem("chat-user", JSON.stringify((await import('@/lib/utils')).sanitizeUserForStorage(user)));
       localStorage.setItem("auth-token", token);
       toast.success(`Welcome back, ${user.username}!`);
       setShowAuthModal(false);
@@ -392,7 +392,7 @@ export default function HomePage() {
         credentials.password
       );
       setCurrentUser(user);
-      localStorage.setItem("chat-user", JSON.stringify(user));
+      localStorage.setItem("chat-user", JSON.stringify((await import('@/lib/utils')).sanitizeUserForStorage(user)));
       localStorage.setItem("auth-token", token);
       toast.success(`Account created! Welcome, ${user.username}!`);
       setShowAuthModal(false);
@@ -743,8 +743,6 @@ export default function HomePage() {
               src="/FullLogo_Transparent (3).png"
               alt="Starcyeed"
               fill
-              priority
-              unoptimized
               sizes="(max-width: 640px) 200px, 300px"
               style={{ objectPosition: "center center", transform: "scale(1.2)" }}
               className="object-cover"

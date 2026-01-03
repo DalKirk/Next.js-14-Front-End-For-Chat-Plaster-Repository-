@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { User } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -46,4 +47,19 @@ export function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Remove sensitive or unnecessary fields before persisting user to localStorage.
+ * Specifically drops `email` and `bio` while keeping identifiers and avatar data.
+ */
+export function sanitizeUserForStorage(user: User): Pick<User, 'id' | 'username' | 'avatar_url' | 'avatar_urls' | 'display_name' | 'created_at'> {
+  return {
+    id: user.id,
+    username: user.username,
+    avatar_url: user.avatar_url,
+    avatar_urls: user.avatar_urls,
+    display_name: user.display_name,
+    created_at: user.created_at,
+  };
 }

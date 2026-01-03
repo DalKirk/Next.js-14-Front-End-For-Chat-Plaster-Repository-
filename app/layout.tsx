@@ -11,9 +11,42 @@ const orbitron = Orbitron({
   variable: '--font-orbitron'
 });
 
+// Optional X/Twitter handle (set via NEXT_PUBLIC_TWITTER_HANDLE, e.g., "starcyeed")
+const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE?.replace(/^@/, '');
+
 export const metadata = {
-  title: 'Starcyeed',
-  description: 'Digital Innovation Platform',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  title: {
+    default: 'Starcyeed Video Chat',
+    template: '%s | Starcyeed',
+  },
+  description: 'Realtime video chat with rooms, profiles, and avatar support.',
+  openGraph: {
+    type: 'website',
+    siteName: 'Starcyeed',
+    title: 'Starcyeed Video Chat',
+    description: 'Realtime video chat with rooms, profiles, and avatar support.',
+    url: '/',
+    images: [
+      { url: '/og-image.png', width: 1200, height: 630, alt: 'Starcyeed' },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Starcyeed Video Chat',
+    description: 'Realtime video chat with rooms, profiles, and avatar support.',
+    images: ['/og-image.png'],
+    site: twitterHandle ? `@${twitterHandle}` : undefined,
+    creator: twitterHandle ? `@${twitterHandle}` : undefined,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: [
       { url: '/favicon-simple.svg?v=simple-20241231', type: 'image/svg+xml' },
@@ -46,6 +79,35 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+                <link rel="canonical" href={(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')} />
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                      '@context': 'https://schema.org',
+                      '@type': 'WebSite',
+                      url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+                      name: 'Starcyeed Video Chat',
+                      potentialAction: {
+                        '@type': 'SearchAction',
+                        target: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/search?q={query}`,
+                        'query-input': 'required name=query',
+                      },
+                    }),
+                  }}
+                />
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                      '@context': 'https://schema.org',
+                      '@type': 'Organization',
+                      name: 'Starcyeed',
+                      url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+                      logo: '/og-image.png',
+                    }),
+                  }}
+                />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <meta name="theme-color" content="#1e1b4b" />
         <meta name="mobile-web-app-capable" content="yes" />
