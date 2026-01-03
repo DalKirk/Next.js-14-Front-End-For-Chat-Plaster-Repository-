@@ -87,14 +87,14 @@ export default function SignupPage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold"
+            className="w-full"
           >
             {isLoading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </form>
         <div className="mt-6 text-center text-sm text-slate-400">
           <span>Already have an account? </span>
-          <Link href="/login" className="text-green-400 hover:text-green-300 font-semibold">Login</Link>
+          <Link href="/login" className="text-cyan-300 hover:text-cyan-200 font-semibold">Login</Link>
         </div>
       </div>
     </div>

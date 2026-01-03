@@ -1649,7 +1649,7 @@ const GameBuilder = () => {
     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-[#1a1a1a] p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {notification && (
-          <div className="fixed top-4 right-4 z-50 bg-green-600 text-black px-3 py-2 rounded shadow-sm">{notification}</div>
+          <div className="fixed top-4 right-4 z-50 bg-cyan-400 text-black px-3 py-2 rounded shadow-sm">{notification}</div>
         )}
         {/* Hidden debug element for integration tests (keeps tests decoupled from global handles) */}
         <div id="pluto-debug" className="hidden" data-player-frame="0" data-player-state="idle" />
@@ -1658,7 +1658,7 @@ const GameBuilder = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold flex items-center gap-2 sm:gap-3">
               <span className="text-2xl sm:text-3xl md:text-4xl"></span>
-              <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-400 bg-clip-text text-transparent">Pluto<span className="hidden xs:inline"> - Platformer</span></span>
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent">Pluto<span className="hidden xs:inline"> - Platformer</span></span>
             </h1>
             <p className="text-zinc-400 text-sm sm:text-base md:text-lg mt-1 sm:mt-2">Build Games With Pluto</p>
           </div>
@@ -1688,13 +1688,13 @@ const GameBuilder = () => {
         <div className="mb-4 sm:mb-6">
           <button
             onClick={() => setAboutOpen(!aboutOpen)}
-            className="w-full bg-zinc-900 border border-zinc-800 hover:border-green-500/50 rounded-lg p-3 sm:p-4 flex items-center justify-between transition-all shadow-black/50"
+            className="w-full bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 rounded-lg p-3 sm:p-4 flex items-center justify-between transition-all shadow-black/50"
           >
             <span className="text-white text-sm sm:text-base font-semibold flex items-center gap-2">
               <span className="text-lg sm:text-xl">ℹ️</span>
               About Pluto
             </span>
-            <span className={`text-green-500 transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
+            <span className={`text-cyan-400 transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
               ▼
             </span>
           </button>

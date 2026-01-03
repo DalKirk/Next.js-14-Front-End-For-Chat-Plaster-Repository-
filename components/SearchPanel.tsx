@@ -19,7 +19,7 @@ export function SearchPanel() {
   const searchEngineConfig = {
     brave: { icon: '🦁', color: 'from-orange-600 to-orange-700', hoverColor: 'from-orange-500 to-orange-600' },
     duckduckgo: { icon: '🦆', color: 'from-blue-600 to-blue-700', hoverColor: 'from-blue-500 to-blue-600' },
-    google: { icon: '🔍', color: 'from-green-600 to-green-700', hoverColor: 'from-green-500 to-green-600' },
+    google: { icon: '🔍', color: 'from-cyan-600 to-blue-700', hoverColor: 'from-cyan-500 to-blue-600' },
   };
 
   return (

@@ -506,9 +506,9 @@ function ProfilePageContent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'ai': return <Zap className="w-4 h-4 text-green-400" />;
-      case 'video': return <Camera className="w-4 h-4 text-emerald-400" />;
-      case 'chat': return <MessageSquare className="w-4 h-4 text-green-500" />;
+      case 'ai': return <Zap className="w-4 h-4 text-cyan-300" />;
+      case 'video': return <Camera className="w-4 h-4 text-sky-300" />;
+      case 'chat': return <MessageSquare className="w-4 h-4 text-cyan-400" />;
       case 'room_join': return <User className="w-4 h-4 text-slate-400" />;
       default: return <Activity className="w-4 h-4 text-slate-300" />;
     }
@@ -699,7 +699,7 @@ function ProfilePageContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center"><div className="text-green-400">Loading...</div></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center"><div className="text-cyan-300">Loading...</div></div>}>
       <ProfilePageContent />
     </Suspense>
   );

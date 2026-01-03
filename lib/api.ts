@@ -24,12 +24,10 @@ export type GPUGenerationJob = {
   created_at: string;
 }
 
-// Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local. Allow optional FORCE.
-// If not set, prefer the production Railway backend (safe default) before falling back
-// to same-origin. This helps deployed frontends (or dev machines without env vars)
-// to reach the correct backend URL.
-// Use environment variable for backend URL, fallback to hardcoded for production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+// Prefer explicit NEXT_PUBLIC_API_URL set in Vercel / local .env.local.
+// If not set, use the custom backend domain as the default.
+// For local dev, set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console

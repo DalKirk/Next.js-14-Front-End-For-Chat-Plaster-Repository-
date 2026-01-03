@@ -431,7 +431,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
         <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
           <button
             onClick={createAnimation}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition-colors font-semibold text-sm sm:text-base"
+            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded transition-colors font-semibold text-sm sm:text-base"
           >
             ✨ Create Animation
           </button>
@@ -508,7 +508,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
               <div className="bg-gray-800 p-2 border border-gray-700 rounded">
                   <div className="flex items-center gap-2 mb-2">
                   <div className="text-sm font-semibold">Editing: {editingState}</div>
-                  <button onClick={() => { setStates(prev => ({ ...prev, [editingState]: { ...prev[editingState], frames: frames.filter(f => f.selected).map(fr => fr.dataUrl) } })); setEditorMessage('Assigned selected frames'); setTimeout(() => setEditorMessage(''), 1500); }} className="text-xs px-2 py-1 bg-green-600 rounded">Assign selected frames</button>
+                  <button onClick={() => { setStates(prev => ({ ...prev, [editingState]: { ...prev[editingState], frames: frames.filter(f => f.selected).map(fr => fr.dataUrl) } })); setEditorMessage('Assigned selected frames'); setTimeout(() => setEditorMessage(''), 1500); }} className="text-xs px-2 py-1 bg-cyan-600 rounded">Assign selected frames</button>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   <label className="text-xs">Frame Duration</label>
@@ -542,7 +542,7 @@ function SpriteEditor({ sprite, onSave, onClose }) {
                           <div>
                             {tgt} <span className="text-gray-400">({JSON.stringify(cond)})</span>
                             {!states[tgt] && <span className="ml-2 text-red-400">(Invalid target)</span>}
-                            {active && <span className="ml-2 text-green-300">(Active)</span>}
+                            {active && <span className="ml-2 text-cyan-300">(Active)</span>}
                           </div>
                           <div className="flex gap-1">
                             <button className="px-2 py-0.5 text-xs bg-red-600 rounded"

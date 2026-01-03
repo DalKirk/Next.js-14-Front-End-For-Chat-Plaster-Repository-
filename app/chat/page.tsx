@@ -19,7 +19,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [, setIsCreating] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -124,7 +124,7 @@ export default function ChatPage() {
       }
     }, 30000); // 30s cadence
     return () => { cancelled = true; clearInterval(interval); };
-  }, [user?.id]);
+  }, [user?.id, userAvatar]);
 
   const loadRooms = async () => {
     setIsLoading(true);
@@ -241,7 +241,7 @@ export default function ChatPage() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               {/* User avatar preview */}
-              <div className="relative w-8 h-8 rounded-full overflow-hidden border border-green-400/50">
+              <div className="relative w-8 h-8 rounded-full overflow-hidden border border-cyan-400/50">
                 <ResponsiveAvatar
                   avatarUrls={userAvatar ? { thumbnail: userAvatar, small: userAvatar, medium: userAvatar, large: userAvatar } : user.avatar_urls}
                   username={user.username}
@@ -253,7 +253,7 @@ export default function ChatPage() {
                 onClick={() => setShowCreateModal(true)}
                 variant="primary"
                 size="sm"
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-[0_0_25px_rgba(34,197,94,0.6)]"
+                className="bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-[0_0_25px_rgba(0,212,255,0.55)]"
               >
                 Create Room
               </Button>
@@ -327,7 +327,7 @@ export default function ChatPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg overflow-hidden hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all duration-200 group"
+                    className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg overflow-hidden hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all duration-200 group"
                   >
                     {/* Thumbnail */}
                     <div 
@@ -336,8 +336,8 @@ export default function ChatPage() {
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
-                        <div className="flex items-center space-x-1 text-xs text-green-400">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+                        <div className="flex items-center space-x-1 text-xs text-cyan-300">
+                          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_12px_rgba(0,212,255,0.85)]"></div>
                           <span>Active</span>
                         </div>
                         <div className="flex items-center space-x-1 text-xs text-white/80">
@@ -389,7 +389,7 @@ export default function ChatPage() {
                       
                       <Button
                         onClick={() => joinRoom(room)}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-[0_0_25px_rgba(34,197,94,0.6)] text-black font-bold group-hover:scale-105 transition-transform"
+                        className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-[0_0_25px_rgba(0,212,255,0.55)] text-black font-bold group-hover:scale-105 transition-transform"
                         variant="primary"
                         size="sm"
                       >
@@ -410,7 +410,7 @@ export default function ChatPage() {
           transition={{ delay: 0.2 }}
           className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
             <div className="text-3xl mb-2">💬</div>
             <h3 className="font-medium text-slate-300 mb-1">Real-time Chat</h3>
             <p className="text-sm text-slate-400">
@@ -418,7 +418,7 @@ export default function ChatPage() {
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
             <div className="text-3xl mb-2">🔴</div>
             <h3 className="font-medium text-slate-300 mb-1">Live Streaming</h3>
             <p className="text-sm text-slate-400">
@@ -426,7 +426,7 @@ export default function ChatPage() {
             </p>
           </div>
           
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] transition-all">
+          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
             <div className="text-3xl mb-2">🎥</div>
             <h3 className="font-medium text-slate-300 mb-1">Video Sharing</h3>
             <p className="text-sm text-slate-400">

@@ -1,6 +1,7 @@
 import { Inter, Orbitron } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import SparkleBackground from '@/components/SparkleBackground';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -9,6 +10,24 @@ const orbitron = Orbitron({
   weight: ['400', '500', '600', '700', '800', '900'],
   variable: '--font-orbitron'
 });
+
+export const metadata = {
+  title: 'Starcyeed',
+  description: 'Digital Innovation Platform',
+  icons: {
+    icon: [
+      { url: '/favicon-simple.svg?v=simple-20241231', type: 'image/svg+xml' },
+      { url: '/favicon-simple.ico?v=simple-20241231', sizes: 'any' },
+      { url: '/favicon-simple-16.png?v=simple-20241231', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-simple-32.png?v=simple-20241231', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-simple-48.png?v=simple-20241231', sizes: '48x48', type: 'image/png' },
+    ],
+    shortcut: '/favicon-simple.ico?v=simple-20241231',
+    apple: [
+      { url: '/favicon-simple-48.png?v=simple-20241231', sizes: '48x48', type: 'image/png' },
+    ],
+  },
+};
 
 export const viewport = {
   width: 'device-width',
@@ -32,6 +51,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="icon" href="/favicon-optimized.svg?v=2" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=2" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+        <link rel="manifest" href="/site.webmanifest?v=2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -40,26 +66,23 @@ export default function RootLayout({
       <body 
         className={`${inter.className} ${orbitron.variable}`}
         style={{
-          backgroundColor: 'oklch(25.7% 0.09 281.288)',
-          backdropFilter: 'blur(20px)'
+          backgroundColor: 'transparent',
+          backdropFilter: 'none'
         }}
       >
         <Providers>
           <div 
-            className="min-h-screen"
+            className="min-h-screen relative"
             style={{
-              background: `linear-gradient(135deg, 
-                oklch(25.7% 0.09 281.288) 0%, 
-                oklch(22% 0.110 286) 25%, 
-                oklch(29% 0.115 276) 50%, 
-                oklch(24% 0.095 291) 75%, 
-                oklch(25.7% 0.09 281.288) 100%)`,
-              backgroundSize: '200% 200%',
-              animation: 'gradientShift 15s ease infinite'
+              background: 'transparent'
             }}
           >
+            {/* Global sparkle backdrop behind all pages */}
+            <SparkleBackground />
             <ErrorBoundary>
-              {children}
+              <div className="relative z-10">
+                {children}
+              </div>
             </ErrorBoundary>
           </div>
         </Providers>

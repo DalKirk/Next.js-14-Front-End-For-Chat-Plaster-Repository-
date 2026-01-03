@@ -246,14 +246,14 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
     <>
       <style dangerouslySetInnerHTML={{__html: `
         .message-content a {
-          color: oklch(0.85 0.2 160) !important;
+          color: oklch(0.85 0.2 210) !important;
           text-decoration: underline !important;
           cursor: pointer !important;
           font-weight: 600 !important;
           pointer-events: auto !important;
         }
         .message-content a:hover {
-          color: oklch(0.9 0.2 160) !important;
+          color: oklch(0.9 0.2 210) !important;
         }
       `}} />
       <motion.div
@@ -267,7 +267,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
         <div
           className={cn(
             // If host, add a light emerald highlight; otherwise keep minimal look
-            isHost ? 'bg-emerald-900/10 border-l-4 border-emerald-400/20 rounded-md p-3' : 'p-0',
+            isHost ? 'bg-cyan-900/10 border-l-4 border-cyan-400/25 rounded-md p-3' : 'p-0',
             isOwn ? 'text-white' : 'text-white/90',
             // Dynamic width based on content type
             isVideoMessage ? 'max-w-sm lg:max-w-md xl:max-w-lg' : 'max-w-xs lg:max-w-2xl xl:max-w-3xl'
@@ -278,7 +278,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
           <div className="flex items-center gap-2">
             <button 
               onClick={handleAvatarClick}
-              className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-emerald-400/30' : 'border border-green-400/50'}`}
+              className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-cyan-400/30' : 'border border-cyan-400/50'}`}
               title={`View ${message.username}'s profile`}
             >
               <ResponsiveAvatar 
@@ -290,12 +290,12 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
             </button>
             <div className="flex items-center gap-2">
               {/* Username: highlight differently for host or for your own username (visible only to you) */}
-              <span className={`text-sm font-medium ${isHost ? 'text-emerald-400' : isOwn ? 'text-green-300 font-semibold' : 'text-white/90'}`}>
+              <span className={`text-sm font-medium ${isHost ? 'text-cyan-300' : isOwn ? 'text-cyan-200 font-semibold' : 'text-white/90'}`}>
                 {message.username}
               </span>
               {/* Host badge for video uploader/stream creator */}
               {isHost && (
-                <span className="text-[10px] text-emerald-200 bg-emerald-800/10 px-2 py-0.5 rounded-full font-medium">HOST</span>
+                <span className="text-[10px] text-cyan-100 bg-cyan-900/20 px-2 py-0.5 rounded-full font-medium">HOST</span>
               )}
             </div>
           </div>
@@ -672,8 +672,8 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
                         >
                           {copiedCode === codeString ? (
                             <>
-                              <CheckIcon className="w-4 h-4 text-green-400" />
-                              <span className="text-green-400 font-medium">Copied!</span>
+                              <CheckIcon className="w-4 h-4 text-cyan-300" />
+                              <span className="text-cyan-300 font-medium">Copied!</span>
                             </>
                           ) : (
                             <>

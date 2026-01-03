@@ -1,15 +1,36 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Allow external avatar/CDN hosts
-    domains: [
-      'videochat-avatars.b-cdn.net',
-      'ui-avatars.com',
-      'i.pravatar.cc'
+    // Updated configuration using remotePatterns instead of domains
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'videochat-avatars.b-cdn.net',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.pravatar.cc',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
+  // Turbopack configuration
+  turbopack: {
+    resolveAlias: {
+      'three/examples/jsm': 'three/examples/jsm',
+    },
+  },
   webpack: (config) => {
-    // Handle Three.js examples imports
+    // Handle Three.js examples imports (fallback for when Webpack is used)
     config.resolve.alias = {
       ...config.resolve.alias,
       'three/examples/jsm': 'three/examples/jsm',
@@ -18,8 +39,6 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      // Redirect legacy/unused AI chat page to home
-      { source: '/ai-chat', destination: '/', permanent: false },
       // Redirect removed dev/test pages to home
       { source: '/ai-test', destination: '/', permanent: false },
       { source: '/debug', destination: '/', permanent: false },

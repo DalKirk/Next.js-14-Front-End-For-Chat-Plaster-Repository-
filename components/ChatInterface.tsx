@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -193,6 +195,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className={`flex flex-col h-full bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}>
+      {/* CSS to fix overflow issues */}
+      <style jsx>{`
+        .chat-message-container {
+          word-wrap: break-word !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          hyphens: auto !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+        }
+        .chat-message-container * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+      `}</style>
       {/* Header with Clear Button */}
       <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
         <h2 className="text-xl font-bold text-[oklch(90%_0.05_260)]">AI Chat Assistant</h2>
@@ -208,7 +225,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         <AnimatePresence>
           {messages.map((message, index) => (
             <motion.div
@@ -219,16 +236,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-4 ${
+                className={`chat-message-container max-w-[80%] rounded-lg p-4 ${
                   message.role === 'user'
                     ? 'bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]'
                     : 'bg-[oklch(25%_0.05_260)] text-[oklch(90%_0.05_260)] border border-[oklch(35%_0.08_260)]'
-                }`}
+                } break-words overflow-hidden word-break-break-word`}
+                style={{ 
+                  wordWrap: 'break-word', 
+                  wordBreak: 'break-word', 
+                  overflowWrap: 'break-word',
+                  maxWidth: '100%'
+                }}
               >
                 {message.role === 'assistant' ? (
                   <MarkdownRenderer content={message.content} />
                 ) : (
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <p className="whitespace-pre-wrap break-words overflow-wrap-break-word" style={{ wordWrap: 'break-word', wordBreak: 'break-word' }}>{message.content}</p>
                 )}
                 {message.isStreaming && (
                   <span className="inline-block ml-2 animate-pulse">?</span>
@@ -244,7 +267,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             animate={{ opacity: 1 }}
             className="flex justify-start"
           >
-            <div className="bg-[oklch(25%_0.05_260)] rounded-lg p-4 border border-[oklch(35%_0.08_260)]">
+            <div className="chat-message-container bg-[oklch(25%_0.05_260)] rounded-lg p-4 border border-[oklch(35%_0.08_260)]">
               <div className="flex space-x-2">
                 <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                 <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -283,6 +306,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </Button>
         </div>
       </div>
+
+      <style jsx>{`
+        .chat-message-container {
+          word-wrap: break-word;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+      `}</style>
     </div>
   );
 };

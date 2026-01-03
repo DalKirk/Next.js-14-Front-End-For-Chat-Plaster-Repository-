@@ -1,0 +1,45 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Favicon Cache Clear</title>
+  
+  <!-- Force favicon reload with timestamp -->
+  <link rel="icon" type="image/x-icon" href="/favicon-simple.ico?v=1767395314776" />
+  <link rel="shortcut icon" href="/favicon-simple.ico?v=1767395314776" />
+  
+  <!-- Multiple formats to ensure browser compatibility -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-simple-16.png?v=1767395314776" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-simple-32.png?v=1767395314776" />
+  <link rel="icon" type="image/svg+xml" href="/favicon-simple.svg?v=1767395314776" />
+  
+  <!-- Clear cache headers -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <script>
+    // Force browser to request favicon
+    setTimeout(() => {
+      const link = document.createElement('link');
+      link.rel = 'icon';
+      link.type = 'image/x-icon';
+      link.href = '/favicon-simple.ico?v=1767395314776';
+      
+      // Remove old favicon links
+      document.querySelectorAll('link[rel*="icon"]').forEach(el => el.remove());
+      
+      // Add new favicon
+      document.head.appendChild(link);
+      
+      console.log('Favicon forcibly reloaded with timestamp: 1767395314776');
+    }, 100);
+  </script>
+</head>
+<body>
+  <h1>Favicon Reload Complete</h1>
+  <p>Timestamp: 1767395314776</p>
+  <p><a href="/">Return to main site</a></p>
+</body>
+</html>

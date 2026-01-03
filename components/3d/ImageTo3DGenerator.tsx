@@ -286,8 +286,8 @@ export default function ImageTo3DGenerator({
       {/* Result Section WITH 3D PREVIEW! */}
       {currentJob?.status === 'complete' && currentJob.glb_url && (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-500/50 rounded-xl p-4">
-            <p className="text-green-400 font-semibold">✅ Model Generated Successfully!</p>
+          <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/50 rounded-xl p-4">
+            <p className="text-cyan-300 font-semibold">✅ Model Generated Successfully!</p>
             {currentJob.generation_time && (
               <p className="text-sm text-gray-400 mt-1">
                 Generated in {currentJob.generation_time.toFixed(1)}s
@@ -298,7 +298,7 @@ export default function ImageTo3DGenerator({
           <div className="flex gap-3">
             <button
               onClick={handleDownload}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               📥 Download Full Model (.zip)
             </button>

@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { socketManager } from '@/lib/socket';
-import { apiClient } from '@/lib/api';
-import { SocketMessage, Message, User, Room } from '@/lib/types';
+import { SocketMessage, Message, User } from '@/lib/types';
 
 interface UseChatProps {
   roomId: string;
@@ -11,43 +10,9 @@ interface UseChatProps {
 export function useChat({ roomId, user }: UseChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [, setTypingUsers] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (!roomId || !user) return;
-
-    let cancelled = false;
-
-    // Ensure backend knows about the user-room relationship before opening WebSocket
-    (async () => {
-      try {
-        // Ensure backend knows about the user-room relationship before opening WebSocket
-        await apiClient.joinRoom(roomId, user.id, user.username, user.avatar_url);
-      } catch (err) {
-        // If joining the room fails, do not attempt the WebSocket connection
-        // eslint-disable-next-line no-console
-        console.error('Failed to join room before WebSocket connect', err);
-        setIsConnected(false);
-        return;
-      }
-
-      if (cancelled) return;
-
-      // Connect to WebSocket (include username and avatar for accurate presence)
-      socketManager.connect(roomId, user.id, user.username, user.avatar_url);
-
-      // Set up event listeners
-      socketManager.onConnect(setIsConnected);
-      socketManager.onMessage(handleMessage);
-    })();
-
-    return () => {
-      cancelled = true;
-      socketManager.disconnect();
-    };
-  }, [roomId, user.id]);
-
-  const handleMessage = (socketMessage: SocketMessage) => {
+  const handleMessage = useCallback((socketMessage: SocketMessage) => {
     const incomingType: SocketMessage['type'] = socketMessage.type || 'message';
 
     // Handle live profile and avatar updates: patch history + caches
@@ -116,7 +81,25 @@ export function useChat({ roomId, user }: UseChatProps) {
     };
 
     setMessages((prev: Message[]) => [...prev, message]);
-  };
+  }, [roomId, user.id, user.username, user.avatar_url]);
+
+  useEffect(() => {
+    if (!roomId || !user) return;
+
+    let cancelled = false;
+
+    (async () => {
+      await socketManager.connect(roomId, { userId: user.id, username: user.username });
+      if (cancelled) return;
+      socketManager.onConnect(setIsConnected);
+      socketManager.onMessage(handleMessage);
+    })();
+
+    return () => {
+      cancelled = true;
+      socketManager.disconnect();
+    };
+  }, [roomId, user, handleMessage]);
 
   const sendMessage = (content: string) => {
     if (!content.trim() || !isConnected) return;

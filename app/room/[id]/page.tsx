@@ -17,7 +17,6 @@ import { socketManager } from '@/lib/socket';
 import { applyMessageForRender, cacheUserProfile, updateAvatarEverywhere } from '@/lib/message-utils';
 import toast from 'react-hot-toast';
 import { 
-  PaperAirplaneIcon, 
   VideoCameraIcon, 
   DocumentIcon,
   ArrowLeftIcon,
@@ -71,7 +70,7 @@ export default function RoomPage() {
   const [, setConnectionAttempts] = useState(0);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [avatarDirectory, setAvatarDirectory] = useState<Record<string, string>>({});
+  const [, setAvatarDirectory] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -340,9 +339,9 @@ export default function RoomPage() {
         if (cancelled) return;
         const nextUsername = backendUser.display_name || backendUser.username;
         const nextEmail = backendUser.email;
-        const nextBio = (backendUser as any).bio;
+        const nextBio = (backendUser as { bio?: string }).bio;
         const nextAvatar = backendUser.avatar_url || userAvatar || undefined;
-        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email, bio: nextBio ?? (prev as any).bio } : prev);
+        setUser(prev => prev ? { ...prev, username: nextUsername ?? prev.username, email: nextEmail ?? prev.email, bio: nextBio ?? (prev as { bio?: string }).bio } : prev);
         if (nextAvatar && nextAvatar !== userAvatar) {
           const newAvatar = nextAvatar;
           setUserAvatar(newAvatar);
@@ -360,7 +359,7 @@ export default function RoomPage() {
       }
     }, 30000); // 30s cadence
     return () => { cancelled = true; clearInterval(interval); };
-  }, [user?.id]);
+  }, [user?.id, user.username, userAvatar]);
 
   // Listen for profile updates (username/email/avatar) and update local state in real time
   useEffect(() => {
@@ -1224,7 +1223,7 @@ export default function RoomPage() {
               <h1 className="text-sm sm:text-xl font-bold text-white truncate">{roomName}</h1>
               <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
                 <div className={`w-2 h-2 rounded-full ${
-                  wsConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                  wsConnected ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.85)]' : 'bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                 }`}></div>
                 <span className="text-slate-400 hidden min-[375px]:inline">
                   {wsConnected ? 'Connected' : 'Disconnected'}
@@ -1250,7 +1249,7 @@ export default function RoomPage() {
                 onClick={() => setShowVideoModal(true)}
                 variant="secondary"
                 size="sm"
-                className="text-xs sm:text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                className="text-xs sm:text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
               >
                 <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">🔴 Live</span>
@@ -1260,7 +1259,7 @@ export default function RoomPage() {
                 onClick={() => setShowUploadModal(true)}
                 variant="secondary"
                 size="sm"
-                className="text-xs sm:text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                className="text-xs sm:text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
               >
                 <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">📹 Upload</span>
@@ -1277,9 +1276,9 @@ export default function RoomPage() {
                 className="bg-transparent border-transparent hover:bg-transparent p-2"
               >
                 <div className="w-6 h-5 flex flex-col justify-between">
-                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                  <div className="w-full h-0.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
                 </div>
               </Button>
               
@@ -1297,7 +1296,7 @@ export default function RoomPage() {
                       }}
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-start text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
                     >
                       <VideoCameraIcon className="w-4 h-4 mr-2" />
                       🔴 Live Stream
@@ -1309,7 +1308,7 @@ export default function RoomPage() {
                       }}
                       variant="secondary"
                       size="sm"
-                      className="w-full justify-start text-sm border-slate-700/50 hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
                     >
                       <DocumentIcon className="w-4 h-4 mr-2" />
                       📹 Upload Video
@@ -1381,11 +1380,11 @@ export default function RoomPage() {
           <div className="border-t border-slate-700/50 p-2 sm:p-4 bg-black/20 backdrop-blur-sm sticky bottom-0 shadow-black/50">
             {/* Typing Indicator */}
             {typingUsers.size > 0 && (
-              <div className="mb-2 text-sm text-emerald-400 italic flex items-center gap-2">
+              <div className="mb-2 text-sm text-cyan-300 italic flex items-center gap-2">
                 <span className="flex gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(52,211,153,0.8)]" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(74,222,128,0.8)]" style={{ animationDelay: '300ms' }}></span>
+                  <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(34,211,238,0.85)]" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-sky-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(56,189,248,0.85)]" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(96,165,250,0.85)]" style={{ animationDelay: '300ms' }}></span>
                 </span>
                 <span>
                   {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
@@ -1451,10 +1450,10 @@ export default function RoomPage() {
               onClick={scrollToTop}
               variant="glass"
               size="sm"
-              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-slate-700/50 hover:bg-green-500/20 hover:border-green-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.5)]"
+              className="w-10 h-10 rounded-full p-0 bg-black/40 backdrop-blur-sm border border-slate-700/50 hover:bg-cyan-400/15 hover:border-cyan-400/70 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
               title="Scroll to top"
             >
-              <ChevronUpIcon className="w-4 h-4 text-green-500" />
+              <ChevronUpIcon className="w-4 h-4 text-cyan-300" />
             </Button>
             
             {!isAtBottom && (
@@ -1462,7 +1461,7 @@ export default function RoomPage() {
                 onClick={scrollToBottom}
                 variant="primary"
                 size="sm"
-                className="w-10 h-10 rounded-full p-0 bg-gradient-to-br from-green-500 to-emerald-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
+                className="w-10 h-10 rounded-full p-0 bg-gradient-to-br from-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(34,211,238,0.5)]"
                 title="Scroll to bottom"
               >
                 <ChevronDownIcon className="w-4 h-4 text-black" />
@@ -1569,7 +1568,7 @@ export default function RoomPage() {
               </div>
               <div className="w-full bg-slate-900 rounded-full h-2">
                 <div 
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                  className="bg-gradient-to-r from-cyan-400 to-blue-500 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(34,211,238,0.45)]"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

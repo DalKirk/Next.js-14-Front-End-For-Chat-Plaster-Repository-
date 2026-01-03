@@ -32,14 +32,14 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className={cn(
               'relative w-full max-w-md bg-white/10 backdrop-blur-md',
-              'border border-white/20 rounded-xl shadow-2xl',
+              'border border-cyan-400/20 rounded-xl shadow-2xl',
               'max-h-[90vh] overflow-hidden',
               className
             )}
           >
             {/* Header */}
             {title && (
-              <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <div className="flex items-center justify-between p-6 border-b border-cyan-400/10">
                 <h2 className="text-xl font-semibold text-white">{title}</h2>
                 <button
                   onClick={onClose}

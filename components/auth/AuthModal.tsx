@@ -134,9 +134,9 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
           </button>
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b border-slate-700/50 px-6 py-8">
+          <div className="bg-gradient-to-r from-cyan-400/10 to-blue-500/10 border-b border-slate-700/50 px-6 py-8">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.35)]">
                 <LockClosedIcon className="w-8 h-8 text-black" />
               </div>
             </div>
@@ -164,7 +164,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
-                  className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                  className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                   disabled={isLoading}
                 />
               </div>
@@ -186,7 +186,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                    className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                     disabled={isLoading}
                   />
                 </div>
@@ -208,7 +208,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                  className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                   disabled={isLoading}
                 />
                 <button
@@ -242,7 +242,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your password"
-                    className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-green-500 focus:shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                    className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(0,212,255,0.25)]"
                     disabled={isLoading}
                   />
                   <button
@@ -267,7 +267,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-black font-bold py-3 shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:shadow-[0_0_40px_rgba(34,197,94,0.7)] transition-all"
+              className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-bold py-3 shadow-[0_0_30px_rgba(0,212,255,0.45)] hover:shadow-[0_0_40px_rgba(0,212,255,0.7)] transition-all"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -286,7 +286,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                 <button
                   type="button"
                   onClick={switchMode}
-                  className="text-green-400 hover:text-green-300 font-medium transition-colors"
+                  className="text-cyan-300 hover:text-cyan-200 font-medium transition-colors"
                   disabled={isLoading}
                 >
                   {mode === 'login' ? 'Sign Up' : 'Sign In'}

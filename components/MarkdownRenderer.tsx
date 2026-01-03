@@ -127,6 +127,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             }
             const linkText = text.slice(i + 1, closeBracket);
             const linkUrl = text.slice(closeBracket + 2, closeParen);
+            console.log('Parsed markdown link:', { linkText, linkUrl });
             parts.push(
               <a 
                 key={i} 
@@ -134,6 +135,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 className="md-link"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => {
+                  console.log('Link clicked:', linkUrl);
+                  e.stopPropagation();
+                }}
               >
                 {linkText}
               </a>
@@ -142,6 +147,35 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             continue;
           }
         }
+      }
+
+      // Auto-detect URLs
+      if (text[i] === 'h' && text.slice(i, i + 4) === 'http') {
+        const urlEnd = text.search(/\s|$/, i);
+        const actualEnd = urlEnd === -1 ? text.length : urlEnd;
+        if (current) {
+          parts.push(current);
+          current = '';
+        }
+        const url = text.slice(i, actualEnd);
+        console.log('Auto-detected URL:', url);
+        parts.push(
+          <a 
+            key={i} 
+            href={url} 
+            className="md-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              console.log('Auto-link clicked:', url);
+              e.stopPropagation();
+            }}
+          >
+            {url}
+          </a>
+        );
+        i = actualEnd;
+        continue;
       }
 
       if (text[i] === '*' && text[i + 1] === '*') {
@@ -186,14 +220,21 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           all: initial;
           display: block !important;
           width: 100% !important;
+          max-width: 100% !important;
           color: #e4e4e7 !important;
           font-size: 16px !important;
           line-height: 1.6 !important;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+          word-wrap: break-word !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          pointer-events: auto !important;
+          user-select: auto !important;
         }
         
         .md-renderer * {
           box-sizing: border-box !important;
+          pointer-events: auto !important;
         }
         
         .md-ul {
@@ -245,6 +286,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           line-height: 1.6 !important;
           font-family: inherit !important;
           font-size: 16px !important;
+          word-wrap: break-word !important;
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          max-width: 100% !important;
         }
         
         .md-h1 {
@@ -275,15 +320,54 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         }
         
         .md-link {
-          color: oklch(0.85 0.2 160) !important;
-          text-decoration: underline !important;
+          all: unset !important;
+          color: #00ffff !important;
+          text-decoration: none !important;
           cursor: pointer !important;
-          transition: color 0.2s ease !important;
+          transition: all 0.3s ease !important;
+          display: inline !important;
+          font-family: inherit !important;
+          font-size: inherit !important;
+          line-height: inherit !important;
+          pointer-events: auto !important;
+          user-select: auto !important;
+          background: linear-gradient(135deg, #00ffff, #0080ff) !important;
+          background-clip: text !important;
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          text-shadow: 0 0 10px rgba(0, 255, 255, 0.5) !important;
+          padding: 2px 4px !important;
+          border-radius: 4px !important;
+          font-weight: 600 !important;
+          position: relative !important;
+        }
+        
+        .md-link::before {
+          content: '' !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 128, 255, 0.2)) !important;
+          border-radius: 4px !important;
+          z-index: -1 !important;
+          transition: all 0.3s ease !important;
         }
         
         .md-link:hover {
-          color: oklch(0.9 0.2 160) !important;
-          text-decoration: underline !important;
+          text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 30px rgba(0, 128, 255, 0.6) !important;
+          transform: translateY(-1px) !important;
+        }
+        
+        .md-link:hover::before {
+          background: linear-gradient(135deg, rgba(0, 255, 255, 0.4), rgba(0, 128, 255, 0.4)) !important;
+          box-shadow: 0 0 15px rgba(0, 255, 255, 0.3) !important;
+        }
+        
+        .md-link:active, .md-link:focus {
+          text-shadow: 0 0 25px rgba(0, 255, 255, 1), 0 0 40px rgba(0, 128, 255, 0.8) !important;
+          outline: none !important;
         }
         
         .md-code {
@@ -305,6 +389,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           margin: 1rem 0 !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           font-family: monospace !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
         }
         
         .md-code-block {
@@ -312,9 +398,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           font-size: 0.875rem !important;
           color: #e4e4e7 !important;
           display: block !important;
+          white-space: pre-wrap !important;
+          word-wrap: break-word !important;
+          word-break: break-all !important;
+          overflow-wrap: break-word !important;
+          max-width: 100% !important;
         }
       `}</style>
-      <div className="md-renderer">
+      <div className="md-renderer break-words overflow-wrap-anywhere max-w-full">
         {renderMarkdown(content)}
       </div>
     </>

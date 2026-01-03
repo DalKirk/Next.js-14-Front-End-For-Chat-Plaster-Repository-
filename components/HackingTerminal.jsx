@@ -1397,17 +1397,17 @@ const HackingTerminal = () => {
 
   const getTypeColor = (type) => {
     const colors = {
-      command: 'text-green-400',
+      command: 'text-cyan-300',
       output: 'text-gray-300',
       error: 'text-red-400',
       success: 'text-cyan-400',
       warning: 'text-yellow-400',
       system: 'text-purple-400',
       info: 'text-blue-400',
-      header: 'text-green-500',
+      header: 'text-cyan-400',
       section: 'text-cyan-500',
       cmd: 'text-yellow-300',
-      ascii: 'text-green-500',
+      ascii: 'text-cyan-400',
       achievement: 'text-yellow-300',
       victory: 'text-cyan-300',
       fuchsia: 'text-fuchsia-500'
@@ -1432,8 +1432,8 @@ const HackingTerminal = () => {
       case 'welcome':
         return (
           <div className="space-y-4">
-            <div className="bg-gradient-to-r from-green-900/30 to-cyan-900/30 border border-green-700 rounded-lg p-4">
-              <h3 className="text-green-400 font-bold text-lg mb-2">Your Mission</h3>
+            <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 border border-cyan-700 rounded-lg p-4">
+              <h3 className="text-cyan-300 font-bold text-lg mb-2">Your Mission</h3>
               <p className="text-gray-300 text-sm leading-relaxed">
                 Compromise the entire corporate network by exploiting vulnerabilities, escalating privileges, and capturing the hidden FLAG.
               </p>
@@ -1461,17 +1461,17 @@ const HackingTerminal = () => {
               <h4 className="text-cyan-400 font-semibold text-sm">Network Targets:</h4>
               <div className="space-y-2 text-xs">
                 <div className="bg-gray-900 rounded p-2">
-                  <div className="text-green-400 font-mono font-bold">192.168.1.1</div>
+                  <div className="text-cyan-300 font-mono font-bold">192.168.1.1</div>
                   <div className="text-gray-400">Router - Credentials: admin/admin</div>
                   <div className="text-gray-500">Files: /etc/config, /root/network-keys.txt</div>
                 </div>
                 <div className="bg-gray-900 rounded p-2">
-                  <div className="text-green-400 font-mono font-bold">192.168.1.10</div>
+                  <div className="text-cyan-300 font-mono font-bold">192.168.1.10</div>
                   <div className="text-gray-400">Web Server - Contains FLAG</div>
                   <div className="text-gray-500">Files: ~/documents/*.txt, /var/www/html/admin/flag.txt</div>
                 </div>
                 <div className="bg-gray-900 rounded p-2">
-                  <div className="text-green-400 font-mono font-bold">192.168.1.15</div>
+                  <div className="text-cyan-300 font-mono font-bold">192.168.1.15</div>
                   <div className="text-gray-400">Workstation - All passwords</div>
                   <div className="text-gray-500">Files: ~/Desktop/passwords.txt</div>
                 </div>
@@ -1483,7 +1483,7 @@ const HackingTerminal = () => {
       case 'tutorial':
         return (
           <div className="space-y-4">
-            <h3 className="text-green-400 font-bold text-lg">Complete Walkthrough - 3/3 Compromises</h3>
+            <h3 className="text-cyan-300 font-bold text-lg">Complete Walkthrough - 3/3 Compromises</h3>
             <p className="text-gray-400 text-xs">Follow these steps to fully compromise the network</p>
 
             {/* Understanding the Workflow */}
@@ -1493,10 +1493,10 @@ const HackingTerminal = () => {
                 <p><strong className="text-yellow-300">You start on:</strong> Kali Linux (your attacking machine)</p>
                 <p><strong className="text-yellow-300">The pattern:</strong></p>
                 <div className="ml-3 space-y-1 font-mono text-xs">
-                  <p>1. <span className="text-green-400">ssh</span> user@target → Connect to remote host</p>
-                  <p>2. <span className="text-green-400">explore</span> files → Find sensitive data</p>
-                  <p>3. <span className="text-green-400">sudo su</span> → Become root = COMPROMISE!</p>
-                  <p>4. <span className="text-green-400">exit</span> → Return to Kali for next target</p>
+                  <p>1. <span className="text-cyan-300">ssh</span> user@target → Connect to remote host</p>
+                  <p>2. <span className="text-cyan-300">explore</span> files → Find sensitive data</p>
+                  <p>3. <span className="text-cyan-300">sudo su</span> → Become root = COMPROMISE!</p>
+                  <p>4. <span className="text-cyan-300">exit</span> → Return to Kali for next target</p>
                 </div>
                 <p className="text-cyan-300 mt-2"><strong>Why exit?</strong> You&apos;re &quot;inside&quot; the target when SSH&apos;d. Must return to Kali to attack the next target.</p>
                 <p className="text-fuchsia-300"><strong>Repeat 3 times</strong> (router → server → workstation) = Victory! 🎉</p>
@@ -1504,14 +1504,14 @@ const HackingTerminal = () => {
             </div>
 
             {/* Phase 1: Reconnaissance */}
-            <div className="bg-green-900/20 border border-green-700 rounded-lg p-3">
-              <h4 className="text-green-400 font-semibold mb-2 text-sm">Phase 1: Reconnaissance</h4>
+            <div className="bg-cyan-900/20 border border-cyan-700 rounded-lg p-3">
+              <h4 className="text-cyan-300 font-semibold mb-2 text-sm">Phase 1: Reconnaissance</h4>
               <p className="text-gray-300 text-xs mb-3">Discover what&apos;s on the network before attacking</p>
               
               <div className="space-y-3 text-sm">
                 <div>
                   <div className="text-cyan-300 font-semibold text-xs mb-1">Step 1: Network Discovery</div>
-                  <div className="bg-black/50 rounded p-2 font-mono text-xs text-green-400">nmap</div>
+                  <div className="bg-black/50 rounded p-2 font-mono text-xs text-cyan-300">nmap</div>
                   <p className="text-gray-300 text-xs mt-1">
                     <strong className="text-yellow-300">Why:</strong> Scans all hosts on 192.168.1.0/24 network<br/>
                     <strong className="text-yellow-300">Shows:</strong> IP addresses, open ports, and services<br/>

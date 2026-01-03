@@ -226,7 +226,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
                       s <= step
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.5)]'
+                        ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_20px_rgba(34,211,238,0.45)]'
                         : 'bg-gray-700 text-gray-400'
                     }`}
                   >
@@ -235,7 +235,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                   {s < 3 && (
                     <div
                       className={`flex-1 h-1 mx-2 rounded transition-all ${
-                        s < step ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-700'
+                        s < step ? 'bg-gradient-to-r from-cyan-400 to-blue-500' : 'bg-gray-700'
                       }`}
                     />
                   )}
@@ -259,7 +259,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className={`w-full px-4 py-3 bg-gray-800 border ${
                       errors.name ? 'border-red-500' : 'border-gray-700'
-                    } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all`}
+                    } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all`}
                     placeholder="e.g., Chill Gaming Lounge"
                     maxLength={50}
                   />
@@ -278,7 +278,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className={`w-full px-4 py-3 bg-gray-800 border ${
                       errors.description ? 'border-red-500' : 'border-gray-700'
-                    } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all resize-none`}
+                    } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all resize-none`}
                     placeholder="Describe your room... What's it about? What are the vibes?"
                     rows={4}
                     maxLength={500}
@@ -300,7 +300,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                         onClick={() => setFormData({ ...formData, category })}
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${
                           formData.category === category
-                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                            ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
                             : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
                         }`}
                       >
@@ -321,7 +321,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                      className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                       placeholder="e.g., competitive, chill, 18+"
                       maxLength={20}
                       disabled={formData.tags.length >= 5}
@@ -329,7 +329,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                     <button
                       onClick={handleAddTag}
                       disabled={!tagInput.trim() || formData.tags.length >= 5}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="px-4 py-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-white rounded-lg hover:from-cyan-500 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       <Tag size={20} />
                     </button>
@@ -366,7 +366,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onClick={() => setFormData({ ...formData, thumbnailType: 'preset' })}
                       className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         formData.thumbnailType === 'preset'
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                          ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
                           : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
                       }`}
                     >
@@ -377,7 +377,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onClick={() => setFormData({ ...formData, thumbnailType: 'upload' })}
                       className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         formData.thumbnailType === 'upload'
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                          ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
                           : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
                       }`}
                     >
@@ -394,7 +394,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                           onClick={() => setFormData({ ...formData, thumbnailPreset: preset.id })}
                           className={`aspect-video rounded-lg transition-all ${
                             formData.thumbnailPreset === preset.id
-                              ? 'ring-4 ring-green-500 scale-105'
+                              ? 'ring-4 ring-cyan-400 scale-105'
                               : 'hover:scale-105 ring-2 ring-gray-700'
                           }`}
                           style={{ background: preset.gradient }}
@@ -435,7 +435,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       ) : (
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full aspect-video bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg hover:border-green-500 hover:bg-gray-750 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-green-400"
+                          className="w-full aspect-video bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg hover:border-cyan-400 hover:bg-gray-750 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-cyan-300"
                         >
                           <ImageIcon size={48} />
                           <p className="font-medium">Click to upload thumbnail</p>
@@ -502,12 +502,12 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onClick={() => setFormData({ ...formData, privacy: 'public', password: '' })}
                       className={`w-full p-4 rounded-lg border-2 transition-all ${
                         formData.privacy === 'public'
-                          ? 'border-green-500 bg-green-500/10'
+                          ? 'border-cyan-400 bg-cyan-400/10'
                           : 'border-gray-700 bg-gray-800 hover:border-gray-600'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <Globe className={formData.privacy === 'public' ? 'text-green-400' : 'text-gray-400'} size={24} />
+                        <Globe className={formData.privacy === 'public' ? 'text-cyan-300' : 'text-gray-400'} size={24} />
                         <div className="text-left">
                           <h4 className="font-semibold text-white">Public</h4>
                           <p className="text-sm text-gray-400 mt-1">Anyone can find and join this room</p>
@@ -519,12 +519,12 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onClick={() => setFormData({ ...formData, privacy: 'private', password: '' })}
                       className={`w-full p-4 rounded-lg border-2 transition-all ${
                         formData.privacy === 'private'
-                          ? 'border-green-500 bg-green-500/10'
+                          ? 'border-cyan-400 bg-cyan-400/10'
                           : 'border-gray-700 bg-gray-800 hover:border-gray-600'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <Lock className={formData.privacy === 'private' ? 'text-green-400' : 'text-gray-400'} size={24} />
+                        <Lock className={formData.privacy === 'private' ? 'text-cyan-300' : 'text-gray-400'} size={24} />
                         <div className="text-left">
                           <h4 className="font-semibold text-white">Private</h4>
                           <p className="text-sm text-gray-400 mt-1">Only users with invite link can join</p>
@@ -536,12 +536,12 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onClick={() => setFormData({ ...formData, privacy: 'password' })}
                       className={`w-full p-4 rounded-lg border-2 transition-all ${
                         formData.privacy === 'password'
-                          ? 'border-green-500 bg-green-500/10'
+                          ? 'border-cyan-400 bg-cyan-400/10'
                           : 'border-gray-700 bg-gray-800 hover:border-gray-600'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <Key className={formData.privacy === 'password' ? 'text-green-400' : 'text-gray-400'} size={24} />
+                        <Key className={formData.privacy === 'password' ? 'text-cyan-300' : 'text-gray-400'} size={24} />
                         <div className="text-left">
                           <h4 className="font-semibold text-white">Password Protected</h4>
                           <p className="text-sm text-gray-400 mt-1">Requires password to join</p>
@@ -562,7 +562,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className={`w-full px-4 py-3 bg-gray-800 border ${
                         errors.password ? 'border-red-500' : 'border-gray-700'
-                      } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
+                      } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400`}
                       placeholder="Enter room password"
                     />
                     {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
@@ -583,7 +583,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) })}
                       className="flex-1"
                       style={{
-                        background: `linear-gradient(to right, rgb(34, 197, 94) 0%, rgb(34, 197, 94) ${(formData.maxMembers - 2) / 998 * 100}%, rgb(55, 65, 81) ${(formData.maxMembers - 2) / 998 * 100}%, rgb(55, 65, 81) 100%)`
+                        background: `linear-gradient(to right, rgb(34, 211, 238) 0%, rgb(34, 211, 238) ${(formData.maxMembers - 2) / 998 * 100}%, rgb(55, 65, 81) ${(formData.maxMembers - 2) / 998 * 100}%, rgb(55, 65, 81) 100%)`
                       }}
                     />
                     <input
@@ -592,7 +592,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                       max="1000"
                       value={formData.maxMembers}
                       onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) || 2 })}
-                      className="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     />
                   </div>
                   {errors.maxMembers && <p className="text-sm text-red-500 mt-1">{errors.maxMembers}</p>}
@@ -601,7 +601,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
                 {/* Summary */}
                 <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
                   <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
                     Room Summary
                   </h4>
                   <div className="space-y-2 text-sm">
@@ -657,7 +657,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreateRoom }: Creat
             <button
               onClick={step === 3 ? handleSubmit : handleNext}
               disabled={isLoading}
-              className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all font-medium shadow-[0_0_20px_rgba(34,197,94,0.4)] disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-white rounded-lg hover:from-cyan-500 hover:to-blue-600 transition-all font-medium shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-50"
             >
               {isLoading ? 'Creating...' : step === 3 ? 'Create Room' : 'Next'}
             </button>

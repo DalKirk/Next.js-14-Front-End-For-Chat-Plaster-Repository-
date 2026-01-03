@@ -22,6 +22,13 @@ export default function AdvancedFeaturesDemo() {
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [activeTab, setActiveTab] = useState('tiles');
   const [isMouseDown, setIsMouseDown] = useState(false);
+
+  // Allow deep-linking directly to the sprite editor tab (e.g. /advanced-features-demo?tab=sprites)
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'sprites') setActiveTab('sprites');
+    if (tab === 'tiles') setActiveTab('tiles');
+  }, []);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tileSystemRef = useRef<TileSystem | null>(null);
@@ -558,7 +565,7 @@ export default function AdvancedFeaturesDemo() {
                 </button>
                 <button
                   onClick={exportTiles}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition-colors"
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded transition-colors"
                 >
                   Export to Console
                 </button>
@@ -719,7 +726,7 @@ export default function AdvancedFeaturesDemo() {
                   
                   <button
                     onClick={() => multipleFilesInputRef.current?.click()}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -774,8 +781,8 @@ export default function AdvancedFeaturesDemo() {
                 )}
                 
                 {customSprite && (
-                  <div className="bg-gray-900 border border-green-700 rounded p-3">
-                    <p className="text-green-400 text-xs sm:text-sm">
+                  <div className="bg-gray-900 border border-cyan-700/80 rounded p-3">
+                    <p className="text-cyan-300 text-xs sm:text-sm">
                       ✓ Custom sprite loaded! Frame size: {frameWidth}x{frameHeight}px
                       {uploadedFrames.length > 0 && ` | ${uploadedFrames.length} frames from multiple images`}
                     </p>

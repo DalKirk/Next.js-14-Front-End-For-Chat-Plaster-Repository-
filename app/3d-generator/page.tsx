@@ -13,7 +13,7 @@ export default function ThreeDGeneratorPage() {
       {/* Home Button */}
       <Link
         href="/"
-        className="fixed top-4 left-4 z-50 glass-panel p-2 sm:p-3 rounded-xl border-2 border-white/10 hover:border-[oklch(0.85_0.2_160)] transition-all duration-300 hover:scale-110 group"
+        className="fixed top-4 left-4 z-50 glass-panel p-2 sm:p-3 rounded-xl border-2 border-white/10 hover:border-cyan-400/50 transition-all duration-300 hover:scale-110 group"
         title="Back to Home"
       >
         <svg
@@ -22,7 +22,7 @@ export default function ThreeDGeneratorPage() {
           viewBox="0 0 24 24"
           strokeWidth={2}
           stroke="currentColor"
-          className="w-5 h-5 sm:w-6 sm:h-6 text-white/70 group-hover:text-[oklch(0.85_0.2_160)] transition-colors"
+          className="w-5 h-5 sm:w-6 sm:h-6 text-white/70 group-hover:text-cyan-300 transition-colors"
         >
           <path
             strokeLinecap="round"
@@ -45,7 +45,7 @@ export default function ThreeDGeneratorPage() {
       <div className="container mx-auto px-4 py-8 pt-20">
         {/* Title */}
         <div className="text-center mb-8 space-y-2">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-[oklch(0.85_0.2_160)] to-[oklch(0.75_0.2_160)] bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 to-blue-500 bg-clip-text text-transparent">
             Gen-3D
           </h1>
           <p className="text-white/60 text-sm sm:text-base">
@@ -60,7 +60,7 @@ export default function ThreeDGeneratorPage() {
               onClick={() => setActiveTab('text')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                 activeTab === 'text'
-                  ? 'bg-[oklch(0.85_0.2_160)] text-black shadow-lg shadow-[oklch(0.85_0.2_160)]/30'
+                  ? 'bg-cyan-300 text-black shadow-lg shadow-cyan-400/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -70,7 +70,7 @@ export default function ThreeDGeneratorPage() {
               onClick={() => setActiveTab('image')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                 activeTab === 'image'
-                  ? 'bg-[oklch(0.85_0.2_160)] text-black shadow-lg shadow-[oklch(0.85_0.2_160)]/30'
+                  ? 'bg-cyan-300 text-black shadow-lg shadow-cyan-400/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >

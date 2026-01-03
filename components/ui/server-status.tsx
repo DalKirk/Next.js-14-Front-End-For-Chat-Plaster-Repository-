@@ -49,9 +49,9 @@ export function ServerStatus({ apiUrl }: ServerStatusProps) {
         };
       case 'online':
         return {
-          bg: 'bg-green-500/20',
-          border: 'border-green-500/50',
-          text: 'text-green-300',
+          bg: 'bg-cyan-400/20',
+          border: 'border-cyan-400/50',
+          text: 'text-cyan-200',
           icon: '?',
           label: 'Server Online',
         };

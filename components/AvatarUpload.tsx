@@ -122,7 +122,7 @@ export function AvatarUpload({
         onDragLeave={handleDragLeave}
         className={`
           relative border-2 border-dashed rounded-lg p-6 text-center transition-colors
-          ${isDragging ? 'border-green-500 bg-green-500/10' : 'border-gray-600 hover:border-gray-500'}
+          ${isDragging ? 'border-cyan-400 bg-cyan-400/10' : 'border-gray-600 hover:border-gray-500'}
           ${isUploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
         `}
       >
@@ -140,7 +140,7 @@ export function AvatarUpload({
         <div className="space-y-2">
           {isUploading ? (
             <>
-              <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-sm text-gray-300">{uploadProgress}</p>
             </>
           ) : (
@@ -149,7 +149,7 @@ export function AvatarUpload({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <p className="text-sm text-gray-300">
-                <span className="text-green-400 font-medium">Click to upload</span> or drag and drop
+                <span className="text-cyan-300 font-medium">Click to upload</span> or drag and drop
               </p>
               <p className="text-xs text-gray-500">
                 JPEG, PNG, GIF or WebP (max 10MB)
