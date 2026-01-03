@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MarkdownRenderer from './MarkdownRenderer';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/outline';
+// Icons removed for a simpler UI; using text labels instead
 
 interface Message {
   role: 'user' | 'assistant';
@@ -298,7 +298,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Input Area */}
       <div className="p-4 border-t border-[oklch(30%_0.05_260)]">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -311,14 +311,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || loading}
-            className="self-end bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white p-3"
+            className="bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white px-4 py-2"
             size="md"
+            aria-label={loading ? 'Sending' : 'Send'}
           >
-            {loading ? (
-              <SparklesIcon className="h-5 w-5 animate-spin" />
-            ) : (
-              <PaperAirplaneIcon className="h-5 w-5" />
-            )}
+            {loading ? 'Sending…' : 'Send'}
           </Button>
         </div>
       </div>
