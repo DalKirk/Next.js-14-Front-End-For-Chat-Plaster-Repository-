@@ -654,19 +654,35 @@ export const apiClient = {
 
     const processed = await ImageProcessor.processAvatar(file);
 
-    try {
-      const formData = new FormData();
-      formData.append('thumbnail', processed.thumbnail.blob, 'thumbnail.jpg');
-      formData.append('small', processed.small.blob, 'small.jpg');
-      formData.append('medium', processed.medium.blob, 'medium.jpg');
-      formData.append('large', processed.large.blob, 'large.jpg');
+    const formData = new FormData();
+    formData.append('thumbnail', processed.thumbnail.blob, 'thumbnail.jpg');
+    formData.append('small', processed.small.blob, 'small.jpg');
+    formData.append('medium', processed.medium.blob, 'medium.jpg');
+    formData.append('large', processed.large.blob, 'large.jpg');
 
+    // Try POST first, then gracefully fallback to PUT if server disallows POST
+    try {
       const response = await api.post(`/users/${userId}/gallery`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000,
       });
       return response.data;
     } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 405) {
+        // Fallback: some backends expect PUT
+        try {
+          const response = await api.put(`/users/${userId}/gallery`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 30000,
+          });
+          return response.data;
+        } catch (putErr) {
+          const msg = axios.isAxiosError(putErr)
+            ? (putErr.response?.data?.detail || putErr.message || 'Gallery upload method not allowed')
+            : String(putErr || 'Gallery upload method not allowed');
+          throw new Error(`Gallery upload error: ${msg}. Ensure backend route /users/{userId}/gallery accepts POST or PUT.`);
+        }
+      }
       if (axios.isAxiosError(e)) {
         const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload gallery image';
         console.error('❌ Gallery upload error:', errorMsg);

@@ -645,23 +645,32 @@ function ProfilePageContent() {
                   {/* Preferences: Theme selection (persist locally) */}
                   <div className="mt-2">
                     <label className="text-xs text-slate-500 mb-2 block">Color Theme</label>
-                    <select
-                      value={editedProfile.theme || 'purple'}
-                      onChange={(e) => {
-                        const theme = e.target.value as 'purple' | 'blue' | 'green';
-                        setEditedProfile({ ...editedProfile, theme });
-                        try {
-                          const raw = StorageUtils.safeGetItem('uiSettings') || '{}';
-                          const obj = { ...JSON.parse(raw), theme };
-                          StorageUtils.safeSetItem('uiSettings', JSON.stringify(obj));
-                        } catch {}
-                      }}
-                      className="bg-white/5 text-slate-200 rounded px-2 py-2"
-                    >
-                      <option value="purple">Purple</option>
-                      <option value="blue">Blue</option>
-                      <option value="green">Green</option>
-                    </select>
+                    <div className="flex items-center gap-3">
+                      {(['purple','blue','green'] as const).map((t) => (
+                        <label key={t} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="theme-choice"
+                            checked={(editedProfile.theme || 'purple') === t}
+                            onChange={() => {
+                              const theme = t;
+                              setEditedProfile({ ...editedProfile, theme });
+                              try {
+                                const raw = StorageUtils.safeGetItem('uiSettings') || '{}';
+                                const obj = { ...JSON.parse(raw), theme };
+                                StorageUtils.safeSetItem('uiSettings', JSON.stringify(obj));
+                              } catch {}
+                            }}
+                            className="hidden"
+                          />
+                          <span
+                            aria-label={`Theme ${t}`}
+                            className={`w-6 h-6 rounded-full border ${t === 'purple' ? 'bg-purple-600 border-purple-400' : t === 'blue' ? 'bg-blue-600 border-blue-400' : 'bg-green-600 border-green-400'} ${((editedProfile.theme || 'purple') === t) ? 'ring-2 ring-cyan-400' : ''}`}
+                          />
+                          <span className="text-xs text-slate-300 capitalize">{t}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   
                   {/* Security Section - Only visible when editing */}
@@ -758,7 +767,7 @@ function ProfilePageContent() {
                         }}
                       />
                     ) : null}
-                    <UserGalleryGrid />
+                    <UserGalleryGrid isViewOnly={isViewOnly} />
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
@@ -785,7 +794,7 @@ export default function ProfilePage() {
 }
 
 // Render gallery grid using stored URLs
-function UserGalleryGrid() {
+function UserGalleryGrid({ isViewOnly }: { isViewOnly: boolean }) {
   const [urls, setUrls] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
@@ -841,7 +850,7 @@ function UserGalleryGrid() {
   return (
     <div className="space-y-3">
       {urls.length === 0 ? (
-        <p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>
+        isViewOnly ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {urls.map((u, i) => (
