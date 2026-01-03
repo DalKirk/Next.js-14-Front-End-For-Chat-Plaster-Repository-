@@ -89,7 +89,7 @@ export function useChat({ roomId, user }: UseChatProps) {
     let cancelled = false;
 
     (async () => {
-      await socketManager.connect(roomId, { userId: user.id, username: user.username });
+      await socketManager.connect(roomId, user.id, user.username, user.avatar_url);
       if (cancelled) return;
       socketManager.onConnect(setIsConnected);
       socketManager.onMessage(handleMessage);
