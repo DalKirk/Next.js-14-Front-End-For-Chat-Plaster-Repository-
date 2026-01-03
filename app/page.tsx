@@ -433,24 +433,27 @@ export default function HomePage() {
   const stripSelfIdentificationIntro = (text: string): string => {
     const lines = text.split('\n');
     let removeCount = 0;
-    const isGreeting = (s: string) => /\b(hi|hello|hey)\b/i.test(s);
-    const isClaudeIntro = (s: string) => /\bi'?m\s+claude\b/i.test(s) || /\ban\s+ai\s+assistant\b/i.test(s);
-    for (let i = 0; i < Math.min(2, lines.length); i++) {
+    const isGreeting = (s: string) => /\b(hi|hello|hey|welcome|greetings)\b/i.test(s);
+    const isSelfIntro = (s: string) => /\b(i\s*'?m|i\s*am|my\s*name\s*is)\b/i.test(s);
+    const mentionsClaude = (s: string) => /\bclaude\b/i.test(s);
+    const mentionsAssistant = (s: string) => /\ban\s+ai\s+assistant\b/i.test(s);
+    // Consider the first few lines for removal
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
       const s = lines[i].trim();
       if (i === 0 && isGreeting(s)) {
         removeCount++;
         continue;
       }
-      if (isClaudeIntro(s)) {
+      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) {
         removeCount++;
         continue;
       }
       break;
     }
-    if (removeCount > 0) {
-      return lines.slice(removeCount).join('\n').trimStart();
-    }
-    return text;
+    let result = removeCount > 0 ? lines.slice(removeCount).join('\n').trimStart() : text;
+    // Secondary cleanup: remove residual "Claude" mentions at start
+    result = result.replace(/^\s*claude[:,]?\s*/i, '');
+    return result;
   };
   const checkAIHealth = async () => {
     try {
