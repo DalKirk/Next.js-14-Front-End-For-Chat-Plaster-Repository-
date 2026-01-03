@@ -432,14 +432,23 @@ export default function HomePage() {
 
   const stripSelfIdentificationIntro = (text: string): string => {
     const lines = text.split('\n');
-    if (lines.length > 0 && /\bi'?m\s+claude\b/i.test(lines[0])) {
-      lines.shift();
-      return lines.join('\n').trimStart();
+    let removeCount = 0;
+    const isGreeting = (s: string) => /\b(hi|hello|hey)\b/i.test(s);
+    const isClaudeIntro = (s: string) => /\bi'?m\s+claude\b/i.test(s) || /\ban\s+ai\s+assistant\b/i.test(s);
+    for (let i = 0; i < Math.min(2, lines.length); i++) {
+      const s = lines[i].trim();
+      if (i === 0 && isGreeting(s)) {
+        removeCount++;
+        continue;
+      }
+      if (isClaudeIntro(s)) {
+        removeCount++;
+        continue;
+      }
+      break;
     }
-    // Also catch generic greeting plus self-identification in first line
-    if (lines.length > 0 && /\b(hi|hello|hey)[^\n]*i'?m\s+claude\b/i.test(lines[0])) {
-      lines.shift();
-      return lines.join('\n').trimStart();
+    if (removeCount > 0) {
+      return lines.slice(removeCount).join('\n').trimStart();
     }
     return text;
   };

@@ -28,6 +28,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   apiEndpoint = '/api/ai-stream',
   className = ''
 }) => {
+  const AI_SYSTEM_PROMPT = `You are the Starcyeed AI assistant. Do not self-identify as "Claude" or mention model/provider names unless explicitly asked. Avoid greetings like "Hi" or "I'm ...". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.`;
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   useEffect(() => {
     console.log('?? Conversation ID initialized:', conversationId);
   }, [conversationId]);
+
+  const stripSelfIdentificationIntro = (text: string): string => {
+    const lines = text.split('\n');
+    let removeCount = 0;
+    const isGreeting = (s: string) => /\b(hi|hello|hey)\b/i.test(s);
+    const isClaudeIntro = (s: string) => /\bi'?m\s+claude\b/i.test(s) || /\ban\s+ai\s+assistant\b/i.test(s);
+    // Consider first two lines: greeting and self-intro
+    for (let i = 0; i < Math.min(2, lines.length); i++) {
+      const s = lines[i].trim();
+      if (i === 0 && isGreeting(s)) {
+        removeCount++;
+        continue;
+      }
+      if (isClaudeIntro(s)) {
+        removeCount++;
+        continue;
+      }
+      break;
+    }
+    if (removeCount > 0) {
+      return lines.slice(removeCount).join('\n').trimStart();
+    }
+    return text;
+  };
 
   const sendMessage = async () => {
     const trimmedInput = input.trim();
@@ -68,7 +94,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         message: currentInput,
         conversation_history: messages.filter(m => m.role && m.content),
         conversation_id: conversationId, // ? Add conversation_id
-        enable_search: true
+        enable_search: true,
+        system_prompt: AI_SYSTEM_PROMPT
       };
       
       console.log('?? Request payload:', requestPayload);
@@ -125,7 +152,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 
                 if (parsed.content) {
                   console.log('Raw chunk:', JSON.stringify(parsed.content));
-                  assistantMessage += parsed.content;
+                  let chunkText = parsed.content;
+                  if (!assistantMessage) {
+                    chunkText = stripSelfIdentificationIntro(chunkText);
+                  }
+                  assistantMessage += chunkText;
                   setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
