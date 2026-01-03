@@ -671,10 +671,10 @@ export default function HomePage() {
                   : "w-11 sm:w-12 active:w-44 hover:w-44 sm:hover:w-52 active:translate-x-1 hover:translate-x-1 ") +
                 // Colors and effects
                 (isActive
-                  ? "bg-cyan-500/15 border border-cyan-400/50 text-slate-100 shadow-[0_0_24px_rgba(34,211,238,0.25)]"
+                  ? "bg-[#9333ea]/15 border border-[#8a2be2]/50 text-slate-100 shadow-[0_0_24px_rgba(147,51,234,0.25)]"
                   : isTouched
-                  ? "bg-cyan-500/10 border border-cyan-400/40 text-slate-300"
-                  : "bg-black/50 border border-slate-700/50 text-slate-300 hover:bg-cyan-500/10 hover:border-cyan-400/40 active:bg-cyan-500/10 active:border-cyan-400/40")
+                  ? "bg-[#9333ea]/10 border border-[#9333ea]/40 text-slate-300"
+                  : "bg-[#0a0a0f]/60 border border-[#4b0082]/40 text-slate-300 hover:bg-[#9333ea]/10 hover:border-[#9333ea]/40 active:bg-[#9333ea]/15 active:border-[#8a2be2]/40")
               }
               aria-label={`Open ${item.title} details`}
               title={item.title}
@@ -713,7 +713,7 @@ export default function HomePage() {
             style={
               touchedButton === 'close' ? { width: '11rem' } : undefined
             }
-            className="index-tab-button mt-2 group flex items-center gap-2 overflow-hidden rounded-r-2xl rounded-l-none pl-2 pr-3 py-2 text-xs sm:text-sm bg-black/40 border border-slate-700/50 text-slate-300 hover:bg-black/60 hover:text-slate-100 transition-[transform,width] duration-200 w-11 sm:w-12 hover:w-44 sm:hover:w-52 hover:translate-x-1 active:w-44 active:translate-x-1"
+            className="index-tab-button mt-2 group flex items-center gap-2 overflow-hidden rounded-r-2xl rounded-l-none pl-2 pr-3 py-2 text-xs sm:text-sm bg-[#0a0a0f]/60 border border-[#4b0082]/40 text-slate-300 hover:bg-[#9333ea]/10 hover:border-[#9333ea]/40 hover:text-slate-100 transition-[transform,width] duration-200 w-11 sm:w-12 hover:w-44 sm:hover:w-52 hover:translate-x-1 active:w-44 active:translate-x-1 active:bg-[#9333ea]/15 active:border-[#8a2be2]/40"
             aria-label="Close details panel"
             title="Close"
             type="button"
