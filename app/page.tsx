@@ -133,13 +133,13 @@ interface OrbitItemData {
 }
 
 const orbitItems: OrbitItemData[] = [
-  { id: "services", angle: 0, radius: 300, icon: "⚡", title: "Services", desc: "Full-stack solutions" },
-  { id: "portfolio", angle: 60, radius: 300, icon: "🎨", title: "Portfolio", desc: "Award-winning projects", badge: "NEW" },
-  { id: "team", angle: 120, radius: 300, icon: "👥", title: "Team", desc: "Meet the crew" },
-  { id: "blog", angle: 180, radius: 300, icon: "📝", title: "Blog", desc: "Latest insights" },
-  { id: "careers", angle: 300, radius: 300, icon: "🚀", title: "Careers", desc: "Join our team", badge: "3" },
-  { id: "about", angle: 30, radius: 160, icon: "ℹ️", title: "About", desc: "Our story", inner: true },
-  { id: "awards", angle: 270, radius: 160, icon: "🏆", title: "Awards", desc: "Recognition", inner: true },
+  { id: "services", angle: 0, radius: 300, icon: "●", title: "Services", desc: "Full-stack solutions" },
+  { id: "portfolio", angle: 60, radius: 300, icon: "●", title: "Portfolio", desc: "Award-winning projects", badge: "NEW" },
+  { id: "team", angle: 120, radius: 300, icon: "●", title: "Team", desc: "Meet the crew" },
+  { id: "blog", angle: 180, radius: 300, icon: "●", title: "Blog", desc: "Latest insights" },
+  { id: "careers", angle: 300, radius: 300, icon: "●", title: "Careers", desc: "Join our team", badge: "3" },
+  { id: "about", angle: 30, radius: 160, icon: "●", title: "About", desc: "Our story", inner: true },
+  { id: "awards", angle: 270, radius: 160, icon: "●", title: "Awards", desc: "Recognition", inner: true },
 ];
 
 export default function HomePage() {
