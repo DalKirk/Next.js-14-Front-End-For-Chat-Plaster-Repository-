@@ -1080,12 +1080,12 @@ export default function HomePage() {
                 onChange={(e) => setClaudeInput(e.target.value)}
                 onKeyPress={handleClaudeKeyPress}
                 placeholder="Ask AI anything..."
-                disabled={isClaudeTyping || (aiHealth && !aiHealth.ai_enabled)}
+                disabled={isClaudeTyping || !!(aiHealth && !aiHealth.ai_enabled)}
                 className="flex-1 bg-slate-800/80 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent disabled:opacity-50"
               />
               <button
                 onClick={handleAskClaude}
-                disabled={!claudeInput.trim() || isClaudeTyping || (aiHealth && !aiHealth.ai_enabled)}
+                disabled={!claudeInput.trim() || isClaudeTyping || !!(aiHealth && !aiHealth.ai_enabled)}
                 className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg px-4 py-2 transition-colors"
               >
                 {isClaudeTyping ? (
