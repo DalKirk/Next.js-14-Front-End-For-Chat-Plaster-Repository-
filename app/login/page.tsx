@@ -10,12 +10,6 @@ import { apiClient } from '@/lib/api';
 import { sanitizeUserForStorage } from '@/lib/utils';
 import Link from 'next/link';
 
-export const metadata = {
-  title: 'Login',
-  description: 'Sign in to your Starcyeed account.',
-  robots: { index: false, follow: false },
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');

@@ -54,12 +54,6 @@ function ProfilePageContent() {
   })();
   const viewedUsername = (() => {
     try { return searchParams?.get('username') || null; } catch { return null; }
-
-    export const metadata = {
-      title: 'Profile',
-      description: 'View and edit your Starcyeed profile.',
-      robots: { index: false, follow: false },
-    };
   })();
   
   // Profile state

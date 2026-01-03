@@ -23,12 +23,8 @@ const nextConfig = {
       },
     ],
   },
-  // Turbopack configuration
-  turbopack: {
-    resolveAlias: {
-      'three/examples/jsm': 'three/examples/jsm',
-    },
-  },
+  // Silence Next 16 build error by declaring empty Turbopack config
+  turbopack: {},
   webpack: (config) => {
     // Handle Three.js examples imports (fallback for when Webpack is used)
     config.resolve.alias = {

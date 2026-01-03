@@ -10,12 +10,6 @@ import { apiClient } from '@/lib/api';
 import { sanitizeUserForStorage } from '@/lib/utils';
 import Link from 'next/link';
 
-export const metadata = {
-  title: 'Sign Up',
-  description: 'Create your Starcyeed account to get started.',
-  robots: { index: false, follow: false },
-};
-
 export default function SignupPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
