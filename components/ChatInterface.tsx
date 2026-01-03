@@ -195,21 +195,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className={`flex flex-col h-full bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}>
-      {/* CSS to fix overflow issues */}
-      <style jsx>{`
-        .chat-message-container {
-          word-wrap: break-word !important;
-          word-break: break-word !important;
-          overflow-wrap: break-word !important;
-          hyphens: auto !important;
-          max-width: 100% !important;
-          overflow-x: hidden !important;
-        }
-        .chat-message-container * {
-          max-width: 100% !important;
-          box-sizing: border-box !important;
-        }
-      `}</style>
       {/* Header with Clear Button */}
       <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
         <h2 className="text-xl font-bold text-[oklch(90%_0.05_260)]">AI Chat Assistant</h2>
