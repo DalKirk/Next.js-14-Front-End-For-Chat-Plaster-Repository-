@@ -10,7 +10,7 @@ interface UseChatProps {
 export function useChat({ roomId, user }: UseChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
   const handleMessage = useCallback((socketMessage: SocketMessage) => {
     const incomingType: SocketMessage['type'] = socketMessage.type || 'message';
@@ -93,6 +93,19 @@ export function useChat({ roomId, user }: UseChatProps) {
       if (cancelled) return;
       socketManager.onConnect(setIsConnected);
       socketManager.onMessage(handleMessage);
+      socketManager.onTyping((data) => {
+        const name = data.username || data.user_id;
+        setTypingUsers((prev) => {
+          if (!name) return prev;
+          if (data.type === 'typing_start') {
+            return prev.includes(name) ? prev : [...prev, name];
+          }
+          if (data.type === 'typing_stop') {
+            return prev.filter((n) => n !== name);
+          }
+          return prev;
+        });
+      });
     })();
 
     return () => {
