@@ -151,8 +151,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
       // Auto-detect URLs
       if (text[i] === 'h' && text.slice(i, i + 4) === 'http') {
-        const urlEnd = text.search(/\s|$/, i);
-        const actualEnd = urlEnd === -1 ? text.length : urlEnd;
+        const endOffset = text.slice(i).search(/\s|$/);
+        const actualEnd = endOffset === -1 ? text.length : i + endOffset;
         if (current) {
           parts.push(current);
           current = '';
