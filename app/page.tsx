@@ -887,6 +887,16 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() => {
+                    router.push("/profile?edit=true");
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-cyan-500/15 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <UserCircleIcon className="w-4 h-4" />
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => {
                     router.push("/chat");
                     setShowUserMenu(false);
                   }}

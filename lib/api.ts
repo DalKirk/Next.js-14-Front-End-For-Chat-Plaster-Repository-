@@ -632,6 +632,51 @@ export const apiClient = {
   },
 
   /**
+   * Upload a gallery image using the same multi-size processing as avatars.
+   * Backend should expose POST /users/{userId}/gallery that stores images to CDN.
+   */
+  uploadGalleryImage: async (
+    userId: string,
+    file: File,
+    username?: string
+  ): Promise<{ image_urls: AvatarUrls }> => {
+    // Ensure the user exists first
+    if (username) {
+      await apiClient.ensureUserExists(userId, username);
+    }
+
+    const { ImageProcessor } = await import('./image-processor');
+
+    const validation = await ImageProcessor.validateImage(file);
+    if (!validation.valid) {
+      throw new Error(validation.error || 'Invalid image');
+    }
+
+    const processed = await ImageProcessor.processAvatar(file);
+
+    try {
+      const formData = new FormData();
+      formData.append('thumbnail', processed.thumbnail.blob, 'thumbnail.jpg');
+      formData.append('small', processed.small.blob, 'small.jpg');
+      formData.append('medium', processed.medium.blob, 'medium.jpg');
+      formData.append('large', processed.large.blob, 'large.jpg');
+
+      const response = await api.post(`/users/${userId}/gallery`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      });
+      return response.data;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload gallery image';
+        console.error('❌ Gallery upload error:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      throw new Error('Failed to upload gallery image');
+    }
+  },
+
+  /**
    * Delete user's avatar from Bunny.net CDN
    * 
    * @param userId - User ID

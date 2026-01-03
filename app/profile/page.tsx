@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
+import { GalleryUpload } from '@/components/GalleryUpload';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
 import { socketManager } from '@/lib/socket';
@@ -740,10 +741,24 @@ function ProfilePageContent() {
                     <p className="text-slate-400 mb-3">{profile.email}</p>
                   )}
                   {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
-                  {/* Photo Gallery (URLs only; local persistence) */}
+                  {/* Photo Gallery: device uploads processed to CDN */}
                   <div className="mt-4">
                     <h3 className="text-slate-200 text-base font-semibold mb-2">Photo Gallery</h3>
-                    <PhotoGallery />
+                    {!isViewOnly ? (
+                      <GalleryUpload
+                        userId={profile.id}
+                        username={profile.username}
+                        onItemsAdded={(items) => {
+                          try {
+                            const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+                            const arr = JSON.parse(raw);
+                            const next = Array.isArray(arr) ? [...items.map((i) => i.medium || i.large || i.small || i.thumbnail), ...arr] : items.map((i) => i.medium || i.large || i.small || i.thumbnail);
+                            StorageUtils.safeSetItem('userGallery', JSON.stringify(next));
+                          } catch {}
+                        }}
+                      />
+                    ) : null}
+                    <UserGalleryGrid />
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
@@ -769,10 +784,9 @@ export default function ProfilePage() {
   );
 }
 
-// Lightweight client-only gallery using localStorage of URL strings
-function PhotoGallery() {
+// Render gallery grid using stored URLs
+function UserGalleryGrid() {
   const [urls, setUrls] = useState<string[]>([]);
-  const [newUrl, setNewUrl] = useState('');
 
   useEffect(() => {
     try {
@@ -787,18 +801,6 @@ function PhotoGallery() {
     try { StorageUtils.safeSetItem('userGallery', JSON.stringify(next)); } catch {}
   };
 
-  const addUrl = () => {
-    const url = newUrl.trim();
-    if (!url) return;
-    // Basic validation: only allow http(s) URLs
-    if (!/^https?:\/\//i.test(url)) {
-      toast.error('Please enter a valid image URL (http/https)');
-      return;
-    }
-    persist([url, ...urls]);
-    setNewUrl('');
-  };
-
   const removeUrl = (i: number) => {
     const next = urls.slice();
     next.splice(i, 1);
@@ -807,17 +809,8 @@ function PhotoGallery() {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <Input
-          placeholder="Paste image URL (CDN)"
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
-          className="bg-white/5"
-        />
-        <Button onClick={addUrl} variant="glass">Add</Button>
-      </div>
       {urls.length === 0 ? (
-        <p className="text-slate-400 text-sm">No photos yet. Add some URLs from your CDN or image host.</p>
+        <p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {urls.map((u, i) => (
