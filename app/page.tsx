@@ -866,65 +866,63 @@ export default function HomePage() {
         {activeItem && contentData[activeItem] && (
           <div className="detail-content">
             <h2>{contentData[activeItem].title}</h2>
-            <p className="detail-description">{contentData[activeItem].description}</p>
-            <ul className="detail-features">
-              {contentData[activeItem].features.map((feature, index) => (
-                <li key={index}>
-                  {activeItem === 'awards' && feature === 'Snapshot Analyzer' ? (
-                    <button
-                      onClick={() => {
-                        window.location.href = '/image-analysis';
-                      }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Launch Snapshot Analyzer
-                    </button>
-                  ) : activeItem === 'about' && feature === 'User Profile' ? (
-                    <button
-                      onClick={() => {
-                        window.location.href = '/profile';
-                      }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Open User Profile
-                    </button>
-                  ) : activeItem === 'about' && feature === 'Chat Rooms' ? (
-                    <button
-                      onClick={() => {
-                        if (currentUser) {
-                          window.location.href = '/chat';
-                        } else {
-                          setShowAuthModal(true);
-                        }
-                      }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      {currentUser ? 'Launch Chat Rooms' : 'Join Chat Rooms'}
-                    </button>
-                  ) : activeItem === 'team' && feature === 'Penetration Testing Simulator' ? (
-                    <button
-                      onClick={() => {
-                        window.location.href = '/pentest-simulator';
-                      }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Launch Pentest Simulator
-                    </button>
-                  ) : activeItem === 'careers' && feature === '3D Gen' ? (
-                    <button
-                      onClick={() => {
-                        window.location.href = '/3d-generator';
-                      }}
-                      className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Launch 3D Gen
-                    </button>
-                  ) : (
-                    feature
-                  )}
-                </li>
-              ))}
-            </ul>
+            {/* Text description and feature list removed per request */}
+            <div className="space-y-3">
+              {activeItem === 'awards' && (
+                <button
+                  onClick={() => {
+                    window.location.href = '/image-analysis';
+                  }}
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  Launch Snapshot Analyzer
+                </button>
+              )}
+              {activeItem === 'about' && (
+                <>
+                  <button
+                    onClick={() => {
+                      window.location.href = '/profile';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Open User Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (currentUser) {
+                        window.location.href = '/chat';
+                      } else {
+                        setShowAuthModal(true);
+                      }
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    {currentUser ? 'Launch Chat Rooms' : 'Join Chat Rooms'}
+                  </button>
+                </>
+              )}
+              {activeItem === 'team' && (
+                <button
+                  onClick={() => {
+                    window.location.href = '/pentest-simulator';
+                  }}
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  Launch Pentest Simulator
+                </button>
+              )}
+              {activeItem === 'careers' && (
+                <button
+                  onClick={() => {
+                    window.location.href = '/3d-generator';
+                  }}
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  Launch 3D Gen
+                </button>
+              )}
+            </div>
             {activeItem === 'careers' && (
               <>
                 <button
@@ -936,24 +934,24 @@ export default function HomePage() {
                 >
                   Launch Pluto Game Builder
                 </button>
-                    <button
-                      onClick={() => {
-                        console.log('Navigating to tile editor...');
-                        window.location.href = '/advanced-features-demo?tab=tiles';
-                      }}
-                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Launch Tile Editor
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('Navigating to sprite editor...');
-                        window.location.href = '/advanced-features-demo?tab=sprites';
-                      }}
-                      className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                    >
-                      Launch Sprite Editor
-                    </button>
+                <button
+                  onClick={() => {
+                    console.log('Navigating to tile editor...');
+                    window.location.href = '/advanced-features-demo?tab=tiles';
+                  }}
+                  className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  Launch Tile Editor
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Navigating to sprite editor...');
+                    window.location.href = '/advanced-features-demo?tab=sprites';
+                  }}
+                  className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  Launch Sprite Editor
+                </button>
               </>
             )}
           </div>
