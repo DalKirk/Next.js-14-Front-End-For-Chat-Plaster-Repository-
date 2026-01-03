@@ -151,7 +151,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4" autoComplete="on">
             {/* Username */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -161,9 +161,15 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                 <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <Input
                   type="text"
+                  name="username"
+                  id="auth-username"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder="your profile name"
                   className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                   disabled={isLoading}
                 />
@@ -183,9 +189,12 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <Input
                     type="email"
+                    name="email"
+                    id="auth-email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="you@example.com"
                     className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                     disabled={isLoading}
                   />
@@ -205,9 +214,14 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                 <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <Input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  id="auth-password"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={mode === 'login' ? 'your password' : 'create a password'}
                   className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
                   disabled={isLoading}
                 />
@@ -239,9 +253,14 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirm-password"
+                    id="auth-confirm-password"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
+                    placeholder="confirm your password"
                     className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(0,212,255,0.25)]"
                     disabled={isLoading}
                   />
