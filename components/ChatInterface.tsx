@@ -291,16 +291,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </Button>
         </div>
       </div>
-
-      <style jsx>{`
-        .chat-message-container {
-          word-wrap: break-word;
-          word-break: break-word;
-          overflow-wrap: break-word;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-      `}</style>
     </div>
   );
 };
