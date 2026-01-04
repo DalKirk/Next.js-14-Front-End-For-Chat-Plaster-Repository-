@@ -31,8 +31,8 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
 
       {/* Desktop/Tablet View - Full Disclosure */}
       <div className="hidden sm:block">
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 space-y-4">
-          <h4 className="font-medium text-white text-base">
+        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 space-y-4 max-h-[50vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <h4 className="font-medium text-white text-base sticky top-0 bg-gray-800/95 -mx-6 -mt-6 px-6 pt-6 pb-3 backdrop-blur-sm z-10">
             Consent Statement for Account Creation
           </h4>
           <p className="text-sm text-gray-300 leading-relaxed">
@@ -118,7 +118,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
 
       {/* Mobile View - Compact Version (320px+) */}
       <div className="block sm:hidden space-y-4">
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 space-y-3">
+        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 space-y-3 max-h-[40vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <p className="text-xs text-gray-300 leading-relaxed">
             By creating an account, you agree to our{' '}
             <a 

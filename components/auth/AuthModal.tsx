@@ -196,7 +196,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4" autoComplete="on">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(100vh-16rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent" autoComplete="on">
             {/* Show consent step for signup */}
             {mode === 'signup' && signupStep === 'consent' ? (
               <ConsentStep

@@ -22,6 +22,31 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Custom scrollbar styles */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb,
+  .scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
+    background-color: rgb(55 65 81 / 0.8);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thumb-gray-700::-webkit-scrollbar-thumb:hover,
+  .scrollbar-thumb-slate-700::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(75 85 99 / 0.9);
+  }
+
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
   /* Prevent iOS zoom on input focus (font-size must be >= 16px) */
   @media screen and (max-width: 768px) {
     input, textarea, select {
