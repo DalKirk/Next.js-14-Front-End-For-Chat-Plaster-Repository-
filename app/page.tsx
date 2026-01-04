@@ -958,20 +958,15 @@ export default function HomePage() {
             {/* Text description and feature list removed per request */}
             <div className="space-y-3">
               {activeItem === 'services' && (
-                <button
-                  onClick={() => {
-                    window.location.href = '/image-analysis';
-                  }}
-                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                >
-                  Launch Snapshot Analyzer
-                </button>
-              )}
-              {activeItem === 'awards' && (
-                <></>
-              )}
-              {activeItem === 'about' && (
                 <>
+                  <button
+                    onClick={() => {
+                      window.location.href = '/image-analysis';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Launch Snapshot Analyzer
+                  </button>
                   <button
                     onClick={() => {
                       window.location.href = '/profile';
@@ -994,6 +989,12 @@ export default function HomePage() {
                   </button>
                 </>
               )}
+              {activeItem === 'awards' && (
+                <></>
+              )}
+              {activeItem === 'about' && (
+                <></>
+              )}
               {activeItem === 'team' && (
                 <button
                   onClick={() => {
@@ -1004,48 +1005,49 @@ export default function HomePage() {
                   Launch Pentest Simulator
                 </button>
               )}
+              {activeItem === 'blog' && (
+                <>
+                  <button
+                    onClick={() => {
+                      window.location.href = '/3d-generator';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Launch 3D Gen
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Navigating to game builder...');
+                      window.location.href = '/game-builder';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Launch Pluto Game Builder
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Navigating to tile editor...');
+                      window.location.href = '/advanced-features-demo?tab=tiles';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Launch Tile Editor
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Navigating to sprite editor...');
+                      window.location.href = '/advanced-features-demo?tab=sprites';
+                    }}
+                    className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                  >
+                    Launch Sprite Editor
+                  </button>
+                </>
+              )}
               {activeItem === 'careers' && (
-                <button
-                  onClick={() => {
-                    window.location.href = '/3d-generator';
-                  }}
-                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                >
-                  Launch 3D Gen
-                </button>
+                <></>
               )}
             </div>
-            {activeItem === 'careers' && (
-              <>
-                <button
-                  onClick={() => {
-                    console.log('Navigating to game builder...');
-                    window.location.href = '/game-builder';
-                  }}
-                  className="block mt-6 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                >
-                  Launch Pluto Game Builder
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('Navigating to tile editor...');
-                    window.location.href = '/advanced-features-demo?tab=tiles';
-                  }}
-                  className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                >
-                  Launch Tile Editor
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('Navigating to sprite editor...');
-                    window.location.href = '/advanced-features-demo?tab=sprites';
-                  }}
-                  className="block mt-4 w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
-                >
-                  Launch Sprite Editor
-                </button>
-              </>
-            )}
           </div>
         )}
       </div>
