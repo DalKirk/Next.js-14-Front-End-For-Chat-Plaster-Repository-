@@ -151,12 +151,20 @@ export default function SpriteEditorPage() {
               </div>
             </div>
             
-            <button
-              onClick={() => router.push('/')}
-              className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors font-medium"
-            >
-              ← Back to Home
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/game-builder')}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded transition-all font-medium shadow-lg hover:shadow-purple-500/50"
+              >
+                ← Back to Game Builder
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors font-medium"
+              >
+                Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
