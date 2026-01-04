@@ -813,6 +813,29 @@ export const apiClient = {
 
   /** Delete gallery item */
   deleteGalleryItem: async (userId: string, itemId: string): Promise<{ ok: boolean }> => {
+    // If this is a local-only item (ID starts with "local-"), only remove from localStorage
+    if (itemId.startsWith('local-') && typeof window !== 'undefined') {
+      try {
+        const key = `userGallery:${userId}`;
+        const raw = window.localStorage.getItem(key) || '[]';
+        const items = JSON.parse(raw);
+        if (Array.isArray(items)) {
+          // Filter out items matching this ID (whether string URL or object)
+          const filtered = items.filter((item: unknown) => {
+            if (typeof item === 'string') return !item.includes(itemId);
+            if (item && typeof item === 'object' && 'id' in item) return (item as {id: string}).id !== itemId;
+            return true;
+          });
+          window.localStorage.setItem(key, JSON.stringify(filtered));
+        }
+        return { ok: true };
+      } catch (e) {
+        console.error('Failed to delete local gallery item:', e);
+        return { ok: false };
+      }
+    }
+
+    // For backend items, call the API
     const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`];
     let lastErr: unknown = null;
     for (const p of paths) {
