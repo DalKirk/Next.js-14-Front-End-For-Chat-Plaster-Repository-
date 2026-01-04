@@ -680,10 +680,11 @@ export const apiClient = {
       }
     }
     console.warn('Gallery list failed, falling back to local storage:', lastErr);
-      // Fallback: local storage URLs without IDs
+      // Fallback: local storage URLs without IDs, scoped per user
       if (typeof window !== 'undefined') {
         try {
-          const raw = window.localStorage.getItem('userGallery') || '[]';
+          const key = `userGallery:${userId}`;
+          const raw = window.localStorage.getItem(key) || '[]';
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
             return arr.filter((u: unknown) => typeof u === 'string').map((u: string) => ({
@@ -748,11 +749,12 @@ export const apiClient = {
       // If backend route missing, fallback by removing from local storage
       if (axios.isAxiosError(lastErr) && lastErr.response?.status === 404 && typeof window !== 'undefined') {
         try {
-          const raw = window.localStorage.getItem('userGallery') || '[]';
+          const key = `userGallery:${userId}`;
+          const raw = window.localStorage.getItem(key) || '[]';
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
             const next = arr.filter((u: unknown) => typeof u === 'string' && !String(u).includes(itemId));
-            window.localStorage.setItem('userGallery', JSON.stringify(next));
+            window.localStorage.setItem(key, JSON.stringify(next));
           }
         } catch {}
         return { ok: true };

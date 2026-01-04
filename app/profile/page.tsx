@@ -594,6 +594,8 @@ function ProfilePageContent() {
               ) : (
                 <div className="relative">
                   <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-white/20">
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-white/20">
                     <ResponsiveAvatar
                       avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
                       username={profile.username}
@@ -777,12 +779,13 @@ function ProfilePageContent() {
                       username={profile.username}
                       onItemsAdded={(items: GalleryItem[]) => {
                         try {
-                          const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+                          const key = `userGallery:${profile.id}`;
+                          const raw = StorageUtils.safeGetItem(key) || '[]';
                           const arr = JSON.parse(raw);
                           const urls = items.map((i) => i.url);
                           const next = Array.isArray(arr) ? [...urls, ...arr] : urls;
-                          StorageUtils.safeSetItem('userGallery', JSON.stringify(next));
-                          window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length } }));
+                          StorageUtils.safeSetItem(key, JSON.stringify(next));
+                          window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length, userId: profile.id } }));
                         } catch {}
                       }}
                     />
@@ -820,7 +823,8 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
       setItems(list);
     } catch {
       try {
-        const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+        const key = `userGallery:${userId}`;
+        const raw = StorageUtils.safeGetItem(key) || '[]';
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) {
           setItems(arr.filter((u: unknown) => typeof u === 'string').map((u: string, idx: number) => ({ id: `local-${idx}`, url: u, caption: undefined, created_at: new Date().toISOString() })));
@@ -837,7 +841,7 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
   }, [userId]);
 
   const persistLocal = (nextUrls: string[]) => {
-    try { StorageUtils.safeSetItem('userGallery', JSON.stringify(nextUrls)); } catch {}
+    try { StorageUtils.safeSetItem(`userGallery:${userId}`, JSON.stringify(nextUrls)); } catch {}
   };
 
   const removeItem = async (i: number) => {
