@@ -221,8 +221,8 @@ function ProfilePageContent() {
               const updated = { ...chatUser, username: fullProfile.username, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls };
               localStorage.setItem('chat-user', JSON.stringify(updated));
             }
-            // Also store minimal profile for quick reads (no email)
-            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username }));
+            // Also store minimal profile for quick reads (no email); include bio to persist across refresh
+            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username, bio: fullProfile.bio }));
           } catch {}
         }
       } catch (error) {
@@ -399,10 +399,11 @@ function ProfilePageContent() {
         // Patch username across message history and caches
         try { updateUsernameEverywhere(updatedProfile.id, prevUsername, updatedProfile.username!); } catch {}
 
-        // Only store minimal data in localStorage
+        // Only store minimal data in localStorage (no email); include bio to persist across refresh
         StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
-          username: updatedProfile.username
+          username: updatedProfile.username,
+          bio: updatedProfile.bio ?? editedProfile.bio
         }));
         
         // Store avatar URL separately for WebSocket
