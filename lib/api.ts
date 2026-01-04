@@ -648,40 +648,38 @@ export const apiClient = {
     files.forEach((file) => formData.append('files', file, file.name));
     if (caption) formData.append('caption', caption);
 
-    // Canonical path
-    try {
-      const r = await api.post(`/users/${userId}/media`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      });
-      return r.data;
-    } catch (e) {
-      // Alias fallback
+    // Try canonical path
+    const paths = [`/users/${userId}/media`, `/users/${userId}/media/`, `/users/${userId}/gallery`, `/users/${userId}/gallery/`];
+    let lastErr: unknown = null;
+    for (const p of paths) {
       try {
-        const r2 = await api.post(`/users/${userId}/gallery`, formData, {
+        const r = await api.post(p, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 30000,
         });
-        return r2.data;
-      } catch (e2) {
-        handleApiError(e2, 'Upload gallery files');
+        return r.data;
+      } catch (e) {
+        lastErr = e;
+        continue;
       }
     }
+    handleApiError(lastErr, 'Upload gallery files');
   },
 
   /** List gallery items for a user */
   listGallery: async (userId: string): Promise<GalleryItem[]> => {
-    try {
-      const r = await api.get(`/users/${userId}/media`);
-      return (r.data?.items || []) as GalleryItem[];
-    } catch (e) {
-      // Fallback to alias
+    const getPaths = [`/users/${userId}/media`, `/users/${userId}/media/`, `/users/${userId}/gallery`, `/users/${userId}/gallery/`];
+    let lastErr: unknown = null;
+    for (const p of getPaths) {
       try {
-        const r2 = await api.get(`/users/${userId}/gallery`);
-        return (r2.data?.items || []) as GalleryItem[];
-      } catch (aliasErr) {
-        console.warn('Gallery list failed, falling back to local storage:', aliasErr);
+        const r = await api.get(p);
+        return (r.data?.items || []) as GalleryItem[];
+      } catch (e) {
+        lastErr = e;
+        continue;
       }
+    }
+    console.warn('Gallery list failed, falling back to local storage:', lastErr);
       // Fallback: local storage URLs without IDs
       if (typeof window !== 'undefined') {
         try {
@@ -698,37 +696,57 @@ export const apiClient = {
         } catch {}
       }
       return [];
-    }
+    
   },
 
   /** Update gallery item metadata (e.g., title) */
   updateGalleryItem: async (userId: string, itemId: string, data: { caption?: string }): Promise<GalleryItem> => {
-    try {
-      const r = await api.put(`/users/${userId}/media/${itemId}`, data);
-      return r.data as GalleryItem;
-    } catch (e) {
-      handleApiError(e, 'Update gallery item');
+    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`, `/users/${userId}/gallery/${itemId}`, `/users/${userId}/gallery/${itemId}/`];
+    let lastErr: unknown = null;
+    for (const p of paths) {
+      try {
+        const r = await api.put(p, data);
+        return r.data as GalleryItem;
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
     }
+    handleApiError(lastErr, 'Update gallery item');
   },
 
   /** Update gallery order */
   updateGalleryOrder: async (userId: string, itemIds: string[]): Promise<{ user_id: string; items: GalleryItem[] }> => {
-    try {
-      const r = await api.put(`/users/${userId}/media/order`, { ids: itemIds });
-      return r.data as { user_id: string; items: GalleryItem[] };
-    } catch (e) {
-      handleApiError(e, 'Update gallery order');
+    const paths = [`/users/${userId}/media/order`, `/users/${userId}/media/order/`, `/users/${userId}/gallery/order`, `/users/${userId}/gallery/order/`];
+    let lastErr: unknown = null;
+    for (const p of paths) {
+      try {
+        const r = await api.put(p, { ids: itemIds });
+        return r.data as { user_id: string; items: GalleryItem[] };
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
     }
+    handleApiError(lastErr, 'Update gallery order');
   },
 
   /** Delete gallery item */
   deleteGalleryItem: async (userId: string, itemId: string): Promise<{ ok: boolean }> => {
+    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`, `/users/${userId}/gallery/${itemId}`, `/users/${userId}/gallery/${itemId}/`];
+    let lastErr: unknown = null;
+    for (const p of paths) {
+      try {
+        const r = await api.delete(p);
+        return r.data as { ok: boolean };
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
+    }
     try {
-      const r = await api.delete(`/users/${userId}/media/${itemId}`);
-      return r.data as { ok: boolean };
-    } catch (e) {
       // If backend route missing, fallback by removing from local storage
-      if (axios.isAxiosError(e) && e.response?.status === 404 && typeof window !== 'undefined') {
+      if (axios.isAxiosError(lastErr) && lastErr.response?.status === 404 && typeof window !== 'undefined') {
         try {
           const raw = window.localStorage.getItem('userGallery') || '[]';
           const arr = JSON.parse(raw);
@@ -739,7 +757,9 @@ export const apiClient = {
         } catch {}
         return { ok: true };
       }
-      handleApiError(e, 'Delete gallery item');
+      handleApiError(lastErr, 'Delete gallery item');
+    } catch (finalErr) {
+      handleApiError(finalErr, 'Delete gallery item');
     }
   },
 

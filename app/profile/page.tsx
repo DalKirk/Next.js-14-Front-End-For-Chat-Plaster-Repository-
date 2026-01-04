@@ -739,6 +739,26 @@ function ProfilePageContent() {
                     </div>
                   </div>
                   
+                  {/* Photo Gallery: uploader available only in Edit mode for owner */}
+                  <div className="mt-6 pt-6 border-t border-slate-700/50">
+                    <h3 className="text-slate-200 text-base font-semibold mb-3">Photo Gallery</h3>
+                    <GalleryUpload
+                      userId={profile.id}
+                      username={profile.username}
+                      onItemsAdded={(items: GalleryItem[]) => {
+                        try {
+                          const raw = StorageUtils.safeGetItem('userGallery') || '[]';
+                          const arr = JSON.parse(raw);
+                          const urls = items.map((i) => i.url);
+                          const next = Array.isArray(arr) ? [...urls, ...arr] : urls;
+                          StorageUtils.safeSetItem('userGallery', JSON.stringify(next));
+                          window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length } }));
+                        } catch {}
+                      }}
+                    />
+                    <UserGalleryGrid isViewOnly={false} userId={profile.id} canEdit={true} />
+                  </div>
+
                   <div className="flex gap-2">
                     <Button onClick={handleSaveProfile} variant="primary">Save Profile</Button>
                     <Button onClick={handleCancelEdit} variant="glass">Cancel</Button>
@@ -751,27 +771,10 @@ function ProfilePageContent() {
                     <p className="text-slate-400 mb-3">{profile.email}</p>
                   )}
                   {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
-                  {/* Photo Gallery: device uploads processed to CDN */}
+                  {/* Photo Gallery: public view (no uploads/edit for non-owners) */}
                   <div className="mt-4">
                     <h3 className="text-slate-200 text-base font-semibold mb-2">Photo Gallery</h3>
-                    {!isViewOnly ? (
-                      <GalleryUpload
-                        userId={profile.id}
-                        username={profile.username}
-                        onItemsAdded={(items: GalleryItem[]) => {
-                          try {
-                            const raw = StorageUtils.safeGetItem('userGallery') || '[]';
-                            const arr = JSON.parse(raw);
-                            const urls = items.map((i) => i.url);
-                            const next = Array.isArray(arr) ? [...urls, ...arr] : urls;
-                            StorageUtils.safeSetItem('userGallery', JSON.stringify(next));
-                            // Notify grid to refresh
-                            window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length } }));
-                          } catch {}
-                        }}
-                      />
-                    ) : null}
-                    <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} />
+                    <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={false} />
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
@@ -798,7 +801,7 @@ export default function ProfilePage() {
 }
 
 // Render gallery grid using stored URLs
-function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: string }) {
+function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean; userId: string; canEdit: boolean }) {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
@@ -830,6 +833,7 @@ function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: 
   };
 
   const removeItem = async (i: number) => {
+    if (!canEdit) return;
     const item = items[i];
     if (!item) return;
     try {
@@ -842,11 +846,13 @@ function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: 
   };
 
   const beginEdit = (i: number) => {
+    if (!canEdit) return;
     setEditingIndex(i);
     setEditingTitle('');
   };
 
   const saveTitle = async (i: number) => {
+    if (!canEdit) return;
     setEditingIndex(null);
     try {
       const item = items[i];
@@ -863,7 +869,7 @@ function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: 
   return (
     <div className="space-y-3">
       {items.length === 0 ? (
-        isViewOnly ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
+        isViewOnly || !canEdit ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {items.map((it, i) => (
@@ -873,10 +879,12 @@ function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: 
               {it.caption && (
                 <div className="absolute top-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">{it.caption}</div>
               )}
-              <button
-                onClick={() => removeItem(i)}
-                className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded"
-              >Remove</button>
+              {canEdit ? (
+                <button
+                  onClick={() => removeItem(i)}
+                  className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded"
+                >Remove</button>
+              ) : null}
               {editingIndex === i ? (
                 <div className="absolute bottom-2 left-2 right-2 bg-black/60 p-2 rounded flex items-center gap-2">
                   <input
@@ -885,16 +893,20 @@ function UserGalleryGrid({ isViewOnly, userId }: { isViewOnly: boolean; userId: 
                     placeholder="Title"
                     className="flex-1 bg-transparent text-slate-200 text-xs border-b border-slate-500/50 focus:outline-none"
                   />
-                  <button onClick={() => saveTitle(i)} className="text-xs px-2 py-1 bg-cyan-500/30 text-cyan-200 rounded">Save</button>
+                  {canEdit ? (
+                    <button onClick={() => saveTitle(i)} className="text-xs px-2 py-1 bg-cyan-500/30 text-cyan-200 rounded">Save</button>
+                  ) : null}
                   <button onClick={() => setEditingIndex(null)} className="text-xs px-2 py-1 bg-slate-700/50 text-slate-200 rounded"><X className="w-3 h-3" /></button>
                 </div>
               ) : (
-                <button
-                  onClick={() => beginEdit(i)}
-                  className="absolute bottom-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded flex items-center gap-1"
-                >
-                  <Pencil className="w-3 h-3" /> Edit Title
-                </button>
+                canEdit ? (
+                  <button
+                    onClick={() => beginEdit(i)}
+                    className="absolute bottom-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded flex items-center gap-1"
+                  >
+                    <Pencil className="w-3 h-3" /> Edit Title
+                  </button>
+                ) : null
               )}
             </div>
           ))}
