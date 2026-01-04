@@ -1,11 +1,13 @@
+'use client';
+
 import type { Metadata } from 'next';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export const metadata: Metadata = {
-  title: 'Terms of Service - STARCYEED',
-  description: 'STARCYEED Terms of Service and Privacy Policy',
-};
+function TermsContent() {
+  const searchParams = useSearchParams();
+  const fromSignup = searchParams.get('from') === 'signup';
 
-export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black text-[rgba(230,247,255,0.92)]">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
@@ -145,15 +147,36 @@ export default function TermsPage() {
 
           {/* Back Button */}
           <div className="pt-8 border-t border-cyan-500/20">
-            <a
-              href="/"
-              className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
-            >
-              Back to Home
-            </a>
+            {fromSignup ? (
+              <button
+                onClick={() => window.history.back()}
+                className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
+              >
+                Back to Sign Up
+              </button>
+            ) : (
+              <a
+                href="/"
+                className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
+              >
+                Back to Home
+              </a>
+            )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TermsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black flex items-center justify-center">
+        <div className="text-cyan-300">Loading...</div>
+      </div>
+    }>
+      <TermsContent />
+    </Suspense>
   );
 }

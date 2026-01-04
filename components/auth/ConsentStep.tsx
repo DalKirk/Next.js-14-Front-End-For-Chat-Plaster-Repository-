@@ -45,7 +45,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
               <span>
                 You have read and accept the{' '}
                 <a 
-                  href="/terms" 
+                  href="/terms?from=signup" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 underline"
@@ -54,7 +54,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
                 </a>
                 {' '}and{' '}
                 <a 
-                  href="/privacy" 
+                  href="/privacy?from=signup" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 underline"
@@ -122,7 +122,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
           <p className="text-xs text-gray-300 leading-relaxed">
             By creating an account, you agree to our{' '}
             <a 
-              href="/terms" 
+              href="/terms?from=signup" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-purple-400 underline"
@@ -131,7 +131,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
             </a>
             {' '}and{' '}
             <a 
-              href="/privacy" 
+              href="/privacy?from=signup" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-purple-400 underline"
