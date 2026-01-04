@@ -10,6 +10,8 @@ interface Icon {
   svg: string;
 }
 
+const PNG_SIZES = [16, 32, 64, 128, 256, 512];
+
 const icons: Icon[] = [
   { name: 'shelter', color: '#8b7355', desc: 'Essential safe house icon for survival interfaces', 
     svg: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="9" x2="22" y2="9" stroke-width="3" stroke-linecap="round"/>' },
@@ -60,7 +62,191 @@ export default function MarketplacePage() {
   const generateSVGFile = (icon: Icon): string => {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${icon.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  ${icon.svg}
+  ${
+
+  const generatePNG = (icon: Icon, size: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const svgContent = generateSVGFile(icon);
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        if (ctx) {
+          // Set transparent background
+          ctx.clearRect(0, 0, size, size);
+          ctx.drawImage(img, 0, 0, size, size);
+          
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(url);
+            if (blob) resolve(blob);
+            else reject(new Error('Failed to generate PNG'));
+          }, 'image/png');
+        } else {
+          reject(new Error('Canvas context not available'));
+        }
+      };
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load SVG'));
+      };
+      
+      img.src = url;
+    });
+  };
+
+  co
+
+  const downloadAllPNGs = async () => {
+    setDownloadStatus('Generating PNG package (this may take a minute)...');
+    const zip = new JSZip();
+    
+    for (const icon of icons) {
+      for (const size of PNG_SIZES) {
+        try {
+          const blob = await generatePNG(icon, size);
+          zip.file(`${size}x${size}/${icon.name}.png`, blob);
+        } catch (error) {
+          console.error(`Failed to generate ${icon.name} ${size}x${size}:`, error);
+        }
+      }
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wasteland-icons-png-pack.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadStatus('Downloaded complete PNG package!');
+    setTimeout(() => setDownloadStatus(''), 3000);
+  };
+
+  const downloadCompletePackage = async () => {
+    setDownloadStatus('Generating ultimate package (this may take a minute)...');
+    const zip = new JSZip();
+    
+    // Add all SVGs
+    icons.forEach(icon => {
+      const svgContent = generateSVGFile(icon);
+      zip.file(`svg/${icon.name}.svg`, svgContent);
+    });
+    
+    // Add all PNGs
+    for (const icon of icons) {
+      for (const size of PNG_SIZES) {
+        try {
+          const blob = await generatePNG(icon, size);
+          zip.file(`png/${size}x${size}/${icon.name}.png`, blob);
+        } catch (error) {
+          console.error(`Failed to generate ${icon.name} ${size}x${size}:`, error);
+        }
+      }
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wasteland-icons-complete-pack.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadStatus('Downloaded complete package!');
+    setTimeout(() => setDownloadStatus(''), 3000);
+  };nst downloadPNG = async (icon: Icon, size: number) => {
+    try {
+      setDownloadStatus(`Generating ${size}x${size} PNG...`);
+      const blob = await generatePNG(icon, size);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${icon.name}_${size}x${size}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloadStatus(`Downloaded ${icon.name}_${size}x${size}.png`);
+      setTimeout(() => setDownloadStatus(''), 3000);
+    } catch (error) {
+      setDownloadStatus('PNG generation failed. Try SVG format.');
+      setTimeout(() => setDownloadStatus(''), 3000);
+    }
+  };
+
+  const downloadAllPNGSizes = async (icon: Icon) => {
+    setDownloadStatus(`Generating all PNG sizes for ${icon.name}...`);
+    const zip = new JSZip();
+    
+    for (const size of PNG_SIZES) {
+      try {
+        const blob = await generatePNG(icon, size);
+        zip.file(`${size}x${size}/${icon.name}.png`, blob);
+      } catch (error) {
+        console.error(`Failed to generate ${size}x${size}:`, error);
+      }
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${icon.name}-png-all-sizes.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadStatus(`Downloaded all PNG sizes for ${icon.name}!`);
+    setTimeout(() => setDownloadStatus(''), 3000);
+  };
+
+  const downloadBothFormats = async (icon: Icon) => {
+    setDownloadStatus(`Preparing complete package for ${icon.name}...`);
+    const zip = new JSZip();
+    
+    // Add SVG
+    const svgContent = generateSVGFile(icon);
+    zip.file(`svg/${icon.name}.svg`, svgContent);
+    
+    // Add all PNG sizes
+    for (const size of PNG_SIZES) {
+      try {
+        const blob = await geasync (icon: Icon) => {
+    const format = selectedFormats[icon.name] || 'svg';
+    
+    if (format === 'svg') {
+      downloadSVG(icon);
+    } else if (format.startsWith('png-')) {
+      const size = parseInt(format.split('-')[1]);
+      await downloadPNG(icon, size);
+    } else if (format === 'png-all') {
+      await downloadAllPNGSizes(icon);
+    } else if (format === 'both') {
+      await downloadBothFormats
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${icon.name}-complete-pack.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadStatus(`Downloaded complete package for ${icon.name}!`);
+    setTimeout(() => setDownloadStatus(''), 3000);
+  };icon.svg}
 </svg>`;
   };
 
@@ -189,8 +375,66 @@ export default function MarketplacePage() {
             </ul>
             <div className="text-4xl font-bold text-green-400 mb-4">FREE</div>
             <button
-              onClick={downloadAllSVGs}
-              className="w-full py-4 px-8 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-black font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-green-500/50"
+           div className="max-w-md mx-auto bg-gradient-to-br from-purple-900/30 to-pink-900/30 border-2 border-purple-500/50 rounded-xl p-8 hover:border-purple-400 transition-all">
+            <h3 className="text-2xl font-bold text-purple-400 mb-4">🎮 PNG BUNDLE - PREMIUM</h3>
+            <ul className="text-left text-gray-300 mb-6 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>{icons.length} Icons in PNG format</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>6 sizes: 16, 32, 64, 128, 256, 512px</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>Unity & Unreal Engine ready</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>Total: 120 PNG files</span>
+              </li>
+            </ul>
+            <div className="text-4xl font-bold text-purple-400 mb-4">$19</div>
+            <button
+              onClick={downloadAllPNGs}
+              className="w-full py-4 px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/50"
+            >
+              <span className="mr-2">⬇</span> Download PNG Package
+            </button>
+          </div>
+
+          <div className="max-w-md mx-auto bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border-2 border-cyan-400 rounded-xl p-8 hover:border-cyan-300 transition-all">
+            <h3 className="text-2xl font-bold text-cyan-400 mb-4">⭐ ULTIMATE PACK</h3>
+            <ul className="text-left text-gray-300 mb-6 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>All {icons.length} icons in both formats</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>{icons.length} SVG files + 120 PNG files</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>Web, game engines, mobile - all covered</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <span>140 total files ready for production</span>
+              </li>
+            </ul>
+            <div className="text-4xl font-bold text-cyan-400 mb-4">$29</div>
+            <button
+              onClick={downloadCompletePackage}
+              className="w-full py-4 px-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/50"
+            >
+              <span className="mr-2">⬇</span> Download Complete Pack
+            </button>
+          </div>
+
+          <p className="mt-6 text-gray-400 text-sm text-center max-w-3xl mx-auto">
+            💡 <strong>Try Before You Buy:</strong> Download individual icons in any format to test quality. All packages include commercial license and lifetime updates.o-green-400 text-black font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-green-500/50"
             >
               <span className="mr-2">⬇</span> Download SVG Package
             </button>
@@ -206,8 +450,14 @@ export default function MarketplacePage() {
           <h3 className="text-3xl font-bold text-cyan-400 mb-6">📋 Format Guide</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-900/50 p-6 rounded-lg border-l-4 border-cyan-400">
-              <h4 className="text-xl font-bold text-cyan-400 mb-3">📐 SVG Format</h4>
+            <div className="bg-gray16">PNG - 16x16px</option>
+                <option value="png-32">PNG - 32x32px</option>
+                <option value="png-64">PNG - 64x64px</option>
+                <option value="png-128">PNG - 128x128px</option>
+                <option value="png-256">PNG - 256x256px</option>
+                <option value="png-512">PNG - 512x512px</option>
+                <option value="png-all">PNG - All Sizes (6 files)</option>
+                <option value="both">Complete - SVG + All PNGs (7 filesG Format</h4>
               <p className="text-gray-300 mb-3"><strong>Best For:</strong></p>
               <ul className="list-disc list-inside text-gray-300 space-y-1 mb-4">
                 <li>Websites & web apps</li>
@@ -241,7 +491,7 @@ export default function MarketplacePage() {
               key={icon.name}
               className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-gray-600 hover:border-cyan-400 rounded-xl p-6 flex flex-col items-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl hover:shadow-cyan-500/30"
             >
-              <div className="w-20 h-20 bg-gray-900/50 rounded-lg flex items-center justify-center p-4">
+              <div className="w-32 h-32 bg-gray-900/50 rounded-lg flex items-center justify-center p-6">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -250,7 +500,7 @@ export default function MarketplacePage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   className="w-full h-full"
-                  style={{ filter: 'drop-shadow(0 0 10px rgba(212, 175, 55, 0.5))' }}
+                  style={{ filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.6))' }}
                   dangerouslySetInnerHTML={{ __html: icon.svg }}
                 />
               </div>
