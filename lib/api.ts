@@ -677,6 +677,13 @@ export const apiClient = {
         });
         // Validate response user scope
         const res = r.data;
+        
+        // DEBUG: Log what backend returned after upload
+        console.log('🔍 UPLOAD DEBUG - Uploading for userId:', userId);
+        console.log('🔍 UPLOAD DEBUG - Response envelope user_id:', res?.user_id);
+        console.log('🔍 UPLOAD DEBUG - Items received:', Array.isArray(res?.items) ? res.items.length : 0);
+        console.log('🔍 UPLOAD DEBUG - Items with user_id:', (res?.items || []).map((it: any) => ({ id: it.id, user_id: it.user_id, url: it.url?.substring(0, 50) })));
+        
         if (res?.user_id && res.user_id !== userId) {
           throw new Error(`Upload response user mismatch: expected ${userId}, got ${res.user_id}`);
         }
