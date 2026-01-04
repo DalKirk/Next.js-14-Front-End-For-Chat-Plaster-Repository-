@@ -673,12 +673,19 @@ export const apiClient = {
     for (const p of getPaths) {
       try {
         const r = await api.get(p);
+        const responseUserId = r.data?.user_id as string | undefined;
         const items = (r.data?.items || []) as GalleryItem[];
-        // Guard: if backend includes user_id, filter to current user
-        const filtered = Array.isArray(items)
-          ? items.filter((it: GalleryItem) => !it.user_id || it.user_id === userId)
-          : [];
-        return filtered;
+        // Strict guard: if response envelope declares user_id, require match
+        if (responseUserId && responseUserId !== userId) {
+          throw new Error(`Mismatched user_id in gallery list: expected ${userId}, got ${responseUserId}`);
+        }
+        // If no envelope user_id but items have user_id, filter to current user
+        const anyUserIdPresent = Array.isArray(items) && items.some((it) => typeof it.user_id === 'string');
+        if (anyUserIdPresent) {
+          return items.filter((it) => it.user_id === undefined || it.user_id === userId);
+        }
+        // If neither envelope nor item-level user_id, accept items as-is (assumed per-user path)
+        return items;
       } catch (e) {
         lastErr = e;
         continue;
