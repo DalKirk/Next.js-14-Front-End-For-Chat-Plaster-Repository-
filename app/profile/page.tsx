@@ -200,7 +200,6 @@ function ProfilePageContent() {
       
       // Try to sync with backend in background (non-blocking)
       try {
-        console.log('📥 Syncing profile with backend...');
         const backendProfile = await apiClient.getProfile(viewingOtherUser ? (viewedUserId as string) : userData!.id);
         
         const joinedDate = backendProfile.created_at 
