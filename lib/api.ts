@@ -700,20 +700,21 @@ export const apiClient = {
     handleApiError(lastErr, 'Upload gallery files');
   },
 
-  /** List gallery items for a user */
+  /** List gallery items for a user - PUBLIC readable, no auth required */
   listGallery: async (userId: string): Promise<GalleryItem[]> => {
     const getPaths = [`/users/${userId}/media`, `/users/${userId}/media/`];
     let lastErr: unknown = null;
     for (const p of getPaths) {
       try {
-        const r = await api.get(p, { headers: { 'X-User-Id': userId } });
+        // Don't send X-User-Id on GET - this is public read, backend uses route param
+        const r = await api.get(p);
         const responseUserId = r.data?.user_id as string | undefined;
         const items = (r.data?.items || []) as GalleryItem[];
-        // Strict guard: if response envelope declares user_id, require match
+        // Accept items for the REQUESTED user (allows public viewing)
         if (responseUserId && responseUserId !== userId) {
           throw new Error(`Mismatched user_id in gallery list: expected ${userId}, got ${responseUserId}`);
         }
-        // If no envelope user_id but items have user_id, filter to current user
+        // Filter items to match requested userId (not logged-in user)
         const anyUserIdPresent = Array.isArray(items) && items.some((it) => typeof it.user_id === 'string');
         if (anyUserIdPresent) {
           return items.filter((it) => it.user_id === userId);
