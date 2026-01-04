@@ -109,13 +109,13 @@ const contentData: Record<string, ContentItem> = {
     ],
   },
   awards: {
-    title: "Awards",
-    description: "Recognition for excellence in design and development.",
+    title: "Terms of Service and Privacy Policy",
+    description: "Please review our terms of service and privacy policy.",
     features: [
-      "Awwwards Site of the Day",
-      "CSS Design Awards",
-      "Best Agency 2023",
-      "Innovation Award",
+      "Terms of Service",
+      "Privacy Policy",
+      "User Responsibilities",
+      "Content Ownership",
     ],
   },
 };
@@ -138,7 +138,7 @@ const orbitItems: OrbitItemData[] = [
   { id: "blog", angle: 180, radius: 300, icon: "●", title: "Blog", desc: "Latest insights" },
   { id: "careers", angle: 300, radius: 300, icon: "●", title: "Careers", desc: "Join our team", badge: "3" },
   { id: "about", angle: 30, radius: 160, icon: "●", title: "About", desc: "Our story", inner: true },
-  { id: "awards", angle: 270, radius: 160, icon: "●", title: "Awards", desc: "Recognition", inner: true },
+  { id: "awards", angle: 270, radius: 160, icon: "●", title: "Terms & Privacy", desc: "Legal info", inner: true },
 ];
 
 export default function HomePage() {
@@ -990,7 +990,14 @@ export default function HomePage() {
                 </>
               )}
               {activeItem === 'awards' && (
-                <></>
+                <button
+                  onClick={() => {
+                    window.location.href = '/terms';
+                  }}
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  View Terms & Privacy
+                </button>
               )}
               {activeItem === 'about' && (
                 <></>
