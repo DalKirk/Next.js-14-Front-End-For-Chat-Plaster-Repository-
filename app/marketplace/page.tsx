@@ -62,7 +62,9 @@ export default function MarketplacePage() {
   const generateSVGFile = (icon: Icon): string => {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${icon.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  ${
+  ${icon.svg}
+</svg>`;
+  };
 
   const generatePNG = (icon: Icon, size: number): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -78,7 +80,6 @@ export default function MarketplacePage() {
         const ctx = canvas.getContext('2d');
         
         if (ctx) {
-          // Set transparent background
           ctx.clearRect(0, 0, size, size);
           ctx.drawImage(img, 0, 0, size, size);
           
@@ -101,70 +102,22 @@ export default function MarketplacePage() {
     });
   };
 
-  co
-
-  const downloadAllPNGs = async () => {
-    setDownloadStatus('Generating PNG package (this may take a minute)...');
-    const zip = new JSZip();
-    
-    for (const icon of icons) {
-      for (const size of PNG_SIZES) {
-        try {
-          const blob = await generatePNG(icon, size);
-          zip.file(`${size}x${size}/${icon.name}.png`, blob);
-        } catch (error) {
-          console.error(`Failed to generate ${icon.name} ${size}x${size}:`, error);
-        }
-      }
-    }
-
-    const content = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(content);
+  const downloadSVG = (icon: Icon) => {
+    const svgContent = generateSVGFile(icon);
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'wasteland-icons-png-pack.zip';
+    a.download = `${icon.name}.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setDownloadStatus('Downloaded complete PNG package!');
+    setDownloadStatus(`Downloaded ${icon.name}.svg!`);
     setTimeout(() => setDownloadStatus(''), 3000);
   };
 
-  const downloadCompletePackage = async () => {
-    setDownloadStatus('Generating ultimate package (this may take a minute)...');
-    const zip = new JSZip();
-    
-    // Add all SVGs
-    icons.forEach(icon => {
-      const svgContent = generateSVGFile(icon);
-      zip.file(`svg/${icon.name}.svg`, svgContent);
-    });
-    
-    // Add all PNGs
-    for (const icon of icons) {
-      for (const size of PNG_SIZES) {
-        try {
-          const blob = await generatePNG(icon, size);
-          zip.file(`png/${size}x${size}/${icon.name}.png`, blob);
-        } catch (error) {
-          console.error(`Failed to generate ${icon.name} ${size}x${size}:`, error);
-        }
-      }
-    }
-
-    const content = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(content);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'wasteland-icons-complete-pack.zip';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setDownloadStatus('Downloaded complete package!');
-    setTimeout(() => setDownloadStatus(''), 3000);
-  };nst downloadPNG = async (icon: Icon, size: number) => {
+  const downloadPNG = async (icon: Icon, size: number) => {
     try {
       setDownloadStatus(`Generating ${size}x${size} PNG...`);
       const blob = await generatePNG(icon, size);
@@ -176,24 +129,24 @@ export default function MarketplacePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setDownloadStatus(`Downloaded ${icon.name}_${size}x${size}.png`);
+      setDownloadStatus(`Downloaded ${icon.name}_${size}x${size}.png!`);
       setTimeout(() => setDownloadStatus(''), 3000);
     } catch (error) {
-      setDownloadStatus('PNG generation failed. Try SVG format.');
+      setDownloadStatus('Failed to generate PNG');
       setTimeout(() => setDownloadStatus(''), 3000);
     }
   };
 
   const downloadAllPNGSizes = async (icon: Icon) => {
-    setDownloadStatus(`Generating all PNG sizes for ${icon.name}...`);
+    setDownloadStatus(`Preparing all PNG sizes for ${icon.name}...`);
     const zip = new JSZip();
     
     for (const size of PNG_SIZES) {
       try {
         const blob = await generatePNG(icon, size);
-        zip.file(`${size}x${size}/${icon.name}.png`, blob);
+        zip.file(`${size}x${size}/${icon.name}_${size}x${size}.png`, blob);
       } catch (error) {
-        console.error(`Failed to generate ${size}x${size}:`, error);
+        console.error(`Failed to generate ${size}x${size} PNG:`, error);
       }
     }
 
@@ -214,25 +167,16 @@ export default function MarketplacePage() {
     setDownloadStatus(`Preparing complete package for ${icon.name}...`);
     const zip = new JSZip();
     
-    // Add SVG
     const svgContent = generateSVGFile(icon);
     zip.file(`svg/${icon.name}.svg`, svgContent);
     
-    // Add all PNG sizes
     for (const size of PNG_SIZES) {
       try {
-        const blob = await geasync (icon: Icon) => {
-    const format = selectedFormats[icon.name] || 'svg';
-    
-    if (format === 'svg') {
-      downloadSVG(icon);
-    } else if (format.startsWith('png-')) {
-      const size = parseInt(format.split('-')[1]);
-      await downloadPNG(icon, size);
-    } else if (format === 'png-all') {
-      await downloadAllPNGSizes(icon);
-    } else if (format === 'both') {
-      await downloadBothFormats
+        const blob = await generatePNG(icon, size);
+        zip.file(`png/${size}x${size}/${icon.name}_${size}x${size}.png`, blob);
+      } catch (error) {
+        console.error(`Failed to generate ${size}x${size} PNG:`, error);
+      }
     }
 
     const content = await zip.generateAsync({ type: 'blob' });
@@ -246,342 +190,229 @@ export default function MarketplacePage() {
     URL.revokeObjectURL(url);
     setDownloadStatus(`Downloaded complete package for ${icon.name}!`);
     setTimeout(() => setDownloadStatus(''), 3000);
-  };icon.svg}
-</svg>`;
   };
 
-  const downloadSVG = (icon: Icon) => {
-    const svgContent = generateSVGFile(icon);
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${icon.name}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setDownloadStatus(`Downloaded ${icon.name}.svg`);
-    setTimeout(() => setDownloadStatus(''), 3000);
-  };
-
-  const downloadAllSVGs = async () => {
-    setDownloadStatus('Preparing SVG package...');
-    const zip = new JSZip();
+  const handleDownloadIcon = async (icon: Icon) => {
+    const format = selectedFormats[icon.name] || 'svg';
     
+    if (format === 'svg') {
+      downloadSVG(icon);
+    } else if (format.startsWith('png-')) {
+      const size = parseInt(format.split('-')[1]);
+      await downloadPNG(icon, size);
+    } else if (format === 'png-all') {
+      await downloadAllPNGSizes(icon);
+    } else if (format === 'both') {
+      await downloadBothFormats(icon);
+    }
+  };
+
+  const downloadAllSVGs = () => {
+    setDownloadStatus('Preparing all SVG icons...');
+    const zip = new JSZip();
     icons.forEach(icon => {
       const svgContent = generateSVGFile(icon);
       zip.file(`${icon.name}.svg`, svgContent);
     });
 
+    zip.generateAsync({ type: 'blob' }).then(content => {
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'post-apocalyptic-icons-svg-package.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloadStatus('Downloaded all SVG icons!');
+      setTimeout(() => setDownloadStatus(''), 3000);
+    });
+  };
+
+  const downloadAllPNGs = async () => {
+    setDownloadStatus('Preparing all PNG icons (this may take a minute)...');
+    const zip = new JSZip();
+    
+    for (const icon of icons) {
+      for (const size of PNG_SIZES) {
+        try {
+          const blob = await generatePNG(icon, size);
+          zip.file(`${size}x${size}/${icon.name}_${size}x${size}.png`, blob);
+        } catch (error) {
+          console.error(`Failed to generate ${icon.name} at ${size}x${size}:`, error);
+        }
+      }
+    }
+
     const content = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(content);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'wasteland-icons-svg-pack.zip';
+    a.download = 'post-apocalyptic-icons-png-package.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setDownloadStatus('Downloaded complete SVG package!');
+    setDownloadStatus('Downloaded all PNG icons!');
     setTimeout(() => setDownloadStatus(''), 3000);
   };
 
-  const handleFormatChange = (iconName: string, format: string) => {
-    setSelectedFormats(prev => ({ ...prev, [iconName]: format }));
-  };
-
-  const handleDownloadIcon = (icon: Icon) => {
-    const format = selectedFormats[icon.name] || 'svg';
+  const downloadCompletePackage = async () => {
+    setDownloadStatus('Preparing complete package with all formats (this may take a minute)...');
+    const zip = new JSZip();
     
-    if (format === 'svg' || format.startsWith('png-') || format === 'png-all' || format === 'both') {
-      downloadSVG(icon);
+    icons.forEach(icon => {
+      const svgContent = generateSVGFile(icon);
+      zip.file(`svg/${icon.name}.svg`, svgContent);
+    });
+    
+    for (const icon of icons) {
+      for (const size of PNG_SIZES) {
+        try {
+          const blob = await generatePNG(icon, size);
+          zip.file(`png/${size}x${size}/${icon.name}_${size}x${size}.png`, blob);
+        } catch (error) {
+          console.error(`Failed to generate ${icon.name} at ${size}x${size}:`, error);
+        }
+      }
     }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'post-apocalyptic-icons-complete-package.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadStatus('Downloaded complete package!');
+    setTimeout(() => setDownloadStatus(''), 3000);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black text-[rgba(230,247,255,0.92)]">
-      <div className="container mx-auto px-4 py-10 max-w-[1400px]">
-        {/* Header */}
-        <header className="text-center mb-12 p-10 bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-cyan-500/30 rounded-xl backdrop-blur-sm">
-          <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent" style={{ letterSpacing: '3px' }}>
-            ⚠ WASTELAND ICONS ⚠
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-12 text-center">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            Post-Apocalyptic Icon Marketplace
           </h1>
-          <p className="text-xl text-gray-300 mb-6">Professional Post-Apocalyptic Icon Pack - Multi-Format</p>
-          
-          <div className="flex justify-center gap-4 flex-wrap mb-6">
-            <div className="bg-cyan-500/20 border-2 border-cyan-400 px-5 py-3 rounded-lg text-cyan-400 font-bold text-sm">
-              📦 SVG - Scalable Vector
-            </div>
-            <div className="bg-purple-500/20 border-2 border-purple-400 px-5 py-3 rounded-lg text-purple-400 font-bold text-sm">
-              🖼️ PNG - 6 Sizes (16-512px)
-            </div>
-            <div className="bg-pink-500/20 border-2 border-pink-400 px-5 py-3 rounded-lg text-pink-400 font-bold text-sm">
-              🎮 Game Engine Ready
-            </div>
-          </div>
+          <p className="text-xl text-gray-300 mb-6">
+            Professional survival-themed icons for your wasteland projects
+          </p>
+          <a
+            href="/"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
+          >
+            ← Back to Home
+          </a>
+        </div>
 
-          <div className="flex justify-around flex-wrap gap-6 my-8">
-            <div className="text-center">
-              <div className="text-5xl font-bold text-cyan-400">{icons.length}</div>
-              <div className="text-sm text-gray-400 uppercase tracking-wider mt-2">Unique Icons</div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl font-bold text-purple-400">{icons.length * 7}</div>
-              <div className="text-sm text-gray-400 uppercase tracking-wider mt-2">Total Files</div>
-            </div>
-            <div className="text-center">
-              <div className="text-5xl font-bold text-pink-400">2</div>
-              <div className="text-sm text-gray-400 uppercase tracking-wider mt-2">Formats</div>
-            </div>
-          </div>
-
-          <div className="bg-amber-900/30 border-l-4 border-cyan-400 p-6 rounded-lg text-gray-300 max-w-3xl mx-auto">
-            💀 <strong>COMPLETE SURVIVOR&apos;S PACK:</strong> Get all {icons.length} premium post-apocalyptic icons in SVG (vector) format. 
-            Perfect for Unity, Unreal Engine, web development, and any creative project. Fully customizable and production-ready.
-          </div>
-        </header>
-
-        {/* Download Status */}
         {downloadStatus && (
-          <div className="fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg font-bold z-50 shadow-lg">
-            ✅ {downloadStatus}
+          <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+            {downloadStatus}
           </div>
         )}
 
-        {/* Download All Section */}
-        <div className="text-center mb-12 p-10 bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-cyan-400 rounded-xl backdrop-blur-sm">
-          <h2 className="text-4xl font-bold text-cyan-400 mb-6 uppercase">Complete Icon Package</h2>
-          
-          <div className="max-w-md mx-auto bg-gray-900/50 border-2 border-cyan-500/50 rounded-xl p-8 hover:border-cyan-400 transition-all">
-            <h3 className="text-2xl font-bold text-cyan-400 mb-4">🌐 SVG BUNDLE</h3>
-            <ul className="text-left text-gray-300 mb-6 space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>{icons.length} Icons in SVG format</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Infinitely scalable vectors</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Customizable colors in code</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Tiny file sizes (&lt;5KB each)</span>
-              </li>
-            </ul>
-            <div className="text-4xl font-bold text-green-400 mb-4">FREE</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-gradient-to-br from-blue-900 to-blue-800 p-6 rounded-xl border-2 border-blue-600 hover:border-blue-400 transition-all">
+            <h3 className="text-2xl font-bold mb-3 text-blue-300">Free SVG Package</h3>
+            <p className="text-gray-300 mb-4">All 20 icons in scalable SVG format</p>
+            <div className="mb-4">
+              <span className="text-4xl font-bold text-green-400">FREE</span>
+            </div>
             <button
-           div className="max-w-md mx-auto bg-gradient-to-br from-purple-900/30 to-pink-900/30 border-2 border-purple-500/50 rounded-xl p-8 hover:border-purple-400 transition-all">
-            <h3 className="text-2xl font-bold text-purple-400 mb-4">🎮 PNG BUNDLE - PREMIUM</h3>
-            <ul className="text-left text-gray-300 mb-6 space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>{icons.length} Icons in PNG format</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>6 sizes: 16, 32, 64, 128, 256, 512px</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Unity & Unreal Engine ready</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Total: 120 PNG files</span>
-              </li>
-            </ul>
-            <div className="text-4xl font-bold text-purple-400 mb-4">$19</div>
+              onClick={downloadAllSVGs}
+              className="w-full bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition-all transform hover:scale-105"
+            >
+              Download SVG Package
+            </button>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 rounded-xl border-2 border-purple-600 hover:border-purple-400 transition-all">
+            <h3 className="text-2xl font-bold mb-3 text-purple-300">Premium PNG Package</h3>
+            <p className="text-gray-300 mb-4">All icons in 6 PNG sizes (16px to 512px)</p>
+            <div className="mb-4">
+              <span className="text-4xl font-bold text-yellow-400">$19</span>
+            </div>
             <button
               onClick={downloadAllPNGs}
-              className="w-full py-4 px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/50"
+              className="w-full bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg transition-all transform hover:scale-105"
             >
-              <span className="mr-2">⬇</span> Download PNG Package
+              Download PNG Package
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border-2 border-cyan-400 rounded-xl p-8 hover:border-cyan-300 transition-all">
-            <h3 className="text-2xl font-bold text-cyan-400 mb-4">⭐ ULTIMATE PACK</h3>
-            <ul className="text-left text-gray-300 mb-6 space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>All {icons.length} icons in both formats</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>{icons.length} SVG files + 120 PNG files</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>Web, game engines, mobile - all covered</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-400 font-bold">✓</span>
-                <span>140 total files ready for production</span>
-              </li>
-            </ul>
-            <div className="text-4xl font-bold text-cyan-400 mb-4">$29</div>
+          <div className="bg-gradient-to-br from-orange-900 to-red-800 p-6 rounded-xl border-2 border-orange-600 hover:border-orange-400 transition-all">
+            <h3 className="text-2xl font-bold mb-3 text-orange-300">Ultimate Package</h3>
+            <p className="text-gray-300 mb-4">SVG + all PNG sizes (140 files total)</p>
+            <div className="mb-4">
+              <span className="text-4xl font-bold text-yellow-400">$29</span>
+              <span className="text-sm text-gray-400 ml-2 line-through">$39</span>
+            </div>
             <button
               onClick={downloadCompletePackage}
-              className="w-full py-4 px-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/50"
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 px-6 py-3 rounded-lg transition-all transform hover:scale-105"
             >
-              <span className="mr-2">⬇</span> Download Complete Pack
+              Download Complete Package
             </button>
-          </div>
-
-          <p className="mt-6 text-gray-400 text-sm text-center max-w-3xl mx-auto">
-            💡 <strong>Try Before You Buy:</strong> Download individual icons in any format to test quality. All packages include commercial license and lifetime updates.o-green-400 text-black font-bold rounded-lg text-lg uppercase tracking-wider transition-all hover:scale-105 shadow-lg hover:shadow-green-500/50"
-            >
-              <span className="mr-2">⬇</span> Download SVG Package
-            </button>
-          </div>
-
-          <p className="mt-6 text-gray-400 text-sm">
-            💡 <strong>Note:</strong> PNG formats (16-512px) available in premium package via Gumroad (coming soon)
-          </p>
-        </div>
-
-        {/* Format Info */}
-        <div className="mb-12 p-8 bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-cyan-500/30 rounded-xl backdrop-blur-sm">
-          <h3 className="text-3xl font-bold text-cyan-400 mb-6">📋 Format Guide</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray16">PNG - 16x16px</option>
-                <option value="png-32">PNG - 32x32px</option>
-                <option value="png-64">PNG - 64x64px</option>
-                <option value="png-128">PNG - 128x128px</option>
-                <option value="png-256">PNG - 256x256px</option>
-                <option value="png-512">PNG - 512x512px</option>
-                <option value="png-all">PNG - All Sizes (6 files)</option>
-                <option value="both">Complete - SVG + All PNGs (7 filesG Format</h4>
-              <p className="text-gray-300 mb-3"><strong>Best For:</strong></p>
-              <ul className="list-disc list-inside text-gray-300 space-y-1 mb-4">
-                <li>Websites & web apps</li>
-                <li>Responsive design</li>
-                <li>Logos & branding</li>
-                <li>Vector editing</li>
-              </ul>
-              <p className="text-gray-300"><strong>Features:</strong> Infinite scalability, tiny file sizes, easily customizable colors</p>
-            </div>
-            
-            <div className="bg-gray-900/50 p-6 rounded-lg border-l-4 border-purple-400">
-              <h4 className="text-xl font-bold text-purple-400 mb-3">🖼️ PNG Format (Premium)</h4>
-              <p className="text-gray-300 mb-3"><strong>Best For:</strong></p>
-              <ul className="list-disc list-inside text-gray-300 space-y-1 mb-4">
-                <li>Unity & Unreal Engine</li>
-                <li>2D game sprites & UI</li>
-                <li>Mobile apps</li>
-                <li>Fixed-size graphics</li>
-              </ul>
-              <p className="text-gray-300"><strong>Sizes:</strong> 16x16, 32x32, 64x64, 128x128, 256x256, 512x512px</p>
-            </div>
           </div>
         </div>
 
-        {/* Individual Icons */}
-        <h2 className="text-4xl font-bold text-center text-cyan-400 mb-10 uppercase">Individual Icon Downloads</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-          {icons.map(icon => (
-            <div
-              key={icon.name}
-              className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-gray-600 hover:border-cyan-400 rounded-xl p-6 flex flex-col items-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl hover:shadow-cyan-500/30"
-            >
-              <div className="w-32 h-32 bg-gray-900/50 rounded-lg flex items-center justify-center p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {icons.map((icon) => (
+            <div key={icon.name} className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700 hover:border-cyan-500 transition-all">
+              <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center bg-gray-900/50 rounded-lg p-6">
                 <svg
+                  width="100%"
+                  height="100%"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke={icon.color}
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="w-full h-full"
-                  style={{ filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.6))' }}
                   dangerouslySetInnerHTML={{ __html: icon.svg }}
                 />
               </div>
               
-              <div className="text-center">
-                <div className="text-lg font-bold text-cyan-400 uppercase tracking-wider mb-2">
-                  {icon.name.replace(/-/g, ' ')}
-                </div>
-                <div className="text-sm text-gray-400 leading-relaxed">
-                  {icon.desc}
-                </div>
-              </div>
-
-              <div className="w-full bg-gray-900/50 rounded-lg p-4 text-xs text-gray-400 space-y-1">
-                <p>🎨 Color: {icon.color}</p>
-                <p>📦 Format: SVG (scalable)</p>
-                <p>📏 Viewbox: 24×24</p>
-              </div>
-
+              <h3 className="text-lg font-bold text-center mb-2 capitalize">
+                {icon.name.replace('-', ' ')}
+              </h3>
+              
+              <p className="text-sm text-gray-400 text-center mb-4">
+                {icon.desc}
+              </p>
+              
               <select
-                className="w-full bg-gray-900/80 border border-gray-600 rounded-lg px-4 py-2 text-cyan-400 text-sm cursor-pointer focus:outline-none focus:border-cyan-400"
                 value={selectedFormats[icon.name] || 'svg'}
-                onChange={(e) => handleFormatChange(icon.name, e.target.value)}
+                onChange={(e) => setSelectedFormats({ ...selectedFormats, [icon.name]: e.target.value })}
+                className="w-full bg-gray-700 text-white px-3 py-2 rounded-lg mb-3 text-sm"
               >
-                <option value="svg">SVG - Scalable Vector</option>
-                <option value="png-all" disabled>PNG - All Sizes (Premium)</option>
-                <option value="both" disabled>Both - SVG + PNGs (Premium)</option>
+                <option value="svg">SVG (Free)</option>
+                <option value="png-16">PNG 16x16</option>
+                <option value="png-32">PNG 32x32</option>
+                <option value="png-64">PNG 64x64</option>
+                <option value="png-128">PNG 128x128</option>
+                <option value="png-256">PNG 256x256</option>
+                <option value="png-512">PNG 512x512</option>
+                <option value="png-all">All PNG Sizes (ZIP)</option>
+                <option value="both">Complete Pack (SVG + PNG)</option>
               </select>
-
+              
               <button
                 onClick={() => handleDownloadIcon(icon)}
-                className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg uppercase text-sm tracking-wider transition-all hover:scale-105 shadow-lg"
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-4 py-2 rounded-lg transition-all transform hover:scale-105 text-sm"
               >
-                <span className="mr-2">⬇</span> Download
+                Download
               </button>
             </div>
           ))}
         </div>
 
-        {/* License Info */}
-        <div className="p-8 bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-2 border-cyan-500/30 rounded-xl backdrop-blur-sm">
-          <h3 className="text-3xl font-bold text-cyan-400 mb-6">📜 License Information</h3>
-          <ul className="space-y-3 text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-green-400 font-bold text-xl">✅</span>
-              <span><strong>Commercial Use:</strong> Use in any commercial project (games, apps, websites)</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-400 font-bold text-xl">✅</span>
-              <span><strong>Unlimited Projects:</strong> Use in as many projects as you want</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-400 font-bold text-xl">✅</span>
-              <span><strong>Modification:</strong> Customize colors, sizes, and styling</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-400 font-bold text-xl">✅</span>
-              <span><strong>Client Work:</strong> Use for client projects and freelance work</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-400 font-bold text-xl">❌</span>
-              <span><strong>No Resale:</strong> Cannot resell or redistribute the icons as-is</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-400 font-bold text-xl">❌</span>
-              <span><strong>No Trademark:</strong> Cannot trademark the icons</span>
-            </li>
-          </ul>
-          <p className="mt-6 text-gray-400">
-            <strong>Support:</strong> Free icons include community support. Premium package includes email support and lifetime updates.
-          </p>
-        </div>
-
-        {/* Back Button */}
-        <div className="text-center mt-12">
-          <a
-            href="/"
-            className="inline-block px-8 py-4 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
-          >
-            ← Back to Home
-          </a>
+        <div className="mt-16 text-center text-gray-400">
+          <p>© 2025 StarCyeed Productions. All icons designed for commercial and personal use.</p>
+          <p className="mt-2">License: Free for any project. Attribution appreciated but not required.</p>
         </div>
       </div>
     </div>
