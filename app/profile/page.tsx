@@ -777,17 +777,11 @@ function ProfilePageContent() {
                       userId={profile.id}
                       username={profile.username}
                       onItemsAdded={(items: GalleryItem[]) => {
-                        // Guard against unknown/invalid userId to prevent cross-user leakage
-                        if (!profile.id || profile.id === 'unknown') return;
-                        try {
-                          const key = `userGallery:${profile.id}`;
-                          const raw = StorageUtils.safeGetItem(key) || '[]';
-                          const arr = JSON.parse(raw);
-                          const urls = items.map((i) => i.url);
-                          const next = Array.isArray(arr) ? [...urls, ...arr] : urls;
-                          StorageUtils.safeSetItem(key, JSON.stringify(next));
-                          window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: urls.length, userId: profile.id } }));
-                        } catch {}
+                        // Trigger refresh without persisting to local storage
+                        // Backend is the source of truth; local storage can cause cross-contamination
+                        if (items.length > 0) {
+                          window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: items.length, userId: profile.id } }));
+                        }
                       }}
                     />
                   </div>
@@ -828,16 +822,23 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
       const list = await apiClient.listGallery(userId);
       setItems(list);
     } catch {
-      try {
-        const key = `userGallery:${userId}`;
-        const raw = StorageUtils.safeGetItem(key) || '[]';
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          setItems(arr.filter((u: unknown) => typeof u === 'string').map((u: string, idx: number) => ({ id: `local-${idx}`, url: u, caption: undefined, created_at: new Date().toISOString() })));
-        }
-      } catch {}
+      // Only use local storage fallback when viewing YOUR OWN profile
+      // Never use local storage when viewing someone else to prevent cross-contamination
+      if (!isViewOnly) {
+        try {
+          const key = `userGallery:${userId}`;
+          const raw = StorageUtils.safeGetItem(key) || '[]';
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            setItems(arr.filter((u: unknown) => typeof u === 'string').map((u: string, idx: number) => ({ id: `local-${idx}`, url: u, caption: undefined, created_at: new Date().toISOString() })));
+          }
+        } catch {}
+      } else {
+        // Viewing someone else's profile and backend failed - show nothing
+        setItems([]);
+      }
     }
-  }, [userId]);
+  }, [userId, isViewOnly]);
 
   useEffect(() => {
     refresh();
@@ -853,21 +854,18 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
     return () => { try { window.removeEventListener('gallery-updated', onUpdate); } catch {} };
   }, [userId, refresh]);
 
-  const persistLocal = (nextUrls: string[]) => {
-    try { StorageUtils.safeSetItem(`userGallery:${userId}`, JSON.stringify(nextUrls)); } catch {}
-  };
-
   const removeItem = async (i: number) => {
     if (!canEdit) return;
     const item = items[i];
     if (!item) return;
     try {
       await apiClient.deleteGalleryItem(userId, item.id);
-    } catch {}
-    const nextItems = items.slice();
-    nextItems.splice(i, 1);
-    setItems(nextItems);
-    persistLocal(nextItems.map((it) => it.url));
+      // Refresh from backend after delete instead of managing local cache
+      refresh();
+    } catch {
+      // If delete fails, still try to refresh to get accurate state
+      refresh();
+    }
   };
 
   const beginEdit = (i: number) => {
