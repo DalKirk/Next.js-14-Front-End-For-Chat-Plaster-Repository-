@@ -673,7 +673,12 @@ export const apiClient = {
     for (const p of getPaths) {
       try {
         const r = await api.get(p);
-        return (r.data?.items || []) as GalleryItem[];
+        const items = (r.data?.items || []) as GalleryItem[];
+        // Guard: if backend includes user_id, filter to current user
+        const filtered = Array.isArray(items)
+          ? items.filter((it: GalleryItem) => !it.user_id || it.user_id === userId)
+          : [];
+        return filtered;
       } catch (e) {
         lastErr = e;
         continue;

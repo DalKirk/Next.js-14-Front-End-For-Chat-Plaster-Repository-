@@ -74,6 +74,8 @@ export interface GalleryItem {
   url: string;
   caption?: string;
   created_at: string;
+  // Optional: present when backend includes owner in list responses
+  user_id?: string;
 }
 
 export interface GalleryListResponse {
