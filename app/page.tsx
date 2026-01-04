@@ -112,7 +112,6 @@ const contentData: Record<string, ContentItem> = {
     title: "Awards",
     description: "Recognition for excellence in design and development.",
     features: [
-      "Snapshot Analyzer",
       "Awwwards Site of the Day",
       "CSS Design Awards",
       "Best Agency 2023",
@@ -958,7 +957,7 @@ export default function HomePage() {
             <h2>{contentData[activeItem].title}</h2>
             {/* Text description and feature list removed per request */}
             <div className="space-y-3">
-              {activeItem === 'awards' && (
+              {activeItem === 'services' && (
                 <button
                   onClick={() => {
                     window.location.href = '/image-analysis';
@@ -967,6 +966,9 @@ export default function HomePage() {
                 >
                   Launch Snapshot Analyzer
                 </button>
+              )}
+              {activeItem === 'awards' && (
+                <></>
               )}
               {activeItem === 'about' && (
                 <>
