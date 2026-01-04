@@ -39,7 +39,7 @@ interface ClaudeMessage {
 
 const contentData: Record<string, ContentItem> = {
   services: {
-    title: "Services",
+    title: "Quick Launch",
     description:
       "We offer comprehensive digital solutions tailored to your business needs.",
     features: [
@@ -51,7 +51,7 @@ const contentData: Record<string, ContentItem> = {
     ],
   },
   portfolio: {
-    title: "Portfolio",
+    title: "Marketplace",
     description: "Explore our award-winning projects spanning multiple industries.",
     features: [
       "150+ Completed Projects",
@@ -62,7 +62,7 @@ const contentData: Record<string, ContentItem> = {
     ],
   },
   team: {
-    title: "Team",
+    title: "Simulators",
     description:
       "A diverse group of passionate creators, engineers, and strategists.",
     features: [
@@ -74,7 +74,7 @@ const contentData: Record<string, ContentItem> = {
     ],
   },
   blog: {
-    title: "Blog",
+    title: "Pluto",
     description:
       "Insights, tutorials, and thought leadership from our experts.",
     features: [
@@ -86,7 +86,7 @@ const contentData: Record<string, ContentItem> = {
     ],
   },
   careers: {
-    title: "Careers",
+    title: "Games",
     description:
       "Join a team that values innovation, creativity, and growth.",
     features: [
@@ -132,11 +132,11 @@ interface OrbitItemData {
 }
 
 const orbitItems: OrbitItemData[] = [
-  { id: "services", angle: 0, radius: 300, icon: "●", title: "Services", desc: "Full-stack solutions" },
-  { id: "portfolio", angle: 60, radius: 300, icon: "●", title: "Portfolio", desc: "Award-winning projects", badge: "NEW" },
-  { id: "team", angle: 120, radius: 300, icon: "●", title: "Team", desc: "Meet the crew" },
-  { id: "blog", angle: 180, radius: 300, icon: "●", title: "Blog", desc: "Latest insights" },
-  { id: "careers", angle: 300, radius: 300, icon: "●", title: "Careers", desc: "Join our team", badge: "3" },
+  { id: "services", angle: 0, radius: 300, icon: "●", title: "Quick Launch", desc: "Full-stack solutions" },
+  { id: "portfolio", angle: 60, radius: 300, icon: "●", title: "Marketplace", desc: "Award-winning projects", badge: "NEW" },
+  { id: "team", angle: 120, radius: 300, icon: "●", title: "Simulators", desc: "Meet the crew" },
+  { id: "blog", angle: 180, radius: 300, icon: "●", title: "Pluto", desc: "Latest insights" },
+  { id: "careers", angle: 300, radius: 300, icon: "●", title: "Games", desc: "Join our team", badge: "3" },
   { id: "about", angle: 30, radius: 160, icon: "●", title: "About", desc: "Our story", inner: true },
   { id: "awards", angle: 270, radius: 160, icon: "●", title: "Terms & Privacy", desc: "Legal info", inner: true },
 ];

@@ -842,18 +842,6 @@ export default function AdvancedFeaturesDemo() {
             </div>
           </div>
         )}
-        
-        {/* Documentation Link */}
-        <div className="mt-8 bg-gray-800 p-6 rounded-lg">
-          <h3 className="text-xl font-bold mb-2">📚 Documentation</h3>
-          <p className="text-gray-400 mb-4">
-            See <code className="bg-gray-900 px-2 py-1 rounded">ADVANCED_FEATURES_GUIDE.md</code> for
-            complete documentation and API reference.
-          </p>
-          <p className="text-gray-400">
-            Integration guide: <code className="bg-gray-900 px-2 py-1 rounded">INTEGRATION_STEPS.js</code>
-          </p>
-        </div>
       </div>
     </div>
   );
