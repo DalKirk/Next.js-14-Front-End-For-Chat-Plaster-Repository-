@@ -787,6 +787,7 @@ function ProfilePageContent() {
                   </div>
                 ) : null}
                 <div className="max-h-72 overflow-y-auto pr-2">
+                  {profile?.id && console.log('🔍 PROFILE DEBUG - Rendering gallery for profile.id:', profile.id, 'isViewOnly:', isViewOnly, 'viewedUserId from URL:', viewedUserId)}
                   <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={isEditing && !isViewOnly} />
                 </div>
               </div>
