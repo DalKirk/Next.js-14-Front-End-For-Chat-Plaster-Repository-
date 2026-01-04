@@ -203,6 +203,8 @@ function ProfilePageContent() {
         console.log('📥 Syncing profile with backend...');
         const backendProfile = await apiClient.getProfile(viewingOtherUser ? (viewedUserId as string) : userData!.id);
         
+        console.log('🔍 BIO DEBUG - Backend returned bio:', backendProfile.bio);
+        
         const joinedDate = backendProfile.created_at 
           ? new Date(backendProfile.created_at).toISOString().split('T')[0]
           : localProfile.joinedDate;
