@@ -989,6 +989,16 @@ export default function HomePage() {
                   </button>
                 </>
               )}
+              {activeItem === 'portfolio' && (
+                <button
+                  onClick={() => {
+                    window.location.href = '/marketplace';
+                  }}
+                  className="block w-full py-3 px-6 bg-gradient-to-r from-[#8a2be2] to-[#9333ea] text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300 hover:scale-105 cursor-pointer text-center"
+                >
+                  🛒 Browse Marketplace
+                </button>
+              )}
               {activeItem === 'awards' && (
                 <button
                   onClick={() => {
