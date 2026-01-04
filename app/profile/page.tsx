@@ -75,6 +75,19 @@ function ProfilePageContent() {
   });
   const [passwordSupported, setPasswordSupported] = useState<boolean | null>(null);
 
+  // Debug: Log profile changes
+  useEffect(() => {
+    if (profile) {
+      console.log('🔍 PROFILE DEBUG - profile state updated:', {
+        profileId: profile.id,
+        username: profile.username,
+        isViewOnly,
+        viewedUserId,
+        viewedUsername
+      });
+    }
+  }, [profile, isViewOnly, viewedUserId, viewedUsername]);
+
   useEffect(() => {
     // Load profile from backend API
     const storedUser = StorageUtils.safeGetItem('chat-user');
@@ -787,7 +800,6 @@ function ProfilePageContent() {
                   </div>
                 ) : null}
                 <div className="max-h-72 overflow-y-auto pr-2">
-                  {profile?.id && console.log('🔍 PROFILE DEBUG - Rendering gallery for profile.id:', profile.id, 'isViewOnly:', isViewOnly, 'viewedUserId from URL:', viewedUserId)}
                   <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={isEditing && !isViewOnly} />
                 </div>
               </div>
