@@ -183,7 +183,7 @@ function ProfilePageContent() {
             username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
             // When viewing another user's profile, do NOT infer or use current user's email
             email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : (viewedUsername ? `${viewedUsername}@chatplaster.com` : undefined))),
-        bio: undefined,
+            bio: undefined,  // Will be loaded from backend or local cache
             avatar: '',
             joinedDate: new Date().toISOString().split('T')[0],
             totalRooms: 3,
@@ -402,11 +402,12 @@ function ProfilePageContent() {
       );
       
       if (result.success) {
+        // Backend doesn't return bio, so use what we just saved
         const updatedProfile = {
           ...profile,
           ...editedProfile,
           username: result.user.display_name || result.user.username,
-          bio: result.user.bio ?? editedProfile.bio,
+          bio: editedProfile.bio,  // Backend bug: bio not returned, use our value
           avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         
@@ -417,11 +418,13 @@ function ProfilePageContent() {
         try { updateUsernameEverywhere(updatedProfile.id, prevUsername, updatedProfile.username!); } catch {}
 
         // Only store minimal data in localStorage (no email); include bio to persist across refresh
-        StorageUtils.safeSetItem('userProfile', JSON.stringify({
+        const cachedProfile = {
           id: updatedProfile.id,
           username: updatedProfile.username,
-          bio: updatedProfile.bio ?? editedProfile.bio
-        }));
+          bio: updatedProfile.bio
+        };
+        console.log('💾 Caching bio locally (backend workaround):', cachedProfile.bio);
+        StorageUtils.safeSetItem('userProfile', JSON.stringify(cachedProfile));
         
         // Store avatar URL separately for WebSocket
         if (updatedProfile.avatar) {
