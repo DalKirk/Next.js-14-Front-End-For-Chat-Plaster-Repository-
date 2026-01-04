@@ -649,7 +649,7 @@ export const apiClient = {
     if (caption) formData.append('caption', caption);
 
     // Try canonical path
-    const paths = [`/users/${userId}/media`, `/users/${userId}/media/`, `/users/${userId}/gallery`, `/users/${userId}/gallery/`];
+    const paths = [`/users/${userId}/media`, `/users/${userId}/media/`];
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
@@ -668,7 +668,7 @@ export const apiClient = {
 
   /** List gallery items for a user */
   listGallery: async (userId: string): Promise<GalleryItem[]> => {
-    const getPaths = [`/users/${userId}/media`, `/users/${userId}/media/`, `/users/${userId}/gallery`, `/users/${userId}/gallery/`];
+    const getPaths = [`/users/${userId}/media`, `/users/${userId}/media/`];
     let lastErr: unknown = null;
     for (const p of getPaths) {
       try {
@@ -702,7 +702,7 @@ export const apiClient = {
 
   /** Update gallery item metadata (e.g., title) */
   updateGalleryItem: async (userId: string, itemId: string, data: { caption?: string }): Promise<GalleryItem> => {
-    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`, `/users/${userId}/gallery/${itemId}`, `/users/${userId}/gallery/${itemId}/`];
+    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`];
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
@@ -718,7 +718,7 @@ export const apiClient = {
 
   /** Update gallery order */
   updateGalleryOrder: async (userId: string, itemIds: string[]): Promise<{ user_id: string; items: GalleryItem[] }> => {
-    const paths = [`/users/${userId}/media/order`, `/users/${userId}/media/order/`, `/users/${userId}/gallery/order`, `/users/${userId}/gallery/order/`];
+    const paths = [`/users/${userId}/media/order`, `/users/${userId}/media/order/`];
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
@@ -734,7 +734,7 @@ export const apiClient = {
 
   /** Delete gallery item */
   deleteGalleryItem: async (userId: string, itemId: string): Promise<{ ok: boolean }> => {
-    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`, `/users/${userId}/gallery/${itemId}`, `/users/${userId}/gallery/${itemId}/`];
+    const paths = [`/users/${userId}/media/${itemId}`, `/users/${userId}/media/${itemId}/`];
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
