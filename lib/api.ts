@@ -684,6 +684,13 @@ export const apiClient = {
         if (Array.isArray(res?.items) && (res.items as GalleryItem[]).some((it: GalleryItem) => typeof it.user_id === 'string' && it.user_id !== userId)) {
           throw new Error('Upload returned items for a different user');
         }
+        // If neither envelope nor item-level user_id provided, treat as ambiguous and reject to prevent leakage
+        const hasEnvelopeUser = Boolean(res?.user_id);
+        const itemsArr: GalleryItem[] = Array.isArray(res?.items) ? (res.items as GalleryItem[]) : [];
+        const anyItemHasUser = itemsArr.some((it) => typeof it.user_id === 'string');
+        if (!hasEnvelopeUser && !anyItemHasUser) {
+          throw new Error('Upload response ambiguous: missing user_id at envelope and item level');
+        }
         return res;
       } catch (e) {
         lastErr = e;
@@ -709,7 +716,7 @@ export const apiClient = {
         // If no envelope user_id but items have user_id, filter to current user
         const anyUserIdPresent = Array.isArray(items) && items.some((it) => typeof it.user_id === 'string');
         if (anyUserIdPresent) {
-          return items.filter((it) => it.user_id === undefined || it.user_id === userId);
+          return items.filter((it) => it.user_id === userId);
         }
         // If neither envelope nor item-level user_id, avoid ambiguous server data and fall back to local cache
         console.warn('Gallery list response lacks user_id; using local cache to avoid cross-user leakage');
