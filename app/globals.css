@@ -541,10 +541,7 @@
 .detail-content h2 { 
   font-size: 3rem; 
   margin-bottom: 1.5rem; 
-  background: linear-gradient(135deg, #8a2be2, #9333ea); 
-  -webkit-background-clip: text; 
-  -webkit-text-fill-color: transparent; 
-  background-clip: text; 
+  color: #22d3ee !important; 
   font-weight: 900; 
 }
 
