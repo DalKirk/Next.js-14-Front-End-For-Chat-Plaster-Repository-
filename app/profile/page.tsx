@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -891,8 +892,16 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
         <div className="grid grid-cols-2 gap-3">
           {items.map((it, i) => (
             <div key={it.id} className="relative rounded-lg overflow-hidden border border-slate-700/50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.url} alt="Gallery item" className="w-full h-32 object-cover" />
+              <div className="w-full h-32 relative">
+                <Image
+                  src={it.url}
+                  alt="Gallery item"
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  className="object-cover"
+                  priority={false}
+                />
+              </div>
               {it.caption && (
                 <div className="absolute top-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">{it.caption}</div>
               )}
