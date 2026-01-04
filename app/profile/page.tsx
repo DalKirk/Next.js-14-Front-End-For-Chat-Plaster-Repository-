@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -593,8 +593,6 @@ function ProfilePageContent() {
                 </div>
               ) : (
                 <div className="relative">
-                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
-                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-white/20">
                   <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-white/20">
                     <ResponsiveAvatar
                       avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
@@ -817,7 +815,7 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const list = await apiClient.listGallery(userId);
       setItems(list);
@@ -831,14 +829,21 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
         }
       } catch {}
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     refresh();
-    const onUpdate = () => refresh();
-    try { window.addEventListener('gallery-updated', onUpdate as any); } catch {}
-    return () => { try { window.removeEventListener('gallery-updated', onUpdate as any); } catch {} };
-  }, [userId]);
+    const onUpdate: EventListener = (ev) => {
+      try {
+        const ce = ev as unknown as CustomEvent<{ userId?: string }>; 
+        const targetId = ce?.detail?.userId;
+        if (targetId && targetId !== userId) return;
+      } catch {}
+      refresh();
+    };
+    try { window.addEventListener('gallery-updated', onUpdate); } catch {}
+    return () => { try { window.removeEventListener('gallery-updated', onUpdate); } catch {} };
+  }, [userId, refresh]);
 
   const persistLocal = (nextUrls: string[]) => {
     try { StorageUtils.safeSetItem(`userGallery:${userId}`, JSON.stringify(nextUrls)); } catch {}
