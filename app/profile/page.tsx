@@ -539,6 +539,13 @@ function ProfilePageContent() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-black via-slate-950 to-black pt-20">
+      {/* Top-right Search Chat Rooms button */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          Search Chat Rooms
+        </Button>
+      </div>
       {/* Onboarding modal (one-time after signup) */}
       {showOnboardModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -572,32 +579,33 @@ function ProfilePageContent() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6 sm:p-8"
         >
-          <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             {/* Avatar - Show AvatarUpload when editing (only for own profile), otherwise show display avatar */}
-            {isEditing && !isViewOnly ? (
-              <div className="w-full lg:w-auto mx-auto">
-                <AvatarUpload
-                  userId={profile.id}
-                  currentAvatar={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
-                  username={editedProfile.username || profile.username}
-                  onAvatarChange={handleAvatarChange}
-                />
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
-                  <ResponsiveAvatar
-                    avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
-                    username={profile.username}
-                    size="large"
-                    className="w-full h-full object-cover"
+            <div className="flex flex-col gap-4">
+              {isEditing && !isViewOnly ? (
+                <div className="w-full lg:w-auto">
+                  <AvatarUpload
+                    userId={profile.id}
+                    currentAvatar={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
+                    username={editedProfile.username || profile.username}
+                    onAvatarChange={handleAvatarChange}
                   />
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="relative">
+                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20">
+                    <ResponsiveAvatar
+                      avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
+                      username={profile.username}
+                      size="large"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
 
-            {/* User Info */}
-            <div className="flex-1">
+              {/* User Info */}
+              <div className="flex-1">
               {isEditing && !isViewOnly ? (
                 <div className="space-y-4">
                   <Input
@@ -740,9 +748,30 @@ function ProfilePageContent() {
                     </div>
                   </div>
                   
-                  {/* Photo Gallery: uploader available only in Edit mode for owner */}
-                  <div className="mt-6 pt-6 border-t border-slate-700/50">
-                    <h3 className="text-slate-200 text-base font-semibold mb-3">Photo Gallery</h3>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveProfile} variant="primary">Save Profile</Button>
+                    <Button onClick={handleCancelEdit} variant="glass">Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
+                  {profile.email && showEmail && (
+                    <p className="text-slate-400 mb-3">{profile.email}</p>
+                  )}
+                  {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
+                </>
+              )}
+              </div>
+            </div>
+
+            {/* Right column: Photo Gallery (public view read-only; owner can edit while in edit mode) */}
+            <div className="lg:col-span-1">
+              <div className="mt-2 lg:mt-0">
+                <h3 className="text-slate-200 text-base font-semibold mb-2">Photo Gallery</h3>
+                {/* Uploader shown only in edit mode for owner */}
+                {isEditing && !isViewOnly ? (
+                  <div className="mb-3">
                     <GalleryUpload
                       userId={profile.id}
                       username={profile.username}
@@ -757,34 +786,12 @@ function ProfilePageContent() {
                         } catch {}
                       }}
                     />
-                    <UserGalleryGrid isViewOnly={false} userId={profile.id} canEdit={true} />
                   </div>
-
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveProfile} variant="primary">Save Profile</Button>
-                    <Button onClick={handleCancelEdit} variant="glass">Cancel</Button>
-                  </div>
+                ) : null}
+                <div className="max-h-72 overflow-y-auto pr-2">
+                  <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={isEditing && !isViewOnly} />
                 </div>
-              ) : (
-                <>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-200 mb-2">{profile.username}</h1>
-                  {profile.email && showEmail && (
-                    <p className="text-slate-400 mb-3">{profile.email}</p>
-                  )}
-                  {profile.bio && <p className="text-slate-300 mb-4 max-w-2xl">{profile.bio}</p>}
-                  {/* Photo Gallery: public view (no uploads/edit for non-owners) */}
-                  <div className="mt-4">
-                    <h3 className="text-slate-200 text-base font-semibold mb-2">Photo Gallery</h3>
-                    <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={false} />
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4" />
-                      Search Chat Rooms
-                    </Button>
-                  </div>
-                </>
-              )}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -872,7 +879,7 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
       {items.length === 0 ? (
         isViewOnly || !canEdit ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {items.map((it, i) => (
             <div key={it.id} className="relative rounded-lg overflow-hidden border border-slate-700/50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
