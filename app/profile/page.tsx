@@ -203,8 +203,6 @@ function ProfilePageContent() {
         console.log('📥 Syncing profile with backend...');
         const backendProfile = await apiClient.getProfile(viewingOtherUser ? (viewedUserId as string) : userData!.id);
         
-        console.log('🔍 BIO DEBUG - Backend returned bio:', backendProfile.bio);
-        
         const joinedDate = backendProfile.created_at 
           ? new Date(backendProfile.created_at).toISOString().split('T')[0]
           : localProfile.joinedDate;
@@ -402,12 +400,11 @@ function ProfilePageContent() {
       );
       
       if (result.success) {
-        // Backend doesn't return bio, so use what we just saved
         const updatedProfile = {
           ...profile,
           ...editedProfile,
           username: result.user.display_name || result.user.username,
-          bio: editedProfile.bio,  // Backend bug: bio not returned, use our value
+          bio: result.user.bio ?? editedProfile.bio,
           avatar: result.user.avatar_url || editedProfile.avatar || ''
         };
         
@@ -417,14 +414,12 @@ function ProfilePageContent() {
         // Patch username across message history and caches
         try { updateUsernameEverywhere(updatedProfile.id, prevUsername, updatedProfile.username!); } catch {}
 
-        // Only store minimal data in localStorage (no email); include bio to persist across refresh
-        const cachedProfile = {
+        // Only store minimal data in localStorage (no email); include bio for quick loads
+        StorageUtils.safeSetItem('userProfile', JSON.stringify({
           id: updatedProfile.id,
           username: updatedProfile.username,
           bio: updatedProfile.bio
-        };
-        console.log('💾 Caching bio locally (backend workaround):', cachedProfile.bio);
-        StorageUtils.safeSetItem('userProfile', JSON.stringify(cachedProfile));
+        }));
         
         // Store avatar URL separately for WebSocket
         if (updatedProfile.avatar) {
