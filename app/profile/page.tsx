@@ -871,12 +871,24 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
     if (!canEdit) return;
     const item = items[i];
     if (!item) return;
+    
+    // Immediately update UI (optimistic delete)
+    const newItems = items.filter((_, index) => index !== i);
+    setItems(newItems);
+    
     try {
       await apiClient.deleteGalleryItem(userId, item.id);
-      // Refresh from backend after delete instead of managing local cache
+      // Clear localStorage cache to force fresh backend fetch
+      try {
+        window.localStorage.removeItem(`userGallery:${userId}`);
+      } catch {}
+      // Refresh from backend to get accurate state
       refresh();
-    } catch {
-      // If delete fails, still try to refresh to get accurate state
+    } catch (err) {
+      console.error('Delete failed:', err);
+      // Revert UI on error
+      setItems(items);
+      // Still try to refresh to get accurate state
       refresh();
     }
   };

@@ -813,8 +813,9 @@ export const apiClient = {
 
   /** Delete gallery item */
   deleteGalleryItem: async (userId: string, itemId: string): Promise<{ ok: boolean }> => {
-    // If this is a local-only item (ID starts with "local-"), only remove from localStorage
-    if (itemId.startsWith('local-') && typeof window !== 'undefined') {
+    // Always remove from localStorage first (works for both local and backend items)
+    let removedFromCache = false;
+    if (typeof window !== 'undefined') {
       try {
         const key = `userGallery:${userId}`;
         const raw = window.localStorage.getItem(key) || '[]';
@@ -827,12 +828,16 @@ export const apiClient = {
             return true;
           });
           window.localStorage.setItem(key, JSON.stringify(filtered));
+          removedFromCache = true;
         }
-        return { ok: true };
       } catch (e) {
-        console.error('Failed to delete local gallery item:', e);
-        return { ok: false };
+        console.error('Failed to remove item from local cache:', e);
       }
+    }
+
+    // If this is a local-only item, we're done (no backend call needed)
+    if (itemId.startsWith('local-')) {
+      return { ok: removedFromCache };
     }
 
     // For backend items, call the API
@@ -847,24 +852,14 @@ export const apiClient = {
         continue;
       }
     }
-    try {
-      // If backend route missing, fallback by removing from local storage
-      if (axios.isAxiosError(lastErr) && lastErr.response?.status === 404 && typeof window !== 'undefined') {
-        try {
-          const key = `userGallery:${userId}`;
-          const raw = window.localStorage.getItem(key) || '[]';
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) {
-            const next = arr.filter((u: unknown) => typeof u === 'string' && !String(u).includes(itemId));
-            window.localStorage.setItem(key, JSON.stringify(next));
-          }
-        } catch {}
-        return { ok: true };
-      }
-      handleApiError(lastErr, 'Delete gallery item');
-    } catch (finalErr) {
-      handleApiError(finalErr, 'Delete gallery item');
+    
+    // If backend delete failed but we removed from cache, that's still success
+    if (removedFromCache && axios.isAxiosError(lastErr) && lastErr.response?.status === 404) {
+      return { ok: true };
     }
+    
+    handleApiError(lastErr, 'Delete gallery item');
+    throw lastErr;
   },
 
   /**
