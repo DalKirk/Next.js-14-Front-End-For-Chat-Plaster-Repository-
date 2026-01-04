@@ -8,6 +8,9 @@ import { ResponsiveAvatar } from "@/components/ResponsiveAvatar";
 import { StorageUtils } from "@/lib/storage-utils";
 import { User } from "@/lib/types";
 import toast from "react-hot-toast";
+import { Roboto_Slab } from 'next/font/google';
+
+const robotoSlab = Roboto_Slab({ subsets: ['latin'] });
 import {
   UserCircleIcon,
   ArrowRightIcon,
@@ -766,7 +769,7 @@ export default function HomePage() {
                 style={
                   isTouched || isActive ? { opacity: 1 } : undefined
                 }
-                className="tab-text whitespace-nowrap font-semibold tracking-wide transition-opacity duration-200 opacity-0 group-hover:opacity-100 group-active:opacity-100"
+                className={`tab-text whitespace-nowrap font-semibold tracking-wide transition-opacity duration-200 opacity-0 group-hover:opacity-100 group-active:opacity-100 text-cyan-400 ${robotoSlab.className}`}
               >
                 {item.title}
               </span>
@@ -954,7 +957,7 @@ export default function HomePage() {
         <button className="detail-close" onClick={() => setActiveItem(null)}>×</button>
         {activeItem && contentData[activeItem] && (
           <div className="detail-content">
-            <h2>{contentData[activeItem].title}</h2>
+            <h2 className={`text-cyan-400 ${robotoSlab.className}`}>{contentData[activeItem].title}</h2>
             {/* Text description and feature list removed per request */}
             <div className="space-y-3">
               {activeItem === 'services' && (
