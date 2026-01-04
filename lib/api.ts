@@ -710,6 +710,13 @@ export const apiClient = {
         const r = await api.get(p);
         const responseUserId = r.data?.user_id as string | undefined;
         const items = (r.data?.items || []) as GalleryItem[];
+        
+        // DEBUG: Log what backend returned
+        console.log('🔍 GALLERY DEBUG - Requested userId:', userId);
+        console.log('🔍 GALLERY DEBUG - Response envelope user_id:', responseUserId);
+        console.log('🔍 GALLERY DEBUG - Items received:', items.length);
+        console.log('🔍 GALLERY DEBUG - Items with user_id:', items.filter((it) => it.user_id).map((it) => ({ id: it.id, user_id: it.user_id, url: it.url?.substring(0, 50) })));
+        
         // Accept items for the REQUESTED user (allows public viewing)
         if (responseUserId && responseUserId !== userId) {
           throw new Error(`Mismatched user_id in gallery list: expected ${userId}, got ${responseUserId}`);
@@ -717,7 +724,9 @@ export const apiClient = {
         // Filter items to match requested userId (not logged-in user)
         const anyUserIdPresent = Array.isArray(items) && items.some((it) => typeof it.user_id === 'string');
         if (anyUserIdPresent) {
-          return items.filter((it) => it.user_id === userId);
+          const filtered = items.filter((it) => it.user_id === userId);
+          console.log('🔍 GALLERY DEBUG - Filtered items:', filtered.length);
+          return filtered;
         }
         // If neither envelope nor item-level user_id, avoid ambiguous server data and fall back to local cache
         console.warn('Gallery list response lacks user_id; using local cache to avoid cross-user leakage');
