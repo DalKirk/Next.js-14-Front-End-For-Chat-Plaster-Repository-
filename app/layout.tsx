@@ -49,15 +49,14 @@ export const metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon-simple.svg?v=simple-20241231', type: 'image/svg+xml' },
-      { url: '/favicon-simple.ico?v=simple-20241231', sizes: 'any' },
-      { url: '/favicon-simple-16.png?v=simple-20241231', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-simple-32.png?v=simple-20241231', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-simple-48.png?v=simple-20241231', sizes: '48x48', type: 'image/png' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    shortcut: '/favicon-simple.ico?v=simple-20241231',
+    shortcut: '/favicon.ico',
     apple: [
-      { url: '/favicon-simple-48.png?v=simple-20241231', sizes: '48x48', type: 'image/png' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 };
