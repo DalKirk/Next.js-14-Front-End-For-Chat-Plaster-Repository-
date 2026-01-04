@@ -645,6 +645,9 @@ export const apiClient = {
       await apiClient.ensureUserExists(userId, username);
     }
     const formData = new FormData();
+    // Explicitly include user association to prevent backend misrouting
+    formData.append('user_id', userId);
+    if (username) formData.append('username', username);
     files.forEach((file) => formData.append('files', file, file.name));
     if (caption) formData.append('caption', caption);
 
@@ -653,11 +656,20 @@ export const apiClient = {
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
-        const r = await api.post(p, formData, {
+        const r = await api.post<GalleryListResponse>(p, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 30000,
         });
-        return r.data;
+        // Validate response user scope
+        const res = r.data;
+        if (res?.user_id && res.user_id !== userId) {
+          throw new Error(`Upload response user mismatch: expected ${userId}, got ${res.user_id}`);
+        }
+        // If items include user_id, ensure all match uploader
+        if (Array.isArray(res?.items) && res.items.some((it: any) => it?.user_id && it.user_id !== userId)) {
+          throw new Error('Upload returned items for a different user');
+        }
+        return res;
       } catch (e) {
         lastErr = e;
         continue;
