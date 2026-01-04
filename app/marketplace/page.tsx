@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import JSZip from 'jszip';
+import { Roboto_Slab } from 'next/font/google';
+
+const robotoSlab = Roboto_Slab({ subsets: ['latin'] });
 
 interface Icon {
   name: string;
@@ -77,9 +80,10 @@ export default function MarketplacePage() {
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true });
         
         if (ctx) {
+          // Ensure transparent background
           ctx.clearRect(0, 0, size, size);
           ctx.drawImage(img, 0, 0, size, size);
           
@@ -291,7 +295,7 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white p-8">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white p-8 ${robotoSlab.className}`}>
       <div className="max-w-7xl mx-auto">
         <div className="mb-12 text-center">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
