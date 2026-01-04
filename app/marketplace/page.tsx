@@ -11,12 +11,22 @@ export default function MarketplacePage() {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-12 text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <div className="relative w-48 h-48">
+              <Image
+                src="/StarCyeedLOGOTransparent.png"
+                alt="StarCyeed Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </div>
+          
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-            Wasteland Icon Pack
+            Welcome to Starcyeed Marketplace
           </h1>
-          <p className="text-xl text-gray-300 mb-6">
-            Professional post-apocalyptic icons for game development
-          </p>
           <a
             href="/"
             className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
@@ -54,7 +64,7 @@ export default function MarketplacePage() {
               rel="noopener noreferrer"
               className="inline-block px-12 py-4 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-orange-500/50"
             >
-              🛒 Buy on Gumroad
+              🛒 View on Gumroad
             </a>
             
             <p className="mt-4 text-sm text-gray-400">
