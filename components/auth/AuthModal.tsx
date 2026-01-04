@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, EyeIcon, EyeSlashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { LockClosedIcon, UserIcon, EnvelopeIcon } from '@heroicons/react/24/solid';
+import { ConsentStep } from './ConsentStep';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -17,12 +18,14 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = false }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [signupStep, setSignupStep] = useState<'credentials' | 'consent'>('credentials');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = () => {
@@ -73,18 +76,38 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // For signup, handle multi-step flow
+    if (mode === 'signup') {
+      if (signupStep === 'credentials') {
+        // Validate credentials
+        if (!validateForm()) return;
+        // Move to consent step
+        setSignupStep('consent');
+        return;
+      } else if (signupStep === 'consent') {
+        // Validate consent
+        if (!consentAccepted) {
+          setErrors({ consent: 'You must accept the Terms and Privacy Policy to continue' });
+          return;
+        }
+        // Submit signup
+        try {
+          await onSignUp({ username, email, password });
+          resetForm();
+        } catch (error) {
+          console.error('Signup error:', error);
+        }
+        return;
+      }
+    }
+
+    // Login flow (unchanged)
     if (!validateForm()) return;
 
     try {
-      if (mode === 'login') {
-        await onLogin({ username, password });
-      } else {
-        await onSignUp({ username, email, password });
-      }
-      // Reset form on success
+      await onLogin({ username, password });
       resetForm();
     } catch (error) {
-      // Error handling is done by parent component
       console.error('Auth error:', error);
     }
   };
@@ -94,6 +117,8 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setConsentAccepted(false);
+    setSignupStep('credentials');
     setErrors({});
     setShowPassword(false);
     setShowConfirmPassword(false);
@@ -101,6 +126,8 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
 
   const switchMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
+    setSignupStep('credentials');
+    setConsentAccepted(false);
     setErrors({});
   };
 
@@ -135,23 +162,50 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
 
           {/* Header */}
           <div className="bg-gradient-to-r from-cyan-400/10 to-blue-500/10 border-b border-slate-700/50 px-6 py-8">
+            {/* Back button for consent step */}
+            {mode === 'signup' && signupStep === 'consent' && (
+              <button
+                type="button"
+                onClick={() => setSignupStep('credentials')}
+                className="absolute top-6 left-4 text-slate-400 hover:text-white transition-colors z-10 flex items-center gap-2"
+              >
+                <ArrowLeftIcon className="w-5 h-5" />
+                <span className="text-sm">Back</span>
+              </button>
+            )}
+            
             <div className="flex items-center justify-center mb-4">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.35)]">
                 <LockClosedIcon className="w-8 h-8 text-black" />
               </div>
             </div>
             <h2 className="text-2xl font-bold text-center text-white mb-2">
-              {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+              {mode === 'login' 
+                ? 'Welcome Back' 
+                : signupStep === 'credentials' 
+                  ? 'Create Account' 
+                  : 'Terms & Privacy'}
             </h2>
             <p className="text-center text-slate-400 text-sm">
               {mode === 'login' 
                 ? 'Sign in to access your account' 
-                : 'Join Atlas and start collaborating'}
+                : signupStep === 'credentials'
+                  ? 'Join STARCYEED and start sharing'
+                  : 'Step 2 of 2'}
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4" autoComplete="on">
+            {/* Show consent step for signup */}
+            {mode === 'signup' && signupStep === 'consent' ? (
+              <ConsentStep
+                isAccepted={consentAccepted}
+                onAcceptChange={setConsentAccepted}
+                error={errors.consent}
+              />
+            ) : (
+              <>
             {/* Username */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -281,6 +335,8 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                 )}
               </div>
             )}
+            </>
+            )}
 
             {/* Submit Button */}
             <Button
@@ -291,27 +347,37 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
+                  {mode === 'login' 
+                    ? 'Signing In...' 
+                    : signupStep === 'credentials' 
+                      ? 'Continue...' 
+                      : 'Creating Account...'}
                 </span>
               ) : (
-                mode === 'login' ? 'Sign In' : 'Create Account'
+                mode === 'login' 
+                  ? 'Sign In' 
+                  : signupStep === 'credentials' 
+                    ? 'Continue to Terms' 
+                    : 'Create Account'
               )}
             </Button>
 
-            {/* Switch Mode */}
-            <div className="text-center pt-4 border-t border-slate-700/50">
-              <p className="text-sm text-slate-400">
-                {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-                <button
-                  type="button"
-                  onClick={switchMode}
-                  className="text-cyan-300 hover:text-cyan-200 font-medium transition-colors"
-                  disabled={isLoading}
-                >
-                  {mode === 'login' ? 'Sign Up' : 'Sign In'}
-                </button>
-              </p>
-            </div>
+            {/* Switch Mode - only show on credentials step */}
+            {(mode === 'login' || signupStep === 'credentials') && (
+              <div className="text-center pt-4 border-t border-slate-700/50">
+                <p className="text-sm text-slate-400">
+                  {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                  <button
+                    type="button"
+                    onClick={switchMode}
+                    className="text-cyan-300 hover:text-cyan-200 font-medium transition-colors"
+                    disabled={isLoading}
+                  >
+                    {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                  </button>
+                </p>
+              </div>
+            )}
           </form>
         </motion.div>
       </div>
