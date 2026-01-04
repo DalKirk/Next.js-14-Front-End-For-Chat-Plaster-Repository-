@@ -26,9 +26,9 @@ export function GalleryUpload({ userId, username, onItemsAdded }: GalleryUploadP
     try {
       const fileArray = Array.from(files);
       const res = await apiClient.uploadGalleryFiles(userId, fileArray, undefined, username);
-      const items = Array.isArray(res.items) ? res.items : [];
-      // Guard: if backend attached user_id to items, filter to current user
-      const safeItems = items.filter((it) => !('user_id' in it) || (it as any).user_id === userId);
+      const items: GalleryItem[] = Array.isArray(res.items) ? res.items : [];
+      // Guard: filter strictly by user_id when present
+      const safeItems = items.filter((it: GalleryItem) => it.user_id === undefined || it.user_id === userId);
       onItemsAdded?.(safeItems);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

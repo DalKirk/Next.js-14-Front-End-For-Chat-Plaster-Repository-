@@ -681,7 +681,7 @@ export const apiClient = {
           throw new Error(`Upload response user mismatch: expected ${userId}, got ${res.user_id}`);
         }
         // If items include user_id, ensure all match uploader
-        if (Array.isArray(res?.items) && res.items.some((it: any) => it?.user_id && it.user_id !== userId)) {
+        if (Array.isArray(res?.items) && (res.items as GalleryItem[]).some((it: GalleryItem) => typeof it.user_id === 'string' && it.user_id !== userId)) {
           throw new Error('Upload returned items for a different user');
         }
         return res;
