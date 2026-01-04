@@ -17,7 +17,7 @@ const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE?.replace(/^@/, '');
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: {
-    default: 'Starcyeed Video Chat',
+    default: 'Starcyeed',
     template: '%s | Starcyeed',
   },
   description: 'Realtime video chat with rooms, profiles, and avatar support.',
