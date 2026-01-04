@@ -610,17 +610,32 @@ export const apiClient = {
       formData.append('medium', processed.medium.blob, 'medium.jpg');
       formData.append('large', processed.large.blob, 'large.jpg');
 
-      // Upload all sizes to backend
-      const response = await api.post<AvatarUploadResponse>(`/users/${userId}/avatar`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 30000,
-      });
+      const headers = {
+        'Content-Type': 'multipart/form-data',
+        'X-User-Id': userId,
+      } as const;
 
-      console.log('✅ All avatar sizes uploaded to Bunny.net CDN:', response.data.avatar_urls);
+      // Try backend-preferred routes in order
+      const routes = [
+        { method: 'put', path: `/users/${userId}/avatar` },
+        { method: 'post', path: `/avatars/upload/${userId}` },
+        { method: 'post', path: `/users/${userId}/avatar` },
+      ] as const;
 
-      return response.data;
+      let lastErr: unknown = null;
+      for (const rinfo of routes) {
+        try {
+          const resp = await (rinfo.method === 'put'
+            ? api.put<AvatarUploadResponse>(rinfo.path, formData, { headers, timeout: 30000 })
+            : api.post<AvatarUploadResponse>(rinfo.path, formData, { headers, timeout: 30000 }));
+          console.log('✅ Avatar uploaded:', rinfo.path, resp.data.avatar_urls);
+          return resp.data;
+        } catch (err) {
+          lastErr = err;
+          continue;
+        }
+      }
+      handleApiError(lastErr, 'Upload avatar');
     } catch (e) {
       if (axios.isAxiosError(e)) {
         const errorMsg = e.response?.data?.detail || e.message || 'Failed to upload avatar';
@@ -657,7 +672,7 @@ export const apiClient = {
     for (const p of paths) {
       try {
         const r = await api.post<GalleryListResponse>(p, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: { 'Content-Type': 'multipart/form-data', 'X-User-Id': userId },
           timeout: 30000,
         });
         // Validate response user scope
@@ -684,7 +699,7 @@ export const apiClient = {
     let lastErr: unknown = null;
     for (const p of getPaths) {
       try {
-        const r = await api.get(p);
+        const r = await api.get(p, { headers: { 'X-User-Id': userId } });
         const responseUserId = r.data?.user_id as string | undefined;
         const items = (r.data?.items || []) as GalleryItem[];
         // Strict guard: if response envelope declares user_id, require match
@@ -696,8 +711,24 @@ export const apiClient = {
         if (anyUserIdPresent) {
           return items.filter((it) => it.user_id === undefined || it.user_id === userId);
         }
-        // If neither envelope nor item-level user_id, accept items as-is (assumed per-user path)
-        return items;
+        // If neither envelope nor item-level user_id, avoid ambiguous server data and fall back to local cache
+        console.warn('Gallery list response lacks user_id; using local cache to avoid cross-user leakage');
+        if (typeof window !== 'undefined') {
+          try {
+            const key = `userGallery:${userId}`;
+            const raw = window.localStorage.getItem(key) || '[]';
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              return arr.filter((u: unknown) => typeof u === 'string').map((u: string) => ({
+                id: `local-${Math.random().toString(36).slice(2)}`,
+                url: u,
+                caption: undefined,
+                created_at: new Date().toISOString(),
+              }));
+            }
+          } catch {}
+        }
+        return [];
       } catch (e) {
         lastErr = e;
         continue;
@@ -730,7 +761,7 @@ export const apiClient = {
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
-        const r = await api.put(p, data);
+        const r = await api.put(p, data, { headers: { 'X-User-Id': userId } });
         return r.data as GalleryItem;
       } catch (e) {
         lastErr = e;
@@ -746,7 +777,7 @@ export const apiClient = {
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
-        const r = await api.put(p, { ids: itemIds });
+        const r = await api.put(p, { ids: itemIds }, { headers: { 'X-User-Id': userId } });
         return r.data as { user_id: string; items: GalleryItem[] };
       } catch (e) {
         lastErr = e;
@@ -762,7 +793,7 @@ export const apiClient = {
     let lastErr: unknown = null;
     for (const p of paths) {
       try {
-        const r = await api.delete(p);
+        const r = await api.delete(p, { headers: { 'X-User-Id': userId } });
         return r.data as { ok: boolean };
       } catch (e) {
         lastErr = e;
