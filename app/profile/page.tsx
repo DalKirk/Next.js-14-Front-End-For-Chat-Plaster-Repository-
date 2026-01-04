@@ -209,6 +209,7 @@ function ProfilePageContent() {
         
         const fullProfile: UserProfile = {
           ...localProfile,
+          id: backendProfile.id,  // CRITICAL: Use backend ID, not localProfile ID
           username: backendProfile.display_name || backendProfile.username,
           // Prefer backend email; do not derive placeholder when viewing others
           email: backendProfile.email ?? localProfile.email,
