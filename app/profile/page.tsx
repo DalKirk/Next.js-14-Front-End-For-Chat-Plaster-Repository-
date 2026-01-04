@@ -777,6 +777,8 @@ function ProfilePageContent() {
                       userId={profile.id}
                       username={profile.username}
                       onItemsAdded={(items: GalleryItem[]) => {
+                        // Guard against unknown/invalid userId to prevent cross-user leakage
+                        if (!profile.id || profile.id === 'unknown') return;
                         try {
                           const key = `userGallery:${profile.id}`;
                           const raw = StorageUtils.safeGetItem(key) || '[]';
@@ -817,6 +819,11 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
   const [editingTitle, setEditingTitle] = useState<string>('');
 
   const refresh = useCallback(async () => {
+    // Bail out if userId is invalid to avoid using shared 'unknown' cache
+    if (!userId || userId === 'unknown') {
+      setItems([]);
+      return;
+    }
     try {
       const list = await apiClient.listGallery(userId);
       setItems(list);
