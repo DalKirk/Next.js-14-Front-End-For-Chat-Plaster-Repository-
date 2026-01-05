@@ -277,38 +277,6 @@ export default function HomePage() {
     };
   }, []);
 
-  // Prevent pull-to-refresh on mobile devices
-  useEffect(() => {
-    let lastTouchY = 0;
-    
-    const handleTouchStart = (e: TouchEvent) => {
-      lastTouchY = e.touches[0].clientY;
-    };
-    
-    const handleTouchMove = (e: TouchEvent) => {
-      const touchY = e.touches[0].clientY;
-      const touchDelta = touchY - lastTouchY;
-      
-      // Only prevent if:
-      // 1. At the top of the page AND
-      // 2. Trying to scroll down (pull down gesture)
-      if (window.scrollY === 0 && touchDelta > 0) {
-        e.preventDefault();
-      }
-      
-      lastTouchY = touchY;
-    };
-
-    // Add passive: false only to touchmove to allow preventDefault
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, []);
-
   useEffect(() => {
     // Compute scale based on container size and apply CSS variables
     let localScale = 1;
@@ -549,32 +517,24 @@ export default function HomePage() {
     const isGreeting = (s: string) => /\b(hi|hello|hey|welcome|greetings)\b/i.test(s);
     const isSelfIntro = (s: string) => /\b(i\s*'?m|i\s*am|my\s*name\s*is)\b/i.test(s);
     const mentionsClaude = (s: string) => /\bclaude\b/i.test(s);
-    const mentionsAssistant = (s: string) => /\b(ai\s+assistant|assistant)\b/i.test(s);
+    const mentionsAssistant = (s: string) => /\ban\s+ai\s+assistant\b/i.test(s);
     // Consider the first few lines for removal
-    for (let i = 0; i < Math.min(5, lines.length); i++) {
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
       const s = lines[i].trim();
-      if (!s) {
+      if (i === 0 && isGreeting(s)) {
         removeCount++;
         continue;
       }
-      // Remove greeting lines
-      if (isGreeting(s) && s.length < 50) {
-        removeCount++;
-        continue;
-      }
-      // Remove self-introduction lines
-      if (isSelfIntro(s) || mentionsClaude(s) || (mentionsAssistant(s) && s.length < 100)) {
+      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) {
         removeCount++;
         continue;
       }
       break;
     }
     let result = removeCount > 0 ? lines.slice(removeCount).join('\n').trimStart() : text;
-    // Secondary cleanup: remove residual phrases at start
-    result = result.replace(/^\s*(hi[,!]?\s*)?(i\'m\s+)?claude[,:.]?\s*/i, '');
-    result = result.replace(/^\s*i\'m\s+an?\s+ai\s+assistant[.,:;]?\s*/i, '');
-    result = result.replace(/^\s*(hello|hey|hi)[!,.]?\s*/i, '');
-    return result.trim();
+    // Secondary cleanup: remove residual "Claude" mentions at start
+    result = result.replace(/^\s*claude[:,]?\s*/i, '');
+    return result;
   };
   const checkAIHealth = async () => {
     try {
@@ -773,12 +733,10 @@ export default function HomePage() {
               key={`tab-${item.id}`}
               onClick={() => setActiveItem(item.id)}
               onTouchStart={(e) => {
-                e.stopPropagation();
                 setTouchedButton(item.id);
               }}
               onTouchEnd={(e) => {
-                e.stopPropagation();
-                setTimeout(() => setTouchedButton(null), 300);
+                setTimeout(() => setTouchedButton(null), 200);
               }}
               onMouseEnter={() => setTouchedButton(item.id)}
               onMouseLeave={() => setTouchedButton(null)}

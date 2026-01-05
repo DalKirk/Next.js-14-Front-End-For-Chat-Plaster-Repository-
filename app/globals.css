@@ -9,8 +9,6 @@
     -webkit-text-size-adjust: 100%;
     /* Fill available viewport height */
     height: -webkit-fill-available;
-    /* Prevent pull-to-refresh on mobile */
-    overscroll-behavior-y: contain;
   }
 
   body {
@@ -22,8 +20,6 @@
     overflow-y: auto;
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
-    /* Prevent pull-to-refresh on mobile */
-    overscroll-behavior-y: contain;
   }
 
   /* Custom scrollbar styles */
@@ -545,7 +541,10 @@
 .detail-content h2 { 
   font-size: 3rem; 
   margin-bottom: 1.5rem; 
-  color: #22d3ee !important; 
+  background: linear-gradient(135deg, #8a2be2, #9333ea); 
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+  background-clip: text; 
   font-weight: 900; 
 }
 
@@ -576,7 +575,6 @@
   border-left-color: #4b0082; 
 }
 
-/* Mobile-first styles for 320px+ */
 @media (max-width: 640px) {
   .orbit-icon { 
     width: 42px; 
@@ -590,49 +588,6 @@
   .orbit-item p { 
     font-size: 0.78rem; 
   }
-  
-  /* Detail panel mobile optimizations */
-  .detail-panel {
-    padding: 2rem 1.25rem;
-  }
-  
-  .detail-content h2 {
-    font-size: 2rem !important;
-  }
-  
-  .detail-close {
-    width: 36px;
-    height: 36px;
-    font-size: 1.5rem;
-    top: 1rem;
-    right: 1rem;
-  }
-}
-
-/* Extra small devices (320px - 374px) */
-@media (max-width: 374px) {
-  html {
-    font-size: 14px;
-  }
-  
-  .detail-content h2 {
-    font-size: 1.75rem !important;
-  }
-  
-  .detail-panel {
-    padding: 1.5rem 1rem;
-  }
-  
-  /* Reduce button padding for very small screens */
-  button {
-    font-size: 0.875rem !important;
-    padding: 0.625rem 1rem !important;
-  }
-  
-  /* Stack navigation elements */
-  .index-tab-button {
-    font-size: 0.75rem !important;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -644,21 +599,12 @@
 
 /* Touch-friendly index button expansion */
 @media (hover: none) and (pointer: coarse) {
-  .index-tab-button {
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease !important;
-  }
-  
   .index-tab-button:active {
     width: 11rem !important;
   }
   .index-tab-button:active .tab-text,
   .index-tab-button:active .tab-badge {
     opacity: 1 !important;
-    transition: opacity 0.3s ease !important;
-  }
-  
-  .tab-text, .tab-badge {
-    transition: opacity 0.3s ease !important;
   }
 }
 
