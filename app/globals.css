@@ -572,6 +572,7 @@
   border-left-color: #4b0082; 
 }
 
+/* Mobile-first styles for 320px+ */
 @media (max-width: 640px) {
   .orbit-icon { 
     width: 42px; 
@@ -584,6 +585,49 @@
   }
   .orbit-item p { 
     font-size: 0.78rem; 
+  }
+  
+  /* Detail panel mobile optimizations */
+  .detail-panel {
+    padding: 2rem 1.25rem;
+  }
+  
+  .detail-content h2 {
+    font-size: 2rem !important;
+  }
+  
+  .detail-close {
+    width: 36px;
+    height: 36px;
+    font-size: 1.5rem;
+    top: 1rem;
+    right: 1rem;
+  }
+}
+
+/* Extra small devices (320px - 374px) */
+@media (max-width: 374px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .detail-content h2 {
+    font-size: 1.75rem !important;
+  }
+  
+  .detail-panel {
+    padding: 1.5rem 1rem;
+  }
+  
+  /* Reduce button padding for very small screens */
+  button {
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
+  }
+  
+  /* Stack navigation elements */
+  .index-tab-button {
+    font-size: 0.75rem !important;
   }
 }
 
