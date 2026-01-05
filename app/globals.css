@@ -644,12 +644,21 @@
 
 /* Touch-friendly index button expansion */
 @media (hover: none) and (pointer: coarse) {
+  .index-tab-button {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease !important;
+  }
+  
   .index-tab-button:active {
     width: 11rem !important;
   }
   .index-tab-button:active .tab-text,
   .index-tab-button:active .tab-badge {
     opacity: 1 !important;
+    transition: opacity 0.3s ease !important;
+  }
+  
+  .tab-text, .tab-badge {
+    transition: opacity 0.3s ease !important;
   }
 }
 

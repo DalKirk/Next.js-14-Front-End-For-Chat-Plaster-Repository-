@@ -549,24 +549,32 @@ export default function HomePage() {
     const isGreeting = (s: string) => /\b(hi|hello|hey|welcome|greetings)\b/i.test(s);
     const isSelfIntro = (s: string) => /\b(i\s*'?m|i\s*am|my\s*name\s*is)\b/i.test(s);
     const mentionsClaude = (s: string) => /\bclaude\b/i.test(s);
-    const mentionsAssistant = (s: string) => /\ban\s+ai\s+assistant\b/i.test(s);
+    const mentionsAssistant = (s: string) => /\b(ai\s+assistant|assistant)\b/i.test(s);
     // Consider the first few lines for removal
-    for (let i = 0; i < Math.min(3, lines.length); i++) {
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
       const s = lines[i].trim();
-      if (i === 0 && isGreeting(s)) {
+      if (!s) {
         removeCount++;
         continue;
       }
-      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) {
+      // Remove greeting lines
+      if (isGreeting(s) && s.length < 50) {
+        removeCount++;
+        continue;
+      }
+      // Remove self-introduction lines
+      if (isSelfIntro(s) || mentionsClaude(s) || (mentionsAssistant(s) && s.length < 100)) {
         removeCount++;
         continue;
       }
       break;
     }
     let result = removeCount > 0 ? lines.slice(removeCount).join('\n').trimStart() : text;
-    // Secondary cleanup: remove residual "Claude" mentions at start
-    result = result.replace(/^\s*claude[:,]?\s*/i, '');
-    return result;
+    // Secondary cleanup: remove residual phrases at start
+    result = result.replace(/^\s*(hi[,!]?\s*)?(i\'m\s+)?claude[,:.]?\s*/i, '');
+    result = result.replace(/^\s*i\'m\s+an?\s+ai\s+assistant[.,:;]?\s*/i, '');
+    result = result.replace(/^\s*(hello|hey|hi)[!,.]?\s*/i, '');
+    return result.trim();
   };
   const checkAIHealth = async () => {
     try {
@@ -765,10 +773,12 @@ export default function HomePage() {
               key={`tab-${item.id}`}
               onClick={() => setActiveItem(item.id)}
               onTouchStart={(e) => {
+                e.stopPropagation();
                 setTouchedButton(item.id);
               }}
               onTouchEnd={(e) => {
-                setTimeout(() => setTouchedButton(null), 200);
+                e.stopPropagation();
+                setTimeout(() => setTouchedButton(null), 300);
               }}
               onMouseEnter={() => setTouchedButton(item.id)}
               onMouseLeave={() => setTouchedButton(null)}
