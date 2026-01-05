@@ -9,6 +9,9 @@
     -webkit-text-size-adjust: 100%;
     /* Fill available viewport height */
     height: -webkit-fill-available;
+    /* Prevent pull-to-refresh */
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
   }
 
   body {
@@ -20,6 +23,8 @@
     overflow-y: auto;
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
+    /* Prevent pull-to-refresh */
+    overscroll-behavior-y: contain;
   }
 
   /* Custom scrollbar styles */
@@ -599,12 +604,24 @@
 
 /* Touch-friendly index button expansion */
 @media (hover: none) and (pointer: coarse) {
+  .index-tab-button {
+    -webkit-tap-highlight-color: transparent;
+    transition: width 0.25s ease-out, transform 0.25s ease-out, background-color 0.2s ease, border-color 0.2s ease !important;
+  }
+  
   .index-tab-button:active {
     width: 11rem !important;
+    transform: translateX(4px) !important;
   }
+  
   .index-tab-button:active .tab-text,
   .index-tab-button:active .tab-badge {
     opacity: 1 !important;
+  }
+  
+  .tab-text,
+  .tab-badge {
+    transition: opacity 0.25s ease-out !important;
   }
 }
 

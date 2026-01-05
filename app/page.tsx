@@ -733,11 +733,13 @@ export default function HomePage() {
               key={`tab-${item.id}`}
               onClick={() => setActiveItem(item.id)}
               onTouchStart={(e) => {
+                e.currentTarget.style.pointerEvents = 'auto';
                 setTouchedButton(item.id);
               }}
               onTouchEnd={(e) => {
-                setTimeout(() => setTouchedButton(null), 200);
+                setTimeout(() => setTouchedButton(null), 250);
               }}
+              onTouchCancel={() => setTouchedButton(null)}
               onMouseEnter={() => setTouchedButton(item.id)}
               onMouseLeave={() => setTouchedButton(null)}
               style={
@@ -790,8 +792,12 @@ export default function HomePage() {
         {activeItem && (
           <button
             onClick={() => setActiveItem(null)}
-            onTouchStart={() => setTouchedButton('close')}
-            onTouchEnd={() => setTimeout(() => setTouchedButton(null), 200)}
+            onTouchStart={(e) => {
+              e.currentTarget.style.pointerEvents = 'auto';
+              setTouchedButton('close');
+            }}
+            onTouchEnd={() => setTimeout(() => setTouchedButton(null), 250)}
+            onTouchCancel={() => setTouchedButton(null)}
             onMouseEnter={() => setTouchedButton('close')}
             onMouseLeave={() => setTouchedButton(null)}
             style={
