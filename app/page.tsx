@@ -277,6 +277,25 @@ export default function HomePage() {
     };
   }, []);
 
+  // Prevent pull-to-refresh on mobile devices
+  useEffect(() => {
+    const preventPullToRefresh = (e: TouchEvent) => {
+      // Only prevent if at the top of the page
+      if (window.scrollY === 0) {
+        e.preventDefault();
+      }
+    };
+
+    // Add passive: false to allow preventDefault
+    document.addEventListener('touchstart', preventPullToRefresh, { passive: false });
+    document.addEventListener('touchmove', preventPullToRefresh, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchstart', preventPullToRefresh);
+      document.removeEventListener('touchmove', preventPullToRefresh);
+    };
+  }, []);
+
   useEffect(() => {
     // Compute scale based on container size and apply CSS variables
     let localScale = 1;

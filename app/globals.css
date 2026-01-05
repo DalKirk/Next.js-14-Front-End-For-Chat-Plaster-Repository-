@@ -9,6 +9,8 @@
     -webkit-text-size-adjust: 100%;
     /* Fill available viewport height */
     height: -webkit-fill-available;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
   }
 
   body {
@@ -20,6 +22,8 @@
     overflow-y: auto;
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
   }
 
   /* Custom scrollbar styles */
