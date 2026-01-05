@@ -279,20 +279,33 @@ export default function HomePage() {
 
   // Prevent pull-to-refresh on mobile devices
   useEffect(() => {
-    const preventPullToRefresh = (e: TouchEvent) => {
-      // Only prevent if at the top of the page
-      if (window.scrollY === 0) {
+    let lastTouchY = 0;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      lastTouchY = e.touches[0].clientY;
+    };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      const touchY = e.touches[0].clientY;
+      const touchDelta = touchY - lastTouchY;
+      
+      // Only prevent if:
+      // 1. At the top of the page AND
+      // 2. Trying to scroll down (pull down gesture)
+      if (window.scrollY === 0 && touchDelta > 0) {
         e.preventDefault();
       }
+      
+      lastTouchY = touchY;
     };
 
-    // Add passive: false to allow preventDefault
-    document.addEventListener('touchstart', preventPullToRefresh, { passive: false });
-    document.addEventListener('touchmove', preventPullToRefresh, { passive: false });
+    // Add passive: false only to touchmove to allow preventDefault
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
-      document.removeEventListener('touchstart', preventPullToRefresh);
-      document.removeEventListener('touchmove', preventPullToRefresh);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
     };
   }, []);
 
