@@ -1,4 +1,4 @@
-import React, { useState, DragEvent } from 'react';
+import React, { useState, DragEvent, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -7,43 +7,45 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   onFileContent?: (content: string, filename: string) => void;
 }
 
-export function Textarea({ label, error, className, onFileContent, ...props }: TextareaProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, error, className, onFileContent, ...props }, ref) => {
+    const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleDragOver = (e: DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
+  // Only attach drag handlers if onFileContent is provided
+  const dragHandlers = onFileContent ? {
+    onDragOver: (e: DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      setIsDragOver(true);
+    },
+    onDragLeave: (e: DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+    },
+    onDrop: (e: DragEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
 
-  const handleDragLeave = (e: DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
+      const files = Array.from(e.dataTransfer.files);
+      const textFiles = files.filter(file => 
+        file.type.startsWith('text/') || 
+        file.name.match(/\.(js|ts|jsx|tsx|py|html|css|json|md|txt|sql|sh|bash)$/i)
+      );
 
-  const handleDrop = (e: DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    const textFiles = files.filter(file => 
-      file.type.startsWith('text/') || 
-      file.name.match(/\.(js|ts|jsx|tsx|py|html|css|json|md|txt|sql|sh|bash)$/i)
-    );
-
-    if (textFiles.length > 0) {
-      const file = textFiles[0];
-      const reader = new FileReader();
-      
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
-        if (content && onFileContent) {
-          onFileContent(content, file.name);
-        }
-      };
-      
-      reader.readAsText(file);
+      if (textFiles.length > 0) {
+        const file = textFiles[0];
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+          const content = event.target?.result as string;
+          if (content && onFileContent) {
+            onFileContent(content, file.name);
+          }
+        };
+        
+        reader.readAsText(file);
+      }
     }
-  };
+  } : {};
 
   return (
     <div className="w-full">
@@ -54,6 +56,7 @@ export function Textarea({ label, error, className, onFileContent, ...props }: T
       )}
       <div className="relative">
         <textarea
+          ref={ref}
           className={cn(
             'w-full px-4 py-3 rounded-lg',
             'bg-white/10 border border-white/20',
@@ -67,9 +70,7 @@ export function Textarea({ label, error, className, onFileContent, ...props }: T
             isDragOver && 'border-blue-400 bg-blue-500/10 ring-2 ring-blue-500/50',
             className
           )}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          {...dragHandlers}
           {...props}
         />
         {isDragOver && (
@@ -85,4 +86,6 @@ export function Textarea({ label, error, className, onFileContent, ...props }: T
       )}
     </div>
   );
-}
+});
+
+Textarea.displayName = 'Textarea';
