@@ -22,11 +22,19 @@ class WebRTCManager {
       { urls: 'stun:stun2.l.google.com:19302' },
     ];
     // Optionally add TURN from environment (NEXT_PUBLIC_* only)
+    // Supports single URL via NEXT_PUBLIC_TURN_URL or comma-separated list via NEXT_PUBLIC_TURN_URLS
     const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+    const turnUrlsRaw = process.env.NEXT_PUBLIC_TURN_URLS;
     const turnUser = process.env.NEXT_PUBLIC_TURN_USERNAME;
     const turnPass = process.env.NEXT_PUBLIC_TURN_PASSWORD;
-    if (turnUrl && turnUser && turnPass) {
-      servers.push({ urls: turnUrl, username: turnUser, credential: turnPass });
+    const urlList: string[] = [];
+    if (turnUrlsRaw) {
+      turnUrlsRaw.split(',').map(u => u.trim()).filter(Boolean).forEach(u => urlList.push(u));
+    } else if (turnUrl) {
+      urlList.push(turnUrl);
+    }
+    if (urlList.length > 0 && turnUser && turnPass) {
+      servers.push({ urls: urlList.length === 1 ? urlList[0] : urlList, username: turnUser, credential: turnPass });
     }
     return servers;
   })();
@@ -45,7 +53,11 @@ class WebRTCManager {
     isOfferer: boolean,
     signalCallback: (userId: string, signal: any) => void
   ): Promise<RTCPeerConnection> {
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const forceRelay = String(process.env.NEXT_PUBLIC_FORCE_RELAY || '').toLowerCase() === 'true';
+    const pc = new RTCPeerConnection({
+      iceServers: this.iceServers,
+      iceTransportPolicy: forceRelay ? 'relay' : 'all',
+    });
 
     // Add local stream tracks (if broadcaster)
     if (this.localStream && this.isBroadcaster) {
@@ -58,6 +70,12 @@ class WebRTCManager {
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
+        try {
+          const candStr = event.candidate.candidate || '';
+          const typeMatch = candStr.match(/ typ ([a-zA-Z]+)/);
+          const candType = typeMatch ? typeMatch[1] : 'unknown';
+          console.log(`❄️ ICE candidate [${username}]:`, candType);
+        } catch {}
         signalCallback(userId, {
           type: 'ice-candidate',
           candidate: event.candidate,
@@ -79,6 +97,23 @@ class WebRTCManager {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         this.removePeer(userId);
         this.onPeerDisconnectedCallback?.(userId);
+      }
+      // Log selected candidate pair when connected
+      if (pc.connectionState === 'connected') {
+        pc.getStats(null).then((stats) => {
+          stats.forEach((report: any) => {
+            if (report.type === 'transport' && report.selectedCandidatePairId) {
+              const pair = stats.get(report.selectedCandidatePairId);
+              if (pair) {
+                const local = stats.get(pair.localCandidateId);
+                const remote = stats.get(pair.remoteCandidateId);
+                const lt = local?.candidateType || 'unknown';
+                const rt = remote?.candidateType || 'unknown';
+                console.log(`✅ Selected ICE pair [${username}]: local=${lt}, remote=${rt}`);
+              }
+            }
+          });
+        }).catch(() => {});
       }
     };
 
