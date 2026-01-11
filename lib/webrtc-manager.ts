@@ -10,7 +10,7 @@ type PeerConnection = {
 class WebRTCManager {
   private localStream: MediaStream | null = null;
   private peers: Map<string, PeerConnection> = new Map();
-  private isBroadcaster = false;
+  public isBroadcaster = false;
   private onRemoteStreamCallback?: (userId: string, stream: MediaStream) => void;
   private onPeerDisconnectedCallback?: (userId: string) => void;
 

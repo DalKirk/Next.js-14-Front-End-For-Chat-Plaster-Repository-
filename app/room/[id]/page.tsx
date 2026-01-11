@@ -722,13 +722,15 @@ export default function RoomPage() {
       // Handle WebRTC signaling for video streaming
       socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any }) => {
         console.log('📡 Received WebRTC signal from:', data.from_username, 'type:', data.signal.type);
+        console.log('   Current user ID:', currentUser.id, '| From user ID:', data.from_user_id);
+        console.log('   Is broadcaster:', webrtcManager.isBroadcaster);
         
         await webrtcManager.handleSignal(
           data.from_user_id,
           { ...data.signal, username: data.from_username },
           (targetUserId, signal) => {
             // Send signal back through WebSocket
-            console.log('📡 Sending WebRTC signal back:', signal.type, 'to:', data.from_username);
+            console.log('📡 Sending WebRTC signal back:', signal.type, 'to:', data.from_username, '(userId:', targetUserId, ')');
             socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
           }
         );
