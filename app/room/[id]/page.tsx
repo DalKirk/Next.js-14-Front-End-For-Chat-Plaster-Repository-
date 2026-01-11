@@ -721,6 +721,12 @@ export default function RoomPage() {
       
       // Handle WebRTC signaling for video streaming
       socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any }) => {
+        // Ignore signals from ourselves (backend echo)
+        if (data.from_user_id === currentUser.id) {
+          console.log('⚠️ Ignoring WebRTC signal from self');
+          return;
+        }
+        
         console.log('📡 Received WebRTC signal from:', data.from_username, 'type:', data.signal.type);
         console.log('   Current user ID:', currentUser.id, '| From user ID:', data.from_user_id);
         console.log('   Is broadcaster:', webrtcManager.isBroadcaster);
