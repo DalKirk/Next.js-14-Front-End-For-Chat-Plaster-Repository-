@@ -142,7 +142,7 @@ export function ConsentStep({ isAccepted, onAcceptChange, error }: ConsentStepPr
           <ul className="space-y-2 text-xs text-gray-400">
             <li className="flex items-start gap-2">
               <span className="text-purple-400 flex-shrink-0">•</span>
-              <span>You're responsible for your content</span>
+              <span>You&apos;re responsible for your content</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-purple-400 flex-shrink-0">•</span>

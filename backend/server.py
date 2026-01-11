@@ -227,6 +227,56 @@ async def get_messages(room_id: str):
         return messages
 
 
+class LiveStreamCreate(BaseModel):
+    title: str
+
+
+@router.post("/rooms/{room_id}/live-stream")
+async def create_live_stream(room_id: str, payload: LiveStreamCreate):
+    """Create a live stream session. Returns stream key and playback info."""
+    import uuid
+    
+    # Generate unique stream identifiers
+    stream_id = str(uuid.uuid4())
+    stream_key = f"stream_{stream_id[:8]}"
+    playback_id = f"playback_{stream_id[:8]}"
+    
+    # Return stream configuration
+    return {
+        "id": stream_id,
+        "title": payload.title,
+        "stream_key": stream_key,
+        "playback_id": playback_id,
+        "rtmp_url": "rtmp://rtmp.bunnycdn.com/live",
+        "status": "ready"
+    }
+
+
+class VideoUploadCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+
+@router.post("/rooms/{room_id}/video-upload")
+async def create_video_upload(room_id: str, payload: VideoUploadCreate):
+    """Create a video upload session. Returns upload URL and playback info."""
+    import uuid
+    
+    # Generate unique video identifiers
+    video_id = str(uuid.uuid4())
+    playback_id = f"playback_{video_id[:8]}"
+    
+    # Return upload configuration (frontend will handle actual upload)
+    return {
+        "id": video_id,
+        "upload_url": f"/api/upload/{video_id}",  # Placeholder - implement actual upload handling
+        "asset_id": video_id,
+        "playback_id": playback_id,
+        "title": payload.title,
+        "description": payload.description
+    }
+
+
 app = FastAPI()
 
 # CORS setup

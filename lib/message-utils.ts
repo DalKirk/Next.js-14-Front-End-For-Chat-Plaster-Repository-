@@ -120,9 +120,21 @@ export function applyMessageForRender(
     }
     return undefined;
   })();
+  // Create a stable synthetic ID when none provided to avoid React key flicker
+  const stableHash = (str: string) => {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0; // 32-bit
+    }
+    return Math.abs(h).toString(36);
+  };
+  const timestampNorm = payload.timestamp || payload.created_at || '';
+  const composite = `${opts.roomId}|${incomingUserId}|${username}|${payload.title || ''}|${payload.playback_id || ''}|${timestampNorm}|${(payload.content || '')}`;
+  const syntheticId = `synthetic-${stableHash(composite)}`;
 
   return {
-    id: payload.id || payload.message_id || `msg-${Date.now()}-${Math.random()}`,
+    id: payload.id || payload.message_id || syntheticId,
     room_id: opts.roomId,
     user_id: incomingUserId,
     username,

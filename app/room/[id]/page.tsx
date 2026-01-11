@@ -10,6 +10,10 @@ import { Modal } from '@/components/ui/modal';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { StorageManager } from '@/lib/storage-manager';
 import { VideoPlayer } from '@/components/video/video-player';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
+import { LiveStream } from '@/components/video/live-stream';
+import { StreamViewer } from '@/components/video/stream-viewer';
+import { webrtcManager } from '@/lib/webrtc-manager';
 // import { useChat } from '@/hooks/use-chat'; // Reserved for future use
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
@@ -24,6 +28,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 // Interface for WebSocket messages
 interface WebSocketMessage {
@@ -61,6 +66,7 @@ export default function RoomPage() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showStopStreamModal, setShowStopStreamModal] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showScrollControls, setShowScrollControls] = useState(false);
@@ -71,9 +77,22 @@ export default function RoomPage() {
   const [, setConnectionAttempts] = useState(0);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDesktopMenu, setShowDesktopMenu] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const lastMessageCountRef = useRef<number>(0);
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setAvatarDirectory] = useState<Record<string, string>>({});
+  const [isLiveStreamMode, setIsLiveStreamMode] = useState(false); // Toggle between live stream and video playback
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null); // Incoming stream from broadcaster
+  const [broadcasterName, setBroadcasterName] = useState<string>(''); // Name of active broadcaster
+  const isBroadcastingRef = useRef(false); // Track if currently broadcasting to prevent double notifications
+  const [showMobileChatOverlay, setShowMobileChatOverlay] = useState(true); // Mobile chat overlay visibility
+  const [presentUsers, setPresentUsers] = useState<Set<string>>(new Set()); // Track users present in room
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // Video framing controls
+  const [fitMode, setFitMode] = useState<'cover' | 'contain'>('cover');
+  const [centerBias, setCenterBias] = useState<boolean>(false);
 
   // Prevent viewport zoom on mobile when focusing inputs
   useEffect(() => {
@@ -99,6 +118,7 @@ export default function RoomPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializedRef = useRef(false); // Prevent double initialization
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingDebounceRef = useRef<NodeJS.Timeout | null>(null); // Debounce typing ping to reduce lag
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -130,6 +150,17 @@ export default function RoomPage() {
       scrollToBottom();
     }
   }, [messages, isAtBottom]);
+
+  // Seed present users with current user once available
+  useEffect(() => {
+    if (user?.id) {
+      setPresentUsers(prev => {
+        const updated = new Set(prev);
+        updated.add(user.id);
+        return updated;
+      });
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     // Prevent double initialization (React StrictMode in dev)
@@ -229,8 +260,9 @@ export default function RoomPage() {
     
     // Cleanup WebSocket on unmount
     return () => {
-      console.log('🧹 Cleaning up room - disconnecting WebSocket');
+      console.log('🧹 Cleaning up room - disconnecting WebSocket and WebRTC');
       socketManager.disconnect();
+      webrtcManager.cleanup();
       setWsConnected(false);
       setIsConnected(false);
       isInitializedRef.current = false; // Reset for next mount
@@ -587,12 +619,18 @@ export default function RoomPage() {
         });
 
         // If this message indicates a video upload/start, add the user to hosts set so all their messages are highlighted
-        if (newMessage.playback_id || newMessage.type === 'video_ready' || newMessage.type === 'live_stream_created') {
+        if (newMessage.playback_id || newMessage.type === 'video_ready') {
           setHosts(prev => {
             const copy = new Set(prev);
             if (newMessage.user_id) copy.add(newMessage.user_id);
             return copy;
           });
+        }
+        
+        // Don't display live stream start/stop notifications in chat
+        if (newMessage.type === 'live_stream_created') {
+          console.log('🔴 Live stream notification (not adding to chat):', newMessage.content);
+          return;
         }
         
         setMessages(prev => {
@@ -634,6 +672,22 @@ export default function RoomPage() {
         if (data.type === 'user_joined' || data.type === 'typing_start' || data.type === 'typing_stop') {
           cacheUserProfile(data.user_id, data.username, data.avatar_url);
         }
+
+        // Track present users for real-time viewer count
+        if (data.type === 'user_joined' && data.user_id) {
+          setPresentUsers(prev => {
+            const updated = new Set(prev);
+            updated.add(data.user_id!);
+            return updated;
+          });
+        }
+        if ((data.type === 'user_left' || data.type === 'user_disconnected') && data.user_id) {
+          setPresentUsers(prev => {
+            const updated = new Set(prev);
+            updated.delete(data.user_id!);
+            return updated;
+          });
+        }
       });
       
       // Handle typing indicators
@@ -658,6 +712,51 @@ export default function RoomPage() {
         }
       });
       
+      // Handle WebRTC signaling for video streaming
+      socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any }) => {
+        console.log('📡 Received WebRTC signal from:', data.from_username);
+        
+        await webrtcManager.handleSignal(
+          data.from_user_id,
+          { ...data.signal, username: data.from_username },
+          (targetUserId, signal) => {
+            // Send signal back through WebSocket
+            socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
+          }
+        );
+      });
+
+      // Handle broadcaster start/stop notifications
+      socketManager.on('broadcast-started', (data: { user_id: string; username: string }) => {
+        console.log('📡 Broadcast started by:', data.username);
+        setBroadcasterName(data.username);
+        
+        // If we're a viewer, connect to broadcaster
+        if (currentUser && data.user_id !== currentUser.id) {
+          webrtcManager.createPeerConnection(
+            data.user_id,
+            data.username,
+            true, // Viewer creates offer
+            (targetUserId, signal) => {
+              socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
+            }
+          );
+        }
+      });
+
+      socketManager.on('broadcast-stopped', () => {
+        console.log('📡 Broadcast stopped');
+        setBroadcasterName('');
+        setRemoteStream(null);
+      });
+
+      // Set up remote stream handler
+      webrtcManager.onRemoteStream((userId, stream) => {
+        console.log('📺 Received remote stream from:', userId);
+        setRemoteStream(stream);
+        setIsLiveStreamMode(false); // Switch to watch mode
+      });
+      
     } catch (error) {
       console.error('❌ WebSocket connection failed:', error);
       setIsConnected(false);
@@ -674,17 +773,19 @@ export default function RoomPage() {
     try {
       const roomMessages = await apiClient.getRoomMessages(roomId, 100);
       
-      // Normalize and sanitize messages for rendering
-      const validMessages = roomMessages.map(msg => applyMessageForRender(msg as import('@/types/backend').BackendMessage, {
-        roomId,
-        currentUser: effectiveUser,
-        currentUserAvatar: effectiveAvatar,
-      }));
+      // Normalize and sanitize messages for rendering, filter out live stream notifications
+      const validMessages = roomMessages
+        .filter(msg => (msg.type !== 'live_stream_created' && (msg as any).message_type !== 'live_stream_created'))
+        .map(msg => applyMessageForRender(msg as import('@/types/backend').BackendMessage, {
+          roomId,
+          currentUser: effectiveUser,
+          currentUserAvatar: effectiveAvatar,
+        }));
 
       // Update host list (any message that has playback_id or is a video notification)
       const computedHosts = new Set<string>();
       validMessages.forEach(m => {
-        if (m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created') {
+        if (m.playback_id || m.type === 'video_ready') {
           computedHosts.add(m.user_id);
         }
       });
@@ -766,14 +867,15 @@ export default function RoomPage() {
       console.error('❌ Failed to load messages from backend:', error);
       
       // Load local messages as fallback
-      const localMessages = JSON.parse(localStorage.getItem(`room-${roomId}-messages`) || '[]');
+      const localMessages = JSON.parse(localStorage.getItem(`room-${roomId}-messages`) || '[]')
+        .filter((m: Message) => (m.type !== 'live_stream_created' && (m as any).message_type !== 'live_stream_created'));
       if (localMessages.length > 0) {
         console.log('📦 Loaded', localMessages.length, 'messages from localStorage');
         setMessages(localMessages);
         // Compute hosts from local messages as well
         const localHosts = new Set<string>();
         localMessages.forEach((m: Message) => {
-          if (m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created') {
+          if (m.playback_id || m.type === 'video_ready') {
             localHosts.add(m.user_id);
           }
         });
@@ -968,19 +1070,24 @@ export default function RoomPage() {
     setMessage(formattedContent);
   };
 
-  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.value;
     setMessage(value);
     
     // Send typing indicator
     if (value.trim() && wsConnected) {
-      socketManager.sendTypingIndicator(true);
-      
-      // Clear existing timeout
+      // Debounce typing start to reduce rapid network calls
+      if (typingDebounceRef.current) {
+        clearTimeout(typingDebounceRef.current);
+      }
+      typingDebounceRef.current = setTimeout(() => {
+        socketManager.sendTypingIndicator(true);
+      }, 150);
+
+      // Clear existing stop-typing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      
       // Stop typing after 2 seconds of no input
       typingTimeoutRef.current = setTimeout(() => {
         socketManager.sendTypingIndicator(false);
@@ -990,11 +1097,15 @@ export default function RoomPage() {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (typingDebounceRef.current) {
+        clearTimeout(typingDebounceRef.current);
+        typingDebounceRef.current = null;
+      }
       socketManager.sendTypingIndicator(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // Enter without Shift = Send message
     // Shift+Enter = New line
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1002,6 +1113,35 @@ export default function RoomPage() {
       handleSendMessage();
     }
     // Allow Shift+Enter to create newlines naturally
+  };
+  // Auto-show mobile chat overlay when new messages arrive (no auto-hide to prevent flicker)
+  useEffect(() => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (!isMobile) return;
+
+    if (messages.length > lastMessageCountRef.current) {
+      // New message arrived
+      setShowMobileChatOverlay(true);
+      // Disabled auto-hide: keep overlay visible to avoid blinking
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+    }
+    lastMessageCountRef.current = messages.length;
+
+    return () => {
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+    };
+  }, [messages]);
+
+  const handleStopStream = () => {
+    setIsLiveStreamMode(false);
+    setShowStopStreamModal(false);
+    toast.success('Live stream ended', { duration: 2000 });
   };
 
   const handleLiveStream = async () => {
@@ -1012,72 +1152,18 @@ export default function RoomPage() {
 
     setIsLoading(true);
     try {
-      console.log('🎥 Creating live stream:', videoTitle);
-      const stream = await apiClient.createLiveStream(roomId, videoTitle.trim());
-      console.log('✅ Live stream created:', stream);
+      console.log('🎥 Starting live stream:', videoTitle);
       
-      // Verify we have required data
-      if (!stream.playback_id) {
-        toast.error('⚠️ Live stream created but missing playback ID. Check backend Bunny.net configuration.');
-        console.error('Missing playback_id in stream response:', stream);
-      }
+      toast.success(`✅ Starting live stream: ${videoTitle}`, { duration: 3000 });
       
-      if (!stream.stream_key) {
-        toast.error('⚠️ Live stream created but missing stream key. Check backend Bunny.net configuration.');
-        console.error('Missing stream_key in stream response:', stream);
-      }
-      
-      // Create a video message with live stream info
-      const streamMessage: Message = {
-        id: `stream-${Date.now()}`,
-        room_id: roomId,
-        user_id: user.id,
-        username: user.username,
-        content: `🔴 Started live stream: ${videoTitle}`,
-        timestamp: new Date().toISOString(),
-        type: 'live_stream_created',
-        title: videoTitle,
-        playback_id: stream.playback_id,
-        stream_key: stream.stream_key,
-        avatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random&size=128`
-      };
-      
-      // Add to messages immediately
-      setMessages(prev => [...prev, streamMessage]);
-      
-      // Also send via WebSocket if connected
-      if (wsConnected && socketManager.isConnected()) {
-        try {
-          // Send as JSON string with proper structure
-          const wsMessage = {
-            type: 'live_stream_created',
-            content: streamMessage.content,
-            title: videoTitle,
-            playback_id: stream.playback_id,
-            stream_key: stream.stream_key
-          };
-          socketManager.sendMessage(JSON.stringify(wsMessage));
-          console.log('📤 Sent live stream message via WebSocket');
-        } catch (wsError) {
-          console.error('Failed to send via WebSocket:', wsError);
-        }
-      }
-      
-      toast.success(`✅ Live stream created!`, { duration: 3000 });
-      
-      // Show detailed stream info
-      setTimeout(() => {
-        toast.success(
-          `RTMP URL: ${stream.rtmp_url || 'rtmp://rtmp.bunnycdn.com/live'}\nStream Key: ${stream.stream_key}`,
-          { duration: 15000 }
-        );
-      }, 1000);
+      // Activate live stream mode to show camera
+      setIsLiveStreamMode(true);
       
       setShowVideoModal(false);
       setVideoTitle('');
     } catch (error) {
-      toast.error('Failed to create live stream. Please check backend connection.');
-      console.error('Error creating live stream:', error);
+      toast.error('Failed to start live stream.');
+      console.error('Error starting live stream:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1244,28 +1330,132 @@ export default function RoomPage() {
           </div>
           
           <div className="flex items-center space-x-2">
-            {/* Desktop buttons (>450px) */}
-            <div className="hidden min-[450px]:flex items-center space-x-2">
+            {/* Desktop hamburger menu in header (>450px) */}
+            <div className="hidden min-[450px]:block relative">
               <Button
-                onClick={() => setShowVideoModal(true)}
+                onClick={() => setShowHeaderMenu(!showHeaderMenu)}
                 variant="secondary"
                 size="sm"
-                className="text-xs sm:text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
+                className="bg-transparent border-transparent hover:bg-transparent p-2"
+                title="Menu"
               >
-                <VideoCameraIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">🔴 Live</span>
-                <span className="sm:hidden">🔴</span>
+                <div className="w-6 h-5 flex flex-col justify-between">
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
+                  <div className="w-full h-0.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.85)]"></div>
+                </div>
               </Button>
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                variant="secondary"
-                size="sm"
-                className="text-xs sm:text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
-              >
-                <DocumentIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">📹 Upload</span>
-                <span className="sm:hidden">📹</span>
-              </Button>
+
+              {showHeaderMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="absolute right-0 top-10 bg-gradient-to-br from-black/80 via-slate-900/80 to-black/80 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-black/50 z-[100] min-w-[220px]"
+                >
+                  <div className="p-2 space-y-2">
+                    {/* Stream Mode Controls */}
+                    <div className="border-b border-slate-700/50 pb-2 mb-2">
+                      <div className="text-xs text-slate-400 mb-2 px-2">Stream Mode</div>
+                      {!isLiveStreamMode ? (
+                        <Button
+                          onClick={() => { setIsLiveStreamMode(false); setShowHeaderMenu(false); }}
+                          variant="secondary"
+                          size="sm"
+                          className={`w-full justify-start text-sm mb-1 ${
+                            !isLiveStreamMode 
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
+                              : 'border-slate-700/50 hover:border-cyan-400/60'
+                          }`}
+                        >
+                          👁️ Watch Mode
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => { setShowStopStreamModal(true); setShowHeaderMenu(false); }}
+                          variant="secondary"
+                          size="sm"
+                          className="w-full justify-start text-sm bg-red-500/20 text-red-300 border-red-500/50 mb-1"
+                        >
+                          🛑 End Live
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => { setIsLiveStreamMode(true); setShowHeaderMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm ${
+                          isLiveStreamMode 
+                            ? 'bg-green-500/20 text-green-300 border-green-500/50' 
+                            : 'border-slate-700/50 hover:border-green-400/60'
+                        }`}
+                      >
+                        🟢 Go Live
+                      </Button>
+                    </div>
+
+                    {/* Framing Controls */}
+                    <div className="border-b border-slate-700/50 pb-2 mb-2">
+                      <div className="text-xs text-slate-400 mb-2 px-2">Framing</div>
+                      <Button
+                        onClick={() => { setFitMode('cover'); setShowHeaderMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm mb-1 ${
+                          fitMode === 'cover'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🔲 Fill (Cover)
+                      </Button>
+                      <Button
+                        onClick={() => { setFitMode('contain'); setShowHeaderMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm mb-1 ${
+                          fitMode === 'contain'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🧩 Fit (Contain)
+                      </Button>
+                      <Button
+                        onClick={() => { setCenterBias(!centerBias); setShowHeaderMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm ${
+                          centerBias
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🎯 Centering {centerBias ? 'On' : 'Off'}
+                      </Button>
+                    </div>
+
+                    {/* Video Actions */}
+                    <Button
+                      onClick={() => { setShowVideoModal(true); setShowHeaderMenu(false); }}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
+                    >
+                      <VideoCameraIcon className="w-4 h-4 mr-2" />
+                      📡 Stream Settings
+                    </Button>
+                    <Button
+                      onClick={() => { setShowUploadModal(true); setShowHeaderMenu(false); }}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
+                    >
+                      <DocumentIcon className="w-4 h-4 mr-2" />
+                      📹 Upload Video
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
             </div>
             
             {/* Mobile hamburger menu (<=450px) */}
@@ -1290,6 +1480,87 @@ export default function RoomPage() {
                   className="absolute right-0 top-12 bg-gradient-to-br from-black/80 via-slate-900/80 to-black/80 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-black/50 z-[100] min-w-[180px]"
                 >
                   <div className="p-2 space-y-2">
+                    {/* Stream Mode Controls */}
+                    <div className="border-b border-slate-700/50 pb-2 mb-2">
+                      <div className="text-xs text-slate-400 mb-2 px-2">Stream Mode</div>
+                      <Button
+                        onClick={() => {
+                          if (isLiveStreamMode) {
+                            setShowStopStreamModal(true);
+                          } else {
+                            setIsLiveStreamMode(false);
+                          }
+                          setShowMobileMenu(false);
+                        }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm mb-1 ${
+                          !isLiveStreamMode 
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        👁️ Watch Mode
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setIsLiveStreamMode(true);
+                          setShowMobileMenu(false);
+                        }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm ${
+                          isLiveStreamMode 
+                            ? 'bg-red-500/20 text-red-300 border-red-500/50' 
+                            : 'border-slate-700/50 hover:border-red-400/60'
+                        }`}
+                      >
+                        🔴 Go Live
+                      </Button>
+                    </div>
+                    
+                    {/* Framing Controls */}
+                    <div className="border-b border-slate-700/50 pb-2 mb-2">
+                      <div className="text-xs text-slate-400 mb-2 px-2">Framing</div>
+                      <Button
+                        onClick={() => { setFitMode('cover'); setShowMobileMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm mb-1 ${
+                          fitMode === 'cover'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🔲 Fill (Cover)
+                      </Button>
+                      <Button
+                        onClick={() => { setFitMode('contain'); setShowMobileMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm mb-1 ${
+                          fitMode === 'contain'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🧩 Fit (Contain)
+                      </Button>
+                      <Button
+                        onClick={() => { setCenterBias(!centerBias); setShowMobileMenu(false); }}
+                        variant="secondary"
+                        size="sm"
+                        className={`w-full justify-start text-sm ${
+                          centerBias
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'border-slate-700/50 hover:border-cyan-400/60'
+                        }`}
+                      >
+                        🎯 Centering {centerBias ? 'On' : 'Off'}
+                      </Button>
+                    </div>
+                    
+                    {/* Video Actions */}
                     <Button
                       onClick={() => {
                         setShowVideoModal(true);
@@ -1300,7 +1571,7 @@ export default function RoomPage() {
                       className="w-full justify-start text-sm border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(34,211,238,0.35)]"
                     >
                       <VideoCameraIcon className="w-4 h-4 mr-2" />
-                      🔴 Live Stream
+                      📡 Stream Settings
                     </Button>
                     <Button
                       onClick={() => {
@@ -1324,14 +1595,224 @@ export default function RoomPage() {
 
       {/* Messages Area */}
       <div className="flex-1 mx-2 sm:mx-4 mb-2 sm:mb-4 flex flex-col relative min-h-0">
-        {/* Split screen container: messages on left, video on right */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+        {/* Mobile View (320px to 1023px) - Fullscreen video with chat overlay */}
+        <div className="lg:hidden fixed inset-0 top-0">
+          {/* Video Background - Full Screen */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black">
+            {isLiveStreamMode ? (
+              user && (
+                <LiveStream
+                  roomId={roomId}
+                  userId={user.id}
+                  username={user.username}
+                  fitMode={fitMode}
+                  centerBias={centerBias}
+                  onStreamStart={(stream) => {
+                    console.log('📡 Stream started:', stream);
+                    if (!isBroadcastingRef.current) {
+                      isBroadcastingRef.current = true;
+                      socketManager.notifyBroadcastStarted(roomId);
+                    }
+                  }}
+                  onStreamStop={() => {
+                    console.log('🛑 Stream stopped');
+                    if (isBroadcastingRef.current) {
+                      isBroadcastingRef.current = false;
+                      // Guard against WS not connected to avoid console error
+                      if (wsConnected && socketManager.isConnected()) {
+                        socketManager.notifyBroadcastStopped(roomId);
+                      }
+                      webrtcManager.cleanup();
+                    }
+                  }}
+                  className="w-full h-full"
+                />
+              )
+            ) : remoteStream ? (
+              <StreamViewer 
+                stream={remoteStream}
+                username={broadcasterName}
+                fitMode={fitMode}
+                centerBias={centerBias}
+                className="w-full h-full"
+              />
+            ) : (
+              (() => {
+                const latestVideo = [...messages].reverse().find(m => m.playback_id || m.type === 'video_ready');
+                if (latestVideo && latestVideo.playback_id) {
+                  return (
+                    <VideoPlayer playbackId={latestVideo.playback_id} title={latestVideo.title} autoPlay muted className="w-full h-full" />
+                  );
+                }
+                return (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black via-slate-950 to-black">
+                    <div className="text-center">
+                      <div className="w-32 h-32 mx-auto mb-4 bg-slate-800 rounded-full flex items-center justify-center">
+                        <svg className="w-16 h-16 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                      <p className="text-white text-lg font-medium">{isLiveStreamMode ? 'Live Stream Active' : 'Ready to Stream'}</p>
+                      <p className="text-slate-400 text-sm mt-2">Camera feed will appear here</p>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+
+          {/* Overlay badges in top corners */}
+          {isLiveStreamMode && (
+            <div className="absolute top-20 left-4 z-40">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/90 backdrop-blur-sm">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                <span className="text-white text-sm font-semibold">LIVE</span>
+              </div>
+            </div>
+          )}
+          <div className="absolute top-20 right-4 z-40">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              <span className="text-white text-sm font-semibold">{presentUsers.size}</span>
+            </div>
+          </div>
+
+          {/* Top Bar - Mobile */}
+          <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/60 to-transparent p-4">
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => router.push('/chat')}
+                className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
+              >
+                <ArrowLeftIcon className="w-5 h-5 text-white" />
+              </button>
+              <div />
+            </div>
+
+            {/* Room title removed per request */}
+          </div>
+
+          {/* Chat Overlay - Mobile (lower third, auto-hide) */}
+          {showMobileChatOverlay && messages.length > 0 && (
+            <div className="absolute bottom-[110px] left-0 right-0 z-20 max-h-[22vh] pointer-events-none">
+              <div className="px-3 pb-2 space-y-1 overflow-y-auto pointer-events-auto flex flex-col justify-end bg-black/25 rounded-lg">
+                {messages
+                  .filter(msg => (msg.type !== 'live_stream_created' && (msg as any).message_type !== 'live_stream_created'))
+                  .slice(-5)
+                  .map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="text-left flex items-start gap-1.5 max-w-[80%]"
+                  >
+                    <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0 border border-cyan-400/50">
+                      <ResponsiveAvatar 
+                        avatarUrls={msg.avatar_urls || (msg.avatar ? { thumbnail: msg.avatar, small: msg.avatar, medium: msg.avatar, large: msg.avatar } : undefined)} 
+                        username={msg.username} 
+                        size="thumbnail" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-[11px] text-cyan-400">
+                        {msg.username}:
+                      </span>
+                      {' '}
+                      <span className="text-white/90 text-[11px] leading-snug">{msg.content}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Controls - Mobile */}
+          <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3">
+            {/* Message Input */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }} 
+              className="mb-3"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    handleMessageChange(e);
+                  }}
+                  onKeyDown={handleKeyPress}
+                  className="flex-1 px-3 py-2 rounded-full bg-slate-800/90 backdrop-blur-sm text-white placeholder-slate-400 border border-slate-700 focus:outline-none focus:border-cyan-500 transition-colors text-sm"
+                  style={{ fontSize: '14px' }}
+                />
+                <button 
+                  type="submit"
+                  disabled={!message.trim()}
+                  className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/20"
+                >
+                  <PaperAirplaneIcon className="w-5 h-5 text-white -rotate-45" />
+                </button>
+              </div>
+            </form>
+
+            {/* Control Buttons */}
+            <div className="flex items-center justify-center gap-2 px-2">
+              <button 
+                onClick={() => setShowMobileChatOverlay(!showMobileChatOverlay)}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-800/90 backdrop-blur-sm flex items-center justify-center hover:bg-slate-700 transition-all border border-slate-700/50 shadow-lg"
+                title="Toggle chat"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+              </button>
+
+              <button 
+                onClick={() => isLiveStreamMode ? setShowStopStreamModal(true) : setShowVideoModal(true)}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all border shadow-lg ${
+                  isLiveStreamMode 
+                    ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30 border-white/10' 
+                    : 'bg-slate-800/90 hover:bg-slate-700 shadow-slate-900/50 border-slate-700/50'
+                } backdrop-blur-sm`}
+                title={isLiveStreamMode ? 'Stop streaming' : 'Start live stream'}
+              >
+                {isLiveStreamMode ? (
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" fill="none" strokeWidth="2" opacity="0.5"/>
+                  </svg>
+                )}
+              </button>
+
+              <button 
+                onClick={() => setShowUploadModal(true)}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-800/90 backdrop-blur-sm flex items-center justify-center hover:bg-slate-700 transition-colors border border-slate-700/50 shadow-lg"
+                title="Upload video"
+              >
+                <DocumentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop View (1024px+) - Split screen container: messages on left, video on right */}
+        <div className="hidden lg:flex flex-1 flex-col lg:flex-row gap-4 min-h-0">
           {/* Messages column */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card w-full lg:w-1/2 flex flex-col min-h-0 border border-slate-700/50 shadow-black/50 order-2 lg:order-1"
+            className="w-full lg:w-1/2 flex flex-col min-h-0 order-2 lg:order-1 bg-transparent"
             style={{ maxHeight: 'calc(100vh - 100px)' }}
           >
           {/* Messages List */}
@@ -1361,8 +1842,10 @@ export default function RoomPage() {
             ) : (
               <>
                 <div className="space-y-2">
-                  {messages.map((msg, index) => (
-                    <div key={index} className="mb-2">
+                        {messages
+                    .filter(msg => (msg.type !== 'live_stream_created' && (msg as any).message_type !== 'live_stream_created'))
+                          .map((msg, index) => (
+                            <div key={msg.id} className="mb-2">
                       <MessageBubble
                         message={msg}
                         isOwn={msg.user_id === user?.id}
@@ -1423,20 +1906,123 @@ export default function RoomPage() {
         {/* Video column */}
         <div className="w-full lg:w-1/2 flex flex-col min-h-0 order-1 lg:order-2">
           <div className="glass-card flex-1 border border-slate-700/50 shadow-black/50 p-4 flex flex-col min-h-0">
-            <h3 className="text-slate-300 font-semibold mb-3">Video</h3>
-            <div className="flex-1 min-h-0">
-              {/* VideoPlayer will render the most recent video message (playback_id) */}
-              {(() => {
-                const latestVideo = [...messages].reverse().find(m => m.playback_id || m.type === 'video_ready' || m.type === 'live_stream_created');
-                if (latestVideo && latestVideo.playback_id) {
+            {/* Video Mode Toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-slate-300 font-semibold">Video</h3>
+              <div className="flex items-center space-x-2">
+                {!isLiveStreamMode ? (
+                  <button
+                    onClick={() => setIsLiveStreamMode(false)}
+                    className={`px-3 py-1 rounded text-sm transition-all ${
+                      !isLiveStreamMode 
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50' 
+                        : 'bg-white/5 text-white/50 hover:bg-white/10'
+                    }`}
+                  >
+                    Watch
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowStopStreamModal(true)}
+                    className="px-3 py-1 rounded text-sm transition-all bg-red-500/20 text-red-300 border border-red-500/50"
+                    title="End Live"
+                  >
+                    End Live
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsLiveStreamMode(true)}
+                  className={`px-3 py-1 rounded text-sm transition-all ${
+                    isLiveStreamMode 
+                      ? 'bg-green-500/20 text-green-300 border border-green-500/50' 
+                      : 'bg-white/5 text-white/50 hover:bg-white/10'
+                  }`}
+                >
+                  Go Live
+                </button>
+
+                {/* Desktop hamburger menu removed from video section; moved to header */}
+              </div>
+            </div>
+            
+            <div className="flex-1 min-h-0 relative">
+              {isLiveStreamMode ? (
+                /* Live Stream Mode - User is broadcasting */
+                user && (
+                  <LiveStream
+                    roomId={roomId}
+                    userId={user.id}
+                    username={user.username}
+                    fitMode={fitMode}
+                    centerBias={centerBias}
+                    onStreamStart={(stream) => {
+                      console.log('📡 Stream started:', stream);
+                      // Notify room that broadcast started (only once)
+                      if (!isBroadcastingRef.current) {
+                        isBroadcastingRef.current = true;
+                        socketManager.notifyBroadcastStarted(roomId);
+                      }
+                    }}
+                    onStreamStop={() => {
+                      console.log('🛑 Stream stopped');
+                      // Notify room that broadcast stopped (only once)
+                      if (isBroadcastingRef.current) {
+                        isBroadcastingRef.current = false;
+                        if (wsConnected && socketManager.isConnected()) {
+                          socketManager.notifyBroadcastStopped(roomId);
+                        }
+                        webrtcManager.cleanup();
+                      }
+                    }}
+                    className="h-full"
+                  />
+                )
+              ) : remoteStream ? (
+                /* Viewing Live Stream from another user */
+                <StreamViewer 
+                  stream={remoteStream}
+                  username={broadcasterName}
+                  fitMode={fitMode}
+                  centerBias={centerBias}
+                  className="h-full"
+                />
+              ) : (
+                /* Video Playback Mode - Recorded videos */
+                (() => {
+                  const latestVideo = [...messages].reverse().find(m => m.playback_id || m.type === 'video_ready');
+                  if (latestVideo && latestVideo.playback_id) {
+                    return (
+                      <VideoPlayer playbackId={latestVideo.playback_id} title={latestVideo.title} autoPlay muted className="w-full h-full" />
+                    );
+                  }
                   return (
-                    <VideoPlayer playbackId={latestVideo.playback_id} title={latestVideo.title} autoPlay muted className="w-full h-full" />
+                    <div className="h-full w-full flex items-center justify-center text-slate-500">
+                      <div className="text-center space-y-2">
+                        <p>No video playing</p>
+                        <p className="text-sm text-white/40">Switch to &quot;Go Live&quot; to start streaming</p>
+                      </div>
+                    </div>
                   );
-                }
-                return (
-                  <div className="h-full w-full flex items-center justify-center text-slate-500">No video available</div>
-                );
-              })()}
+                })()
+              )}
+
+              {/* Overlay badges in top corners for desktop */}
+              {isLiveStreamMode && (
+                <div className="absolute top-4 left-4 z-40">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/90 backdrop-blur-sm">
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                    <span className="text-white text-sm font-semibold">LIVE</span>
+                  </div>
+                </div>
+              )}
+              <div className="absolute top-4 right-4 z-40">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                  </svg>
+                  <span className="text-white text-sm font-semibold">{presentUsers.size}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1471,24 +2057,7 @@ export default function RoomPage() {
           </motion.div>
         )}
 
-        {/* New Messages Indicator */}
-        {!isAtBottom && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10"
-          >
-            <Button
-              onClick={scrollToBottom}
-              variant="primary"
-              size="sm"
-              className="bg-gradient-to-r from-fuchsia-500 to-purple-600 backdrop-blur-sm border border-fuchsia-400/30 hover:from-fuchsia-600 hover:to-purple-700 shadow-[0_0_20px_rgba(217,70,239,0.6)]"
-            >
-              <ChevronDownIcon className="w-4 h-4 mr-1" />
-              New messages
-            </Button>
-          </motion.div>
-        )}
+        {/* New Messages Indicator removed per request; using top/bottom controls only */}
       </div>
 
       {/* Live Stream Modal */}
@@ -1522,6 +2091,35 @@ export default function RoomPage() {
               className="flex-1"
             >
               {isLoading ? 'Creating...' : 'Start Stream'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Stop Stream Confirmation Modal */}
+      <Modal
+        isOpen={showStopStreamModal}
+        onClose={() => setShowStopStreamModal(false)}
+        title="End Live Stream?"
+      >
+        <div className="space-y-4">
+          <p className="text-slate-300 text-sm">
+            Are you sure you want to end your live stream? This will disconnect all viewers.
+          </p>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => setShowStopStreamModal(false)}
+              variant="glass"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStopStream}
+              variant="primary"
+              className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
+            >
+              End Stream
             </Button>
           </div>
         </div>

@@ -91,7 +91,7 @@ function TermsContent() {
             <section>
               <h2 className="text-2xl font-bold text-cyan-400 mb-4">7. Disclaimer of Warranties</h2>
               <p>
-                STARCYEED is provided "as is" and "as available" without warranties of any kind, express or
+                STARCYEED is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind, express or
                 implied, including fitness for a particular purpose or non-infringement.
               </p>
             </section>

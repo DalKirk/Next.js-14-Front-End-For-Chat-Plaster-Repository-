@@ -173,10 +173,12 @@ class SocketManager {
   sendMessage(content: string, avatar?: string): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       const message = JSON.stringify({ 
+        type: 'message',  // Add type field for backend
         content, 
         avatar,
         username: this.username,
-        user_id: this.userId
+        user_id: this.userId,
+        timestamp: new Date().toISOString()
       });
       console.log('📤 Sending WebSocket message:', { 
         content: content.substring(0, 50) + '...', 
@@ -256,6 +258,65 @@ class SocketManager {
 
   onTyping(callback: (data: { type: string; user_id: string; username?: string }) => void): void {
     this.callbacks.set('typing', callback);
+  }
+
+  // WebRTC signaling methods
+  sendWebRTCSignal(roomId: string, targetUserId: string, signal: any): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot send WebRTC signal - WebSocket not connected');
+      return;
+    }
+    
+    const payload = {
+      type: 'webrtc-signal',
+      room_id: roomId,
+      target_user_id: targetUserId,
+      from_user_id: this.userId,
+      from_username: this.username,
+      signal,
+    };
+    
+    console.log('📡 Sending WebRTC signal to:', targetUserId);
+    this.socket.send(JSON.stringify(payload));
+  }
+
+  notifyBroadcastStarted(roomId: string): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot notify broadcast start - WebSocket not connected');
+      return;
+    }
+    
+    const payload = {
+      type: 'broadcast-started',
+      room_id: roomId,
+      user_id: this.userId,
+      username: this.username,
+    };
+    
+    console.log('📡 Notifying room: broadcast started');
+    this.socket.send(JSON.stringify(payload));
+  }
+
+  notifyBroadcastStopped(roomId: string): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot notify broadcast stop - WebSocket not connected');
+      return;
+    }
+    
+    const payload = {
+      type: 'broadcast-stopped',
+      room_id: roomId,
+      user_id: this.userId,
+      username: this.username,
+    };
+    
+    console.log('📡 Notifying room: broadcast stopped');
+    this.socket.send(JSON.stringify(payload));
+  }
+
+  // Generic event listener for WebRTC
+  on(event: string, callback: Function): void {
+    this.callbacks.set(event, callback);
   }
 
   isConnected(): boolean {

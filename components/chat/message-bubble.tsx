@@ -61,7 +61,12 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
   const [copiedMessage, setCopiedMessage] = useState(false);
   const router = useRouter();
 
-  const isVideoMessage = message.type === 'video_ready' || message.type === 'live_stream_created';
+  // Do not render live stream start notifications
+  if (message.type === 'live_stream_created') {
+    return null;
+  }
+
+  const isVideoMessage = message.type === 'video_ready';
   const videoMessage = message as VideoMessage;
   // Host information now comes from props (isHost) so host identity can be tracked across messages
   
@@ -321,19 +326,15 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
 
         {/* Message content */}
         {message.type === 'system' ? (
-          <p className="text-sm italic text-white/80">
+          <p className="text-[12px] sm:text-sm italic text-white/80">
             {parseMessageWithLinks(message.content)}
           </p>
         ) : isVideoMessage ? (
           <div className="space-y-3">
             {/* Video type indicator */}
             <div className="flex items-center space-x-2">
-              <span className="text-lg">
-                {message.type === 'live_stream_created' ? '🔴' : '🎥'}
-              </span>
-              <span className="text-sm font-medium">
-                {message.type === 'live_stream_created' ? 'Live Stream' : 'Video'}
-              </span>
+              <span className="text-lg">🎥</span>
+              <span className="text-sm font-medium">Video</span>
             </div>
             
             {/* Video title */}
@@ -367,7 +368,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
             )}
           </div>
         ) : (
-          <div className="message-content text-sm text-white break-words max-w-none">
+          <div className="message-content text-[12px] sm:text-sm md:text-base text-white break-words max-w-none">
             {/* View Source feature for messages with code blocks */}
             {message.content?.includes('```') && (
               <details className="mb-4 rounded-lg overflow-hidden border border-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.2)]">
