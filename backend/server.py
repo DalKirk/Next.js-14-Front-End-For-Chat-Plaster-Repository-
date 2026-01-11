@@ -464,10 +464,13 @@ async def websocket_endpoint(
                     target_ws = room_connections.get(room_id, {}).get(target_user_id)
                     if target_ws is not None:
                         try:
+                            sender_username = payload.get("from_username") or username or "Anonymous"
                             await target_ws.send_json({
                                 "type": "webrtc-signal",
+                                "room_id": room_id,
+                                "target_user_id": target_user_id,
                                 "from_user_id": user_id,
-                                "from_username": rooms[room_id]["users"][user_id]["username"],
+                                "from_username": sender_username,
                                 "signal": payload.get("signal"),
                             })
                         except Exception:

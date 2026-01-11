@@ -720,10 +720,16 @@ export default function RoomPage() {
       });
       
       // Handle WebRTC signaling for video streaming
-      socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any }) => {
+      socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any; target_user_id?: string }) => {
         // Ignore signals from ourselves (backend echo)
         if (data.from_user_id === currentUser.id) {
           console.log('⚠️ Ignoring WebRTC signal from self');
+          return;
+        }
+        
+        // Ignore signals not targeted at us (if target_user_id is present)
+        if (data.target_user_id && data.target_user_id !== currentUser.id) {
+          console.log('⚠️ Ignoring WebRTC signal targeted at someone else:', data.target_user_id);
           return;
         }
         
