@@ -740,7 +740,7 @@ export default function RoomPage() {
         setBroadcasterName(data.username);
         
         // If we're a viewer (not the broadcaster), connect to broadcaster
-        if (currentUser && data.user_id !== currentUser.id) {
+        if (user && data.user_id !== user.id) {
           console.log('📡 Creating viewer peer connection to broadcaster');
           webrtcManager.createPeerConnection(
             data.user_id,
@@ -751,6 +751,8 @@ export default function RoomPage() {
               socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
             }
           );
+        } else {
+          console.log('📡 Skipping viewer peer (we are the broadcaster or no user)');
         }
       });
 
