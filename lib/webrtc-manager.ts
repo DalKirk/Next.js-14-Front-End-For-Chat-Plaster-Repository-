@@ -6,6 +6,8 @@ type PeerConnection = {
   userId: string;
   username: string;
   iceCandidateQueue: RTCIceCandidateInit[];  // Queue for ICE candidates received before remote description
+  signalCallback: (userId: string, signal: any) => void;  // Store callback for ICE restart
+  isOfferer: boolean;  // Track if this peer initiated the connection
 };
 
 class WebRTCManager {
@@ -114,23 +116,25 @@ class WebRTCManager {
         console.log(`⚠️ ICE disconnected for ${username}, will attempt restart if it fails...`);
       }
       
-      // ICE failed - try to restart
+      // ICE failed - try to restart (only the original offerer should restart)
       if (pc.iceConnectionState === 'failed') {
-        console.log(`❌ ICE failed for ${username}, attempting ICE restart...`);
-        // Trigger ICE restart by creating a new offer with iceRestart option
-        if (this.isBroadcaster) {
-          // Broadcaster initiates ICE restart
+        const peer = this.peers.get(userId);
+        // The offerer (viewer in our case) should initiate ICE restart
+        if (peer && peer.isOfferer) {
+          console.log(`❌ ICE failed for ${username}, attempting ICE restart...`);
           pc.createOffer({ iceRestart: true }).then(offer => {
             return pc.setLocalDescription(offer);
           }).then(() => {
             console.log(`🔄 ICE restart initiated for ${username}`);
-            signalCallback(userId, {
+            peer.signalCallback(userId, {
               type: 'offer',
               sdp: pc.localDescription,
             });
           }).catch(err => {
             console.error(`❌ ICE restart failed for ${username}:`, err);
           });
+        } else {
+          console.log(`❌ ICE failed for ${username}, waiting for offerer to restart`);
         }
       }
     };
@@ -199,8 +203,15 @@ class WebRTCManager {
       }
     };
 
-    // Store peer connection with empty ICE candidate queue
-    this.peers.set(userId, { connection: pc, userId, username, iceCandidateQueue: [] });
+    // Store peer connection with callback and offerer flag for ICE restart
+    this.peers.set(userId, { 
+      connection: pc, 
+      userId, 
+      username, 
+      iceCandidateQueue: [],
+      signalCallback,
+      isOfferer,
+    });
 
     // Create offer if this peer is the offerer
     if (isOfferer) {
