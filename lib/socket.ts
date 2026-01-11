@@ -35,12 +35,17 @@ class SocketManager {
     const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || DEFAULT_WS_BASE;
     const qp: string[] = [];
     if (this.username) qp.push(`username=${encodeURIComponent(this.username)}`);
-    // Always include avatar_url - use provided or fallback to ui-avatars (first letter)
+    // Prefer actual avatar URL but avoid sending large data URLs in the WS query
     const finalAvatarUrl = this.avatarUrl || (() => {
       const name = (this.username || userId || 'User').toString();
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
     })();
-    qp.push(`avatar_url=${encodeURIComponent(finalAvatarUrl)}`);
+    const isSafeAvatarUrl = typeof finalAvatarUrl === 'string' && /^https?:\/\//.test(finalAvatarUrl) && finalAvatarUrl.length < 500;
+    if (isSafeAvatarUrl) {
+      qp.push(`avatar_url=${encodeURIComponent(finalAvatarUrl)}`);
+    } else {
+      console.log('⚠️ Skipping avatar_url in WS query (unsafe or too long).');
+    }
     const query = qp.length ? `?${qp.join('&')}` : '';
     const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}${query}`;
     console.log('🔗 WebSocket URL includes avatar_url:', finalAvatarUrl.substring(0, 50) + '...');

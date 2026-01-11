@@ -296,6 +296,8 @@ if USE_DYNAMIC_CORS:
         "https://video-chat-frontend-ruby.vercel.app",
         "https://next-js-14-front-end-for-chat-plast.vercel.app",
         "http://localhost:3000",
+        "https://www.starcyeed.com",
+        "https://starcyeed.com",
     }
     app.add_middleware(DynamicCORSMiddleware, whitelist=WHITELIST)
 else:
@@ -305,6 +307,8 @@ else:
             "http://localhost:3000",
             "https://video-chat-frontend-ruby.vercel.app",
             "https://next-js-14-front-end-for-chat-plast.vercel.app",
+            "https://www.starcyeed.com",
+            "https://starcyeed.com",
         ],
         allow_credentials=True,
         allow_methods=["*"],
