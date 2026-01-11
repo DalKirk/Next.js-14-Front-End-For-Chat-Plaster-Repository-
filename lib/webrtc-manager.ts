@@ -108,6 +108,31 @@ class WebRTCManager {
     // Log ICE connection state
     pc.oniceconnectionstatechange = () => {
       console.log(`🧊 ICE connection state [${username}]:`, pc.iceConnectionState);
+      
+      // Handle ICE disconnection - attempt restart
+      if (pc.iceConnectionState === 'disconnected') {
+        console.log(`⚠️ ICE disconnected for ${username}, will attempt restart if it fails...`);
+      }
+      
+      // ICE failed - try to restart
+      if (pc.iceConnectionState === 'failed') {
+        console.log(`❌ ICE failed for ${username}, attempting ICE restart...`);
+        // Trigger ICE restart by creating a new offer with iceRestart option
+        if (this.isBroadcaster) {
+          // Broadcaster initiates ICE restart
+          pc.createOffer({ iceRestart: true }).then(offer => {
+            return pc.setLocalDescription(offer);
+          }).then(() => {
+            console.log(`🔄 ICE restart initiated for ${username}`);
+            signalCallback(userId, {
+              type: 'offer',
+              sdp: pc.localDescription,
+            });
+          }).catch(err => {
+            console.error(`❌ ICE restart failed for ${username}:`, err);
+          });
+        }
+      }
     };
 
     // Log ICE gathering state
@@ -134,10 +159,26 @@ class WebRTCManager {
     // Handle connection state changes
     pc.onconnectionstatechange = () => {
       console.log(`🔗 Connection state [${username}]:`, pc.connectionState);
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      
+      // Only remove peer on complete failure, not on temporary disconnect
+      if (pc.connectionState === 'failed') {
+        console.log(`❌ Connection failed for ${username}, removing peer`);
         this.removePeer(userId);
         this.onPeerDisconnectedCallback?.(userId);
+      } else if (pc.connectionState === 'disconnected') {
+        // Wait 5 seconds before considering it a real disconnect
+        // Mobile networks often briefly disconnect and reconnect
+        console.log(`⚠️ Connection disconnected for ${username}, waiting 5s for recovery...`);
+        setTimeout(() => {
+          const peer = this.peers.get(userId);
+          if (peer && peer.connection.connectionState === 'disconnected') {
+            console.log(`❌ Connection still disconnected after 5s, removing peer ${username}`);
+            this.removePeer(userId);
+            this.onPeerDisconnectedCallback?.(userId);
+          }
+        }, 5000);
       }
+      
       // Log selected candidate pair when connected
       if (pc.connectionState === 'connected') {
         console.log('🎉 WebRTC connection established!');
