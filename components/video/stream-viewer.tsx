@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import { UserIcon } from '@heroicons/react/24/solid';
+import React, { useRef, useEffect, useState } from 'react';
+import { UserIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 
 interface StreamViewerProps {
   stream: MediaStream | null;
@@ -21,6 +21,7 @@ export function StreamViewer({
   centerBias = false,
 }: StreamViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -29,28 +30,52 @@ export function StreamViewer({
       console.log('📺 Viewer displaying stream:', stream.id);
       console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`).join(', '));
       
+      // Start muted for autoplay, user can unmute
+      video.muted = true;
+      setIsMuted(true);
+      
       // Ensure video plays
       video.play().then(() => {
-        console.log('▶️ Video playback started');
+        console.log('▶️ Video playback started (muted - tap to unmute)');
       }).catch((err) => {
         console.warn('⚠️ Video autoplay failed:', err.message);
-        // Try muted autoplay as fallback
-        video.muted = true;
-        video.play().catch((e) => console.error('❌ Muted autoplay also failed:', e));
       });
     }
   }, [stream]);
 
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
+      console.log(videoRef.current.muted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+    }
+  };
+
   return (
-    <div className={`relative rounded-xl overflow-hidden bg-black aspect-video ${className}`}>
+    <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="w-full h-full"
-        style={{ objectFit: fitMode, objectPosition: centerBias ? '50% 45%' : 'center' }}
+        className="w-full h-full object-contain"
+        style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
+
+      {/* Unmute Button - shown when stream is playing */}
+      {stream && (
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm p-2 rounded-full border border-white/20 hover:bg-black/80 transition-colors z-10"
+          title={isMuted ? 'Unmute' : 'Mute'}
+        >
+          {isMuted ? (
+            <SpeakerXMarkIcon className="w-6 h-6 text-white" />
+          ) : (
+            <SpeakerWaveIcon className="w-6 h-6 text-white" />
+          )}
+        </button>
+      )}
 
       {/* Loading State */}
       {isLoading && !stream && (
