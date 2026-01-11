@@ -24,8 +24,20 @@ export function StreamViewer({
 
   useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+      const video = videoRef.current;
+      video.srcObject = stream;
       console.log('📺 Viewer displaying stream:', stream.id);
+      console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`).join(', '));
+      
+      // Ensure video plays
+      video.play().then(() => {
+        console.log('▶️ Video playback started');
+      }).catch((err) => {
+        console.warn('⚠️ Video autoplay failed:', err.message);
+        // Try muted autoplay as fallback
+        video.muted = true;
+        video.play().catch((e) => console.error('❌ Muted autoplay also failed:', e));
+      });
     }
   }, [stream]);
 
@@ -35,6 +47,7 @@ export function StreamViewer({
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         className="w-full h-full"
         style={{ objectFit: fitMode, objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
