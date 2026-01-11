@@ -20,23 +20,31 @@ class WebRTCManager {
     const servers: RTCIceServer[] = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
     ];
-    // Optionally add TURN from environment (NEXT_PUBLIC_* only)
-    // Supports single URL via NEXT_PUBLIC_TURN_URL or comma-separated list via NEXT_PUBLIC_TURN_URLS
-    const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
-    const turnUrlsRaw = process.env.NEXT_PUBLIC_TURN_URLS;
+    
+    // TURN server credentials from environment
     const turnUser = process.env.NEXT_PUBLIC_TURN_USERNAME;
     const turnPass = process.env.NEXT_PUBLIC_TURN_PASSWORD;
-    const urlList: string[] = [];
-    if (turnUrlsRaw) {
-      turnUrlsRaw.split(',').map(u => u.trim()).filter(Boolean).forEach(u => urlList.push(u));
-    } else if (turnUrl) {
-      urlList.push(turnUrl);
+    
+    if (turnUser && turnPass) {
+      // Add comprehensive TURN endpoints for mobile/restrictive networks
+      // These cover UDP, TCP, and TLS on ports 80 and 443
+      servers.push({
+        urls: [
+          'turn:standard.relay.metered.ca:80',
+          'turn:standard.relay.metered.ca:80?transport=tcp',
+          'turn:standard.relay.metered.ca:443',
+          'turn:standard.relay.metered.ca:443?transport=tcp',
+          'turns:standard.relay.metered.ca:443',
+        ],
+        username: turnUser,
+        credential: turnPass,
+      });
+      console.log('🔧 TURN servers configured with 5 endpoints (UDP/TCP on 80/443 + TLS)');
+    } else {
+      console.warn('⚠️ No TURN credentials - mobile users may have connection issues');
     }
-    if (urlList.length > 0 && turnUser && turnPass) {
-      servers.push({ urls: urlList.length === 1 ? urlList[0] : urlList, username: turnUser, credential: turnPass });
-    }
+    
     return servers;
   })();
 
