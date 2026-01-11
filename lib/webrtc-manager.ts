@@ -93,6 +93,16 @@ class WebRTCManager {
       console.log(`🧊 ICE connection state [${username}]:`, pc.iceConnectionState);
     };
 
+    // Log ICE gathering state
+    pc.onicegatheringstatechange = () => {
+      console.log(`🔍 ICE gathering state [${username}]:`, pc.iceGatheringState);
+    };
+
+    // Log signaling state
+    pc.onsignalingstatechange = () => {
+      console.log(`📶 Signaling state [${username}]:`, pc.signalingState);
+    };
+
     // Handle incoming stream (viewer receives broadcaster's stream)
     pc.ontrack = (event) => {
       console.log('📥 Received remote track:', event.track.kind, 'streams:', event.streams.length);
