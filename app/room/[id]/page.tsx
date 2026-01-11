@@ -721,13 +721,14 @@ export default function RoomPage() {
       
       // Handle WebRTC signaling for video streaming
       socketManager.on('webrtc-signal', async (data: { from_user_id: string; from_username: string; signal: any }) => {
-        console.log('📡 Received WebRTC signal from:', data.from_username);
+        console.log('📡 Received WebRTC signal from:', data.from_username, 'type:', data.signal.type);
         
         await webrtcManager.handleSignal(
           data.from_user_id,
           { ...data.signal, username: data.from_username },
           (targetUserId, signal) => {
             // Send signal back through WebSocket
+            console.log('📡 Sending WebRTC signal back:', signal.type, 'to:', data.from_username);
             socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
           }
         );
@@ -738,13 +739,15 @@ export default function RoomPage() {
         console.log('📡 Broadcast started by:', data.username);
         setBroadcasterName(data.username);
         
-        // If we're a viewer, connect to broadcaster
+        // If we're a viewer (not the broadcaster), connect to broadcaster
         if (currentUser && data.user_id !== currentUser.id) {
+          console.log('📡 Creating viewer peer connection to broadcaster');
           webrtcManager.createPeerConnection(
             data.user_id,
             data.username,
             true, // Viewer creates offer
             (targetUserId, signal) => {
+              console.log('📡 Sending offer to broadcaster:', signal.type);
               socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
             }
           );
