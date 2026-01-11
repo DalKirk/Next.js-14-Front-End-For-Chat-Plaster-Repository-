@@ -5,6 +5,7 @@ type PeerConnection = {
   connection: RTCPeerConnection;
   userId: string;
   username: string;
+  iceCandidateQueue: RTCIceCandidateInit[];  // Queue for ICE candidates received before remote description
 };
 
 class WebRTCManager {
@@ -117,8 +118,8 @@ class WebRTCManager {
       }
     };
 
-    // Store peer connection
-    this.peers.set(userId, { connection: pc, userId, username });
+    // Store peer connection with empty ICE candidate queue
+    this.peers.set(userId, { connection: pc, userId, username, iceCandidateQueue: [] });
 
     // Create offer if this peer is the offerer
     if (isOfferer) {
@@ -152,6 +153,8 @@ class WebRTCManager {
       switch (signal.type) {
         case 'offer':
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          // Process queued ICE candidates now that remote description is set
+          await this.processQueuedIceCandidates(userId);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           signalCallback(userId, {
@@ -162,11 +165,19 @@ class WebRTCManager {
 
         case 'answer':
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          // Process queued ICE candidates now that remote description is set
+          await this.processQueuedIceCandidates(userId);
           break;
 
         case 'ice-candidate':
           if (signal.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            // Queue ICE candidates if remote description isn't set yet
+            if (!pc.remoteDescription) {
+              console.log('⏳ Queuing ICE candidate (remote description not set yet)');
+              peer.iceCandidateQueue.push(signal.candidate);
+            } else {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
           }
           break;
 
@@ -176,6 +187,25 @@ class WebRTCManager {
     } catch (error) {
       console.error('❌ Error handling signal:', error);
     }
+  }
+
+  // Process queued ICE candidates after remote description is set
+  private async processQueuedIceCandidates(userId: string) {
+    const peer = this.peers.get(userId);
+    if (!peer || peer.iceCandidateQueue.length === 0) return;
+
+    console.log(`🧊 Processing ${peer.iceCandidateQueue.length} queued ICE candidates for ${userId}`);
+    
+    for (const candidate of peer.iceCandidateQueue) {
+      try {
+        await peer.connection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.warn('Failed to add queued ICE candidate:', error);
+      }
+    }
+    
+    // Clear the queue
+    peer.iceCandidateQueue = [];
   }
 
   // Set callback for when remote stream is received
