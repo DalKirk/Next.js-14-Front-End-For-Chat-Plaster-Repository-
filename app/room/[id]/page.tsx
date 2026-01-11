@@ -667,13 +667,20 @@ export default function RoomPage() {
       });
       
       // Cache avatars from join/leave/typing notifications for future messages
-      socketManager.onNotification((data: { type?: string; user_id?: string; username?: string; avatar_url?: string }) => {
+      socketManager.onNotification((data: { type?: string; user_id?: string; username?: string; avatar_url?: string; users?: Array<{ user_id: string }> }) => {
         if (!data) return;
         if (data.type === 'user_joined' || data.type === 'typing_start' || data.type === 'typing_stop') {
           cacheUserProfile(data.user_id, data.username, data.avatar_url);
         }
 
         // Track present users for real-time viewer count
+        if (data.type === 'room_state' && Array.isArray(data.users)) {
+          setPresentUsers(prev => {
+            const updated = new Set(prev);
+            data.users!.forEach(u => { if (u.user_id) updated.add(u.user_id); });
+            return updated;
+          });
+        }
         if (data.type === 'user_joined' && data.user_id) {
           setPresentUsers(prev => {
             const updated = new Set(prev);

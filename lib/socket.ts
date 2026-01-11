@@ -129,11 +129,26 @@ class SocketManager {
           // Handle different message types
           if (data.type === 'message') {
             this.callbacks.get('message')?.(data);
-          } else if (data.type === 'user_joined' || data.type === 'user_left') {
-            this.callbacks.get('notification')?.(data);
-          } else {
-            this.callbacks.get('message')?.(data);
+            return;
           }
+          if (data.type === 'user_joined' || data.type === 'user_left' || data.type === 'room_state') {
+            this.callbacks.get('notification')?.(data);
+            return;
+          }
+          if (data.type === 'webrtc-signal') {
+            this.callbacks.get('webrtc-signal')?.(data);
+            return;
+          }
+          if (data.type === 'broadcast-started') {
+            this.callbacks.get('broadcast-started')?.(data);
+            return;
+          }
+          if (data.type === 'broadcast-stopped') {
+            this.callbacks.get('broadcast-stopped')?.(data);
+            return;
+          }
+          // Fallback: treat as notification for unknown types
+          this.callbacks.get('notification')?.(data);
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
         }

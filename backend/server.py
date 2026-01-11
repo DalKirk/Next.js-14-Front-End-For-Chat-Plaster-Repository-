@@ -31,7 +31,8 @@ class MessageCreate(BaseModel):
 
 # In-memory store (replace with Redis/DB for production)
 rooms: Dict[str, Dict[str, Any]] = {}
-room_connections: Dict[str, Set[WebSocket]] = {}
+# room_id -> { user_id -> WebSocket }
+room_connections: Dict[str, Dict[str, WebSocket]] = {}
 rooms_lock = asyncio.Lock()
 
 # Minimal in-memory user directory for profile/password updates
@@ -102,11 +103,18 @@ async def update_profile(user_id: str, payload: Dict[str, Any]):
         }
         for room_id, room in rooms.items():
             if user_id in room.get("users", {}):
-                for ws in list(room_connections.get(room_id, set())):
+                for ws in list(room_connections.get(room_id, {}).values()):
                     try:
                         await ws.send_json(broadcast_payload)
                     except Exception:
-                        room_connections[room_id].discard(ws)
+                        # remove broken connections
+                        try:
+                            for uid, w in list(room_connections.get(room_id, {}).items()):
+                                if w is ws:
+                                    del room_connections[room_id][uid]
+                                    break
+                        except Exception:
+                            pass
 
         return {"success": True, "user": profile}
     except Exception as e:
@@ -198,13 +206,16 @@ async def send_message(room_id: str, message: MessageCreate):
         rooms[room_id]["messages"].append(new_message)
 
     # Broadcast to connected clients (non-blocking best-effort)
-    for ws in list(room_connections.get(room_id, set())):
+    for ws in list(room_connections.get(room_id, {}).values()):
         try:
             await ws.send_json({"type": "message", **new_message})
         except Exception:
             # Drop broken connections
             try:
-                room_connections[room_id].discard(ws)
+                for uid, w in list(room_connections.get(room_id, {}).items()):
+                    if w is ws:
+                        del room_connections[room_id][uid]
+                        break
             except Exception:
                 pass
 
@@ -324,30 +335,53 @@ async def websocket_endpoint(
 
     await websocket.accept()
 
-    # Track connection
-    room_connections.setdefault(room_id, set()).add(websocket)
+    # Track connection mapped to user
+    room_connections.setdefault(room_id, {})[user_id] = websocket
 
     # Notify join
     try:
-        for ws in list(room_connections.get(room_id, set())):
+        for uid, ws in list(room_connections.get(room_id, {}).items()):
+            if uid == user_id:
+                continue
             try:
                 await ws.send_json({
                     "type": "user_joined",
                     "room_id": room_id,
                     "user_id": user_id,
                     "username": username or "Anonymous",
-                    "avatar": avatar_url,
+                    "avatar_url": avatar_url,
                     "timestamp": datetime.utcnow().isoformat(),
                 })
             except Exception:
-                room_connections[room_id].discard(ws)
+                try:
+                    del room_connections[room_id][uid]
+                except Exception:
+                    pass
+
+        # Send current room users to the newly joined client (seed present users)
+        try:
+            await websocket.send_json({
+                "type": "room_state",
+                "room_id": room_id,
+                "users": [
+                    {
+                        "user_id": uid,
+                        "username": info.get("username"),
+                        "avatar_url": info.get("avatar_url"),
+                    }
+                    for uid, info in rooms[room_id]["users"].items()
+                ],
+                "timestamp": datetime.utcnow().isoformat(),
+            })
+        except Exception:
+            pass
 
         # Receive loop
         while True:
             data = await websocket.receive_text()
             # Expect JSON payloads
             try:
-                # Minimal parsing; accept keep_alive, typing events, and messages
+                # Minimal parsing; accept keep_alive, typing events, messages, and WebRTC signaling
                 import json
                 payload = json.loads(data)
                 ptype = payload.get("type")
@@ -357,7 +391,9 @@ async def websocket_endpoint(
                     await websocket.send_json({"type": "ping", "timestamp": datetime.utcnow().isoformat()})
                     continue
                 if ptype in ("typing_start", "typing_stop"):
-                    for ws in list(room_connections.get(room_id, set())):
+                    for uid, ws in list(room_connections.get(room_id, {}).items()):
+                        if uid == user_id:
+                            continue
                         try:
                             await ws.send_json({
                                 "type": ptype,
@@ -367,7 +403,10 @@ async def websocket_endpoint(
                                 "timestamp": datetime.utcnow().isoformat(),
                             })
                         except Exception:
-                            room_connections[room_id].discard(ws)
+                            try:
+                                del room_connections[room_id][uid]
+                            except Exception:
+                                pass
                     continue
 
                 # Handle profile/avatar updates for real-time cross-device sync
@@ -401,11 +440,63 @@ async def websocket_endpoint(
                         "bio": payload.get("bio"),
                         "timestamp": datetime.utcnow().isoformat(),
                     }
-                    for ws in list(room_connections.get(room_id, set())):
+                    for ws in list(room_connections.get(room_id, {}).values()):
                         try:
                             await ws.send_json(broadcast_payload)
                         except Exception:
-                            room_connections[room_id].discard(ws)
+                            # remove broken
+                            try:
+                                for uid, w in list(room_connections.get(room_id, {}).items()):
+                                    if w is ws:
+                                        del room_connections[room_id][uid]
+                                        break
+                            except Exception:
+                                pass
+                    continue
+
+                # WebRTC signaling: relay targeted signals
+                if ptype == "webrtc-signal":
+                    target_user_id = payload.get("target_user_id")
+                    target_ws = room_connections.get(room_id, {}).get(target_user_id)
+                    if target_ws is not None:
+                        try:
+                            await target_ws.send_json({
+                                "type": "webrtc-signal",
+                                "from_user_id": user_id,
+                                "from_username": rooms[room_id]["users"][user_id]["username"],
+                                "signal": payload.get("signal"),
+                            })
+                        except Exception:
+                            pass
+                    continue
+
+                # Broadcast lifecycle notifications
+                if ptype == "broadcast-started":
+                    for uid, ws in list(room_connections.get(room_id, {}).items()):
+                        if uid == user_id:
+                            continue
+                        try:
+                            await ws.send_json({
+                                "type": "broadcast-started",
+                                "user_id": user_id,
+                                "username": rooms[room_id]["users"][user_id]["username"],
+                                "timestamp": datetime.utcnow().isoformat(),
+                            })
+                        except Exception:
+                            pass
+                    continue
+
+                if ptype == "broadcast-stopped":
+                    for ws in list(room_connections.get(room_id, {}).values()):
+                        try:
+                            await ws.send_json({
+                                "type": "broadcast-stopped",
+                                "user_id": user_id,
+                                "username": rooms[room_id]["users"][user_id]["username"],
+                                "timestamp": datetime.utcnow().isoformat(),
+                            })
+                        except Exception:
+                            pass
                     continue
 
                 # Treat as message
@@ -429,11 +520,17 @@ async def websocket_endpoint(
                     rooms[room_id]["messages"].append(new_message)
 
                 # Broadcast
-                for ws in list(room_connections.get(room_id, set())):
+                for ws in list(room_connections.get(room_id, {}).values()):
                     try:
                         await ws.send_json({"type": "message", **new_message})
                     except Exception:
-                        room_connections[room_id].discard(ws)
+                        try:
+                            for uid, w in list(room_connections.get(room_id, {}).items()):
+                                if w is ws:
+                                    del room_connections[room_id][uid]
+                                    break
+                        except Exception:
+                            pass
 
             except Exception:
                 # If parsing fails, ignore
@@ -442,11 +539,13 @@ async def websocket_endpoint(
     except WebSocketDisconnect:
         # Cleanup on disconnect
         try:
-            room_connections.get(room_id, set()).discard(websocket)
+            conns = room_connections.get(room_id, {})
+            if user_id in conns:
+                del conns[user_id]
         except Exception:
             pass
         # Notify leave
-        for ws in list(room_connections.get(room_id, set())):
+        for ws in list(room_connections.get(room_id, {}).values()):
             try:
                 await ws.send_json({
                     "type": "user_left",
@@ -455,7 +554,13 @@ async def websocket_endpoint(
                     "timestamp": datetime.utcnow().isoformat(),
                 })
             except Exception:
-                room_connections[room_id].discard(ws)
+                try:
+                    for uid, w in list(room_connections.get(room_id, {}).items()):
+                        if w is ws:
+                            del room_connections[room_id][uid]
+                            break
+                except Exception:
+                    pass
 
 
 # Initialize storage on startup (Postgres when DATABASE_URL is set)
