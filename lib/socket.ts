@@ -29,8 +29,10 @@ class SocketManager {
     let host = '';
     let protocol: 'wss' | 'ws' = 'ws';
 
-    // Use environment variable for WebSocket URL, fallback to hardcoded
-    const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://web-production-3ba7e.up.railway.app';
+    // Use environment variable for WebSocket URL, fallback to API base (converted to ws/wss)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const DEFAULT_WS_BASE = API_BASE.replace(/^http/, API_BASE.startsWith('https') ? 'wss' : 'ws');
+    const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || DEFAULT_WS_BASE;
     const qp: string[] = [];
     if (this.username) qp.push(`username=${encodeURIComponent(this.username)}`);
     // Always include avatar_url - use provided or fallback to ui-avatars (first letter)

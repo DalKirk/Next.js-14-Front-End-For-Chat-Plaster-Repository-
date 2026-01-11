@@ -109,8 +109,9 @@ export function LiveStream({
       // Determine optimal video constraints based on orientation and screen size
       const isMobile = window.innerWidth < 1024;
       const aspectRatio = isMobile && isPortrait ? 9/16 : 16/9;
-      const width = isMobile && isPortrait ? 1080 : 1280;
-      const height = isMobile && isPortrait ? 1920 : 720;
+      // Lower resolution for stability (especially mobile portrait)
+      const width = isMobile && isPortrait ? 720 : 1280;
+      const height = isMobile && isPortrait ? 1280 : 720;
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -118,7 +119,7 @@ export function LiveStream({
           width: { ideal: width },
           height: { ideal: height },
           aspectRatio: { ideal: aspectRatio },
-          frameRate: { ideal: 30 },
+          frameRate: { ideal: 24, max: 30 },
           facingMode: isMobile ? 'user' : undefined
         },
         audio: {

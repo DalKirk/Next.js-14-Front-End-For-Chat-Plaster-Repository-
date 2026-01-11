@@ -14,12 +14,22 @@ class WebRTCManager {
   private onRemoteStreamCallback?: (userId: string, stream: MediaStream) => void;
   private onPeerDisconnectedCallback?: (userId: string) => void;
 
-  // STUN servers for NAT traversal (free public servers)
-  private iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-  ];
+  // STUN/TURN servers for NAT traversal
+  private iceServers = (() => {
+    const servers: RTCIceServer[] = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+    ];
+    // Optionally add TURN from environment (NEXT_PUBLIC_* only)
+    const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+    const turnUser = process.env.NEXT_PUBLIC_TURN_USERNAME;
+    const turnPass = process.env.NEXT_PUBLIC_TURN_PASSWORD;
+    if (turnUrl && turnUser && turnPass) {
+      servers.push({ urls: turnUrl, username: turnUser, credential: turnPass });
+    }
+    return servers;
+  })();
 
   // Set local stream (broadcaster's camera)
   setLocalStream(stream: MediaStream) {
