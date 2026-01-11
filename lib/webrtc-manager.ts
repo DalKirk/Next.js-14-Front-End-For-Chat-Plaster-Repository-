@@ -55,10 +55,14 @@ class WebRTCManager {
     signalCallback: (userId: string, signal: any) => void
   ): Promise<RTCPeerConnection> {
     const forceRelay = String(process.env.NEXT_PUBLIC_FORCE_RELAY || '').toLowerCase() === 'true';
+    console.log(`🔧 Creating peer connection for ${username} (isOfferer: ${isOfferer})`);
+    console.log(`🔧 ICE servers:`, JSON.stringify(this.iceServers.map(s => typeof s.urls === 'string' ? s.urls : s.urls?.[0])));
+    console.log(`🔧 ICE transport policy:`, forceRelay ? 'relay' : 'all');
     const pc = new RTCPeerConnection({
       iceServers: this.iceServers,
       iceTransportPolicy: forceRelay ? 'relay' : 'all',
     });
+    console.log(`🔧 Peer connection created, initial ICE gathering state:`, pc.iceGatheringState);
 
     // Add local stream tracks (if broadcaster)
     if (this.localStream && this.isBroadcaster) {
@@ -175,11 +179,15 @@ class WebRTCManager {
     try {
       switch (signal.type) {
         case 'offer':
+          console.log(`📥 Processing offer from ${userId}, current signaling state:`, pc.signalingState);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          console.log(`📥 Remote description set, signaling state:`, pc.signalingState);
           // Process queued ICE candidates now that remote description is set
           await this.processQueuedIceCandidates(userId);
           const answer = await pc.createAnswer();
+          console.log(`📤 Answer created, setting local description...`);
           await pc.setLocalDescription(answer);
+          console.log(`📤 Local description set, ICE gathering state:`, pc.iceGatheringState);
           signalCallback(userId, {
             type: 'answer',
             sdp: answer,
@@ -187,7 +195,9 @@ class WebRTCManager {
           break;
 
         case 'answer':
+          console.log(`📥 Processing answer from ${userId}, current signaling state:`, pc.signalingState);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          console.log(`📥 Remote description set, ICE gathering state:`, pc.iceGatheringState);
           // Process queued ICE candidates now that remote description is set
           await this.processQueuedIceCandidates(userId);
           break;
