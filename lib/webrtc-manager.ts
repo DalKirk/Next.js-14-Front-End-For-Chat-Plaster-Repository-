@@ -71,7 +71,12 @@ class WebRTCManager {
         console.log('➕ Added track to peer:', track.kind);
       });
     } else {
-      console.log('📭 No local stream to add (this is a viewer)');
+      // Viewer: Add transceivers to receive audio/video
+      // This is required for ICE gathering to start on receive-only connections
+      console.log('📭 No local stream - adding receive-only transceivers (viewer)');
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      console.log('📻 Added audio/video transceivers for receiving');
     }
 
     // Handle ICE candidates
