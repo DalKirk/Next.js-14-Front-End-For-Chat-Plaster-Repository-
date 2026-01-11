@@ -476,6 +476,7 @@ async def websocket_endpoint(
 
                 # Broadcast lifecycle notifications
                 if ptype == "broadcast-started":
+                    broadcaster_name = payload.get("username") or username or "Anonymous"
                     for uid, ws in list(room_connections.get(room_id, {}).items()):
                         if uid == user_id:
                             continue
@@ -483,7 +484,7 @@ async def websocket_endpoint(
                             await ws.send_json({
                                 "type": "broadcast-started",
                                 "user_id": user_id,
-                                "username": rooms[room_id]["users"][user_id]["username"],
+                                "username": broadcaster_name,
                                 "timestamp": datetime.utcnow().isoformat(),
                             })
                         except Exception:
@@ -491,20 +492,23 @@ async def websocket_endpoint(
                     continue
 
                 if ptype == "broadcast-stopped":
+                    broadcaster_name = payload.get("username") or username or "Anonymous"
                     for ws in list(room_connections.get(room_id, {}).values()):
                         try:
                             await ws.send_json({
                                 "type": "broadcast-stopped",
                                 "user_id": user_id,
-                                "username": rooms[room_id]["users"][user_id]["username"],
+                                "username": broadcaster_name,
                                 "timestamp": datetime.utcnow().isoformat(),
                             })
                         except Exception:
                             pass
                     continue
 
-                # Treat as message
+                # Treat as message - skip if no content
                 content = payload.get("content")
+                if not content:
+                    continue
                 msg_avatar = payload.get("avatar") or avatar_url
                 msg_username = payload.get("username") or username or "Anonymous"
 
