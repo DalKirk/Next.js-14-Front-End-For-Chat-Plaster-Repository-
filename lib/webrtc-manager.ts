@@ -188,6 +188,17 @@ class WebRTCManager {
           console.log(`📤 Answer created, setting local description...`);
           await pc.setLocalDescription(answer);
           console.log(`📤 Local description set, ICE gathering state:`, pc.iceGatheringState);
+          
+          // Debug: Poll ICE gathering state for a few seconds
+          let pollCount = 0;
+          const pollInterval = setInterval(() => {
+            pollCount++;
+            console.log(`🔄 [${pollCount}s] ICE gathering:`, pc.iceGatheringState, '| ICE connection:', pc.iceConnectionState, '| Connection:', pc.connectionState);
+            if (pollCount >= 5 || pc.iceGatheringState === 'complete') {
+              clearInterval(pollInterval);
+            }
+          }, 1000);
+          
           signalCallback(userId, {
             type: 'answer',
             sdp: answer,
@@ -198,6 +209,17 @@ class WebRTCManager {
           console.log(`📥 Processing answer from ${userId}, current signaling state:`, pc.signalingState);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
           console.log(`📥 Remote description set, ICE gathering state:`, pc.iceGatheringState);
+          
+          // Debug: Poll ICE gathering state for a few seconds
+          let pollCount2 = 0;
+          const pollInterval2 = setInterval(() => {
+            pollCount2++;
+            console.log(`🔄 [${pollCount2}s] ICE gathering:`, pc.iceGatheringState, '| ICE connection:', pc.iceConnectionState, '| Connection:', pc.connectionState);
+            if (pollCount2 >= 5 || pc.iceGatheringState === 'complete') {
+              clearInterval(pollInterval2);
+            }
+          }, 1000);
+          
           // Process queued ICE candidates now that remote description is set
           await this.processQueuedIceCandidates(userId);
           break;
