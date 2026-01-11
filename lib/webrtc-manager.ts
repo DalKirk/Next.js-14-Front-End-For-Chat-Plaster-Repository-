@@ -6,8 +6,6 @@ type PeerConnection = {
   userId: string;
   username: string;
   iceCandidateQueue: RTCIceCandidateInit[];  // Queue for ICE candidates received before remote description
-  signalCallback: (userId: string, signal: any) => void;  // Store callback for ICE restart
-  isOfferer: boolean;  // Track if this peer initiated the connection
 };
 
 class WebRTCManager {
@@ -110,33 +108,6 @@ class WebRTCManager {
     // Log ICE connection state
     pc.oniceconnectionstatechange = () => {
       console.log(`🧊 ICE connection state [${username}]:`, pc.iceConnectionState);
-      
-      // Handle ICE disconnection - attempt restart
-      if (pc.iceConnectionState === 'disconnected') {
-        console.log(`⚠️ ICE disconnected for ${username}, will attempt restart if it fails...`);
-      }
-      
-      // ICE failed - try to restart (only the original offerer should restart)
-      if (pc.iceConnectionState === 'failed') {
-        const peer = this.peers.get(userId);
-        // The offerer (viewer in our case) should initiate ICE restart
-        if (peer && peer.isOfferer) {
-          console.log(`❌ ICE failed for ${username}, attempting ICE restart...`);
-          pc.createOffer({ iceRestart: true }).then(offer => {
-            return pc.setLocalDescription(offer);
-          }).then(() => {
-            console.log(`🔄 ICE restart initiated for ${username}`);
-            peer.signalCallback(userId, {
-              type: 'offer',
-              sdp: pc.localDescription,
-            });
-          }).catch(err => {
-            console.error(`❌ ICE restart failed for ${username}:`, err);
-          });
-        } else {
-          console.log(`❌ ICE failed for ${username}, waiting for offerer to restart`);
-        }
-      }
     };
 
     // Log ICE gathering state
@@ -163,26 +134,10 @@ class WebRTCManager {
     // Handle connection state changes
     pc.onconnectionstatechange = () => {
       console.log(`🔗 Connection state [${username}]:`, pc.connectionState);
-      
-      // Only remove peer on complete failure, not on temporary disconnect
-      if (pc.connectionState === 'failed') {
-        console.log(`❌ Connection failed for ${username}, removing peer`);
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         this.removePeer(userId);
         this.onPeerDisconnectedCallback?.(userId);
-      } else if (pc.connectionState === 'disconnected') {
-        // Wait 5 seconds before considering it a real disconnect
-        // Mobile networks often briefly disconnect and reconnect
-        console.log(`⚠️ Connection disconnected for ${username}, waiting 5s for recovery...`);
-        setTimeout(() => {
-          const peer = this.peers.get(userId);
-          if (peer && peer.connection.connectionState === 'disconnected') {
-            console.log(`❌ Connection still disconnected after 5s, removing peer ${username}`);
-            this.removePeer(userId);
-            this.onPeerDisconnectedCallback?.(userId);
-          }
-        }, 5000);
       }
-      
       // Log selected candidate pair when connected
       if (pc.connectionState === 'connected') {
         console.log('🎉 WebRTC connection established!');
@@ -203,14 +158,12 @@ class WebRTCManager {
       }
     };
 
-    // Store peer connection with callback and offerer flag for ICE restart
+    // Store peer connection
     this.peers.set(userId, { 
       connection: pc, 
       userId, 
       username, 
       iceCandidateQueue: [],
-      signalCallback,
-      isOfferer,
     });
 
     // Create offer if this peer is the offerer
