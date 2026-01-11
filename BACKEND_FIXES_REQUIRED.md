@@ -1,16 +1,63 @@
 # Backend Fixes Required for Multi-Device Streaming
 
-## Issue
-The backend's `broadcast-started` handler is throwing exceptions and returning "Invalid message format", preventing viewers from receiving broadcast notifications.
+## Overview
+These changes fix WebRTC video streaming between users. Apply these to your Railway backend's `server.py` file.
 
 ## File to Edit
-`backend/server.py`
+`server.py` (your main FastAPI backend file)
 
-## Changes Needed
+---
 
-### Change 1: Fix broadcast-started handler
+## Change 1: Fix WebRTC Signal Relay (CRITICAL)
 
-**Find this code (around line 480-495):**
+The WebRTC signal relay must include `room_id` and `target_user_id` in the relayed message, and use the payload username instead of dictionary lookup.
+
+**Find this code (in the WebSocket message handler):**
+```python
+# WebRTC signaling: relay targeted signals
+if ptype == "webrtc-signal":
+    target_user_id = payload.get("target_user_id")
+    target_ws = room_connections.get(room_id, {}).get(target_user_id)
+    if target_ws is not None:
+        try:
+            await target_ws.send_json({
+                "type": "webrtc-signal",
+                "from_user_id": user_id,
+                "from_username": rooms[room_id]["users"][user_id]["username"],
+                "signal": payload.get("signal"),
+            })
+        except Exception:
+            pass
+    continue
+```
+
+**Replace with:**
+```python
+# WebRTC signaling: relay targeted signals
+if ptype == "webrtc-signal":
+    target_user_id = payload.get("target_user_id")
+    target_ws = room_connections.get(room_id, {}).get(target_user_id)
+    if target_ws is not None:
+        try:
+            sender_username = payload.get("from_username") or username or "Anonymous"
+            await target_ws.send_json({
+                "type": "webrtc-signal",
+                "room_id": room_id,
+                "target_user_id": target_user_id,
+                "from_user_id": user_id,
+                "from_username": sender_username,
+                "signal": payload.get("signal"),
+            })
+        except Exception:
+            pass
+    continue
+```
+
+---
+
+## Change 2: Fix broadcast-started handler
+
+**Find this code:**
 ```python
 # Broadcast lifecycle notifications
 if ptype == "broadcast-started":
@@ -49,9 +96,11 @@ if ptype == "broadcast-started":
     continue
 ```
 
-### Change 2: Fix broadcast-stopped handler
+---
 
-**Find this code (around line 497-507):**
+## Change 3: Fix broadcast-stopped handler
+
+**Find this code:**
 ```python
 if ptype == "broadcast-stopped":
     for ws in list(room_connections.get(room_id, {}).values()):
@@ -84,9 +133,11 @@ if ptype == "broadcast-stopped":
     continue
 ```
 
-### Change 3: Skip messages without content
+---
 
-**Find this code (around line 509-511):**
+## Change 4: Skip messages without content
+
+**Find this code:**
 ```python
 # Treat as message
 content = payload.get("content")
@@ -102,28 +153,48 @@ if not content:
 msg_avatar = payload.get("avatar") or avatar_url
 ```
 
-## Why These Changes
+---
 
-1. **Dictionary lookup issue**: `rooms[room_id]["users"][user_id]["username"]` can fail if the user entry doesn't exist or is malformed, causing an exception and "Invalid message format" error.
+## Why These Changes Are Needed
 
-2. **Solution**: Use the username from the WebSocket payload directly (`payload.get("username")`) with fallbacks to the connection's username or "Anonymous".
+| Issue | Problem | Solution |
+|-------|---------|----------|
+| WebRTC signals missing fields | Frontend can't filter signals properly | Include `room_id` and `target_user_id` in relay |
+| Dictionary lookup fails | `rooms[room_id]["users"][user_id]["username"]` throws KeyError | Use `payload.get("username")` with fallbacks |
+| Empty messages cause errors | `keep_alive` messages fall through to message handler | Skip messages without content |
 
-3. **Content check**: Messages without content (like `keep_alive`) were falling through to the message handler and causing errors.
+---
 
 ## After Making Changes
 
-1. Save `backend/server.py`
-2. Restart your backend server at `api.starcyeed.com`
-3. Test "Go Live" - User B should now see `📡 Broadcast started by: [username]` in console
-4. Video should appear on User B's device
+1. **Save** `server.py`
+2. **Commit and push** to trigger Railway auto-deploy:
+   ```bash
+   git add server.py
+   git commit -m "Fix WebRTC signaling for multi-device streaming"
+   git push
+   ```
+3. **Wait** for Railway to redeploy (check dashboard)
+4. **Test** "Go Live" - User B should now see video from User A
+
+---
 
 ## Verification
 
-After deploying, check User B's console when User A clicks "Go Live". You should see:
-- ✅ `📡 Broadcast started by: MonkeyBrains` (or the broadcaster's name)
-- ✅ WebRTC signaling logs
-- ✅ ICE candidate logs
-- ✅ Video stream appears
+After deploying, check User B's browser console when User A clicks "Go Live":
 
-Instead of:
-- ❌ `📨 Received WebSocket message: {type: 'error', message: 'Invalid message format'}`
+✅ **Expected (working):**
+```
+📡 Broadcast started by: Dude40
+📡 Creating viewer peer connection to broadcaster
+📡 Received WebRTC signal from: Dude40 type: answer
+🧊 Processing 3 queued ICE candidates
+📺 Received remote stream from: 0443bed3-...
+```
+
+❌ **Not working (before fix):**
+```
+📨 Received WebSocket message: {type: 'error', message: 'Invalid message format'}
+⚠️ Ignoring WebRTC signal from self
+❌ Error handling signal: InvalidStateError
+```

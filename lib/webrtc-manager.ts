@@ -66,6 +66,8 @@ class WebRTCManager {
         pc.addTrack(track, this.localStream!);
         console.log('➕ Added track to peer:', track.kind);
       });
+    } else {
+      console.log('📭 No local stream to add (this is a viewer)');
     }
 
     // Handle ICE candidates
@@ -81,14 +83,24 @@ class WebRTCManager {
           type: 'ice-candidate',
           candidate: event.candidate,
         });
+      } else {
+        console.log(`✅ ICE gathering complete [${username}]`);
       }
+    };
+
+    // Log ICE connection state
+    pc.oniceconnectionstatechange = () => {
+      console.log(`🧊 ICE connection state [${username}]:`, pc.iceConnectionState);
     };
 
     // Handle incoming stream (viewer receives broadcaster's stream)
     pc.ontrack = (event) => {
-      console.log('📥 Received remote track:', event.track.kind);
+      console.log('📥 Received remote track:', event.track.kind, 'streams:', event.streams.length);
       if (event.streams && event.streams[0]) {
+        console.log('📺 Setting remote stream:', event.streams[0].id);
         this.onRemoteStreamCallback?.(userId, event.streams[0]);
+      } else {
+        console.warn('⚠️ No streams in track event');
       }
     };
 
@@ -101,6 +113,7 @@ class WebRTCManager {
       }
       // Log selected candidate pair when connected
       if (pc.connectionState === 'connected') {
+        console.log('🎉 WebRTC connection established!');
         pc.getStats(null).then((stats) => {
           stats.forEach((report: any) => {
             if (report.type === 'transport' && report.selectedCandidatePairId) {
