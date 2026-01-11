@@ -737,10 +737,11 @@ export default function RoomPage() {
       // Handle broadcaster start/stop notifications
       socketManager.on('broadcast-started', (data: { user_id: string; username: string }) => {
         console.log('📡 Broadcast started by:', data.username);
+        console.log('📡 Current user ID:', currentUser.id, '| Broadcaster ID:', data.user_id);
         setBroadcasterName(data.username);
         
         // If we're a viewer (not the broadcaster), connect to broadcaster
-        if (user && data.user_id !== user.id) {
+        if (data.user_id !== currentUser.id) {
           console.log('📡 Creating viewer peer connection to broadcaster');
           webrtcManager.createPeerConnection(
             data.user_id,
@@ -752,7 +753,7 @@ export default function RoomPage() {
             }
           );
         } else {
-          console.log('📡 Skipping viewer peer (we are the broadcaster or no user)');
+          console.log('📡 Skipping viewer peer (we are the broadcaster)');
         }
       });
 
