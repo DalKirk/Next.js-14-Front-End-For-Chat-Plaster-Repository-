@@ -33,6 +33,8 @@ class MessageCreate(BaseModel):
 rooms: Dict[str, Dict[str, Any]] = {}
 # room_id -> { user_id -> WebSocket }
 room_connections: Dict[str, Dict[str, WebSocket]] = {}
+# room_id -> { user_id -> {username, started_at} } - track active broadcasters
+active_broadcasters: Dict[str, Dict[str, Dict[str, Any]]] = {}
 rooms_lock = asyncio.Lock()
 
 # Minimal in-memory user directory for profile/password updates
@@ -380,6 +382,26 @@ async def websocket_endpoint(
         except Exception:
             pass
 
+        # Send active broadcasters to newly joined user so they can connect
+        room_broadcasters = active_broadcasters.get(room_id, {})
+        if room_broadcasters:
+            try:
+                await websocket.send_json({
+                    "type": "active-broadcasts",
+                    "room_id": room_id,
+                    "broadcasters": [
+                        {
+                            "user_id": bc_id,
+                            "username": bc_info.get("username", "Anonymous"),
+                            "started_at": bc_info.get("started_at"),
+                        }
+                        for bc_id, bc_info in room_broadcasters.items()
+                    ],
+                    "timestamp": datetime.utcnow().isoformat(),
+                })
+            except Exception:
+                pass
+
         # Receive loop
         while True:
             data = await websocket.receive_text()
@@ -480,6 +502,11 @@ async def websocket_endpoint(
                 # Broadcast lifecycle notifications
                 if ptype == "broadcast-started":
                     broadcaster_name = payload.get("username") or username or "Anonymous"
+                    # Track this broadcaster as active
+                    active_broadcasters.setdefault(room_id, {})[user_id] = {
+                        "username": broadcaster_name,
+                        "started_at": datetime.utcnow().isoformat(),
+                    }
                     for uid, ws in list(room_connections.get(room_id, {}).items()):
                         if uid == user_id:
                             continue
@@ -496,6 +523,12 @@ async def websocket_endpoint(
 
                 if ptype == "broadcast-stopped":
                     broadcaster_name = payload.get("username") or username or "Anonymous"
+                    # Remove broadcaster from active tracking
+                    try:
+                        if room_id in active_broadcasters and user_id in active_broadcasters[room_id]:
+                            del active_broadcasters[room_id][user_id]
+                    except Exception:
+                        pass
                     for ws in list(room_connections.get(room_id, {}).values()):
                         try:
                             await ws.send_json({
@@ -555,6 +588,26 @@ async def websocket_endpoint(
                 del conns[user_id]
         except Exception:
             pass
+        # Clean up broadcaster if this user was broadcasting
+        was_broadcasting = False
+        try:
+            if room_id in active_broadcasters and user_id in active_broadcasters[room_id]:
+                del active_broadcasters[room_id][user_id]
+                was_broadcasting = True
+        except Exception:
+            pass
+        # Notify broadcast stopped if they were broadcasting
+        if was_broadcasting:
+            for ws in list(room_connections.get(room_id, {}).values()):
+                try:
+                    await ws.send_json({
+                        "type": "broadcast-stopped",
+                        "user_id": user_id,
+                        "username": username or "Anonymous",
+                        "timestamp": datetime.utcnow().isoformat(),
+                    })
+                except Exception:
+                    pass
         # Notify leave
         for ws in list(room_connections.get(room_id, {}).values()):
             try:

@@ -3,6 +3,7 @@ import { SocketMessage } from './types';
 class SocketManager {
   private socket: WebSocket | null = null;
   private callbacks: Map<string, Function> = new Map();
+  private messageQueue: Map<string, any[]> = new Map(); // Queue for messages received before handlers registered
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10; // Increased from 5 for Railway free tier wake-up
   private reconnectDelay = 1000;
@@ -143,15 +144,44 @@ class SocketManager {
             return;
           }
           if (data.type === 'webrtc-signal') {
-            this.callbacks.get('webrtc-signal')?.(data);
+            if (this.callbacks.has('webrtc-signal')) {
+              this.callbacks.get('webrtc-signal')?.(data);
+            } else {
+              // Queue for later - handler not registered yet
+              console.log('📨 Queuing webrtc-signal (handler not yet registered)');
+              if (!this.messageQueue.has('webrtc-signal')) this.messageQueue.set('webrtc-signal', []);
+              this.messageQueue.get('webrtc-signal')!.push(data);
+            }
             return;
           }
           if (data.type === 'broadcast-started') {
-            this.callbacks.get('broadcast-started')?.(data);
+            if (this.callbacks.has('broadcast-started')) {
+              this.callbacks.get('broadcast-started')?.(data);
+            } else {
+              console.log('📨 Queuing broadcast-started (handler not yet registered)');
+              if (!this.messageQueue.has('broadcast-started')) this.messageQueue.set('broadcast-started', []);
+              this.messageQueue.get('broadcast-started')!.push(data);
+            }
             return;
           }
           if (data.type === 'broadcast-stopped') {
-            this.callbacks.get('broadcast-stopped')?.(data);
+            if (this.callbacks.has('broadcast-stopped')) {
+              this.callbacks.get('broadcast-stopped')?.(data);
+            } else {
+              console.log('📨 Queuing broadcast-stopped (handler not yet registered)');
+              if (!this.messageQueue.has('broadcast-stopped')) this.messageQueue.set('broadcast-stopped', []);
+              this.messageQueue.get('broadcast-stopped')!.push(data);
+            }
+            return;
+          }
+          if (data.type === 'active-broadcasts') {
+            if (this.callbacks.has('active-broadcasts')) {
+              this.callbacks.get('active-broadcasts')?.(data);
+            } else {
+              console.log('📨 Queuing active-broadcasts (handler not yet registered)');
+              if (!this.messageQueue.has('active-broadcasts')) this.messageQueue.set('active-broadcasts', []);
+              this.messageQueue.get('active-broadcasts')!.push(data);
+            }
             return;
           }
           // Fallback: treat as notification for unknown types
@@ -173,6 +203,7 @@ class SocketManager {
       this.socket = null;
     }
     this.stopKeepAlive();
+    this.messageQueue.clear(); // Clear queued messages on disconnect
   }
 
   private startKeepAlive(): void {
@@ -339,6 +370,14 @@ class SocketManager {
   // Generic event listener for WebRTC
   on(event: string, callback: Function): void {
     this.callbacks.set(event, callback);
+    
+    // Replay any queued messages for this event type
+    const queued = this.messageQueue.get(event);
+    if (queued && queued.length > 0) {
+      console.log(`📨 Replaying ${queued.length} queued ${event} message(s)`);
+      queued.forEach(data => callback(data));
+      this.messageQueue.delete(event);
+    }
   }
 
   isConnected(): boolean {

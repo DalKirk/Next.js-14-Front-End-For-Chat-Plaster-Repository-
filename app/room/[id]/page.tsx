@@ -777,6 +777,34 @@ export default function RoomPage() {
         setRemoteStream(null);
       });
 
+      // Handle active broadcasts when joining room (for late joiners)
+      socketManager.on('active-broadcasts', (data: { broadcasters: Array<{ user_id: string; username: string }> }) => {
+        console.log('📡 Received active broadcasts:', data.broadcasters);
+        
+        // Connect to each active broadcaster
+        data.broadcasters.forEach((broadcaster) => {
+          // Skip if this is ourselves
+          if (broadcaster.user_id === currentUser.id) {
+            console.log('📡 Skipping self broadcast');
+            return;
+          }
+          
+          console.log('📡 Late join: connecting to active broadcaster:', broadcaster.username);
+          setBroadcasterName(broadcaster.username);
+          
+          // Create peer connection to the broadcaster
+          webrtcManager.createPeerConnection(
+            broadcaster.user_id,
+            broadcaster.username,
+            true, // Viewer creates offer
+            (targetUserId, signal) => {
+              console.log('📡 Late join: sending offer to broadcaster:', signal.type);
+              socketManager.sendWebRTCSignal(roomId, targetUserId, signal);
+            }
+          );
+        });
+      });
+
       // Set up remote stream handler
       webrtcManager.onRemoteStream((userId, stream) => {
         console.log('📺 Received remote stream from:', userId);
