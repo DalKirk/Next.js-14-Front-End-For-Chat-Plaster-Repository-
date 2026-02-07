@@ -82,3 +82,27 @@ export interface GalleryListResponse {
   user_id: string;
   items: GalleryItem[];
 }
+
+/**
+ * Theme configuration stored per-user in the database
+ */
+export interface ThemeConfig {
+  preset: string;               // 'sunset' | 'ocean' | 'lavender' | 'mint' | 'rose' | 'cherry' | 'custom'
+  glassStyle: string;           // 'ombre' | 'frosted' | 'crystal' | 'liquid' | 'holographic' | 'metallic'
+  colors: string[];             // Custom gradient stops (e.g. ['#FF6B6B','#FFB84D','#FF6B9D','#C06C84'])
+  blurStrength: number;         // 4..32
+  fonts: {
+    heading: string;            // font preset key (e.g. 'inter','playfair')
+    body: string;
+    headingColor: string;       // hex
+    bodyColor: string;          // hex
+  };
+  effects: {
+    depthLayers: boolean;
+    tilt3D: boolean;
+    ripple: boolean;
+    particles: string;          // 'hearts' | 'dots' | 'stars' | 'none' etc.
+    particleCount: number;      // 5..40
+    particleSpeed: string;      // 'slow' | 'medium' | 'fast'
+  };
+}

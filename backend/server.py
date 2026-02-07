@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, Set, Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import json as _json
 
 try:
     # Prefer dynamic CORS when available in repo
@@ -29,6 +30,21 @@ class MessageCreate(BaseModel):
     type: Optional[str] = "message"
 
 
+class SignupRequest(BaseModel):
+    username: str
+    email: Optional[str] = None
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+
+
 # In-memory store (replace with Redis/DB for production)
 rooms: Dict[str, Dict[str, Any]] = {}
 # room_id -> { user_id -> WebSocket }
@@ -49,12 +65,190 @@ except Exception:
 user_store = None
 
 
+# Simple token store (in-memory; replace with JWT/Redis in production)
+tokens: Dict[str, str] = {}  # token -> user_id
+
 router = APIRouter()
 
 
 @router.get("/")
 async def root():
     return {"status": "ok", "time": datetime.utcnow().isoformat()}
+
+
+# ─── Auth Endpoints ───────────────────────────────────────────────────
+
+@router.post("/auth/signup")
+async def auth_signup(payload: SignupRequest):
+    """Create a new user account and return user + token."""
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
+    if len(username) < 2:
+        raise HTTPException(status_code=400, detail="Username must be at least 2 characters")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    # Check if username already taken
+    async with users_lock:
+        for uid, u in users.items():
+            if u.get("username", "").lower() == username.lower():
+                raise HTTPException(status_code=409, detail="Username already registered")
+
+    user_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    # Hash password
+    hashed = await asyncio.to_thread(_hash_password, payload.password)
+
+    user_data = {
+        "id": user_id,
+        "username": username,
+        "display_name": username,
+        "email": payload.email or "",
+        "bio": "",
+        "avatar_url": "",
+        "avatar_urls": {},
+        "password_hash": hashed,
+        "created_at": now,
+    }
+
+    async with users_lock:
+        users[user_id] = user_data
+
+    token = str(uuid.uuid4())
+    tokens[token] = user_id
+
+    # Return user without password_hash
+    safe_user = {k: v for k, v in user_data.items() if k != "password_hash"}
+    return {"user": safe_user, "token": token}
+
+
+@router.post("/auth/login")
+async def auth_login(payload: LoginRequest):
+    """Authenticate an existing user and return user + token."""
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
+
+    matched_user: Optional[Dict[str, Any]] = None
+    async with users_lock:
+        for uid, u in users.items():
+            if u.get("username", "").lower() == username.lower():
+                matched_user = u
+                break
+
+    if not matched_user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    # Verify password
+    stored_hash = matched_user.get("password_hash", "")
+    ok = await asyncio.to_thread(_verify_password, payload.password, stored_hash)
+    if not ok:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    token = str(uuid.uuid4())
+    tokens[token] = matched_user["id"]
+
+    safe_user = {k: v for k, v in matched_user.items() if k != "password_hash"}
+    return {"user": safe_user, "token": token}
+
+
+@router.post("/auth/logout")
+async def auth_logout():
+    """Logout (no-op for token-based auth; client discards token)."""
+    return {"success": True}
+
+
+@router.get("/auth/me")
+async def auth_me(authorization: Optional[str] = None):
+    """Return the currently authenticated user from Bearer token."""
+    from fastapi import Request as _Req
+    # We'll get the header from a dependency; for simplicity parse it here
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = authorization.replace("Bearer ", "").strip()
+    user_id = tokens.get(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    async with users_lock:
+        user_data = users.get(user_id)
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    safe_user = {k: v for k, v in user_data.items() if k != "password_hash"}
+    return safe_user
+
+
+# ─── User CRUD ────────────────────────────────────────────────────────
+
+@router.post("/users")
+async def create_user(payload: CreateUserRequest):
+    """Create a user without password (legacy guest mode)."""
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
+
+    # Check if already exists
+    async with users_lock:
+        for uid, u in users.items():
+            if u.get("username", "").lower() == username.lower():
+                # Return existing user
+                return {k: v for k, v in u.items() if k != "password_hash"}
+
+    user_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    user_data = {
+        "id": user_id,
+        "username": username,
+        "display_name": username,
+        "email": "",
+        "bio": "",
+        "avatar_url": "",
+        "avatar_urls": {},
+        "created_at": now,
+    }
+    async with users_lock:
+        users[user_id] = user_data
+
+    return user_data
+
+
+@router.get("/rooms")
+async def list_rooms():
+    """Return all active rooms."""
+    result = []
+    async with rooms_lock:
+        for room_id, room_data in rooms.items():
+            result.append({
+                "id": room_id,
+                "name": room_data.get("name", room_id),
+                "created_at": room_data.get("created_at", datetime.utcnow().isoformat()),
+                "member_count": len(room_data.get("users", {})),
+                "thumbnail_url": room_data.get("thumbnail_url"),
+            })
+    return result
+
+
+@router.post("/rooms")
+async def create_room(payload: Dict[str, Any]):
+    """Create a new room."""
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Room name is required")
+
+    room_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    room_data = {
+        "name": name,
+        "users": {},
+        "messages": [],
+        "created_at": now,
+        "thumbnail_url": payload.get("thumbnail_url"),
+    }
+    async with rooms_lock:
+        rooms[room_id] = room_data
+
+    return {"id": room_id, "name": name, "created_at": now, "thumbnail_url": room_data.get("thumbnail_url")}
 
 
 @router.get("/users/{user_id}")
@@ -66,7 +260,14 @@ async def get_user(user_id: str):
         else:
             async with users_lock:
                 profile = users.get(user_id, {})
-        return {"user_id": user_id, "profile": profile}
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
+        # Return in shape frontend expects (flat user object)
+        safe = {k: v for k, v in profile.items() if k != "password_hash"}
+        safe["id"] = safe.get("id", user_id)
+        return safe
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -88,7 +289,7 @@ async def update_profile(user_id: str, payload: Dict[str, Any]):
         else:
             async with users_lock:
                 profile = users.get(user_id, {})
-                for key in ("display_name", "username", "bio", "email", "avatar_url"):
+                for key in ("display_name", "username", "bio", "email", "avatar_url", "avatar_urls"):
                     if key in payload and payload[key] is not None:
                         profile[key] = payload[key]
                 users[user_id] = profile
@@ -149,10 +350,205 @@ async def update_password(user_id: str, payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Theme Endpoints ──────────────────────────────────────────────────
+
+# In-memory fallback (used only when user_store is None)
+user_themes: Dict[str, Dict[str, Any]] = {}
+
+
+@router.get("/users/{user_id}/theme")
+async def get_theme(user_id: str):
+    """Return the saved theme config for a user from DB (or memory fallback)."""
+    theme_config = None
+    if user_store is not None:
+        try:
+            theme_config = await user_store.get_theme(user_id)
+        except Exception as e:
+            print(f"⚠️ DB get_theme failed, falling back to memory: {e}")
+            theme_config = user_themes.get(user_id, {}).get("theme_config")
+    else:
+        stored = user_themes.get(user_id)
+        theme_config = stored.get("theme_config") if stored else None
+
+    if theme_config is None:
+        return {"theme_config": None}
+    return {"theme_config": theme_config}
+
+
+@router.put("/users/{user_id}/theme")
+async def update_theme(user_id: str, payload: Dict[str, Any]):
+    """Save a theme config for a user to DB (or memory fallback)."""
+    theme_config = payload.get("theme_config", payload)
+    if user_store is not None:
+        try:
+            await user_store.set_theme(user_id, theme_config)
+        except Exception as e:
+            print(f"⚠️ DB set_theme failed, falling back to memory: {e}")
+            user_themes[user_id] = {"theme_config": theme_config}
+    else:
+        user_themes[user_id] = {"theme_config": theme_config}
+    return {"success": True, "theme_config": theme_config}
+
+
+# ─── Gallery / Media Endpoints ────────────────────────────────────────
+
+# In-memory fallback (used only when user_store is None)
+user_galleries: Dict[str, list] = {}
+
+
+async def _load_gallery(user_id: str) -> list:
+    """Load gallery from DB or memory."""
+    if user_store is not None:
+        try:
+            return await user_store.get_gallery(user_id)
+        except Exception as e:
+            print(f"⚠️ DB get_gallery failed: {e}")
+    return user_galleries.get(user_id, [])
+
+
+async def _save_gallery(user_id: str, items: list) -> None:
+    """Persist gallery to DB or memory."""
+    if user_store is not None:
+        try:
+            await user_store.set_gallery(user_id, items)
+            return
+        except Exception as e:
+            print(f"⚠️ DB set_gallery failed, falling back to memory: {e}")
+    user_galleries[user_id] = items
+
+
+@router.get("/users/{user_id}/media")
+async def list_gallery(user_id: str):
+    """List all gallery items for a user."""
+    items = await _load_gallery(user_id)
+    return {"user_id": user_id, "items": items}
+
+
+# Also support /gallery alias
+@router.get("/users/{user_id}/gallery")
+async def list_gallery_alias(user_id: str):
+    return await list_gallery(user_id)
+
+
+@router.post("/users/{user_id}/media")
+async def add_gallery_item(
+    user_id: str,
+    files: list[UploadFile] = File(default=[]),
+    caption: str = Form(default=""),
+    username: str = Form(default=""),
+    url: str = Form(default=""),
+):
+    """Add gallery item(s) for a user.
+    Accepts multipart/form-data with `files` (images) and/or a `url`.
+    Returns {user_id, items: [...]} to satisfy frontend validation.
+    """
+    new_items = []
+    now = datetime.utcnow().isoformat()
+
+    # Handle uploaded files (store to disk/CDN — placeholder stores nothing yet)
+    for f in files:
+        item_id = str(uuid.uuid4())
+        # TODO: Replace with actual CDN upload (Bunny.net, S3, etc.)
+        # For now just record the filename — the real URL would come from CDN
+        item = {
+            "id": item_id,
+            "user_id": user_id,
+            "url": url or f"https://placeholder.cdn/{user_id}/{item_id}/{f.filename}",
+            "caption": caption,
+            "created_at": now,
+        }
+        new_items.append(item)
+
+    # Handle bare URL (JSON-style creation)
+    if not files and url:
+        item_id = str(uuid.uuid4())
+        item = {
+            "id": item_id,
+            "user_id": user_id,
+            "url": url,
+            "caption": caption,
+            "created_at": now,
+        }
+        new_items.append(item)
+
+    all_items = await _load_gallery(user_id)
+    all_items.extend(new_items)
+    await _save_gallery(user_id, all_items)
+    return {"user_id": user_id, "items": all_items}
+
+
+# Also support /gallery alias
+@router.post("/users/{user_id}/gallery")
+async def add_gallery_item_alias(
+    user_id: str,
+    files: list[UploadFile] = File(default=[]),
+    caption: str = Form(default=""),
+    username: str = Form(default=""),
+    url: str = Form(default=""),
+):
+    return await add_gallery_item(user_id, files, caption, username, url)
+
+
+@router.delete("/users/{user_id}/media/{item_id}")
+async def delete_gallery_item(user_id: str, item_id: str):
+    """Delete a gallery item."""
+    items = await _load_gallery(user_id)
+    items = [i for i in items if i.get("id") != item_id]
+    await _save_gallery(user_id, items)
+    return {"success": True, "ok": True}
+
+
+@router.delete("/users/{user_id}/gallery/{item_id}")
+async def delete_gallery_item_alias(user_id: str, item_id: str):
+    return await delete_gallery_item(user_id, item_id)
+
+
+@router.put("/users/{user_id}/media/{item_id}")
+async def update_gallery_item(user_id: str, item_id: str, payload: Dict[str, Any]):
+    """Update a gallery item (caption, etc.)."""
+    items = await _load_gallery(user_id)
+    for item in items:
+        if item.get("id") == item_id:
+            # Accept both 'caption' and 'title' for backwards compat
+            if "caption" in payload:
+                item["caption"] = payload["caption"]
+            if "title" in payload:
+                item["caption"] = payload["title"]
+            item.update({k: v for k, v in payload.items() if k not in ("id", "user_id", "caption", "title")})
+            await _save_gallery(user_id, items)
+            return item
+    raise HTTPException(status_code=404, detail="Gallery item not found")
+
+
+@router.put("/users/{user_id}/gallery/{item_id}")
+async def update_gallery_item_alias(user_id: str, item_id: str, payload: Dict[str, Any]):
+    return await update_gallery_item(user_id, item_id, payload)
+
+
+@router.put("/users/{user_id}/media/order")
+async def update_gallery_order(user_id: str, payload: Dict[str, Any]):
+    """Reorder gallery items by ID list."""
+    ids = payload.get("ids", [])
+    if not isinstance(ids, list):
+        raise HTTPException(status_code=400, detail="ids must be an array")
+    items = await _load_gallery(user_id)
+    id_map = {item["id"]: item for item in items}
+    ordered = [id_map[i] for i in ids if i in id_map]
+    # Append any items not in the list at the end
+    remaining = [item for item in items if item["id"] not in set(ids)]
+    ordered.extend(remaining)
+    await _save_gallery(user_id, ordered)
+    return {"user_id": user_id, "items": ordered}
+
+
+@router.put("/users/{user_id}/gallery/order")
+async def update_gallery_order_alias(user_id: str, payload: Dict[str, Any]):
+    return await update_gallery_order(user_id, payload)
+
+
 def _hash_password(password: str) -> str:
     """Synchronous helper used with asyncio.to_thread for hashing."""
     try:
-        # Avoid hard dependency error if passlib isn't installed; simple placeholder
         from passlib.context import CryptContext
         ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
         return ctx.hash(password)
@@ -160,6 +556,17 @@ def _hash_password(password: str) -> str:
         # Fallback: DO NOT USE IN PRODUCTION
         import hashlib
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    """Synchronous helper used with asyncio.to_thread for verification."""
+    try:
+        from passlib.context import CryptContext
+        ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return ctx.verify(plain, hashed)
+    except Exception:
+        import hashlib
+        return hashlib.sha256(plain.encode("utf-8")).hexdigest() == hashed
 
 
 @router.post("/rooms/{room_id}/join")

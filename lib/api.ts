@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { User, Room, Message, LiveStream, VideoUpload, Generate3DModelRequest, Generate3DModelResponse, Model3D } from './types';
-import type { AvatarUploadResponse, AvatarUrls, GalleryItem, GalleryListResponse } from '../types/backend';
+import type { AvatarUploadResponse, AvatarUrls, GalleryItem, GalleryListResponse, ThemeConfig } from '../types/backend';
 import { sanitizeUserForStorage } from './utils';
 
 type ProfileUpdatePayload = {
@@ -758,7 +758,11 @@ export const apiClient = {
         continue;
       }
     }
-    console.warn('Gallery list failed, falling back to local storage:', lastErr);
+    // Gallery endpoint not available on this backend — fall back silently to local storage
+    if (typeof lastErr === 'object' && lastErr !== null && 'response' in lastErr) {
+      const status = (lastErr as any).response?.status;
+      if (status !== 404) console.warn('Gallery list failed:', lastErr);
+    }
       // Fallback: local storage URLs without IDs, scoped per user
       if (typeof window !== 'undefined') {
         try {
@@ -860,6 +864,39 @@ export const apiClient = {
     
     handleApiError(lastErr, 'Delete gallery item');
     throw lastErr;
+  },
+
+  // ─── Theme CRUD ──────────────────────────────────────────────────────
+
+  /**
+   * Get user's theme configuration from the database.
+   * Returns null if no theme is saved yet.
+   */
+  getTheme: async (userId: string): Promise<ThemeConfig | null> => {
+    try {
+      const r = await api.get(`/users/${userId}/theme`);
+      return (r.data?.theme_config as ThemeConfig) ?? null;
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        // Endpoint or user not found – no custom theme yet
+        return null;
+      }
+      console.warn('⚠️ Failed to load theme, falling back to null:', e);
+      return null;
+    }
+  },
+
+  /**
+   * Save user's theme configuration to the database.
+   */
+  updateTheme: async (userId: string, themeConfig: ThemeConfig): Promise<{ success: boolean }> => {
+    try {
+      const r = await api.put(`/users/${userId}/theme`, { theme_config: themeConfig });
+      return r.data as { success: boolean };
+    } catch (e) {
+      handleApiError(e, 'Update theme');
+      throw e;
+    }
   },
 
   /**
