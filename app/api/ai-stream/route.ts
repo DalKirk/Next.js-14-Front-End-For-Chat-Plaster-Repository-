@@ -31,12 +31,18 @@ export async function POST(request: NextRequest) {
     const conversationId = body.conversation_id;
     const systemPrompt = body.system_prompt;
 
+    // Filter out messages with empty content — the Anthropic API rejects them
+    // (can happen when an assistant placeholder message with content:'' leaks into history)
+    const validHistory = (Array.isArray(body.conversation_history) ? body.conversation_history : [])
+      .filter((msg: {role: string; content: string}) => msg.content && msg.content.trim() !== '')
+      .map((msg: {role: string; content: string}) => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
     const backendPayload = {
       messages: [
-        ...(Array.isArray(body.conversation_history) ? body.conversation_history : []).map((msg: {role: string; content: string}) => ({
-          role: msg.role,
-          content: msg.content
-        })),
+        ...validHistory,
         {
           role: 'user',
           content: body.message.trim()

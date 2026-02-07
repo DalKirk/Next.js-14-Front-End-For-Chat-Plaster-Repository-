@@ -589,10 +589,13 @@ export default function HomePage() {
     
     try {
       // Build conversation history from claudeMessages
-      const conversation_history = claudeMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+      // Filter out messages with empty content (e.g. assistant placeholder before streaming completes)
+      const conversation_history = claudeMessages
+        .filter(msg => msg.content && msg.content.trim() !== '')
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
 
       const response = await fetch('/api/ai-stream', {
         method: 'POST',
