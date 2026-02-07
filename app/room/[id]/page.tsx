@@ -1761,16 +1761,58 @@ export default function RoomPage() {
                     key={msg.id}
                     className="text-left flex items-start gap-1.5 max-w-[80%]"
                   >
-                    <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0 border border-cyan-400/50">
-                      <ResponsiveAvatar 
-                        avatarUrls={msg.avatar_urls || (msg.avatar ? { thumbnail: msg.avatar, small: msg.avatar, medium: msg.avatar, large: msg.avatar } : undefined)} 
-                        username={msg.username} 
-                        size="thumbnail" 
-                        className="w-full h-full object-cover" 
-                      />
+                    {/* Tappable avatar — navigates to user profile */}
+                    <div
+                      role="button"
+                      className="relative flex-shrink-0 select-none active:opacity-70"
+                      style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const uid = msg.user_id || 'unknown';
+                        const uname = msg.username || 'User';
+                        router.push(`/profile?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(uname)}`);
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const uid = msg.user_id || 'unknown';
+                        const uname = msg.username || 'User';
+                        router.push(`/profile?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(uname)}`);
+                      }}
+                    >
+                      {/* 20px avatar visual inside a 44px touch target */}
+                      <span className="flex items-center justify-center w-11 h-11 -m-3">
+                        <span className="relative block w-5 h-5 rounded-full overflow-hidden border border-cyan-400/50">
+                          <ResponsiveAvatar 
+                            avatarUrls={msg.avatar_urls || (msg.avatar ? { thumbnail: msg.avatar, small: msg.avatar, medium: msg.avatar, large: msg.avatar } : undefined)} 
+                            username={msg.username} 
+                            size="thumbnail" 
+                            className="w-full h-full object-cover pointer-events-none" 
+                          />
+                        </span>
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-semibold text-[11px] text-cyan-400">
+                      <span
+                        role="button"
+                        className="font-semibold text-[11px] text-cyan-400 select-none active:opacity-70"
+                        style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const uid = msg.user_id || 'unknown';
+                          const uname = msg.username || 'User';
+                          router.push(`/profile?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(uname)}`);
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const uid = msg.user_id || 'unknown';
+                          const uname = msg.username || 'User';
+                          router.push(`/profile?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(uname)}`);
+                        }}
+                      >
                         {msg.username}:
                       </span>
                       {' '}
