@@ -1134,11 +1134,10 @@ function ProfilePageContent() {
                       </div>
 
                       {/* Mini stats */}
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
                         {[
                           { label: 'Posts', val: '—' },
                           { label: 'Rooms', val: String(profile.totalRooms || 0) },
-                          { label: 'Msgs', val: String(profile.totalMessages || 0) },
                         ].map((s, i) => (
                           <div key={i} className="text-center p-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${liveTheme.accent}30` }}>
                             <div className="text-xs font-bold" style={{ color: headingColor, fontFamily: headingFont }}>{s.val}</div>
@@ -1198,7 +1197,6 @@ function ProfilePageContent() {
                       {/* Stats row */}
                       <div className="flex gap-4 mb-4">
                         {[
-                          { icon: MessageSquare, label: 'Messages', val: profile.totalMessages || 0 },
                           { icon: Users, label: 'Rooms', val: profile.totalRooms || 0 },
                         ].map((s, i) => {
                           const SIcon = s.icon;
