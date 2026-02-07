@@ -326,7 +326,7 @@ export default function ImageTo3DGenerator({
             {(() => {
               const fullUrl = currentJob.glb_url.startsWith('http')
                 ? currentJob.glb_url
-                : `https://web-production-3ba7e.up.railway.app${currentJob.glb_url}`;
+                : `https://api.starcyeed.com${currentJob.glb_url}`;
               console.log('🔍 Loading 3D model from:', fullUrl);
               return (
                 <Model3DViewer

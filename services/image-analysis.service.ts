@@ -1,6 +1,6 @@
 import { ImageAnalysisRequest, ImageAnalysisResponse, ImageAnalysisError, HistoryEntry } from '@/types/image-analysis';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export class ImageAnalysisService {
   /**

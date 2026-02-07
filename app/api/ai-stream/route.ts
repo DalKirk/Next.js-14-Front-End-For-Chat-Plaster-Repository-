@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     // Transform to backend format and forward flags
     const enableSearch = typeof body.enable_search === 'boolean' ? body.enable_search : true;
     const conversationId = body.conversation_id;
+    const systemPrompt = body.system_prompt;
 
     const backendPayload = {
       messages: [
@@ -41,10 +42,11 @@ export async function POST(request: NextRequest) {
           content: body.message.trim()
         }
       ],
-      max_tokens: 2048,
-      temperature: 0.7,
+      max_tokens: body.max_tokens || 2048,
+      temperature: body.temperature ?? 0.7,
       // Forward through to backend so it can enable tools like Brave Search
       enable_search: enableSearch,
+      ...(systemPrompt ? { system_prompt: systemPrompt } : {}),
       ...(conversationId ? { conversation_id: conversationId } : {})
     };
 

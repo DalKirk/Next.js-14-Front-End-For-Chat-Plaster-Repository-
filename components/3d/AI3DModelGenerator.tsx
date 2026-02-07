@@ -29,7 +29,7 @@ export default function AI3DModelGenerator() {
 
       if (response.status === 'completed') {
         // Construct full URL
-        const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://web-production-3ba7e.up.railway.app'}${response.model_url}`;
+        const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'}${response.model_url}`;
         setModelUrl(fullUrl);
         toast.success('3D model generated!');
       } else if (response.status === 'processing') {
