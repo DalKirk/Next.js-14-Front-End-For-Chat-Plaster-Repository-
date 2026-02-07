@@ -280,24 +280,34 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
         >
         {/* Username, timestamp, and copy button */}
         <div className="flex items-center justify-between mb-2 gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Avatar: padded touch target (44px) wrapping a 24px visual circle */}
             <button 
               onClick={handleAvatarClick}
-              className={`relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 cursor-pointer hover:scale-110 transition-all ${isHost ? 'ring-2 ring-cyan-400/30' : 'border border-cyan-400/50'}`}
+              className="relative flex items-center justify-center w-10 h-10 sm:w-7 sm:h-7 -m-2 sm:-m-0.5 flex-shrink-0 cursor-pointer"
+              style={{ touchAction: 'manipulation' }}
               title={`View ${message.username}'s profile`}
+              aria-label={`View ${message.username}'s profile`}
             >
-              <ResponsiveAvatar 
-                avatarUrls={message.avatar_urls || (message.avatar ? { thumbnail: message.avatar, small: message.avatar, medium: message.avatar, large: message.avatar } : undefined)} 
-                username={message.username} 
-                size="thumbnail" 
-                className="w-full h-full object-cover" 
-              />
+              <span className={`relative block w-6 h-6 rounded-full overflow-hidden hover:scale-110 transition-all ${isHost ? 'ring-2 ring-cyan-400/30' : 'border border-cyan-400/50'}`}>
+                <ResponsiveAvatar 
+                  avatarUrls={message.avatar_urls || (message.avatar ? { thumbnail: message.avatar, small: message.avatar, medium: message.avatar, large: message.avatar } : undefined)} 
+                  username={message.username} 
+                  size="thumbnail" 
+                  className="w-full h-full object-cover" 
+                />
+              </span>
             </button>
             <div className="flex items-center gap-2">
-              {/* Username: highlight differently for host or for your own username (visible only to you) */}
-              <span className={`text-sm font-medium ${isHost ? 'text-cyan-300' : isOwn ? 'text-cyan-200 font-semibold' : 'text-white/90'}`}>
+              {/* Username: tappable on mobile to navigate to profile */}
+              <button
+                onClick={handleAvatarClick}
+                className={`text-sm font-medium cursor-pointer hover:underline active:opacity-70 ${isHost ? 'text-cyan-300' : isOwn ? 'text-cyan-200 font-semibold' : 'text-white/90'}`}
+                style={{ touchAction: 'manipulation' }}
+                title={`View ${message.username}'s profile`}
+              >
                 {message.username}
-              </span>
+              </button>
               {/* Host badge for video uploader/stream creator */}
               {isHost && (
                 <span className="text-[10px] text-cyan-100 bg-cyan-900/20 px-2 py-0.5 rounded-full font-medium">HOST</span>
