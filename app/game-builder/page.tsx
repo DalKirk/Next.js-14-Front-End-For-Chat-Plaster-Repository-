@@ -2,8 +2,8 @@
 
 import dynamic from 'next/dynamic';
 
-const GameBuilder = dynamic(() => import('@/components/GameBuilder'), { ssr: false });
+const PlutoEditor = dynamic(() => import('@/components/editor/PlutoEditor'), { ssr: false });
 
 export default function GameBuilderPage() {
-  return <GameBuilder />;
+  return <PlutoEditor />;
 }

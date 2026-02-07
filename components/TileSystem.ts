@@ -94,6 +94,10 @@ export default class TileSystem {
     this.tiles.delete(`${x},${y}`);
   }
   
+  clearAll(): void {
+    this.tiles.clear();
+  }
+  
   worldToGrid(worldX: number, worldY: number): { x: number; y: number } {
     return {
       x: Math.floor(worldX / this.tileSize),
