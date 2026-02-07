@@ -2078,6 +2078,22 @@ export default function RoomPage() {
                   <span className="text-white text-sm font-semibold">{presentUsers.size}</span>
                 </div>
               </div>
+
+              {/* End Video Chat button - Desktop overlay */}
+              {isLiveStreamMode && (
+                <div className="absolute bottom-4 left-0 right-0 z-40 flex justify-center">
+                  <button
+                    onClick={() => setShowStopStreamModal(true)}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-red-500 hover:bg-red-600 text-white font-semibold shadow-lg shadow-red-500/30 border border-white/10 backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+                    title="End Video Chat"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z"></path>
+                    </svg>
+                    End Video Chat
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
