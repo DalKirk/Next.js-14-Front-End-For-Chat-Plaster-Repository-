@@ -50,6 +50,7 @@ export function ResponsiveAvatar({
   const [imageError, setImageError] = useState(false);
 
   const pixelSize = SIZE_MAP[size];
+  // Check if Tailwind w-/h- classes are providing the size
   const hasExplicitSize = className.includes('w-') || className.includes('h-');
 
   const getImageUrl = (): string => {
@@ -72,7 +73,7 @@ export function ResponsiveAvatar({
   return (
     <div
       className={`relative flex-shrink-0 overflow-hidden rounded-full ${className}`}
-      style={hasExplicitSize ? { width: '100%', height: '100%' } : { width: pixelSize, height: pixelSize }}
+      style={hasExplicitSize ? undefined : { width: pixelSize, height: pixelSize }}
     >
       <Image
         src={imageUrl}

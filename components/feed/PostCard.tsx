@@ -203,7 +203,7 @@ export function PostCard({
               avatarUrls={originalPost.avatar_url ? { small: originalPost.avatar_url, medium: originalPost.avatar_url } : undefined}
               username={originalPost.username}
               size="small"
-              className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8"
+              className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9"
             />
             <div className="min-w-0">
               <h3 className="font-semibold text-white text-sm truncate">{originalPost.username}</h3>
