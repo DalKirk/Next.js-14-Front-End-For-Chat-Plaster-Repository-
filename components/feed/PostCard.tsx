@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
@@ -49,7 +49,6 @@ export function PostCard({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
-  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = post.user_id === currentUserId;
 
@@ -64,7 +63,8 @@ export function PostCard({
         console.log(`[PostCard] Fetching comments for post ${post.id}...`);
         const fetched = await apiClient.getComments(post.id);
         console.log(`[PostCard] Got ${fetched?.length ?? 0} comments for post ${post.id}:`, fetched);
-        setComments(Array.isArray(fetched) ? fetched : []);
+        // Reverse so newest shows at top
+        setComments(Array.isArray(fetched) ? [...fetched].reverse() : []);
         setCommentsFetched(true);
       } catch (err: any) {
         console.error(`[PostCard] Failed to fetch comments for post ${post.id}:`, err);
@@ -87,11 +87,9 @@ export function PostCard({
       content: commentText.trim(),
       created_at: new Date().toISOString(),
     };
-    setComments(prev => [...prev, optimistic]);
+    setComments(prev => [optimistic, ...prev]);
     onComment(post.id, commentText.trim());
     setCommentText('');
-    // scroll to newest comment after render
-    setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
   return (
@@ -291,7 +289,6 @@ export function PostCard({
                     </div>
                   );
                 })}
-                <div ref={commentsEndRef} />
               </div>
             </div>
           ) : (
