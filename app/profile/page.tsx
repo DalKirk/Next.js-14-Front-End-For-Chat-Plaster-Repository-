@@ -1312,15 +1312,15 @@ function ProfilePageContent() {
                MY POSTS — Compose + Feed
                ═══════════════════════════════════════════════════════════ */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <GlassCard className="p-6 sm:p-8" refIndex={1}>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                  <Newspaper className="w-5 h-5" style={{ color: liveTheme.accent }} />
+              <GlassCard className="p-3 sm:p-6 lg:p-8" refIndex={1}>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                  <Newspaper className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} />
                   {isViewOnly ? `${profile.username}'s Posts` : 'My Posts'}
                 </h3>
 
                 {/* Post Composer (own profile only) */}
                 {!isViewOnly && (
-                  <div className="mb-6">
+                  <div className="mb-4 sm:mb-6">
                     <PostComposer
                       userId={profile.id}
                       username={profile.username}

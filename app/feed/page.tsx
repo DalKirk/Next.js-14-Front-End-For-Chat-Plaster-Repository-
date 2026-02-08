@@ -8,7 +8,7 @@ import { PostComposer } from '@/components/feed/PostComposer';
 import { PostCard } from '@/components/feed/PostCard';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
-import { Home, TrendingUp, Users, Bell } from 'lucide-react';
+import { Home, TrendingUp, Users, Bell, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Post {
@@ -126,15 +126,16 @@ export default function FeedPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Navigation Header */}
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/50 border-b border-slate-800">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                Feed
-              </h1>
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          {/* Top row: title + nav buttons */}
+          <div className="flex items-center justify-between mb-2 sm:mb-0">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              Feed
+            </h1>
 
-              {/* Tab Navigation */}
-              <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {/* Tab Navigation — inline on desktop */}
+              <div className="hidden sm:flex gap-2">
                 {[
                   { id: 'foryou', label: 'For You', icon: TrendingUp },
                   { id: 'following', label: 'Following', icon: Users },
@@ -152,35 +153,61 @@ export default function FeedPage() {
                       }`}
                     >
                       <Icon className="w-4 h-4" />
-                      <span className="hidden sm:inline">{tab.label}</span>
+                      {tab.label}
                     </button>
                   );
                 })}
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
               <Button
                 onClick={() => router.push('/profile')}
                 variant="glass"
                 size="sm"
+                className="px-2 sm:px-3"
               >
-                Profile
+                <User className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Profile</span>
               </Button>
               <Button
                 onClick={() => router.push('/')}
                 variant="glass"
                 size="sm"
+                className="px-2 sm:px-3"
               >
                 <Home className="w-4 h-4" />
               </Button>
             </div>
           </div>
+
+          {/* Tab Navigation — row on mobile */}
+          <div className="flex sm:hidden gap-1">
+            {[
+              { id: 'foryou', label: 'For You', icon: TrendingUp },
+              { id: 'following', label: 'Following', icon: Users },
+              { id: 'trending', label: 'Trending', icon: Bell }
+            ].map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                    activeTab === tab.id
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Post Composer */}
         {currentUser && (
           <motion.div
