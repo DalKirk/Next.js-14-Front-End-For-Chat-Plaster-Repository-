@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { GalleryUpload } from '@/components/GalleryUpload';
 import { PostComposer } from '@/components/feed/PostComposer';
@@ -1003,15 +1004,20 @@ function ProfilePageContent() {
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               {customTheme.colors.map((color, i) => (
-                                <div key={i} className="space-y-1">
-                                  <input type="color" value={color} onChange={(e) => setCustomTheme(prev => { const nc = [...prev.colors]; nc[i] = e.target.value; return { ...prev, colors: nc }; })} className="w-full h-14 rounded-lg cursor-pointer border-2" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-                                  <input type="text" value={color} onChange={(e) => setCustomTheme(prev => { const nc = [...prev.colors]; nc[i] = e.target.value; return { ...prev, colors: nc }; })} className="w-full px-2 py-1 text-xs font-mono rounded border text-center uppercase" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} />
+                                <div key={i}>
+                                  <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text, opacity: 0.7 }}>Color {i + 1}</label>
+                                  <ColorPicker
+                                    value={color}
+                                    onChange={(hex) => setCustomTheme(prev => { const nc = [...prev.colors]; nc[i] = hex; return { ...prev, colors: nc }; })}
+                                    accentColor={liveTheme.accent}
+                                    textColor={liveTheme.text}
+                                  />
                                 </div>
                               ))}
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Blur Strength: {customTheme.blurStrength}px</label>
-                              <input type="range" min="4" max="32" value={customTheme.blurStrength} onChange={(e) => setCustomTheme(prev => ({ ...prev, blurStrength: parseInt(e.target.value) }))} className="w-full h-3 rounded-lg cursor-pointer theme-range" style={{ accentColor: liveTheme.accent }} />
+                              <input type="range" min="4" max="32" value={customTheme.blurStrength} onChange={(e) => setCustomTheme(prev => ({ ...prev, blurStrength: parseInt(e.target.value) }))} className="w-full h-3 rounded-lg cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
                             </div>
                           </div>
                         )}
@@ -1060,10 +1066,12 @@ function ProfilePageContent() {
                           <div className="mt-3 flex gap-2 items-end">
                             <div className="flex-1">
                               <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Heading Color</label>
-                              <div className="flex gap-2">
-                                <input type="color" value={customTheme.fonts.headingColor} onChange={(e) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, headingColor: e.target.value } }))} className="w-16 h-9 rounded-lg cursor-pointer border-2" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-                                <input type="text" value={customTheme.fonts.headingColor} onChange={(e) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, headingColor: e.target.value } }))} className="flex-1 px-2 py-1 text-xs font-mono rounded border text-center uppercase" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} />
-                              </div>
+                              <ColorPicker
+                                value={customTheme.fonts.headingColor}
+                                onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, headingColor: hex } }))}
+                                accentColor={liveTheme.accent}
+                                textColor={liveTheme.text}
+                              />
                             </div>
                             <label className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 cursor-pointer transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
                               <Upload className="w-4 h-4" /><span className="text-xs font-medium">Upload</span>
@@ -1091,10 +1099,12 @@ function ProfilePageContent() {
                           <div className="mt-3 flex gap-2 items-end">
                             <div className="flex-1">
                               <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Body Color</label>
-                              <div className="flex gap-2">
-                                <input type="color" value={customTheme.fonts.bodyColor} onChange={(e) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, bodyColor: e.target.value } }))} className="w-16 h-9 rounded-lg cursor-pointer border-2" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-                                <input type="text" value={customTheme.fonts.bodyColor} onChange={(e) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, bodyColor: e.target.value } }))} className="flex-1 px-2 py-1 text-xs font-mono rounded border text-center uppercase" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} />
-                              </div>
+                              <ColorPicker
+                                value={customTheme.fonts.bodyColor}
+                                onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, bodyColor: hex } }))}
+                                accentColor={liveTheme.accent}
+                                textColor={liveTheme.text}
+                              />
                             </div>
                             <label className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 cursor-pointer transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
                               <Upload className="w-4 h-4" /><span className="text-xs font-medium">Upload</span>
@@ -1146,7 +1156,7 @@ function ProfilePageContent() {
                             <div className="space-y-4">
                               <div>
                                 <label className="block text-sm mb-1" style={{ color: liveTheme.text }}>Count: <strong>{effects.particleCount}</strong></label>
-                                <input type="range" min="5" max="40" step="5" value={effects.particleCount} onChange={(e) => setEffects(prev => ({ ...prev, particleCount: parseInt(e.target.value) }))} className="w-full h-3 cursor-pointer theme-range" style={{ accentColor: liveTheme.accent }} />
+                                <input type="range" min="5" max="40" step="5" value={effects.particleCount} onChange={(e) => setEffects(prev => ({ ...prev, particleCount: parseInt(e.target.value) }))} className="w-full h-3 cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
                               </div>
                               <div>
                                 <label className="block text-sm mb-2" style={{ color: liveTheme.text }}>Speed</label>
