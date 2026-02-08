@@ -110,7 +110,7 @@ export function PostCard({
     setCommentText('');
   };
 
-  const isRepost = !!post.shared_post;
+  const isRepost = !!post.shared_post_id;
   const originalPost = post.shared_post;
 
   const handleCopyLink = () => {
@@ -132,15 +132,41 @@ export function PostCard({
     <div className="glass-card p-3 sm:p-6">
       {/* Repost header */}
       {isRepost && (
-        <div className="flex items-center gap-2 mb-2 text-xs text-slate-400">
-          <Repeat2 className="w-3.5 h-3.5" />
-          <span
-            className="font-medium hover:text-cyan-400 cursor-pointer transition-colors"
-            onClick={() => router.push(`/profile?userId=${post.user_id}`)}
-          >
-            {post.username}
-          </span>
-          <span>reposted</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Repeat2 className="w-3.5 h-3.5" />
+            <span
+              className="font-medium hover:text-cyan-400 cursor-pointer transition-colors"
+              onClick={() => router.push(`/profile?userId=${post.user_id}`)}
+            >
+              {post.username}
+            </span>
+            <span>reposted</span>
+          </div>
+          {isOwnPost && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <MoreHorizontal className="w-4 h-4 text-slate-400" />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-40 glass-card p-2 z-10">
+                  <button
+                    onClick={() => {
+                      onDelete(post.id);
+                      setShowMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Repost
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
