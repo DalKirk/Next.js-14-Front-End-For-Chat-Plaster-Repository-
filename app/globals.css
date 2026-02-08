@@ -161,6 +161,9 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    /* GPU layer promotion for scroll performance */
+    will-change: transform;
+    transform: translateZ(0);
   }
 
   .glass-panel {
@@ -170,6 +173,8 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    will-change: transform;
+    transform: translateZ(0);
   }
 
   .glass-input {
@@ -245,6 +250,45 @@
   .chat-input:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.5);
+  }
+
+  /* ===== MOBILE PERFORMANCE: reduce expensive backdrop-blur ===== */
+  @media (max-width: 768px) {
+    .glass-card {
+      background: rgba(10, 15, 25, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .glass-panel {
+      background: rgba(10, 15, 25, 0.80);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .glass-input {
+      background: rgba(15, 20, 30, 0.75);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .glass-button {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .message-bubble {
+      background: rgba(15, 20, 30, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .chat-input {
+      background: rgba(15, 20, 30, 0.80);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 }
 
@@ -907,3 +951,36 @@
 }
 
 @keyframes cursor-fade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0); } }
+
+/* ===== MOBILE PERFORMANCE: reduce sparkle/animation GPU cost ===== */
+@media (max-width: 768px) {
+  .sparkle {
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.8);
+    filter: none;
+  }
+
+  .sparkle.star::before,
+  .sparkle.star::after {
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.8);
+    filter: none;
+  }
+
+  .shooting-star {
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+    filter: none;
+  }
+
+  .cursor-sparkle {
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+    filter: none;
+  }
+
+  .bubble-wobble {
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  /* Reduce animation frame rate for decorative elements */
+  .sparkle-container {
+    contain: strict;
+  }
+}
