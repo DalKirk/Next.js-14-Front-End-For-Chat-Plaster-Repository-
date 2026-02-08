@@ -26,7 +26,35 @@ export function PostComposer({
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [posting, setPosting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const EMOJI_LIST = [
+    '😀','😂','🥹','😍','🥰','😎','🤩','🥳',
+    '😭','😤','🤔','🫡','🙄','😴','🤯','🥶',
+    '👍','👎','👏','🙌','🤝','✌️','🤞','💪',
+    '❤️','🔥','💯','⭐','✨','🎉','🎊','🏆',
+    '😈','👀','💀','🤡','👻','🫠','🤖','👽',
+    '🌈','☀️','🌙','⚡','🌊','🍕','🎵','📸',
+  ];
+
+  const insertEmoji = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.substring(0, start) + emoji + content.substring(end);
+      setContent(newContent);
+      // Restore cursor position after emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      setContent(content + emoji);
+    }
+  };
 
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -121,6 +149,7 @@ export function PostComposer({
 
         <div className="flex-1 space-y-4">
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
@@ -169,10 +198,33 @@ export function PostComposer({
                 Photo/Video
               </Button>
 
-              <Button variant="glass" size="sm">
-                <Smile className="w-4 h-4 mr-2" />
-                Emoji
-              </Button>
+              <div className="relative">
+                <Button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  variant="glass"
+                  size="sm"
+                  className={showEmojiPicker ? 'ring-1 ring-cyan-500' : ''}
+                >
+                  <Smile className="w-4 h-4 mr-2" />
+                  Emoji
+                </Button>
+
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 mb-2 w-72 glass-card p-3 z-50">
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJI_LIST.map((emoji, i) => (
+                        <button
+                          key={i}
+                          onClick={() => insertEmoji(emoji)}
+                          className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/10 rounded transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button

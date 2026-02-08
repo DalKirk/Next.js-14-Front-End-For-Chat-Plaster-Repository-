@@ -1,15 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Allow up to 50MB uploads (4 files × 10MB max each, with overhead)
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
+// Increase body size limit for file uploads
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+  },
+};
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    // Get the raw body as ArrayBuffer and forward it with original headers
+    const contentType = request.headers.get('content-type') || '';
+    const body = await request.arrayBuffer();
 
-    // Forward the multipart form data to the backend
     const backendResponse = await fetch(`${BACKEND_URL}/posts/upload-media`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'content-type': contentType,
+      },
+      body: body,
     });
 
     if (!backendResponse.ok) {

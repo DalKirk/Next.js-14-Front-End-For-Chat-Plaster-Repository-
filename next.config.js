@@ -25,6 +25,12 @@ const nextConfig = {
   },
   // Silence Next 16 build error by declaring empty Turbopack config
   turbopack: {},
+  // Allow larger request bodies for file uploads (default is 1MB)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
+  },
   webpack: (config) => {
     // Handle Three.js examples imports (fallback for when Webpack is used)
     config.resolve.alias = {
