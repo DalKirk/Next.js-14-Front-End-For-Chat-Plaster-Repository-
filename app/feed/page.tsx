@@ -191,6 +191,7 @@ export default function FeedPage() {
               userId={currentUser.id}
               username={currentUser.username}
               avatarUrl={currentUser.avatar_url}
+              avatarUrls={currentUser.avatar_urls}
               onPostCreated={handlePostCreated}
             />
           </motion.div>

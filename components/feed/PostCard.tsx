@@ -52,7 +52,7 @@ export function PostCard({
           onClick={() => router.push(`/profile?userId=${post.user_id}`)}
         >
           <ResponsiveAvatar
-            avatarUrls={post.avatar_url ? { small: post.avatar_url } : undefined}
+            avatarUrls={post.avatar_url ? { small: post.avatar_url, medium: post.avatar_url } : undefined}
             username={post.username}
             size="medium"
           />

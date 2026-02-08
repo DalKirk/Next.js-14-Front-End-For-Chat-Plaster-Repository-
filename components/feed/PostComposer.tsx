@@ -11,6 +11,7 @@ interface PostComposerProps {
   userId: string;
   username: string;
   avatarUrl?: string;
+  avatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string };
   onPostCreated: (post: any) => void;
 }
 
@@ -18,6 +19,7 @@ export function PostComposer({
   userId,
   username,
   avatarUrl,
+  avatarUrls,
   onPostCreated
 }: PostComposerProps) {
   const [content, setContent] = useState('');
@@ -111,7 +113,7 @@ export function PostComposer({
     <div className="glass-card p-6">
       <div className="flex gap-4">
         <ResponsiveAvatar
-          avatarUrls={avatarUrl ? { small: avatarUrl } : undefined}
+          avatarUrls={avatarUrls || (avatarUrl ? { small: avatarUrl, medium: avatarUrl } : undefined)}
           username={username}
           size="medium"
           className="flex-shrink-0"
