@@ -130,8 +130,6 @@ export default function FeedPage() {
   };
 
   const handleDelete = async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
-
     try {
       await apiClient.deletePost(postId);
       setPosts(posts.filter(post => post.id !== postId));

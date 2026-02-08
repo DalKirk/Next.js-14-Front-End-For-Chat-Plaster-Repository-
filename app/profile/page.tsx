@@ -660,7 +660,6 @@ function ProfilePageContent() {
   }, [profile]);
 
   const handlePostDelete = useCallback(async (postId: string) => {
-    if (!confirm('Delete this post?')) return;
     try {
       await apiClient.deletePost(postId);
       setMyPosts(prev => prev.filter(p => p.id !== postId));

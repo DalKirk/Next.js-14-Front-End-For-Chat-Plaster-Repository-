@@ -63,6 +63,7 @@ export function PostCard({
   const [commentText, setCommentText] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
@@ -153,16 +154,33 @@ export function PostCard({
               </button>
               {showMenu && (
                 <div className="absolute right-0 mt-2 w-40 glass-card p-2 z-10">
-                  <button
-                    onClick={() => {
-                      onDelete(post.id);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Repost
-                  </button>
+                  {confirmDelete ? (
+                    <>
+                      <p className="px-3 py-1.5 text-xs text-slate-300">Delete this repost?</p>
+                      <div className="flex gap-1 px-2 pb-1">
+                        <button
+                          onClick={() => { onDelete(post.id); setShowMenu(false); setConfirmDelete(false); }}
+                          className="flex-1 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded font-medium"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => { setConfirmDelete(false); setShowMenu(false); }}
+                          className="flex-1 px-2 py-1.5 text-xs text-slate-400 hover:bg-white/10 rounded"
+                        >
+                          No
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Repost
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -249,16 +267,33 @@ export function PostCard({
 
             {showMenu && (
               <div className="absolute right-0 mt-2 w-40 sm:w-48 glass-card p-2 z-10">
-                <button
-                  onClick={() => {
-                    onDelete(post.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete Post
-                </button>
+                {confirmDelete ? (
+                  <>
+                    <p className="px-3 py-1.5 text-xs text-slate-300">Delete this post?</p>
+                    <div className="flex gap-1 px-2 pb-1">
+                      <button
+                        onClick={() => { onDelete(post.id); setShowMenu(false); setConfirmDelete(false); }}
+                        className="flex-1 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded font-medium"
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => { setConfirmDelete(false); setShowMenu(false); }}
+                        className="flex-1 px-2 py-1.5 text-xs text-slate-400 hover:bg-white/10 rounded"
+                      >
+                        No
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Post
+                  </button>
+                )}
               </div>
             )}
           </div>
