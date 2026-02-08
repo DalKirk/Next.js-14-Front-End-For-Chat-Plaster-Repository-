@@ -216,7 +216,7 @@ export function PostCard({
 
       {/* Comment Section — expandable thread */}
       {showComments && (
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50 space-y-3">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50 space-y-3 overflow-hidden">
           {/* Existing comments */}
           {commentsLoading ? (
             <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-sm">
@@ -246,7 +246,7 @@ export function PostCard({
               </button>
             </div>
           ) : comments.length > 0 ? (
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-60 overflow-y-auto overflow-x-hidden pr-1">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2 sm:gap-3">
                   <ResponsiveAvatar
@@ -255,7 +255,7 @@ export function PostCard({
                     size="small"
                     className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8"
                   />
-                  <div className="flex-1 min-w-0 bg-white/5 rounded-xl px-3 py-2">
+                  <div className="flex-1 min-w-0 overflow-hidden bg-white/5 rounded-xl px-3 py-2">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span
                         className="text-xs sm:text-sm font-semibold text-white cursor-pointer hover:text-cyan-400 transition-colors"
@@ -267,7 +267,7 @@ export function PostCard({
                         {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5 break-words">{c.content}</p>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>{c.content}</p>
                   </div>
                 </div>
               ))}
