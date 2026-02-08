@@ -24,7 +24,7 @@ import {
   Camera, Activity, Trash2,
   User, MessageSquare, Zap, Pencil, X, Palette,
   Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
-  Heart, Eye, Crown, Users,
+  Heart, Eye, Crown, Users, Newspaper,
 } from 'lucide-react';
 import {
   fontPresets, presetThemes, glassStyles, ParticleShapes,
@@ -731,8 +731,12 @@ function ProfilePageContent() {
       {/* Floating particles */}
       <FloatingParticles />
 
-      {/* Top-right Search Chat Rooms button */}
-      <div className="fixed top-4 right-4 z-50">
+      {/* Top-right navigation buttons */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <Button onClick={() => router.push('/feed')} variant="glass" className="flex items-center gap-2">
+          <Newspaper className="w-4 h-4" />
+          Social Feed
+        </Button>
         <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
           Search Chat Rooms
