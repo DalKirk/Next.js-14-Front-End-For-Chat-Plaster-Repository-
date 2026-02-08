@@ -939,6 +939,85 @@ export const apiClient = {
       throw new Error('Failed to check avatar health');
     }
   },
+
+  // ── Feed / Posts ──────────────────────────────────────────────
+
+  /**
+   * Get feed posts by type (for you, following, trending)
+   */
+  getFeed: async (type: 'foryou' | 'following' | 'trending' = 'foryou'): Promise<any[]> => {
+    try {
+      const response = await api.get('/feed', { params: { type } });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Load feed');
+      return [];
+    }
+  },
+
+  /**
+   * Create a new post
+   */
+  createPost: async (data: { user_id: string; content: string; media_urls: string[] }): Promise<any> => {
+    try {
+      const response = await api.post('/posts', data);
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Create post');
+      throw e;
+    }
+  },
+
+  /**
+   * Like / unlike a post (toggle)
+   */
+  likePost: async (postId: string, userId: string): Promise<{ liked: boolean }> => {
+    try {
+      const response = await api.post(`/posts/${postId}/like`, { user_id: userId });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Like post');
+      throw e;
+    }
+  },
+
+  /**
+   * Add a comment to a post
+   */
+  commentOnPost: async (postId: string, userId: string, content: string): Promise<any> => {
+    try {
+      const response = await api.post(`/posts/${postId}/comments`, { user_id: userId, content });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Comment on post');
+      throw e;
+    }
+  },
+
+  /**
+   * Share a post
+   */
+  sharePost: async (postId: string, userId: string): Promise<any> => {
+    try {
+      const response = await api.post(`/posts/${postId}/share`, { user_id: userId });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Share post');
+      throw e;
+    }
+  },
+
+  /**
+   * Delete a post
+   */
+  deletePost: async (postId: string): Promise<void> => {
+    try {
+      await api.delete(`/posts/${postId}`);
+    } catch (e) {
+      handleApiError(e, 'Delete post');
+      throw e;
+    }
+  },
 };
 
 export default apiClient;
