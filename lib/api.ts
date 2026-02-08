@@ -1000,10 +1000,12 @@ export const apiClient = {
   getComments: async (postId: string): Promise<any[]> => {
     try {
       const response = await api.get(`/posts/${postId}/comments`);
-      return response.data;
+      return Array.isArray(response.data) ? response.data : [];
     } catch (e) {
-      handleApiError(e, 'Load comments');
-      return [];
+      // Don't use handleApiError here — it re-throws (return type `never`),
+      // making the `return []` unreachable.  Let the caller handle the error.
+      console.error('❌ Load comments failed:', e);
+      throw e;
     }
   },
 

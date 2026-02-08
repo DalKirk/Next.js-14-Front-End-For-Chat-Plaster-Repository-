@@ -48,20 +48,26 @@ export function PostCard({
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   const isOwnPost = post.user_id === currentUserId;
 
   const toggleComments = useCallback(async () => {
     const willShow = !showComments;
     setShowComments(willShow);
+
     if (willShow && !commentsFetched) {
       setCommentsLoading(true);
+      setCommentsError(null);
       try {
+        console.log(`[PostCard] Fetching comments for post ${post.id}...`);
         const fetched = await apiClient.getComments(post.id);
-        setComments(fetched);
+        console.log(`[PostCard] Got ${fetched?.length ?? 0} comments for post ${post.id}:`, fetched);
+        setComments(Array.isArray(fetched) ? fetched : []);
         setCommentsFetched(true);
-      } catch {
-        // silent — still show input
+      } catch (err: any) {
+        console.error(`[PostCard] Failed to fetch comments for post ${post.id}:`, err);
+        setCommentsError(err?.message || 'Failed to load comments');
       } finally {
         setCommentsLoading(false);
       }
@@ -216,6 +222,28 @@ export function PostCard({
             <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading comments...
+            </div>
+          ) : commentsError ? (
+            <div className="text-center py-2 space-y-1">
+              <p className="text-xs sm:text-sm text-red-400">{commentsError}</p>
+              <button
+                onClick={async () => {
+                  setCommentsError(null);
+                  setCommentsLoading(true);
+                  try {
+                    const fetched = await apiClient.getComments(post.id);
+                    setComments(Array.isArray(fetched) ? fetched : []);
+                    setCommentsFetched(true);
+                  } catch (err: any) {
+                    setCommentsError(err?.message || 'Failed to load comments');
+                  } finally {
+                    setCommentsLoading(false);
+                  }
+                }}
+                className="text-xs text-cyan-400 hover:underline"
+              >
+                Tap to retry
+              </button>
             </div>
           ) : comments.length > 0 ? (
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
