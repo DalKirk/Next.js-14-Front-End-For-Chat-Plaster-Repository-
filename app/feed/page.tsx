@@ -23,6 +23,19 @@ interface Post {
   shares_count: number;
   created_at: string;
   user_liked: boolean;
+  shared_post_id?: string;
+  shared_post?: {
+    id: string;
+    user_id: string;
+    username: string;
+    avatar_url?: string;
+    content: string;
+    media_urls: string[];
+    likes_count: number;
+    comments_count: number;
+    shares_count: number;
+    created_at: string;
+  };
 }
 
 export default function FeedPage() {
@@ -39,15 +52,16 @@ export default function FeedPage() {
       router.push('/');
       return;
     }
-    setCurrentUser(JSON.parse(userData));
-    loadFeed();
+    const user = JSON.parse(userData);
+    setCurrentUser(user);
+    loadFeed(user.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, router]);
 
-  const loadFeed = async () => {
+  const loadFeed = async (userId?: string) => {
     setLoading(true);
     try {
-      const feedPosts = await apiClient.getFeed(activeTab);
+      const feedPosts = await apiClient.getFeed(activeTab, userId);
       setPosts(feedPosts);
     } catch (error) {
       console.error('Failed to load feed:', error);
@@ -98,15 +112,20 @@ export default function FeedPage() {
   const handleShare = async (postId: string) => {
     if (!currentUser) return;
     try {
-      await apiClient.sharePost(postId, currentUser.id);
-      setPosts(posts.map(post =>
-        post.id === postId
+      const result = await apiClient.sharePost(postId, currentUser.id);
+      // If backend returns a new repost object, add it to the top of the feed
+      if (result && result.id) {
+        setPosts(prev => [result, ...prev]);
+      }
+      // Also increment the share count on the original post
+      setPosts(prev => prev.map(post =>
+        post.id === postId || (post.shared_post_id === postId)
           ? { ...post, shares_count: post.shares_count + 1 }
           : post
       ));
-      toast.success('Post shared!');
+      toast.success('Reposted!');
     } catch (error) {
-      toast.error('Failed to share post');
+      toast.error('Failed to repost');
     }
   };
 

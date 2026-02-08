@@ -945,9 +945,9 @@ export const apiClient = {
   /**
    * Get feed posts by type (for you, following, trending)
    */
-  getFeed: async (type: 'foryou' | 'following' | 'trending' = 'foryou'): Promise<any[]> => {
+  getFeed: async (type: 'foryou' | 'following' | 'trending' = 'foryou', userId?: string): Promise<any[]> => {
     try {
-      const response = await api.get('/feed', { params: { type } });
+      const response = await api.get('/feed', { params: { type, user_id: userId } });
       return response.data;
     } catch (e) {
       handleApiError(e, 'Load feed');
@@ -1010,11 +1010,11 @@ export const apiClient = {
   },
 
   /**
-   * Share a post
+   * Share / repost a post — creates a new post referencing the original
    */
-  sharePost: async (postId: string, userId: string): Promise<any> => {
+  sharePost: async (postId: string, userId: string, content?: string): Promise<any> => {
     try {
-      const response = await api.post(`/posts/${postId}/share`, { user_id: userId });
+      const response = await api.post(`/posts/${postId}/share`, { user_id: userId, content: content || '' });
       return response.data;
     } catch (e) {
       handleApiError(e, 'Share post');
@@ -1043,6 +1043,60 @@ export const apiClient = {
       return response.data;
     } catch (e) {
       handleApiError(e, 'Load user posts');
+      return [];
+    }
+  },
+
+  // ── Follow System ─────────────────────────────────────────────
+
+  /**
+   * Toggle follow on a user (follow if not following, unfollow if already following)
+   */
+  toggleFollow: async (targetUserId: string, currentUserId: string): Promise<{ following: boolean; followers_count: number; following_count: number }> => {
+    try {
+      const response = await api.post(`/users/${targetUserId}/follow`, { user_id: currentUserId });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Toggle follow');
+      throw e;
+    }
+  },
+
+  /**
+   * Check if current user follows target user
+   */
+  checkFollowing: async (targetUserId: string, currentUserId: string): Promise<{ following: boolean }> => {
+    try {
+      const response = await api.get(`/users/${targetUserId}/follow-status`, { params: { user_id: currentUserId } });
+      return response.data;
+    } catch (e) {
+      console.error('❌ Check follow status failed:', e);
+      return { following: false };
+    }
+  },
+
+  /**
+   * Get followers list for a user
+   */
+  getFollowers: async (userId: string): Promise<any[]> => {
+    try {
+      const response = await api.get(`/users/${userId}/followers`);
+      return response.data;
+    } catch (e) {
+      console.error('❌ Load followers failed:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Get following list for a user
+   */
+  getFollowing: async (userId: string): Promise<any[]> => {
+    try {
+      const response = await api.get(`/users/${userId}/following`);
+      return response.data;
+    } catch (e) {
+      console.error('❌ Load following failed:', e);
       return [];
     }
   },

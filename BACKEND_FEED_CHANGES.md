@@ -1,6 +1,6 @@
-# Backend Changes Required: Social Feed
+# Backend Changes Required: Social Feed + Follow System + Reposts
 
-> **Scope**: Add 9 new REST endpoints + 3 new database tables so users can create posts, like, comment, share, and browse a social feed.
+> **Scope**: Add REST endpoints + database tables for social feed, follow system, and reposts.
 >
 > **Nothing else changes.** All existing endpoints (profile, avatar, gallery, auth, rooms, themes, etc.) remain untouched.
 
@@ -19,12 +19,15 @@ CREATE TABLE IF NOT EXISTS posts (
     likes_count INTEGER NOT NULL DEFAULT 0,
     comments_count INTEGER NOT NULL DEFAULT 0,
     shares_count INTEGER NOT NULL DEFAULT 0,
+    -- Repost: references the original post being shared
+    shared_post_id UUID REFERENCES posts(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_posts_user_id ON posts(user_id);
 CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
+CREATE INDEX idx_posts_shared_post_id ON posts(shared_post_id);
 ```
 
 ### `post_likes` table
@@ -53,6 +56,28 @@ CREATE TABLE IF NOT EXISTS post_comments (
 CREATE INDEX idx_post_comments_post_id ON post_comments(post_id);
 ```
 
+### `follows` table
+
+```sql
+CREATE TABLE IF NOT EXISTS follows (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followed_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(follower_id, followed_id)
+);
+
+CREATE INDEX idx_follows_follower ON follows(follower_id);
+CREATE INDEX idx_follows_followed ON follows(followed_id);
+```
+
+### Add columns to `users` table (if not already present)
+
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS followers_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS following_count INTEGER NOT NULL DEFAULT 0;
+```
+
 ---
 
 ## 2. New Endpoints
@@ -65,6 +90,7 @@ Returns a list of posts for the feed.
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
 | `type` | string | `foryou` | One of `foryou`, `following`, `trending` |
+| `user_id` | string | (none) | Current user's ID — needed for `following` filter and `user_liked` field |
 
 **Response:**
 ```json
@@ -80,16 +106,45 @@ Returns a list of posts for the feed.
     "comments_count": 23,
     "shares_count": 12,
     "created_at": "2026-02-08T14:30:00Z",
-    "user_liked": false
+    "user_liked": false,
+    "shared_post_id": null,
+    "shared_post": null
+  },
+  {
+    "id": "repost-uuid",
+    "user_id": "reposter-uuid",
+    "username": "john_doe",
+    "avatar_url": "https://cdn.example.com/john.jpg",
+    "content": "Check this out!",
+    "media_urls": [],
+    "likes_count": 5,
+    "comments_count": 0,
+    "shares_count": 0,
+    "created_at": "2026-02-08T16:00:00Z",
+    "user_liked": false,
+    "shared_post_id": "abc123",
+    "shared_post": {
+      "id": "abc123",
+      "user_id": "user-uuid",
+      "username": "sarah_chen",
+      "avatar_url": "https://cdn.example.com/avatar.jpg",
+      "content": "Just launched my new portfolio! 🚀",
+      "media_urls": ["https://cdn.example.com/photo1.jpg"],
+      "likes_count": 247,
+      "comments_count": 23,
+      "shares_count": 12,
+      "created_at": "2026-02-08T14:30:00Z"
+    }
   }
 ]
 ```
 
 **Implementation notes:**
-- `foryou`: Return all posts ordered by `created_at DESC` (newest first). Optionally mix in engagement-weighted posts.
-- `following`: Return posts only from users the current user follows (if you have a follow system; otherwise return the same as `foryou`).
+- `foryou`: Return all posts ordered by `created_at DESC` (newest first).
+- `following`: Filter posts to only users that `user_id` follows (via `follows` table). Falls back to `foryou` if no follows.
 - `trending`: Return posts ordered by `(likes_count + comments_count + shares_count) DESC` within the last 7 days.
-- `user_liked`: Requires checking `post_likes` for the requesting user. If no auth context, default to `false`.
+- `user_liked`: Check `post_likes` for the requesting `user_id`. Default `false` if no `user_id`.
+- If `shared_post_id` is set, include the full `shared_post` object by joining/subquerying the original post + its author.
 - Join with `users` table to get `username` and `avatar_url`.
 
 ---
@@ -211,25 +266,54 @@ Returns all comments for a post (for the expandable comment thread).
 
 ### `POST /posts/{post_id}/share`
 
-Record a share of a post.
+Create a repost of an existing post. This inserts a new post with `shared_post_id` pointing to the original, and increments the original post's `shares_count`.
 
 **Request:**
 ```json
 {
-  "user_id": "user-uuid"
+  "user_id": "user-uuid",
+  "content": "Check this out!"
 }
 ```
 
+- `content` is optional — the reposter can add their own comment text, or leave it blank.
+
 **Response:**
+Returns the newly created repost (full post object), with the original post embedded as `shared_post`:
 ```json
 {
-  "shared": true
+  "id": "repost-uuid",
+  "user_id": "reposter-uuid",
+  "username": "john_doe",
+  "avatar_url": "https://cdn.example.com/john.jpg",
+  "content": "Check this out!",
+  "media_urls": [],
+  "likes_count": 0,
+  "comments_count": 0,
+  "shares_count": 0,
+  "created_at": "2026-02-08T16:00:00Z",
+  "user_liked": false,
+  "shared_post_id": "abc123",
+  "shared_post": {
+    "id": "abc123",
+    "user_id": "user-uuid",
+    "username": "sarah_chen",
+    "avatar_url": "https://cdn.example.com/avatar.jpg",
+    "content": "Just launched my new portfolio! 🚀",
+    "media_urls": ["https://cdn.example.com/photo1.jpg"],
+    "likes_count": 247,
+    "comments_count": 23,
+    "shares_count": 13,
+    "created_at": "2026-02-08T14:30:00Z"
+  }
 }
 ```
 
 **Implementation notes:**
-- Increment `posts.shares_count`.
-- Optionally track shares in a separate table for analytics.
+- Insert a new row in `posts` with `shared_post_id = post_id`, `user_id = req.user_id`, `content = req.content`.
+- Increment `shares_count` on the original post.
+- Return the new repost joined with the reposter's user info AND the original post + its author.
+- Prevent reposting your own post (optional guard).
 
 ---
 
@@ -279,7 +363,9 @@ Returns all posts by a specific user (for their profile page).
     "comments_count": 23,
     "shares_count": 12,
     "created_at": "2026-02-08T14:30:00Z",
-    "user_liked": false
+    "user_liked": false,
+    "shared_post_id": null,
+    "shared_post": null
   }
 ]
 ```
@@ -287,6 +373,7 @@ Returns all posts by a specific user (for their profile page).
 **Implementation notes:**
 - Return posts where `user_id` matches the path parameter, ordered by `created_at DESC`.
 - Join with `users` table to get `username` and `avatar_url`.
+- If `shared_post_id` is set, include the full `shared_post` object (same as in `GET /feed`).
 - Same response shape as `GET /feed` so the frontend can reuse PostCard.
 
 ---
@@ -321,6 +408,105 @@ userId: "user-uuid"
 
 ---
 
+### `POST /users/{user_id}/follow`
+
+Toggle follow/unfollow on a user.
+
+**Request:**
+```json
+{
+  "user_id": "current-user-uuid"
+}
+```
+
+- `user_id` in the URL path is the **target** user to follow/unfollow.
+- `user_id` in the request body is the **current** (requesting) user.
+
+**Response:**
+```json
+{
+  "following": true,
+  "followers_count": 42,
+  "following_count": 18
+}
+```
+
+**Implementation notes:**
+- Check `follows` table for existing row `(follower_id=body.user_id, followed_id=path.user_id)`.
+- If exists → delete the row (unfollow). If not → insert (follow).
+- Update `followers_count` on the target user and `following_count` on the current user.
+- Return `following: true` if now following, `false` if unfollowed.
+- Return the **target user's** updated `followers_count` and the **current user's** updated `following_count`.
+- Prevent self-follow.
+
+---
+
+### `GET /users/{user_id}/follow-status`
+
+Check if the current user is following a target user.
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `user_id` | string | The current (requesting) user's ID |
+
+**Response:**
+```json
+{
+  "following": true
+}
+```
+
+**Implementation notes:**
+- Check `follows` table for `(follower_id=query.user_id, followed_id=path.user_id)`.
+- Return `following: true` if a row exists, `false` otherwise.
+
+---
+
+### `GET /users/{user_id}/followers`
+
+Returns a list of users who follow this user.
+
+**Response:**
+```json
+[
+  {
+    "id": "follower-uuid",
+    "username": "jane_doe",
+    "avatar_url": "https://cdn.example.com/jane.jpg"
+  }
+]
+```
+
+**Implementation notes:**
+- Query `follows` table where `followed_id = path.user_id`.
+- Join with `users` table to get `username` and `avatar_url`.
+- Order by `created_at DESC` (most recent followers first).
+
+---
+
+### `GET /users/{user_id}/following`
+
+Returns a list of users this user follows.
+
+**Response:**
+```json
+[
+  {
+    "id": "followed-uuid",
+    "username": "sarah_chen",
+    "avatar_url": "https://cdn.example.com/sarah.jpg"
+  }
+]
+```
+
+**Implementation notes:**
+- Query `follows` table where `follower_id = path.user_id`.
+- Join with `users` table to get `username` and `avatar_url`.
+- Order by `created_at DESC` (most recently followed first).
+
+---
+
 ## 3. Example Python (FastAPI) Implementation
 
 ```python
@@ -350,13 +536,36 @@ class CommentRequest(BaseModel):
 
 class ShareRequest(BaseModel):
     user_id: str
+    content: str = ""
+
+
+class FollowRequest(BaseModel):
+    user_id: str
 
 
 @router.get("/feed")
-async def get_feed(type: str = "foryou"):
-    """Return feed posts."""
+async def get_feed(type: str = "foryou", user_id: Optional[str] = None):
+    """Return feed posts.
+    
+    - foryou: all posts, newest first
+    - following: posts from users that user_id follows
+    - trending: posts sorted by engagement in last 7 days
+    
+    If shared_post_id is set on a post, include the full shared_post object.
+    If user_id is provided, check post_likes to set user_liked on each post.
+    """
     # Example with raw SQL:
-    # if type == "trending":
+    # if type == "following" and user_id:
+    #     rows = await conn.fetch("""
+    #         SELECT p.*, u.username, u.avatar_url
+    #         FROM posts p
+    #         JOIN users u ON p.user_id = u.id
+    #         WHERE p.user_id IN (
+    #             SELECT followed_id FROM follows WHERE follower_id = $1
+    #         )
+    #         ORDER BY p.created_at DESC LIMIT 50
+    #     """, user_id)
+    # elif type == "trending":
     #     rows = await conn.fetch("""
     #         SELECT p.*, u.username, u.avatar_url
     #         FROM posts p JOIN users u ON p.user_id = u.id
@@ -372,6 +581,8 @@ async def get_feed(type: str = "foryou"):
     #         LIMIT 50
     #     """)
     #
+    # # For each post with shared_post_id, fetch the original post
+    # # For each post, check user_liked if user_id provided
     # return [dict(row) for row in rows]
     return []
 
@@ -443,8 +654,33 @@ async def get_comments(post_id: str):
 
 @router.post("/posts/{post_id}/share")
 async def share_post(post_id: str, req: ShareRequest):
-    """Share a post."""
+    """Create a repost of an existing post."""
+    # repost_id = str(uuid.uuid4())
+    # # Insert a new post with shared_post_id pointing to the original
+    # await conn.execute("""
+    #     INSERT INTO posts (id, user_id, content, shared_post_id)
+    #     VALUES ($1, $2, $3, $4)
+    # """, repost_id, req.user_id, req.content, post_id)
+    #
+    # # Increment shares_count on original post
     # await conn.execute("UPDATE posts SET shares_count = shares_count + 1 WHERE id=$1", post_id)
+    #
+    # # Return the new repost with the embedded original post
+    # row = await conn.fetchrow("""
+    #     SELECT p.*, u.username, u.avatar_url
+    #     FROM posts p JOIN users u ON p.user_id = u.id
+    #     WHERE p.id = $1
+    # """, repost_id)
+    #
+    # original = await conn.fetchrow("""
+    #     SELECT p.*, u.username, u.avatar_url
+    #     FROM posts p JOIN users u ON p.user_id = u.id
+    #     WHERE p.id = $1
+    # """, post_id)
+    #
+    # result = dict(row)
+    # result["shared_post"] = dict(original) if original else None
+    # return result
     return {"shared": True}
 
 
@@ -484,6 +720,78 @@ async def get_user_posts(user_id: str):
     #     ORDER BY p.created_at DESC
     #     LIMIT 50
     # """, user_id)
+    # # For posts with shared_post_id, include the full shared_post object
+    # return [dict(row) for row in rows]
+    return []
+
+
+@router.post("/users/{target_user_id}/follow")
+async def toggle_follow(target_user_id: str, req: FollowRequest):
+    """Toggle follow/unfollow on a user."""
+    # if req.user_id == target_user_id:
+    #     raise HTTPException(400, "Cannot follow yourself")
+    #
+    # existing = await conn.fetchrow(
+    #     "SELECT id FROM follows WHERE follower_id=$1 AND followed_id=$2",
+    #     req.user_id, target_user_id
+    # )
+    # if existing:
+    #     await conn.execute("DELETE FROM follows WHERE id=$1", existing['id'])
+    #     await conn.execute("UPDATE users SET followers_count = followers_count - 1 WHERE id=$1", target_user_id)
+    #     await conn.execute("UPDATE users SET following_count = following_count - 1 WHERE id=$1", req.user_id)
+    #     following = False
+    # else:
+    #     await conn.execute(
+    #         "INSERT INTO follows (follower_id, followed_id) VALUES ($1, $2)",
+    #         req.user_id, target_user_id
+    #     )
+    #     await conn.execute("UPDATE users SET followers_count = followers_count + 1 WHERE id=$1", target_user_id)
+    #     await conn.execute("UPDATE users SET following_count = following_count + 1 WHERE id=$1", req.user_id)
+    #     following = True
+    #
+    # target = await conn.fetchrow("SELECT followers_count FROM users WHERE id=$1", target_user_id)
+    # current = await conn.fetchrow("SELECT following_count FROM users WHERE id=$1", req.user_id)
+    # return {
+    #     "following": following,
+    #     "followers_count": target['followers_count'],
+    #     "following_count": current['following_count']
+    # }
+    return {"following": True, "followers_count": 1, "following_count": 1}
+
+
+@router.get("/users/{target_user_id}/follow-status")
+async def get_follow_status(target_user_id: str, user_id: str):
+    """Check if current user follows target user."""
+    # row = await conn.fetchrow(
+    #     "SELECT id FROM follows WHERE follower_id=$1 AND followed_id=$2",
+    #     user_id, target_user_id
+    # )
+    # return {"following": row is not None}
+    return {"following": False}
+
+
+@router.get("/users/{user_id}/followers")
+async def get_followers(user_id: str):
+    """Return list of users who follow this user."""
+    # rows = await conn.fetch("""
+    #     SELECT u.id, u.username, u.avatar_url
+    #     FROM follows f JOIN users u ON f.follower_id = u.id
+    #     WHERE f.followed_id = $1
+    #     ORDER BY f.created_at DESC
+    # """, user_id)
+    # return [dict(row) for row in rows]
+    return []
+
+
+@router.get("/users/{user_id}/following")
+async def get_following(user_id: str):
+    """Return list of users this user follows."""
+    # rows = await conn.fetch("""
+    #     SELECT u.id, u.username, u.avatar_url
+    #     FROM follows f JOIN users u ON f.followed_id = u.id
+    #     WHERE f.follower_id = $1
+    #     ORDER BY f.created_at DESC
+    # """, user_id)
     # return [dict(row) for row in rows]
     return []
 ```
@@ -501,34 +809,54 @@ app.include_router(feed_router)  # or prefix="/api" if needed
 The frontend in `lib/api.ts` already has these methods wired up:
 
 ```typescript
-apiClient.getFeed(type)          // → GET  /feed?type=foryou|following|trending
-apiClient.getUserPosts(userId)   // → GET  /posts/user/{userId}
-apiClient.createPost(data)       // → POST /posts
-apiClient.likePost(postId, uid)  // → POST /posts/{id}/like
-apiClient.commentOnPost(id,uid,c)// → POST /posts/{id}/comments
-apiClient.getComments(postId)    // → GET  /posts/{id}/comments
-apiClient.sharePost(postId, uid) // → POST /posts/{id}/share
-apiClient.deletePost(postId)     // → DELETE /posts/{id}
+// Feed & Posts
+apiClient.getFeed(type, userId?)        // → GET  /feed?type=foryou|following|trending&user_id=...
+apiClient.getUserPosts(userId)          // → GET  /posts/user/{userId}
+apiClient.createPost(data)              // → POST /posts
+apiClient.likePost(postId, uid)         // → POST /posts/{id}/like
+apiClient.commentOnPost(id,uid,c)       // → POST /posts/{id}/comments
+apiClient.getComments(postId)           // → GET  /posts/{id}/comments
+apiClient.sharePost(postId, uid, content?) // → POST /posts/{id}/share  (creates a repost)
+apiClient.deletePost(postId)            // → DELETE /posts/{id}
+
+// Follow System
+apiClient.toggleFollow(targetId, currentId)       // → POST /users/{id}/follow
+apiClient.checkFollowing(targetId, currentId)      // → GET  /users/{id}/follow-status?user_id=...
+apiClient.getFollowers(userId)                     // → GET  /users/{id}/followers
+apiClient.getFollowing(userId)                     // → GET  /users/{id}/following
 ```
 
 Media upload is sent directly from the browser to `POST /posts/upload-media` (bypasses the Next.js proxy).
 
-**No frontend changes are needed.** Once the backend endpoints are live, the social feed will work automatically.
+**No frontend changes are needed.** Once the backend endpoints are live, the social feed, follow system, and reposts will work automatically.
 
 ---
 
 ## Summary Checklist
 
-- [ ] Create `posts` table with columns: id, user_id, content, media_urls, likes_count, comments_count, shares_count, created_at, updated_at
+### Database
+- [ ] Create `posts` table with columns: id, user_id, content, media_urls, shared_post_id (nullable FK → posts.id), likes_count, comments_count, shares_count, created_at, updated_at
 - [ ] Create `post_likes` table with unique constraint on (post_id, user_id)
 - [ ] Create `post_comments` table
-- [ ] Add `GET /feed` endpoint → returns array of posts with user info
+- [ ] Create `follows` table with columns: id, follower_id (FK → users.id), followed_id (FK → users.id), created_at — unique constraint on (follower_id, followed_id)
+- [ ] Add `followers_count` (default 0) and `following_count` (default 0) columns to `users` table
+
+### Feed & Post Endpoints
+- [ ] Add `GET /feed` endpoint → returns posts with user info, repost embeds, user_liked; supports `type` and `user_id` params
 - [ ] Add `POST /posts` endpoint → creates post, returns full post object
 - [ ] Add `POST /posts/{post_id}/like` endpoint → toggles like, returns `{liked: bool}`
 - [ ] Add `POST /posts/{post_id}/comments` endpoint → adds comment, returns comment
 - [ ] Add `GET /posts/{post_id}/comments` endpoint → returns comments for a post
-- [ ] Add `POST /posts/{post_id}/share` endpoint → increments share count
+- [ ] Add `POST /posts/{post_id}/share` endpoint → creates repost with embedded original, increments shares_count
 - [ ] Add `DELETE /posts/{post_id}` endpoint → deletes post
 - [ ] Add `POST /posts/upload-media` endpoint → uploads files, returns CDN URLs
-- [ ] Add `GET /posts/user/{user_id}` endpoint → returns posts by a specific user
-- [ ] Deploy
+- [ ] Add `GET /posts/user/{user_id}` endpoint → returns posts by a specific user (with repost embeds)
+
+### Follow System Endpoints
+- [ ] Add `POST /users/{user_id}/follow` endpoint → toggles follow, returns `{following, followers_count, following_count}`
+- [ ] Add `GET /users/{user_id}/follow-status` endpoint → returns `{following: bool}` for given user_id query param
+- [ ] Add `GET /users/{user_id}/followers` endpoint → returns list of follower users
+- [ ] Add `GET /users/{user_id}/following` endpoint → returns list of followed users
+
+### Deploy
+- [ ] Deploy all changes to production

@@ -26,7 +26,7 @@ import {
   Camera, Activity, Trash2,
   User, MessageSquare, Zap, Pencil, X, Palette,
   Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
-  Heart, Eye, Crown, Users, Newspaper,
+  Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus,
 } from 'lucide-react';
 import {
   fontPresets, presetThemes, glassStyles, ParticleShapes,
@@ -184,6 +184,13 @@ function ProfilePageContent() {
   // ─── Posts state ────────────────────────────────────────────────
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+
+  // ─── Follow state ───────────────────────────────────────────────
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // ─── Theme editor state ─────────────────────────────────────────────
   const [userTheme, setUserTheme] = useState<ThemeConfig | null>(null);
@@ -558,6 +565,59 @@ function ProfilePageContent() {
     }
   }, [profile?.id, loadUserPosts]);
 
+  // ─── Load follow status + counts ───────────────────────────────────
+  useEffect(() => {
+    const storedUser = StorageUtils.safeGetItem('chat-user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      setCurrentUserId(u.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.id || profile.id === 'unknown') return;
+    // Load followers / following counts for the viewed profile
+    (async () => {
+      try {
+        const [followers, following] = await Promise.all([
+          apiClient.getFollowers(profile.id),
+          apiClient.getFollowing(profile.id),
+        ]);
+        setFollowersCount(followers.length);
+        setFollowingCount(following.length);
+      } catch {
+        // silent — counts will stay at 0
+      }
+    })();
+    // Check if current user follows this profile
+    if (isViewOnly && currentUserId) {
+      (async () => {
+        try {
+          const status = await apiClient.checkFollowing(profile.id, currentUserId);
+          setIsFollowing(status.following);
+        } catch {
+          // silent
+        }
+      })();
+    }
+  }, [profile?.id, isViewOnly, currentUserId]);
+
+  const handleToggleFollow = useCallback(async () => {
+    if (!profile?.id || !currentUserId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const result = await apiClient.toggleFollow(profile.id, currentUserId);
+      setIsFollowing(result.following);
+      setFollowersCount(result.followers_count);
+      setFollowingCount(result.following_count);
+      toast.success(result.following ? `Following ${profile.username}` : `Unfollowed ${profile.username}`);
+    } catch {
+      toast.error('Failed to update follow status');
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [profile?.id, profile?.username, currentUserId, followLoading]);
+
   // ─── Post action handlers ──────────────────────────────────────────
   const handlePostCreated = useCallback((newPost: any) => {
     setMyPosts(prev => [newPost, ...prev]);
@@ -590,12 +650,13 @@ function ProfilePageContent() {
   const handlePostShare = useCallback(async (postId: string) => {
     if (!profile) return;
     try {
-      await apiClient.sharePost(postId, profile.id);
+      const result = await apiClient.sharePost(postId, profile.id);
+      // Increment shares count on original
       setMyPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, shares_count: p.shares_count + 1 } : p
       ));
-      toast.success('Post shared!');
-    } catch { toast.error('Failed to share post'); }
+      toast.success('Reposted!');
+    } catch { toast.error('Failed to repost'); }
   }, [profile]);
 
   const handlePostDelete = useCallback(async (postId: string) => {
@@ -1273,9 +1334,11 @@ function ProfilePageContent() {
                         <p className="mb-4 max-w-2xl" style={{ color: bodyColor, fontFamily: bodyFont }}>{profile.bio}</p>
                       )}
                       {/* Stats row */}
-                      <div className="flex gap-4 mb-4">
+                      <div className="flex flex-wrap gap-3 mb-4">
                         {[
-                          { icon: Users, label: 'Rooms', val: profile.totalRooms || 0 },
+                          { icon: Users, label: 'Followers', val: followersCount },
+                          { icon: Heart, label: 'Following', val: followingCount },
+                          { icon: MessageSquare, label: 'Rooms', val: profile.totalRooms || 0 },
                         ].map((s, i) => {
                           const SIcon = s.icon;
                           return (
@@ -1287,11 +1350,39 @@ function ProfilePageContent() {
                           );
                         })}
                       </div>
-                      {!isViewOnly && (
-                        <button onClick={() => { setIsEditing(true); setEditTab('profile'); }} className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 15px ${liveTheme.accent}60` }}>
-                          <Pencil className="w-4 h-4" /> Edit Profile
-                        </button>
-                      )}
+                      {/* Follow button (other users) or Edit button (own profile) */}
+                      <div className="flex items-center gap-3">
+                        {isViewOnly && currentUserId ? (
+                          <button
+                            onClick={handleToggleFollow}
+                            disabled={followLoading}
+                            className={`px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2 ${
+                              isFollowing
+                                ? 'bg-white/10 border-slate-500 text-slate-300 hover:bg-red-500/20 hover:border-red-500 hover:text-red-400'
+                                : ''
+                            }`}
+                            style={isFollowing ? {} : {
+                              background: liveTheme.accent,
+                              borderColor: 'rgba(255,255,255,0.3)',
+                              color: '#ffffff',
+                              boxShadow: `0 0 15px ${liveTheme.accent}60`
+                            }}
+                          >
+                            {followLoading ? (
+                              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            ) : isFollowing ? (
+                              <UserMinus className="w-4 h-4" />
+                            ) : (
+                              <UserPlus className="w-4 h-4" />
+                            )}
+                            {isFollowing ? 'Unfollow' : 'Follow'}
+                          </button>
+                        ) : !isViewOnly ? (
+                          <button onClick={() => { setIsEditing(true); setEditTab('profile'); }} className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 15px ${liveTheme.accent}60` }}>
+                            <Pencil className="w-4 h-4" /> Edit Profile
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
