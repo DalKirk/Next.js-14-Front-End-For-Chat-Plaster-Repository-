@@ -1,6 +1,6 @@
 # Backend Changes Required: Social Feed
 
-> **Scope**: Add 8 new REST endpoints + 3 new database tables so users can create posts, like, comment, share, and browse a social feed.
+> **Scope**: Add 9 new REST endpoints + 3 new database tables so users can create posts, like, comment, share, and browse a social feed.
 >
 > **Nothing else changes.** All existing endpoints (profile, avatar, gallery, auth, rooms, themes, etc.) remain untouched.
 
@@ -180,6 +180,32 @@ Add a comment to a post.
 
 **Implementation notes:**
 - Insert into `post_comments` and increment `posts.comments_count`.
+
+---
+
+### `GET /posts/{post_id}/comments`
+
+Returns all comments for a post (for the expandable comment thread).
+
+**Response:**
+```json
+[
+  {
+    "id": "comment-uuid",
+    "post_id": "post-uuid",
+    "user_id": "user-uuid",
+    "username": "john_doe",
+    "avatar_url": "https://cdn.example.com/avatar.jpg",
+    "content": "Great post! 🔥",
+    "created_at": "2026-02-08T15:05:00Z"
+  }
+]
+```
+
+**Implementation notes:**
+- Return comments where `post_id` matches, ordered by `created_at ASC` (oldest first).
+- Join with `users` table to get `username` and `avatar_url`.
+- No pagination needed initially (most posts won't exceed 50 comments).
 
 ---
 
@@ -402,6 +428,19 @@ async def add_comment(post_id: str, req: CommentRequest):
     return {"id": str(uuid.uuid4()), "content": req.content}
 
 
+@router.get("/posts/{post_id}/comments")
+async def get_comments(post_id: str):
+    """Return all comments for a post."""
+    # rows = await conn.fetch("""
+    #     SELECT c.*, u.username, u.avatar_url
+    #     FROM post_comments c JOIN users u ON c.user_id = u.id
+    #     WHERE c.post_id = $1
+    #     ORDER BY c.created_at ASC
+    # """, post_id)
+    # return [dict(row) for row in rows]
+    return []
+
+
 @router.post("/posts/{post_id}/share")
 async def share_post(post_id: str, req: ShareRequest):
     """Share a post."""
@@ -467,6 +506,7 @@ apiClient.getUserPosts(userId)   // → GET  /posts/user/{userId}
 apiClient.createPost(data)       // → POST /posts
 apiClient.likePost(postId, uid)  // → POST /posts/{id}/like
 apiClient.commentOnPost(id,uid,c)// → POST /posts/{id}/comments
+apiClient.getComments(postId)    // → GET  /posts/{id}/comments
 apiClient.sharePost(postId, uid) // → POST /posts/{id}/share
 apiClient.deletePost(postId)     // → DELETE /posts/{id}
 ```
@@ -486,6 +526,7 @@ Media upload is sent directly from the browser to `POST /posts/upload-media` (by
 - [ ] Add `POST /posts` endpoint → creates post, returns full post object
 - [ ] Add `POST /posts/{post_id}/like` endpoint → toggles like, returns `{liked: bool}`
 - [ ] Add `POST /posts/{post_id}/comments` endpoint → adds comment, returns comment
+- [ ] Add `GET /posts/{post_id}/comments` endpoint → returns comments for a post
 - [ ] Add `POST /posts/{post_id}/share` endpoint → increments share count
 - [ ] Add `DELETE /posts/{post_id}` endpoint → deletes post
 - [ ] Add `POST /posts/upload-media` endpoint → uploads files, returns CDN URLs

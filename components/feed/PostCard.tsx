@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { apiClient } from '@/lib/api';
 
 interface PostCardProps {
   post: {
@@ -44,8 +45,45 @@ export function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsFetched, setCommentsFetched] = useState(false);
 
   const isOwnPost = post.user_id === currentUserId;
+
+  const toggleComments = useCallback(async () => {
+    const willShow = !showComments;
+    setShowComments(willShow);
+    if (willShow && !commentsFetched) {
+      setCommentsLoading(true);
+      try {
+        const fetched = await apiClient.getComments(post.id);
+        setComments(fetched);
+        setCommentsFetched(true);
+      } catch {
+        // silent — still show input
+      } finally {
+        setCommentsLoading(false);
+      }
+    }
+  }, [showComments, commentsFetched, post.id]);
+
+  const handleSubmitComment = () => {
+    if (!commentText.trim()) return;
+    // Optimistically add the comment to the local list
+    const optimistic = {
+      id: `temp-${Date.now()}`,
+      post_id: post.id,
+      user_id: currentUserId,
+      username: currentUsername || currentUserId,
+      avatar_url: currentAvatarUrls?.small || currentAvatarUrls?.medium,
+      content: commentText.trim(),
+      created_at: new Date().toISOString(),
+    };
+    setComments(prev => [...prev, optimistic]);
+    onComment(post.id, commentText.trim());
+    setCommentText('');
+  };
 
   return (
     <div className="glass-card p-3 sm:p-6">
@@ -124,10 +162,16 @@ export function PostCard({
         </div>
       )}
 
-      {/* Stats */}
+      {/* Stats — tap comments count to expand */}
       <div className="flex items-center gap-3 sm:gap-6 py-2 sm:py-3 border-y border-slate-700/50 text-xs sm:text-sm text-slate-400">
         <span>{post.likes_count} likes</span>
-        <span>{post.comments_count} comments</span>
+        <button
+          onClick={toggleComments}
+          className="hover:text-cyan-400 transition-colors flex items-center gap-1"
+        >
+          {post.comments_count + (comments.length > 0 ? Math.max(0, comments.length - post.comments_count) : 0)} comments
+          {showComments ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
         <span>{post.shares_count} shares</span>
       </div>
 
@@ -144,12 +188,12 @@ export function PostCard({
         </Button>
 
         <Button
-          onClick={() => setShowComments(!showComments)}
+          onClick={toggleComments}
           variant="glass"
           size="sm"
-          className="px-2 sm:px-3"
+          className={`px-2 sm:px-3 ${showComments ? 'text-cyan-400' : ''}`}
         >
-          <MessageCircle className="w-4 h-4 sm:mr-2" />
+          <MessageCircle className={`w-4 h-4 sm:mr-2 ${showComments ? 'fill-current' : ''}`} />
           <span className="hidden sm:inline">Comment</span>
         </Button>
 
@@ -164,9 +208,47 @@ export function PostCard({
         </Button>
       </div>
 
-      {/* Comment Section */}
+      {/* Comment Section — expandable thread */}
       {showComments && (
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50 space-y-3">
+          {/* Existing comments */}
+          {commentsLoading ? (
+            <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading comments...
+            </div>
+          ) : comments.length > 0 ? (
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2 sm:gap-3">
+                  <ResponsiveAvatar
+                    avatarUrls={c.avatar_url ? { small: c.avatar_url, medium: c.avatar_url } : undefined}
+                    username={c.username || 'User'}
+                    size="small"
+                    className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8"
+                  />
+                  <div className="flex-1 min-w-0 bg-white/5 rounded-xl px-3 py-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span
+                        className="text-xs sm:text-sm font-semibold text-white cursor-pointer hover:text-cyan-400 transition-colors"
+                        onClick={() => router.push(`/profile?userId=${c.user_id}`)}
+                      >
+                        {c.username || 'User'}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-slate-500">
+                        {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5 break-words">{c.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs sm:text-sm text-slate-500 text-center py-2">No comments yet — be the first!</p>
+          )}
+
+          {/* New comment input */}
           <div className="flex gap-2 sm:gap-3">
             <ResponsiveAvatar
               avatarUrls={currentAvatarUrls}
@@ -182,19 +264,11 @@ export function PostCard({
                 placeholder="Write a comment..."
                 className="flex-1 min-w-0 bg-white/5 border border-slate-700 rounded-lg px-3 py-2 text-sm sm:text-base text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && commentText.trim()) {
-                    onComment(post.id, commentText);
-                    setCommentText('');
-                  }
+                  if (e.key === 'Enter') handleSubmitComment();
                 }}
               />
               <Button
-                onClick={() => {
-                  if (commentText.trim()) {
-                    onComment(post.id, commentText);
-                    setCommentText('');
-                  }
-                }}
+                onClick={handleSubmitComment}
                 variant="primary"
                 size="sm"
               >

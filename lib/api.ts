@@ -995,6 +995,19 @@ export const apiClient = {
   },
 
   /**
+   * Get comments for a post
+   */
+  getComments: async (postId: string): Promise<any[]> => {
+    try {
+      const response = await api.get(`/posts/${postId}/comments`);
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Load comments');
+      return [];
+    }
+  },
+
+  /**
    * Share a post
    */
   sharePost: async (postId: string, userId: string): Promise<any> => {
