@@ -141,9 +141,6 @@ export function PostCard({
             {post.username}
           </span>
           <span>reposted</span>
-          <span className="text-slate-500">
-            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-          </span>
         </div>
       )}
 
