@@ -104,7 +104,9 @@ export function PostComposer({
         mediaFiles.forEach(file => formData.append('files', file));
         formData.append('userId', userId);
 
-        const uploadResponse = await fetch('/api/upload-post-media', {
+        // Upload directly to backend (bypasses Next.js body size limit)
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
+        const uploadResponse = await fetch(`${backendUrl}/posts/upload-media`, {
           method: 'POST',
           body: formData
         });
