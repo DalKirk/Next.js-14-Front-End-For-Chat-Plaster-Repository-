@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
@@ -49,6 +49,7 @@ export function PostCard({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = post.user_id === currentUserId;
 
@@ -89,6 +90,8 @@ export function PostCard({
     setComments(prev => [...prev, optimistic]);
     onComment(post.id, commentText.trim());
     setCommentText('');
+    // scroll to newest comment after render
+    setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
   return (
@@ -214,9 +217,9 @@ export function PostCard({
         </Button>
       </div>
 
-      {/* Comment Section — expandable thread */}
+      {/* Comment Section — chat-style thread */}
       {showComments && (
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50 space-y-3 overflow-hidden">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
           {/* Existing comments */}
           {commentsLoading ? (
             <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-sm">
@@ -246,43 +249,62 @@ export function PostCard({
               </button>
             </div>
           ) : comments.length > 0 ? (
-            <div className="space-y-3 max-h-60 overflow-y-auto overflow-x-hidden pr-1">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2 sm:gap-3">
-                  <ResponsiveAvatar
-                    avatarUrls={c.avatar_url ? { small: c.avatar_url, medium: c.avatar_url } : undefined}
-                    username={c.username || 'User'}
-                    size="small"
-                    className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8"
-                  />
-                  <div className="flex-1 min-w-0 overflow-hidden bg-white/5 rounded-xl px-3 py-2">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span
-                        className="text-xs sm:text-sm font-semibold text-white cursor-pointer hover:text-cyan-400 transition-colors"
-                        onClick={() => router.push(`/profile?userId=${c.user_id}`)}
-                      >
-                        {c.username || 'User'}
-                      </span>
-                      <span className="text-[10px] sm:text-xs text-slate-500">
-                        {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
-                      </span>
+            <div className="max-h-72 overflow-y-auto mb-3" style={{ overflowX: 'hidden' }}>
+              <div className="space-y-1">
+                {comments.map((c) => {
+                  const isOwn = c.user_id === currentUserId;
+                  return (
+                    <div key={c.id} className="flex w-full justify-start">
+                      <div className="flex items-start gap-2 max-w-[90%] sm:max-w-[85%]">
+                        {/* Avatar */}
+                        <div
+                          className="flex-shrink-0 cursor-pointer"
+                          onClick={() => router.push(`/profile?userId=${c.user_id}`)}
+                        >
+                          <ResponsiveAvatar
+                            avatarUrls={c.avatar_url ? { small: c.avatar_url, medium: c.avatar_url } : undefined}
+                            username={c.username || 'User'}
+                            size="small"
+                            className="w-6 h-6 sm:w-7 sm:h-7"
+                          />
+                        </div>
+                        {/* Message bubble */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span
+                              className={`text-xs font-semibold cursor-pointer hover:text-cyan-400 transition-colors ${
+                                isOwn ? 'text-cyan-300' : 'text-white'
+                              }`}
+                              onClick={() => router.push(`/profile?userId=${c.user_id}`)}
+                            >
+                              {c.username || 'User'}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-slate-200 break-words whitespace-pre-wrap">
+                            {c.content}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>{c.content}</p>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+                <div ref={commentsEndRef} />
+              </div>
             </div>
           ) : (
-            <p className="text-xs sm:text-sm text-slate-500 text-center py-2">No comments yet — be the first!</p>
+            <p className="text-xs sm:text-sm text-slate-500 text-center py-2 mb-3">No comments yet — be the first!</p>
           )}
 
           {/* New comment input */}
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex gap-2 sm:gap-3 pt-2 border-t border-slate-700/30">
             <ResponsiveAvatar
               avatarUrls={currentAvatarUrls}
               username={currentUsername || currentUserId}
               size="small"
-              className="flex-shrink-0 hidden sm:block"
+              className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 hidden sm:block"
             />
             <div className="flex-1 flex gap-2">
               <input
@@ -290,7 +312,7 @@ export function PostCard({
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 min-w-0 bg-white/5 border border-slate-700 rounded-lg px-3 py-2 text-sm sm:text-base text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="flex-1 min-w-0 bg-white/5 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSubmitComment();
                 }}
