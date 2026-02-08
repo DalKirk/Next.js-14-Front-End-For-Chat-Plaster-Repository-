@@ -194,7 +194,8 @@ export function PostCard({
       )}
 
       {/* Original post embed (for reposts) or normal post */}
-      {isRepost && originalPost ? (
+      {isRepost ? (
+        originalPost ? (
         <div className="border border-slate-700/50 rounded-xl p-3 sm:p-4 bg-white/[0.02]">
           {/* Original post header */}
           <div className="flex items-center gap-2 sm:gap-3 mb-2 cursor-pointer" onClick={() => router.push(`/profile?userId=${originalPost.user_id}`)}>
@@ -228,6 +229,11 @@ export function PostCard({
             <span>{originalPost.shares_count} shares</span>
           </div>
         </div>
+        ) : (
+          <div className="border border-slate-700/50 rounded-xl p-3 sm:p-4 bg-white/[0.02]">
+            <p className="text-slate-500 text-sm italic">Original post unavailable</p>
+          </div>
+        )
       ) : (
         <>
       {/* Header */}
