@@ -1018,6 +1018,19 @@ export const apiClient = {
       throw e;
     }
   },
+
+  /**
+   * Get posts by a specific user
+   */
+  getUserPosts: async (userId: string): Promise<any[]> => {
+    try {
+      const response = await api.get(`/posts/user/${userId}`);
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Load user posts');
+      return [];
+    }
+  },
 };
 
 export default apiClient;

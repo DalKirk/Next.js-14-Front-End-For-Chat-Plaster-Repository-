@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { GalleryUpload } from '@/components/GalleryUpload';
+import { PostComposer } from '@/components/feed/PostComposer';
+import { PostCard } from '@/components/feed/PostCard';
 import type { GalleryItem } from '@/types/backend';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
@@ -178,6 +180,10 @@ function ProfilePageContent() {
   // Security state
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
   const [passwordSupported, setPasswordSupported] = useState<boolean | null>(null);
+
+  // ─── Posts state ────────────────────────────────────────────────
+  const [myPosts, setMyPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // ─── Theme editor state ─────────────────────────────────────────────
   const [userTheme, setUserTheme] = useState<ThemeConfig | null>(null);
@@ -532,6 +538,74 @@ function ProfilePageContent() {
       }
     } catch {}
   }, [router, searchParams, viewedUserId, viewedUsername, hydrateThemeState]);
+
+  // ─── Load user's posts ──────────────────────────────────────────────
+  const loadUserPosts = useCallback(async (userId: string) => {
+    setPostsLoading(true);
+    try {
+      const posts = await apiClient.getUserPosts(userId);
+      setMyPosts(posts);
+    } catch {
+      console.warn('Could not load user posts');
+    } finally {
+      setPostsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (profile?.id && profile.id !== 'unknown') {
+      loadUserPosts(profile.id);
+    }
+  }, [profile?.id, loadUserPosts]);
+
+  // ─── Post action handlers ──────────────────────────────────────────
+  const handlePostCreated = useCallback((newPost: any) => {
+    setMyPosts(prev => [newPost, ...prev]);
+    toast.success('Post created!');
+  }, []);
+
+  const handlePostLike = useCallback(async (postId: string) => {
+    if (!profile) return;
+    try {
+      const result = await apiClient.likePost(postId, profile.id);
+      setMyPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, likes_count: result.liked ? p.likes_count + 1 : p.likes_count - 1, user_liked: result.liked }
+          : p
+      ));
+    } catch { toast.error('Failed to like post'); }
+  }, [profile]);
+
+  const handlePostComment = useCallback(async (postId: string, content: string) => {
+    if (!profile) return;
+    try {
+      await apiClient.commentOnPost(postId, profile.id, content);
+      setMyPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
+      ));
+      toast.success('Comment added!');
+    } catch { toast.error('Failed to add comment'); }
+  }, [profile]);
+
+  const handlePostShare = useCallback(async (postId: string) => {
+    if (!profile) return;
+    try {
+      await apiClient.sharePost(postId, profile.id);
+      setMyPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, shares_count: p.shares_count + 1 } : p
+      ));
+      toast.success('Post shared!');
+    } catch { toast.error('Failed to share post'); }
+  }, [profile]);
+
+  const handlePostDelete = useCallback(async (postId: string) => {
+    if (!confirm('Delete this post?')) return;
+    try {
+      await apiClient.deletePost(postId);
+      setMyPosts(prev => prev.filter(p => p.id !== postId));
+      toast.success('Post deleted');
+    } catch { toast.error('Failed to delete post'); }
+  }, []);
 
   // ─── Avatar handling ────────────────────────────────────────────────
   const handleAvatarChange = async (avatarUrls: AvatarUrls | null) => {
@@ -1230,6 +1304,62 @@ function ProfilePageContent() {
                       <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={false} />
                     </div>
                   </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+
+            {/* ═══════════════════════════════════════════════════════════
+               MY POSTS — Compose + Feed
+               ═══════════════════════════════════════════════════════════ */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <GlassCard className="p-6 sm:p-8" refIndex={1}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                  <Newspaper className="w-5 h-5" style={{ color: liveTheme.accent }} />
+                  {isViewOnly ? `${profile.username}'s Posts` : 'My Posts'}
+                </h3>
+
+                {/* Post Composer (own profile only) */}
+                {!isViewOnly && (
+                  <div className="mb-6">
+                    <PostComposer
+                      userId={profile.id}
+                      username={profile.username}
+                      avatarUrl={profile.avatar}
+                      avatarUrls={profile.avatar_urls}
+                      onPostCreated={handlePostCreated}
+                    />
+                  </div>
+                )}
+
+                {/* Posts list */}
+                <div className="space-y-4">
+                  {postsLoading ? (
+                    <p className="text-center py-6" style={{ color: bodyColor, opacity: 0.6 }}>Loading posts...</p>
+                  ) : myPosts.length === 0 ? (
+                    <p className="text-center py-6" style={{ color: bodyColor, opacity: 0.6 }}>
+                      {isViewOnly ? 'No posts yet.' : 'No posts yet. Share something!'}
+                    </p>
+                  ) : (
+                    myPosts.map((post, index) => (
+                      <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04 }}
+                      >
+                        <PostCard
+                          post={post}
+                          currentUserId={profile.id}
+                          currentUsername={profile.username}
+                          currentAvatarUrls={profile.avatar_urls}
+                          onLike={handlePostLike}
+                          onComment={handlePostComment}
+                          onShare={handlePostShare}
+                          onDelete={handlePostDelete}
+                        />
+                      </motion.div>
+                    ))
+                  )}
                 </div>
               </GlassCard>
             </motion.div>

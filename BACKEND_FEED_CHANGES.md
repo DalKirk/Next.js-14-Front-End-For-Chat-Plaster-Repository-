@@ -1,6 +1,6 @@
 # Backend Changes Required: Social Feed
 
-> **Scope**: Add 7 new REST endpoints + 3 new database tables so users can create posts, like, comment, share, and browse a social feed.
+> **Scope**: Add 8 new REST endpoints + 3 new database tables so users can create posts, like, comment, share, and browse a social feed.
 >
 > **Nothing else changes.** All existing endpoints (profile, avatar, gallery, auth, rooms, themes, etc.) remain untouched.
 
@@ -233,6 +233,42 @@ DELETE /posts/{post_id}
 
 Upload media files (images/videos) for a post.
 
+---
+
+### `GET /posts/user/{user_id}`
+
+Returns all posts by a specific user (for their profile page).
+
+**Response:**
+```json
+[
+  {
+    "id": "abc123",
+    "user_id": "user-uuid",
+    "username": "sarah_chen",
+    "avatar_url": "https://cdn.example.com/avatar.jpg",
+    "content": "Just launched my new portfolio! 🚀",
+    "media_urls": ["https://cdn.example.com/photo1.jpg"],
+    "likes_count": 247,
+    "comments_count": 23,
+    "shares_count": 12,
+    "created_at": "2026-02-08T14:30:00Z",
+    "user_liked": false
+  }
+]
+```
+
+**Implementation notes:**
+- Return posts where `user_id` matches the path parameter, ordered by `created_at DESC`.
+- Join with `users` table to get `username` and `avatar_url`.
+- Same response shape as `GET /feed` so the frontend can reuse PostCard.
+
+---
+
+**Upload media endpoint (continued below):**
+
+### `POST /posts/upload-media`
+
 **Request:**
 ```
 POST /posts/upload-media
@@ -397,6 +433,20 @@ async def upload_media(
         urls.append(f"https://cdn.example.com/posts/{userId}/{file.filename}")
 
     return {"urls": urls}
+
+
+@router.get("/posts/user/{user_id}")
+async def get_user_posts(user_id: str):
+    """Return all posts by a specific user."""
+    # rows = await conn.fetch("""
+    #     SELECT p.*, u.username, u.avatar_url
+    #     FROM posts p JOIN users u ON p.user_id = u.id
+    #     WHERE p.user_id = $1
+    #     ORDER BY p.created_at DESC
+    #     LIMIT 50
+    # """, user_id)
+    # return [dict(row) for row in rows]
+    return []
 ```
 
 **Register the router:**
@@ -413,6 +463,7 @@ The frontend in `lib/api.ts` already has these methods wired up:
 
 ```typescript
 apiClient.getFeed(type)          // → GET  /feed?type=foryou|following|trending
+apiClient.getUserPosts(userId)   // → GET  /posts/user/{userId}
 apiClient.createPost(data)       // → POST /posts
 apiClient.likePost(postId, uid)  // → POST /posts/{id}/like
 apiClient.commentOnPost(id,uid,c)// → POST /posts/{id}/comments
@@ -420,7 +471,7 @@ apiClient.sharePost(postId, uid) // → POST /posts/{id}/share
 apiClient.deletePost(postId)     // → DELETE /posts/{id}
 ```
 
-Media upload goes through a Next.js API route at `/api/upload-post-media` which proxies to `POST /posts/upload-media`.
+Media upload is sent directly from the browser to `POST /posts/upload-media` (bypasses the Next.js proxy).
 
 **No frontend changes are needed.** Once the backend endpoints are live, the social feed will work automatically.
 
@@ -438,4 +489,5 @@ Media upload goes through a Next.js API route at `/api/upload-post-media` which 
 - [ ] Add `POST /posts/{post_id}/share` endpoint → increments share count
 - [ ] Add `DELETE /posts/{post_id}` endpoint → deletes post
 - [ ] Add `POST /posts/upload-media` endpoint → uploads files, returns CDN URLs
+- [ ] Add `GET /posts/user/{user_id}` endpoint → returns posts by a specific user
 - [ ] Deploy
