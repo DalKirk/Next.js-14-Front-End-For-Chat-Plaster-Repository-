@@ -218,6 +218,8 @@ export default function FeedPage() {
                 <PostCard
                   post={post}
                   currentUserId={currentUser?.id}
+                  currentUsername={currentUser?.username}
+                  currentAvatarUrls={currentUser?.avatar_urls}
                   onLike={handleLike}
                   onComment={handleComment}
                   onShare={handleShare}

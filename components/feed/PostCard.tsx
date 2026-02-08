@@ -22,6 +22,8 @@ interface PostCardProps {
     user_liked: boolean;
   };
   currentUserId: string;
+  currentUsername?: string;
+  currentAvatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string };
   onLike: (postId: string) => void;
   onComment: (postId: string, content: string) => void;
   onShare: (postId: string) => void;
@@ -31,6 +33,8 @@ interface PostCardProps {
 export function PostCard({
   post,
   currentUserId,
+  currentUsername,
+  currentAvatarUrls,
   onLike,
   onComment,
   onShare,
@@ -156,8 +160,8 @@ export function PostCard({
         <div className="mt-4 pt-4 border-t border-slate-700/50">
           <div className="flex gap-3">
             <ResponsiveAvatar
-              avatarUrls={undefined}
-              username={currentUserId}
+              avatarUrls={currentAvatarUrls}
+              username={currentUsername || currentUserId}
               size="small"
             />
             <div className="flex-1 flex gap-2">
