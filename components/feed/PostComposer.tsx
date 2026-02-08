@@ -140,10 +140,10 @@ export function PostComposer({
   };
 
   return (
-    <div className="glass-card p-3 sm:p-6">
+    <div className="glass-card p-2.5 xs:p-3 sm:p-6">
       {/* Mobile: avatar + name row, then textarea below. Desktop: side-by-side */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:block">
+      <div className="flex flex-col sm:flex-row gap-2.5 xs:gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 xs:gap-3 sm:block">
           <ResponsiveAvatar
             avatarUrls={avatarUrls || (avatarUrl ? { small: avatarUrl, medium: avatarUrl } : undefined)}
             username={username}
@@ -159,24 +159,24 @@ export function PostComposer({
           <span className="text-sm font-medium text-white sm:hidden">{username}</span>
         </div>
 
-        <div className="flex-1 space-y-3 sm:space-y-4">
+        <div className="flex-1 space-y-2.5 xs:space-y-3 sm:space-y-4">
           <textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
-            className="w-full bg-white/5 border border-slate-700 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base text-white placeholder:text-slate-500 min-h-[80px] sm:min-h-[100px] resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+            className="w-full bg-white/5 border border-slate-700 rounded-xl px-2.5 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-3 text-[13px] xs:text-sm sm:text-base text-white placeholder:text-slate-500 min-h-[70px] xs:min-h-[80px] sm:min-h-[100px] resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
             maxLength={5000}
           />
 
           {mediaPreviews.length > 0 && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5 xs:gap-2">
               {mediaPreviews.map((preview, index) => (
                 <div key={index} className="relative group">
                   <img
                     src={preview}
                     alt={`Preview ${index + 1}`}
-                    className="w-full h-28 sm:h-40 object-cover rounded-lg"
+                    className="w-full h-20 xs:h-28 sm:h-40 object-cover rounded-lg"
                   />
                   <button
                     onClick={() => removeMedia(index)}
@@ -189,8 +189,8 @@ export function PostComposer({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center justify-between gap-1.5 xs:gap-2">
+            <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -223,13 +223,13 @@ export function PostComposer({
                 </Button>
 
                 {showEmojiPicker && (
-                  <div className="absolute bottom-full left-0 mb-2 w-[calc(100vw-2rem)] max-w-72 glass-card p-2 sm:p-3 z-50">
-                    <div className="grid grid-cols-8 gap-0.5 sm:gap-1">
+                  <div className="absolute bottom-full left-0 mb-2 w-[calc(100vw-1.5rem)] xs:w-[calc(100vw-2rem)] max-w-72 glass-card p-1.5 xs:p-2 sm:p-3 z-50">
+                    <div className="grid grid-cols-8 gap-0.5">
                       {EMOJI_LIST.map((emoji, i) => (
                         <button
                           key={i}
                           onClick={() => insertEmoji(emoji)}
-                          className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-base sm:text-lg hover:bg-white/10 rounded transition-colors"
+                          className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 flex items-center justify-center text-sm xs:text-base sm:text-lg hover:bg-white/10 rounded transition-colors"
                         >
                           {emoji}
                         </button>

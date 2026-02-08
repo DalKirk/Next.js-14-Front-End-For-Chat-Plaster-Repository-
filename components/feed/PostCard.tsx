@@ -130,7 +130,7 @@ export function PostCard({
   };
 
   return (
-    <div className="glass-card p-3 sm:p-6">
+    <div className="glass-card p-2.5 xs:p-3 sm:p-6">
       {/* Repost header */}
       {isRepost && (
         <div className="flex items-center justify-between mb-2">
@@ -196,50 +196,50 @@ export function PostCard({
       {/* Original post embed (for reposts) or normal post */}
       {isRepost ? (
         originalPost ? (
-        <div className="border border-slate-700/50 rounded-xl p-3 sm:p-4 bg-white/[0.02]">
+        <div className="border border-slate-700/50 rounded-xl p-2 xs:p-3 sm:p-4 bg-white/[0.02]">
           {/* Original post header */}
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 cursor-pointer" onClick={() => router.push(`/profile?userId=${originalPost.user_id}`)}>
+          <div className="flex items-center gap-2 mb-2 cursor-pointer" onClick={() => router.push(`/profile?userId=${originalPost.user_id}`)}>
             <ResponsiveAvatar
               avatarUrls={originalPost.avatar_url ? { small: originalPost.avatar_url, medium: originalPost.avatar_url } : undefined}
               username={originalPost.username}
               size="small"
-              className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9"
+              className="flex-shrink-0 w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9"
             />
             <div className="min-w-0">
-              <h3 className="font-semibold text-white text-sm truncate">{originalPost.username}</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">
+              <h3 className="font-semibold text-white text-[13px] xs:text-sm truncate">{originalPost.username}</h3>
+              <p className="text-[10px] text-slate-400">
                 {formatDistanceToNow(new Date(originalPost.created_at), { addSuffix: true })}
               </p>
             </div>
           </div>
           {/* Original content */}
-          <p className="text-slate-200 mb-2 whitespace-pre-wrap text-sm">{originalPost.content}</p>
+          <p className="text-slate-200 mb-2 whitespace-pre-wrap break-words text-[13px] xs:text-sm">{originalPost.content}</p>
           {/* Original media */}
           {originalPost.media_urls?.length > 0 && (
-            <div className={`grid gap-1.5 mb-2 ${originalPost.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <div className={`grid gap-1 xs:gap-1.5 mb-2 ${originalPost.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {originalPost.media_urls.map((url, i) => (
-                <img key={i} src={url} alt={`Media ${i + 1}`} className="w-full h-32 sm:h-48 object-cover rounded-lg" />
+                <img key={i} src={url} alt={`Media ${i + 1}`} className="w-full h-24 xs:h-32 sm:h-48 object-cover rounded-lg" />
               ))}
             </div>
           )}
           {/* Original stats */}
-          <div className="flex items-center gap-3 text-[10px] sm:text-xs text-slate-500">
+          <div className="flex items-center gap-2 xs:gap-3 text-[10px] text-slate-500">
             <span>{originalPost.likes_count} likes</span>
             <span>{originalPost.comments_count} comments</span>
             <span>{originalPost.shares_count} shares</span>
           </div>
         </div>
         ) : (
-          <div className="border border-slate-700/50 rounded-xl p-3 sm:p-4 bg-white/[0.02]">
-            <p className="text-slate-500 text-sm italic">Original post unavailable</p>
+          <div className="border border-slate-700/50 rounded-xl p-2 xs:p-3 sm:p-4 bg-white/[0.02]">
+            <p className="text-slate-500 text-[13px] xs:text-sm italic">Original post unavailable</p>
           </div>
         )
       ) : (
         <>
       {/* Header */}
-      <div className="flex items-start justify-between mb-3 sm:mb-4">
+      <div className="flex items-start justify-between mb-2.5 xs:mb-3 sm:mb-4">
         <div
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0"
+          className="flex items-center gap-2 cursor-pointer min-w-0"
           onClick={() => router.push(`/profile?userId=${post.user_id}`)}
         >
           <ResponsiveAvatar
@@ -255,8 +255,8 @@ export function PostCard({
             className="flex-shrink-0 hidden sm:block"
           />
           <div className="min-w-0">
-            <h3 className="font-semibold text-white text-sm sm:text-base truncate">{post.username}</h3>
-            <p className="text-[11px] sm:text-xs text-slate-400">
+            <h3 className="font-semibold text-white text-[13px] xs:text-sm sm:text-base truncate">{post.username}</h3>
+            <p className="text-[10px] xs:text-[11px] sm:text-xs text-slate-400">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
             </p>
           </div>
@@ -307,11 +307,11 @@ export function PostCard({
       </div>
 
       {/* Content */}
-      <p className="text-slate-200 mb-3 sm:mb-4 whitespace-pre-wrap text-sm sm:text-base">{post.content}</p>
+      <p className="text-slate-200 mb-2.5 xs:mb-3 sm:mb-4 whitespace-pre-wrap break-words text-[13px] xs:text-sm sm:text-base">{post.content}</p>
 
       {/* Media */}
       {post.media_urls.length > 0 && (
-        <div className={`grid gap-1.5 sm:gap-2 mb-3 sm:mb-4 ${
+        <div className={`grid gap-1 xs:gap-1.5 sm:gap-2 mb-2.5 xs:mb-3 sm:mb-4 ${
           post.media_urls.length === 1 ? 'grid-cols-1' :
           post.media_urls.length === 2 ? 'grid-cols-2' :
           post.media_urls.length === 3 ? 'grid-cols-2 sm:grid-cols-3' :
@@ -322,7 +322,7 @@ export function PostCard({
               key={index}
               src={url}
               alt={`Post media ${index + 1}`}
-              className="w-full h-36 sm:h-64 object-cover rounded-lg"
+              className="w-full h-28 xs:h-36 sm:h-64 object-cover rounded-lg"
             />
           ))}
         </div>
@@ -331,7 +331,7 @@ export function PostCard({
       )}
 
       {/* Stats — tap comments count to expand */}
-      <div className="flex items-center gap-3 sm:gap-6 py-2 sm:py-3 border-y border-slate-700/50 text-xs sm:text-sm text-slate-400">
+      <div className="flex items-center gap-2 xs:gap-3 sm:gap-6 py-1.5 xs:py-2 sm:py-3 border-y border-slate-700/50 text-[11px] xs:text-xs sm:text-sm text-slate-400">
         <span>{post.likes_count} likes</span>
         <button
           onClick={toggleComments}
@@ -344,7 +344,7 @@ export function PostCard({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 sm:gap-2 pt-2 sm:pt-3">
+      <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 pt-1.5 xs:pt-2 sm:pt-3">
         <Button
           onClick={() => onLike(post.id)}
           variant="glass"
@@ -399,7 +399,7 @@ export function PostCard({
 
       {/* Comment Section — chat-style thread */}
       {showComments && (
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
+        <div className="mt-2.5 xs:mt-3 sm:mt-4 pt-2.5 xs:pt-3 sm:pt-4 border-t border-slate-700/50">
           {/* Existing comments */}
           {commentsLoading ? (
             <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-sm">
@@ -435,7 +435,7 @@ export function PostCard({
                   const isOwn = c.user_id === currentUserId;
                   return (
                     <div key={c.id} className="flex w-full justify-start">
-                      <div className="flex items-start gap-2 max-w-[90%] sm:max-w-[85%]">
+                        <div className="flex items-start gap-1.5 xs:gap-2 max-w-[95%] xs:max-w-[90%] sm:max-w-[85%]">
                         {/* Avatar */}
                         <div
                           className="flex-shrink-0 cursor-pointer"
@@ -445,25 +445,25 @@ export function PostCard({
                             avatarUrls={c.avatar_url ? { small: c.avatar_url, medium: c.avatar_url } : undefined}
                             username={c.username || 'User'}
                             size="small"
-                            className="w-6 h-6 sm:w-7 sm:h-7"
+                            className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7"
                           />
                         </div>
                         {/* Message bubble */}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
+                          <div className="flex items-center gap-1.5 xs:gap-2 mb-0.5">
                             <span
-                              className={`text-xs font-semibold cursor-pointer hover:text-cyan-400 transition-colors ${
+                              className={`text-[11px] xs:text-xs font-semibold cursor-pointer hover:text-cyan-400 transition-colors ${
                                 isOwn ? 'text-cyan-300' : 'text-white'
                               }`}
                               onClick={() => router.push(`/profile?userId=${c.user_id}`)}
                             >
                               {c.username || 'User'}
                             </span>
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[9px] xs:text-[10px] text-slate-500">
                               {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                             </span>
                           </div>
-                          <p className="text-xs sm:text-sm text-slate-200 break-words whitespace-pre-wrap">
+                          <p className="text-[12px] xs:text-xs sm:text-sm text-slate-200 break-words whitespace-pre-wrap">
                             {c.content}
                           </p>
                         </div>
@@ -474,24 +474,24 @@ export function PostCard({
               </div>
             </div>
           ) : (
-            <p className="text-xs sm:text-sm text-slate-500 text-center py-2 mb-3">No comments yet — be the first!</p>
+            <p className="text-[11px] xs:text-xs sm:text-sm text-slate-500 text-center py-1.5 xs:py-2 mb-2 xs:mb-3">No comments yet — be the first!</p>
           )}
 
           {/* New comment input */}
-          <div className="flex gap-2 sm:gap-3 pt-2 border-t border-slate-700/30">
+          <div className="flex gap-1.5 xs:gap-2 sm:gap-3 pt-1.5 xs:pt-2 border-t border-slate-700/30">
             <ResponsiveAvatar
               avatarUrls={currentAvatarUrls}
               username={currentUsername || currentUserId}
               size="small"
-              className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 hidden sm:block"
+              className="flex-shrink-0 w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 hidden sm:block"
             />
-            <div className="flex-1 flex gap-2">
+            <div className="flex-1 flex gap-1.5 xs:gap-2">
               <input
                 type="text"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 min-w-0 bg-white/5 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="flex-1 min-w-0 bg-white/5 border border-slate-700 rounded-lg px-2 xs:px-3 py-1.5 xs:py-2 text-[13px] xs:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSubmitComment();
                 }}
