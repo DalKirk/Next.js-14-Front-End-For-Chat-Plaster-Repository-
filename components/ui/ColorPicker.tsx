@@ -102,7 +102,7 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-14 rounded-lg cursor-pointer border-2 transition-all hover:scale-[1.02] active:scale-95"
+        className="w-full h-10 xs:h-12 sm:h-14 rounded-lg cursor-pointer border-2 transition-all hover:scale-[1.02] active:scale-95"
         style={{
           backgroundColor: value,
           borderColor: isOpen ? accentColor : 'rgba(255,255,255,0.3)',
@@ -114,7 +114,7 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
       {/* Picker dropdown */}
       {isOpen && (
         <div
-          className="absolute left-0 right-0 z-50 mt-2 p-4 rounded-xl border space-y-4"
+          className="absolute left-1/2 -translate-x-1/2 z-[60] mt-2 p-2.5 xs:p-3 sm:p-4 rounded-xl border space-y-3 xs:space-y-4 w-[min(300px,calc(100vw-1.5rem))]"
           style={{
             background: 'rgba(15, 20, 30, 0.95)',
             borderColor: 'rgba(255,255,255,0.15)',
@@ -124,16 +124,16 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
           }}
         >
           {/* Preview swatch */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 xs:gap-3">
             <div
-              className="w-12 h-12 rounded-lg border-2 flex-shrink-0"
+              className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 rounded-lg border-2 flex-shrink-0"
               style={{ backgroundColor: value, borderColor: 'rgba(255,255,255,0.3)' }}
             />
             <input
               type="text"
               value={hexInput}
               onChange={(e) => handleHexChange(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm font-mono rounded-lg border text-center uppercase"
+              className="flex-1 px-2 xs:px-3 py-1.5 xs:py-2 text-xs xs:text-sm font-mono rounded-lg border text-center uppercase"
               style={{
                 background: 'rgba(255,255,255,0.1)',
                 borderColor: 'rgba(255,255,255,0.2)',
@@ -146,7 +146,7 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
 
           {/* Hue slider */}
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
+            <label className="block text-[11px] xs:text-xs font-medium mb-1 xs:mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
               Hue: {hsl.h}°
             </label>
             <input
@@ -155,14 +155,14 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
               max="360"
               value={hsl.h}
               onChange={(e) => updateFromHSL(parseInt(e.target.value), hsl.s, hsl.l)}
-              className="w-full h-3 rounded-lg cursor-pointer hue-slider"
+              className="w-full h-2.5 xs:h-3 rounded-lg cursor-pointer hue-slider"
               style={{ touchAction: 'pan-x' } as any}
             />
           </div>
 
           {/* Saturation slider */}
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
+            <label className="block text-[11px] xs:text-xs font-medium mb-1 xs:mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
               Saturation: {hsl.s}%
             </label>
             <input
@@ -171,14 +171,14 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
               max="100"
               value={hsl.s}
               onChange={(e) => updateFromHSL(hsl.h, parseInt(e.target.value), hsl.l)}
-              className="w-full h-3 rounded-lg cursor-pointer"
+              className="w-full h-2.5 xs:h-3 rounded-lg cursor-pointer"
               style={{ background: satGradient, touchAction: 'pan-x' } as any}
             />
           </div>
 
           {/* Lightness slider */}
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
+            <label className="block text-[11px] xs:text-xs font-medium mb-1 xs:mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
               Lightness: {hsl.l}%
             </label>
             <input
@@ -187,17 +187,17 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
               max="100"
               value={hsl.l}
               onChange={(e) => updateFromHSL(hsl.h, hsl.s, parseInt(e.target.value))}
-              className="w-full h-3 rounded-lg cursor-pointer"
+              className="w-full h-2.5 xs:h-3 rounded-lg cursor-pointer"
               style={{ background: lightGradient, touchAction: 'pan-x' } as any}
             />
           </div>
 
           {/* Quick presets row */}
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
+            <label className="block text-[11px] xs:text-xs font-medium mb-1 xs:mb-1.5" style={{ color: textColor, opacity: 0.7 }}>
               Quick Colors
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 xs:gap-2">
               {[
                 '#FF6B6B', '#FFB84D', '#FF6B9D', '#C06C84',
                 '#00D4FF', '#6C63FF', '#2ECC71', '#F39C12',
@@ -213,7 +213,7 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
                     setHexInput(preset);
                     onChange(preset);
                   }}
-                  className="w-7 h-7 rounded-full border-2 transition-all hover:scale-110 active:scale-90"
+                  className="w-6 h-6 xs:w-7 xs:h-7 rounded-full border-2 transition-all hover:scale-110 active:scale-90"
                   style={{
                     backgroundColor: preset,
                     borderColor: value.toUpperCase() === preset ? '#fff' : 'rgba(255,255,255,0.2)',
@@ -229,7 +229,7 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="w-full py-2 rounded-lg text-sm font-medium text-white transition-all hover:brightness-110 active:scale-95"
+            className="w-full py-1.5 xs:py-2 rounded-lg text-xs xs:text-sm font-medium text-white transition-all hover:brightness-110 active:scale-95"
             style={{ background: accentColor }}
           >
             Done

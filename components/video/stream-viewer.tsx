@@ -22,6 +22,7 @@ export function StreamViewer({
 }: StreamViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const userUnmutedRef = useRef(false); // Track if user explicitly unmuted
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -30,24 +31,35 @@ export function StreamViewer({
       console.log('📺 Viewer displaying stream:', stream.id);
       console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`).join(', '));
       
-      // Start muted for autoplay, user can unmute
-      video.muted = true;
-      setIsMuted(true);
+      // Only reset to muted if user hasn't explicitly unmuted
+      if (!userUnmutedRef.current) {
+        video.muted = true;
+        setIsMuted(true);
+      }
       
       // Ensure video plays
       video.play().then(() => {
-        console.log('▶️ Video playback started (muted - tap to unmute)');
+        console.log('▶️ Video playback started', userUnmutedRef.current ? '(unmuted)' : '(muted - tap to unmute)');
       }).catch((err) => {
         console.warn('⚠️ Video autoplay failed:', err.message);
+        // If autoplay fails unmuted, fall back to muted autoplay
+        if (!video.muted) {
+          video.muted = true;
+          setIsMuted(true);
+          userUnmutedRef.current = false;
+          video.play().catch(() => {});
+        }
       });
     }
   }, [stream]);
 
   const toggleMute = () => {
     if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
-      console.log(videoRef.current.muted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+      const newMuted = !isMuted;
+      videoRef.current.muted = newMuted;
+      setIsMuted(newMuted);
+      userUnmutedRef.current = !newMuted; // Track that user explicitly unmuted
+      console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
     }
   };
 
@@ -57,8 +69,8 @@ export function StreamViewer({
         ref={videoRef}
         autoPlay
         playsInline
-        muted
-        className="w-full h-full object-contain"
+        muted={isMuted}
+        className={`w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
 
