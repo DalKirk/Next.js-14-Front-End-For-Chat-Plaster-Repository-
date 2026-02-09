@@ -64,8 +64,12 @@ export function LiveStream({
     setError('');
     
     try {
-      // Request permission first
-      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Request both video AND audio permission upfront.
+      // On Android Chrome, getUserMedia from a non-user-gesture context
+      // (like the auto-start useEffect) silently skips the mic prompt.
+      // By requesting audio here (triggered by mount / user interaction),
+      // the permission is already granted when startStream() fires.
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       tempStream.getTracks().forEach(track => track.stop());
       
       // Get all video devices

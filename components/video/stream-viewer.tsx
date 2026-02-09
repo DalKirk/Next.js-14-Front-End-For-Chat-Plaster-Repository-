@@ -45,17 +45,29 @@ export function StreamViewer({
 
   const toggleMute = () => {
     if (videoRef.current) {
-      // Toggle directly on the DOM element, then read back
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
+      const newMuted = !isMuted;
 
-      // On mobile, re-trigger play() within this user gesture so the
-      // browser's audio pipeline actually activates after unmuting
-      if (!videoRef.current.muted) {
+      // Update React state so the controlled muted={isMuted} prop
+      // renders the correct value. With React 19, a bare <video muted>
+      // re-applies muted=true on every re-render, undoing DOM toggles.
+      setIsMuted(newMuted);
+
+      // Also set the DOM property immediately for instant feedback
+      videoRef.current.muted = newMuted;
+
+      if (!newMuted) {
+        // Resume AudioContext (required by Android Chrome for first unmute)
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          ctx.resume().then(() => ctx.close()).catch(() => {});
+        } catch (_) {}
+
+        // Re-trigger play() within this user gesture so the browser's
+        // audio pipeline activates after unmuting
         videoRef.current.play().catch(() => {});
       }
 
-      console.log(videoRef.current.muted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+      console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
     }
   };
 
@@ -65,7 +77,7 @@ export function StreamViewer({
         ref={videoRef}
         autoPlay
         playsInline
-        muted
+        muted={isMuted}
         className={`w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
