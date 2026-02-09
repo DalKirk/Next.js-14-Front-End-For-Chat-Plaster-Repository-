@@ -23,76 +23,55 @@ export function StreamViewer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
 
-  // Attach stream and start muted playback
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !stream) return;
+    if (videoRef.current && stream) {
+      const video = videoRef.current;
+      video.srcObject = stream;
+      console.log('📺 Viewer displaying stream:', stream.id);
+      console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:enabled=${t.enabled}:${t.readyState}`).join(', '));
 
-    video.srcObject = stream;
+      // Start muted for autoplay, user can unmute
+      video.muted = true;
+      setIsMuted(true);
 
-    // Log audio track info for debugging
-    const audioTracks = stream.getAudioTracks();
-    console.log('📺 Viewer stream:', stream.id);
-    console.log('📺 Audio tracks:', audioTracks.length, audioTracks.map(t => `enabled=${t.enabled} readyState=${t.readyState}`));
-    console.log('📺 Video tracks:', stream.getVideoTracks().length);
-
-    // Ensure all audio tracks on the incoming stream are enabled
-    audioTracks.forEach(t => { t.enabled = true; });
-
-    // Always start muted (browser autoplay policy requires it)
-    video.muted = true;
-    video.volume = 1; // Ensure volume isn't at 0
-    setIsMuted(true);
-
-    video.play().then(() => {
-      console.log('▶️ Video playback started (muted — tap speaker icon to unmute)');
-    }).catch((err) => {
-      console.warn('⚠️ Video autoplay failed:', err.message);
-    });
+      // Ensure video plays
+      video.play().then(() => {
+        console.log('▶️ Video playback started (muted - tap to unmute)');
+      }).catch((err) => {
+        console.warn('⚠️ Video autoplay failed:', err.message);
+      });
+    }
   }, [stream]);
 
-  // Sync muted state to the DOM element (belt-and-suspenders for re-renders)
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
-
   const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (videoRef.current) {
+      // Unlock the mobile audio session — creating/resuming an AudioContext
+      // inside a user gesture is the canonical way to tell iOS Safari and
+      // Android Chrome "the user wants audio output".
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AC();
+        if (ctx.state === 'suspended') ctx.resume();
+        // Close it immediately — we only needed the gesture unlock
+        ctx.close().catch(() => {});
+      } catch (_) { /* AudioContext not available — fine, desktop */ }
 
-    const newMuted = !isMuted;
-    video.muted = newMuted;
-    setIsMuted(newMuted);
+      // Toggle directly on the DOM element (original working pattern)
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
 
-    // CRITICAL: On mobile browsers (iOS Safari, Android Chrome), just setting
-    // muted=false on an already-playing video does NOT activate the audio
-    // session. You MUST call play() again within the user-gesture context
-    // for the browser to allow audio output.
-    if (!newMuted) {
-      video.play().then(() => {
-        console.log('🔊 Audio unmuted — playing with sound');
-        console.log('🔊 Verify: muted=%s volume=%s paused=%s', video.muted, video.volume, video.paused);
-      }).catch((err) => {
-        console.warn('⚠️ Unmuted play() failed, falling back to muted:', err.message);
-        video.muted = true;
-        setIsMuted(true);
-        video.play().catch(() => {});
-      });
-    } else {
-      console.log('🔇 Audio muted');
+      // On mobile, re-trigger play() within this user gesture so the
+      // browser's audio pipeline actually activates after unmuting
+      if (!videoRef.current.muted) {
+        videoRef.current.play().catch(() => {});
+      }
+
+      console.log(videoRef.current.muted ? '🔇 Audio muted' : '🔊 Audio unmuted');
     }
   };
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
-      {/* 
-        Use bare "muted" attribute (not muted={isMuted}) so the HTML attribute
-        is present in the markup. iOS Safari requires the muted ATTRIBUTE
-        (not just the property) for autoplay to be permitted. We control the
-        actual muted state via the ref + useEffect above.
-      */}
       <video
         ref={videoRef}
         autoPlay
