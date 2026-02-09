@@ -94,6 +94,20 @@ export default function RoomPage() {
   const [fitMode, setFitMode] = useState<'cover' | 'contain'>('cover');
   const [centerBias, setCenterBias] = useState<boolean>(false);
 
+  // Track which layout is active (lg: breakpoint = 1024px) so we only
+  // mount ONE StreamViewer / LiveStream at a time. Two <video> elements
+  // sharing the same MediaStream fight over the audio track.
+  const [isDesktopLayout, setIsDesktopLayout] = useState<boolean>(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktopLayout(e.matches);
+    setIsDesktopLayout(mq.matches); // sync on mount
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // Prevent viewport zoom on mobile when focusing inputs
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1654,7 +1668,9 @@ export default function RoomPage() {
         <div className="lg:hidden fixed inset-0 top-0">
           {/* Video Background - Full Screen */}
           <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black">
-            {isLiveStreamMode ? (
+            {/* Only mount video components when this layout is active.
+                Two <video> elements sharing one MediaStream fight over the audio track. */}
+            {!isDesktopLayout && isLiveStreamMode ? (
               user && (
                 <LiveStream
                   roomId={roomId}
@@ -1683,7 +1699,7 @@ export default function RoomPage() {
                   className="w-full h-full"
                 />
               )
-            ) : remoteStream ? (
+            ) : !isDesktopLayout && remoteStream ? (
               <StreamViewer 
                 stream={remoteStream}
                 username={broadcasterName}
@@ -2043,7 +2059,8 @@ export default function RoomPage() {
             </div>
             
             <div className="flex-1 min-h-0 relative">
-              {isLiveStreamMode ? (
+              {/* Only mount video components when this layout is active */}
+              {isDesktopLayout && isLiveStreamMode ? (
                 /* Live Stream Mode - User is broadcasting */
                 user && (
                   <LiveStream
@@ -2074,7 +2091,7 @@ export default function RoomPage() {
                     className="h-full"
                   />
                 )
-              ) : remoteStream ? (
+              ) : isDesktopLayout && remoteStream ? (
                 /* Viewing Live Stream from another user */
                 <StreamViewer 
                   stream={remoteStream}
