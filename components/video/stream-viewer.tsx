@@ -1,7 +1,12 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { UserIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
+
+export interface StreamViewerHandle {
+  toggleMute: () => void;
+  isMuted: () => boolean;
+}
 
 interface StreamViewerProps {
   stream: MediaStream | null;
@@ -10,16 +15,22 @@ interface StreamViewerProps {
   className?: string;
   fitMode?: 'cover' | 'contain';
   centerBias?: boolean;
+  /** Called whenever muted state changes — lets the parent render its own button */
+  onMuteChange?: (muted: boolean) => void;
+  /** When true the built-in mute button is hidden (parent renders its own) */
+  hideBuiltInMuteButton?: boolean;
 }
 
-export function StreamViewer({ 
+export const StreamViewer = forwardRef<StreamViewerHandle, StreamViewerProps>(function StreamViewer({ 
   stream, 
   username = 'Broadcaster',
   isLoading = false,
   className = '',
   fitMode = 'contain',
   centerBias = false,
-}: StreamViewerProps) {
+  onMuteChange,
+  hideBuiltInMuteButton = false,
+}, ref) {
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
 
@@ -45,6 +56,14 @@ export function StreamViewer({
     }
   });
 
+  // Expose toggleMute / isMuted to the parent via ref so the room
+  // page can place a mute button anywhere (e.g. the mobile controls
+  // bar which sits at a higher z-index than the video layer).
+  useImperativeHandle(ref, () => ({
+    toggleMute,
+    isMuted: () => isMuted,
+  }), [isMuted]);
+
   // Attach the remote stream when it arrives
   useEffect(() => {
     if (videoElRef.current && stream) {
@@ -56,6 +75,7 @@ export function StreamViewer({
       // Always start muted for autoplay compliance
       video.muted = true;
       setIsMuted(true);
+      onMuteChange?.(true);
 
       video.play().then(() => {
         console.log('▶️ Video playback started (muted - tap to unmute)');
@@ -65,11 +85,11 @@ export function StreamViewer({
     }
   }, [stream]);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const video = videoElRef.current;
     if (!video) return;
 
-    const newMuted = !isMuted;
+    const newMuted = !video.muted;
 
     // 1. Set the DOM property FIRST for immediate effect
     video.muted = newMuted;
@@ -86,12 +106,13 @@ export function StreamViewer({
       video.play().catch(() => {});
     }
 
-    // 2. Update React state LAST — triggers re-render, but the
+    // 2. Update React state — triggers re-render, but the
     //    post-render useEffect above will re-apply the correct value
     setIsMuted(newMuted);
+    onMuteChange?.(newMuted);
 
     console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
-  };
+  }, [onMuteChange]);
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
@@ -105,8 +126,10 @@ export function StreamViewer({
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
 
-      {/* Unmute Button - shown when stream is playing */}
-      {stream && (
+      {/* Unmute Button - shown when stream is playing.
+          Hidden on mobile where the parent renders its own button
+          in the controls bar (which sits at a higher z-index). */}
+      {stream && !hideBuiltInMuteButton && (
         <button
           onClick={toggleMute}
           className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm p-2 rounded-full border border-white/20 hover:bg-black/80 transition-colors z-10"
@@ -156,4 +179,4 @@ export function StreamViewer({
       )}
     </div>
   );
-}
+});

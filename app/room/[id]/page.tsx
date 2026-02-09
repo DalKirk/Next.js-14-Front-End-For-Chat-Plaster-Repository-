@@ -13,6 +13,7 @@ import { VideoPlayer } from '@/components/video/video-player';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { LiveStream } from '@/components/video/live-stream';
 import { StreamViewer } from '@/components/video/stream-viewer';
+import type { StreamViewerHandle } from '@/components/video/stream-viewer';
 import { webrtcManager } from '@/lib/webrtc-manager';
 // import { useChat } from '@/hooks/use-chat'; // Reserved for future use
 import { User, Message } from '@/lib/types';
@@ -28,7 +29,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
-import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { PaperAirplaneIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 
 // Interface for WebSocket messages
 interface WebSocketMessage {
@@ -93,6 +94,10 @@ export default function RoomPage() {
   // Video framing controls
   const [fitMode, setFitMode] = useState<'cover' | 'contain'>('cover');
   const [centerBias, setCenterBias] = useState<boolean>(false);
+
+  // Ref to the mobile StreamViewer so the controls bar can call toggleMute
+  const mobileStreamViewerRef = useRef<StreamViewerHandle>(null);
+  const [viewerMuted, setViewerMuted] = useState(true);
 
   // Track which layout is active (lg: breakpoint = 1024px) so we only
   // mount ONE StreamViewer / LiveStream at a time. Two <video> elements
@@ -1701,11 +1706,14 @@ export default function RoomPage() {
               )
             ) : !isDesktopLayout && remoteStream ? (
               <StreamViewer 
+                ref={mobileStreamViewerRef}
                 stream={remoteStream}
                 username={broadcasterName}
                 fitMode={fitMode}
                 centerBias={centerBias}
                 className="w-full h-full"
+                hideBuiltInMuteButton
+                onMuteChange={(m) => setViewerMuted(m)}
               />
             ) : (
               (() => {
@@ -1875,6 +1883,25 @@ export default function RoomPage() {
 
             {/* Control Buttons */}
             <div className="flex items-center justify-center gap-2 px-2">
+              {/* Mute / Unmute button — only when viewing a remote stream */}
+              {remoteStream && !isLiveStreamMode && (
+                <button
+                  onClick={() => mobileStreamViewerRef.current?.toggleMute()}
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full backdrop-blur-sm flex items-center justify-center transition-all border shadow-lg ${
+                    viewerMuted
+                      ? 'bg-red-500/80 hover:bg-red-600 border-red-400/30 shadow-red-500/20'
+                      : 'bg-slate-800/90 hover:bg-slate-700 border-slate-700/50 shadow-slate-900/50'
+                  }`}
+                  title={viewerMuted ? 'Unmute' : 'Mute'}
+                >
+                  {viewerMuted ? (
+                    <SpeakerXMarkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  ) : (
+                    <SpeakerWaveIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  )}
+                </button>
+              )}
+
               <button 
                 onClick={() => setShowMobileChatOverlay(!showMobileChatOverlay)}
                 className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-800/90 backdrop-blur-sm flex items-center justify-center hover:bg-slate-700 transition-all border border-slate-700/50 shadow-lg"
