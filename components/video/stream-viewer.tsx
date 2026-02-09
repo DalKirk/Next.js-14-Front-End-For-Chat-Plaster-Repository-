@@ -22,54 +22,82 @@ export function StreamViewer({
 }: StreamViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
-  const userUnmutedRef = useRef(false); // Track if user explicitly unmuted
 
+  // Attach stream and start muted playback
   useEffect(() => {
-    if (videoRef.current && stream) {
-      const video = videoRef.current;
-      video.srcObject = stream;
-      console.log('📺 Viewer displaying stream:', stream.id);
-      console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`).join(', '));
-      
-      // Only reset to muted if user hasn't explicitly unmuted
-      if (!userUnmutedRef.current) {
-        video.muted = true;
-        setIsMuted(true);
-      }
-      
-      // Ensure video plays
-      video.play().then(() => {
-        console.log('▶️ Video playback started', userUnmutedRef.current ? '(unmuted)' : '(muted - tap to unmute)');
-      }).catch((err) => {
-        console.warn('⚠️ Video autoplay failed:', err.message);
-        // If autoplay fails unmuted, fall back to muted autoplay
-        if (!video.muted) {
-          video.muted = true;
-          setIsMuted(true);
-          userUnmutedRef.current = false;
-          video.play().catch(() => {});
-        }
-      });
-    }
+    const video = videoRef.current;
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+
+    // Log audio track info for debugging
+    const audioTracks = stream.getAudioTracks();
+    console.log('📺 Viewer stream:', stream.id);
+    console.log('📺 Audio tracks:', audioTracks.length, audioTracks.map(t => `enabled=${t.enabled} readyState=${t.readyState}`));
+    console.log('📺 Video tracks:', stream.getVideoTracks().length);
+
+    // Ensure all audio tracks on the incoming stream are enabled
+    audioTracks.forEach(t => { t.enabled = true; });
+
+    // Always start muted (browser autoplay policy requires it)
+    video.muted = true;
+    video.volume = 1; // Ensure volume isn't at 0
+    setIsMuted(true);
+
+    video.play().then(() => {
+      console.log('▶️ Video playback started (muted — tap speaker icon to unmute)');
+    }).catch((err) => {
+      console.warn('⚠️ Video autoplay failed:', err.message);
+    });
   }, [stream]);
 
-  const toggleMute = () => {
+  // Sync muted state to the DOM element (belt-and-suspenders for re-renders)
+  useEffect(() => {
     if (videoRef.current) {
-      const newMuted = !isMuted;
-      videoRef.current.muted = newMuted;
-      setIsMuted(newMuted);
-      userUnmutedRef.current = !newMuted; // Track that user explicitly unmuted
-      console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const newMuted = !isMuted;
+    video.muted = newMuted;
+    setIsMuted(newMuted);
+
+    // CRITICAL: On mobile browsers (iOS Safari, Android Chrome), just setting
+    // muted=false on an already-playing video does NOT activate the audio
+    // session. You MUST call play() again within the user-gesture context
+    // for the browser to allow audio output.
+    if (!newMuted) {
+      video.play().then(() => {
+        console.log('🔊 Audio unmuted — playing with sound');
+        console.log('🔊 Verify: muted=%s volume=%s paused=%s', video.muted, video.volume, video.paused);
+      }).catch((err) => {
+        console.warn('⚠️ Unmuted play() failed, falling back to muted:', err.message);
+        video.muted = true;
+        setIsMuted(true);
+        video.play().catch(() => {});
+      });
+    } else {
+      console.log('🔇 Audio muted');
     }
   };
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
+      {/* 
+        Use bare "muted" attribute (not muted={isMuted}) so the HTML attribute
+        is present in the markup. iOS Safari requires the muted ATTRIBUTE
+        (not just the property) for autoplay to be permitted. We control the
+        actual muted state via the ref + useEffect above.
+      */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isMuted}
+        muted
         className={`w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
