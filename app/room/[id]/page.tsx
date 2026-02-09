@@ -1775,8 +1775,8 @@ export default function RoomPage() {
 
           {/* Chat Overlay - Mobile (lower third, auto-hide) */}
           {showMobileChatOverlay && messages.length > 0 && (
-            <div className="absolute bottom-[110px] left-0 right-0 z-20 max-h-[22vh] pointer-events-none">
-              <div className="px-3 pb-2 space-y-1 overflow-y-auto pointer-events-auto flex flex-col justify-end bg-black/25 rounded-lg">
+            <div className="absolute bottom-[140px] left-0 right-0 z-20 max-h-[22vh] pointer-events-none">
+              <div className="px-3 pb-2 space-y-1 overflow-y-auto pointer-events-auto flex flex-col justify-end">
                 {messages
                   .filter(msg => (msg.type !== 'live_stream_created' && (msg as any).message_type !== 'live_stream_created'))
                   .slice(-5)
