@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { UserIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 
 interface StreamViewerProps {
@@ -20,8 +20,18 @@ export function StreamViewer({
   fitMode = 'contain',
   centerBias = false,
 }: StreamViewerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+
+  // Mute the element the instant React creates it (before any render paint).
+  // This guarantees iOS/Android see a muted element for autoplay policy.
+  const attachRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node) {
+      node.defaultMuted = true;   // HTML content‑attribute equivalent
+      node.muted = true;          // DOM property
+    }
+  }, []);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -30,13 +40,12 @@ export function StreamViewer({
       console.log('📺 Viewer displaying stream:', stream.id);
       console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:enabled=${t.enabled}:${t.readyState}`).join(', '));
 
-      // Start muted for autoplay, user can unmute
+      // Always start muted for autoplay compliance
       video.muted = true;
       setIsMuted(true);
 
-      // Ensure video plays
       video.play().then(() => {
-        console.log('▶️ Video playback started (muted - tap to unmute)');
+        console.log('▶️ Video playback started (muted — tap to unmute)');
       }).catch((err) => {
         console.warn('⚠️ Video autoplay failed:', err.message);
       });
@@ -44,39 +53,42 @@ export function StreamViewer({
   }, [stream]);
 
   const toggleMute = () => {
-    if (videoRef.current) {
-      // Unlock the mobile audio session — creating/resuming an AudioContext
-      // inside a user gesture is the canonical way to tell iOS Safari and
-      // Android Chrome "the user wants audio output".
-      try {
-        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AC();
-        if (ctx.state === 'suspended') ctx.resume();
-        // Close it immediately — we only needed the gesture unlock
-        ctx.close().catch(() => {});
-      } catch (_) { /* AudioContext not available — fine, desktop */ }
+    const video = videoRef.current;
+    if (!video) return;
 
-      // Toggle directly on the DOM element (original working pattern)
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
+    const newMuted = !video.muted;
+    video.muted = newMuted;
+    setIsMuted(newMuted);
 
-      // On mobile, re-trigger play() within this user gesture so the
-      // browser's audio pipeline actually activates after unmuting
-      if (!videoRef.current.muted) {
-        videoRef.current.play().catch(() => {});
-      }
-
-      console.log(videoRef.current.muted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+    if (!newMuted) {
+      // Re-trigger play() inside the tap gesture so mobile browsers
+      // actually activate the audio output pipeline.
+      video.play().then(() => {
+        console.log('🔊 Audio unmuted — playing with sound');
+      }).catch((err) => {
+        console.warn('⚠️ Unmuted play() failed:', err.message);
+        // Fall back to muted playback so the video doesn't stall
+        video.muted = true;
+        setIsMuted(true);
+        video.play().catch(() => {});
+      });
+    } else {
+      console.log('🔇 Audio muted');
     }
   };
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
+      {/* 
+        IMPORTANT: No "muted" prop on <video>.
+        React 19 re-applies muted={true} on every re-render, which immediately
+        overrides our ref-based unmute. Controlling muted entirely via the ref
+        (attachRef + toggleMute) keeps React out of the loop.
+      */}
       <video
-        ref={videoRef}
+        ref={attachRef}
         autoPlay
         playsInline
-        muted
         className={`w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
