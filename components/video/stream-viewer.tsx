@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { UserIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 
 interface StreamViewerProps {
@@ -20,21 +20,43 @@ export function StreamViewer({
   fitMode = 'contain',
   centerBias = false,
 }: StreamViewerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
 
+  // Ref callback: sets muted=true the instant the <video> element is
+  // created — BEFORE React triggers autoPlay — so mobile browsers allow
+  // the autoplay.  We never pass `muted` as a JSX prop because React
+  // has a known bug (facebook/react #10389) where it mishandles the
+  // muted attribute vs the DOM property, silently re-muting on re-render.
+  const videoRefCb = useCallback((el: HTMLVideoElement | null) => {
+    videoElRef.current = el;
+    if (el) {
+      el.muted = true;
+    }
+  }, []);
+
+  // After EVERY render, force the DOM property to match our intent.
+  // Parent re-renders (new chat messages, WS events, etc.) can cause
+  // React to reconcile the <video> element.  Without a `muted` prop
+  // React won't touch it, but this effect is our safety net.
   useEffect(() => {
-    if (videoRef.current && stream) {
-      const video = videoRef.current;
+    if (videoElRef.current) {
+      videoElRef.current.muted = isMuted;
+    }
+  });
+
+  // Attach the remote stream when it arrives
+  useEffect(() => {
+    if (videoElRef.current && stream) {
+      const video = videoElRef.current;
       video.srcObject = stream;
       console.log('📺 Viewer displaying stream:', stream.id);
       console.log('📺 Stream tracks:', stream.getTracks().map(t => `${t.kind}:enabled=${t.enabled}:${t.readyState}`).join(', '));
 
-      // Start muted for autoplay compliance
+      // Always start muted for autoplay compliance
       video.muted = true;
       setIsMuted(true);
 
-      // Ensure video plays
       video.play().then(() => {
         console.log('▶️ Video playback started (muted - tap to unmute)');
       }).catch((err) => {
@@ -44,40 +66,41 @@ export function StreamViewer({
   }, [stream]);
 
   const toggleMute = () => {
-    if (videoRef.current) {
-      const newMuted = !isMuted;
+    const video = videoElRef.current;
+    if (!video) return;
 
-      // Update React state so the controlled muted={isMuted} prop
-      // renders the correct value. With React 19, a bare <video muted>
-      // re-applies muted=true on every re-render, undoing DOM toggles.
-      setIsMuted(newMuted);
+    const newMuted = !isMuted;
 
-      // Also set the DOM property immediately for instant feedback
-      videoRef.current.muted = newMuted;
+    // 1. Set the DOM property FIRST for immediate effect
+    video.muted = newMuted;
 
-      if (!newMuted) {
-        // Resume AudioContext (required by Android Chrome for first unmute)
-        try {
-          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-          ctx.resume().then(() => ctx.close()).catch(() => {});
-        } catch (_) {}
+    if (!newMuted) {
+      // Resume AudioContext — required by Android Chrome on first unmute
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        ctx.resume().then(() => ctx.close()).catch(() => {});
+      } catch (_) {}
 
-        // Re-trigger play() within this user gesture so the browser's
-        // audio pipeline activates after unmuting
-        videoRef.current.play().catch(() => {});
-      }
-
-      console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
+      // Re-trigger play() inside this user gesture so the browser's
+      // audio pipeline activates after unmuting
+      video.play().catch(() => {});
     }
+
+    // 2. Update React state LAST — triggers re-render, but the
+    //    post-render useEffect above will re-apply the correct value
+    setIsMuted(newMuted);
+
+    console.log(newMuted ? '🔇 Audio muted' : '🔊 Audio unmuted');
   };
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
+      {/* NO muted prop — React must never touch video.muted.
+          The ref callback and post-render effect handle it. */}
       <video
-        ref={videoRef}
+        ref={videoRefCb}
         autoPlay
         playsInline
-        muted={isMuted}
         className={`w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
         style={{ objectPosition: centerBias ? '50% 45%' : 'center' }}
       />
