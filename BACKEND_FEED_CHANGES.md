@@ -91,6 +91,8 @@ Returns a list of posts for the feed.
 |-------|------|---------|-------------|
 | `type` | string | `foryou` | One of `foryou`, `following`, `trending` |
 | `user_id` | string | (none) | Current user's ID — needed for `following` filter and `user_liked` field |
+| `page` | int | `1` | Page number for pagination (1-indexed) |
+| `limit` | int | `20` | Number of posts per page (max 50 recommended) |
 
 **Response:**
 ```json
@@ -146,6 +148,18 @@ Returns a list of posts for the feed.
 - `user_liked`: Check `post_likes` for the requesting `user_id`. Default `false` if no `user_id`.
 - If `shared_post_id` is set, include the full `shared_post` object by joining/subquerying the original post + its author.
 - Join with `users` table to get `username` and `avatar_url`.
+- **Pagination**: Use `LIMIT` and `OFFSET` in SQL: `LIMIT $limit OFFSET (($page - 1) * $limit)`
+
+**Pagination SQL example:**
+```sql
+-- For "foryou" feed with pagination
+SELECT p.*, u.username, u.avatar_url
+FROM posts p
+JOIN users u ON p.user_id = u.id
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2
+-- where $1 = limit (e.g., 20), $2 = (page - 1) * limit
+```
 
 ---
 
@@ -544,8 +558,13 @@ class FollowRequest(BaseModel):
 
 
 @router.get("/feed")
-async def get_feed(type: str = "foryou", user_id: Optional[str] = None):
-    """Return feed posts.
+async def get_feed(
+    type: str = "foryou",
+    user_id: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20
+):
+    """Return feed posts with pagination.
     
     - foryou: all posts, newest first
     - following: posts from users that user_id follows
@@ -554,6 +573,10 @@ async def get_feed(type: str = "foryou", user_id: Optional[str] = None):
     If shared_post_id is set on a post, include the full shared_post object.
     If user_id is provided, check post_likes to set user_liked on each post.
     """
+    # Clamp limit to prevent abuse
+    limit = min(limit, 50)
+    offset = (page - 1) * limit
+    
     # Example with raw SQL:
     # if type == "following" and user_id:
     #     rows = await conn.fetch("""
@@ -563,23 +586,24 @@ async def get_feed(type: str = "foryou", user_id: Optional[str] = None):
     #         WHERE p.user_id IN (
     #             SELECT followed_id FROM follows WHERE follower_id = $1
     #         )
-    #         ORDER BY p.created_at DESC LIMIT 50
-    #     """, user_id)
+    #         ORDER BY p.created_at DESC
+    #         LIMIT $2 OFFSET $3
+    #     """, user_id, limit, offset)
     # elif type == "trending":
     #     rows = await conn.fetch("""
     #         SELECT p.*, u.username, u.avatar_url
     #         FROM posts p JOIN users u ON p.user_id = u.id
     #         WHERE p.created_at > NOW() - INTERVAL '7 days'
     #         ORDER BY (p.likes_count + p.comments_count + p.shares_count) DESC
-    #         LIMIT 50
-    #     """)
+    #         LIMIT $1 OFFSET $2
+    #     """, limit, offset)
     # else:
     #     rows = await conn.fetch("""
     #         SELECT p.*, u.username, u.avatar_url
     #         FROM posts p JOIN users u ON p.user_id = u.id
     #         ORDER BY p.created_at DESC
-    #         LIMIT 50
-    #     """)
+    #         LIMIT $1 OFFSET $2
+    #     """, limit, offset)
     #
     # # For each post with shared_post_id, fetch the original post
     # # For each post, check user_liked if user_id provided
@@ -809,26 +833,36 @@ app.include_router(feed_router)  # or prefix="/api" if needed
 The frontend in `lib/api.ts` already has these methods wired up:
 
 ```typescript
-// Feed & Posts
-apiClient.getFeed(type, userId?)        // → GET  /feed?type=foryou|following|trending&user_id=...
-apiClient.getUserPosts(userId)          // → GET  /posts/user/{userId}
-apiClient.createPost(data)              // → POST /posts
-apiClient.likePost(postId, uid)         // → POST /posts/{id}/like
-apiClient.commentOnPost(id,uid,c)       // → POST /posts/{id}/comments
-apiClient.getComments(postId)           // → GET  /posts/{id}/comments
-apiClient.sharePost(postId, uid, content?) // → POST /posts/{id}/share  (creates a repost)
-apiClient.deletePost(postId)            // → DELETE /posts/{id}
+// Feed & Posts (with pagination support)
+apiClient.getFeed(type, userId?, page?, limit?)  // → GET /feed?type=...&user_id=...&page=1&limit=20
+apiClient.getUserPosts(userId)                   // → GET /posts/user/{userId}
+apiClient.createPost(data)                       // → POST /posts
+apiClient.likePost(postId, uid)                  // → POST /posts/{id}/like
+apiClient.commentOnPost(id, uid, content)        // → POST /posts/{id}/comments
+apiClient.getComments(postId)                    // → GET /posts/{id}/comments
+apiClient.sharePost(postId, uid, content?)       // → POST /posts/{id}/share (creates a repost)
+apiClient.deletePost(postId)                     // → DELETE /posts/{id}
 
 // Follow System
-apiClient.toggleFollow(targetId, currentId)       // → POST /users/{id}/follow
-apiClient.checkFollowing(targetId, currentId)      // → GET  /users/{id}/follow-status?user_id=...
-apiClient.getFollowers(userId)                     // → GET  /users/{id}/followers
-apiClient.getFollowing(userId)                     // → GET  /users/{id}/following
+apiClient.toggleFollow(targetId, currentId)      // → POST /users/{id}/follow
+apiClient.checkFollowing(targetId, currentId)    // → GET /users/{id}/follow-status?user_id=...
+apiClient.getFollowers(userId)                   // → GET /users/{id}/followers
+apiClient.getFollowing(userId)                   // → GET /users/{id}/following
 ```
+
+### Frontend Features Already Implemented
+
+| Feature | Description |
+|---------|-------------|
+| **Pagination** | `getFeed()` sends `page` and `limit` query params |
+| **Infinite scroll** | Uses `IntersectionObserver` to load next page when user scrolls near bottom |
+| **React Query caching** | `useInfiniteQuery` with 60s `staleTime` — tab switches feel instant |
+| **Optimistic updates** | Likes, comments, shares, and deletes update UI immediately |
+| **Error handling** | Error state with "Try Again" button |
 
 Media upload is sent directly from the browser to `POST /posts/upload-media` (bypasses the Next.js proxy).
 
-**No frontend changes are needed.** Once the backend endpoints are live, the social feed, follow system, and reposts will work automatically.
+**Once the backend endpoints support pagination (`page` & `limit` params), the feed will be fully functional.**
 
 ---
 
