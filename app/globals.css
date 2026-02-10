@@ -890,218 +890,113 @@
   box-sizing: border-box !important;
 }
 
-/* Sparkle background global styles */
-.sparkle-container {
+/* ========================================
+   CSS STARFIELD — Performant background
+   3 elements, 0ms JS, GPU composited
+   Replaces old SparkleBackground (150+ DOM nodes, continuous JS)
+   ======================================== */
+.starfield-container {
   position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100vh;
+  height: 100%;
+  pointer-events: none;
   z-index: -10;
   background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 100%);
-  background-color: #000000;
-  pointer-events: none;
 }
 
-.sparkle {
+.stars-sm {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  background: radial-gradient(circle at 30% 30%, #00d4ff, #0099ff 40%, #0066cc 70%, #003d7a);
-  border-radius: 50%;
-  pointer-events: none;
-  animation: sparkle-fade 2s ease-in-out infinite;
+  width: 1px;
+  height: 1px;
+  background: transparent;
   box-shadow:
-    0 0 10px rgba(0, 212, 255, 1),
-    0 0 20px rgba(0, 153, 255, 0.8),
-    0 0 30px rgba(0, 102, 204, 0.5),
-    inset 0 0 5px rgba(0, 212, 255, 0.8);
-  filter: blur(2px);
+    12px 45px #fff, 87px 112px #fff, 156px 23px #fff, 234px 189px #fff,
+    301px 67px #fff, 389px 234px #fff, 445px 12px #fff, 512px 178px #fff,
+    34px 289px #fff, 178px 345px #fff, 267px 123px #fff, 356px 401px #fff,
+    423px 267px #fff, 89px 401px #fff, 198px 456px #fff, 312px 34px #fff,
+    67px 167px #fff, 145px 278px #fff, 234px 389px #fff, 378px 145px #fff,
+    456px 312px #fff, 23px 423px #fff, 112px 89px #fff, 289px 267px #fff,
+    401px 178px #fff, 478px 401px #fff, 56px 312px #fff, 167px 145px #fff,
+    345px 456px #fff, 423px 89px #fff, 501px 234px #fff, 78px 378px #fff,
+    189px 201px #fff, 278px 312px #fff, 367px 78px #fff, 445px 423px #fff,
+    123px 456px #fff, 245px 56px #fff, 334px 234px #fff, 412px 345px #fff,
+    490px 123px #fff, 45px 234px #fff, 134px 367px #fff, 223px 478px #fff,
+    550px 50px #fff, 620px 190px #fff, 700px 310px #fff, 580px 420px #fff,
+    660px 80px #fff, 740px 260px #fff, 530px 340px #fff, 610px 460px #fff,
+    800px 100px #fff, 850px 280px #fff, 770px 400px #fff, 900px 160px #fff,
+    830px 350px #fff, 950px 220px #fff, 720px 480px #fff, 880px 60px #fff,
+    1000px 140px #fff, 1050px 300px #fff, 960px 420px #fff, 1100px 90px #fff,
+    1030px 380px #fff, 1150px 200px #fff, 1080px 460px #fff, 1200px 120px #fff,
+    1280px 210px #fff, 1350px 380px #fff, 1420px 90px #fff, 1500px 300px #fff,
+    1560px 450px #fff, 1640px 170px #fff, 1700px 340px #fff, 1780px 60px #fff,
+    1850px 430px #fff, 1920px 200px #fff;
+  animation: starfield-twinkle-a 3s ease-in-out infinite alternate, starfield-drift 80s linear infinite;
 }
 
-.sparkle.small { width: 4px; height: 4px; animation-duration: 1.5s; }
-.sparkle.medium { width: 6px; height: 6px; animation-duration: 2s; }
-.sparkle.large { width: 8px; height: 8px; animation-duration: 2.5s; }
-
-.sparkle.star { width: 0; height: 0; background: transparent; box-shadow: none; }
-
-.sparkle.star::before,
-.sparkle.star::after {
-  content: '';
+.stars-md {
   position: absolute;
-  background: linear-gradient(90deg, #00d4ff 0%, #0099ff 20%, #0066cc 50%, #0099ff 80%, #00d4ff 100%);
+  width: 2px;
+  height: 2px;
+  background: transparent;
   box-shadow:
-    0 0 15px rgba(0, 212, 255, 1),
-    0 0 25px rgba(0, 153, 255, 0.8),
-    inset 0 0 3px rgba(0, 212, 255, 1);
-  filter: blur(1.5px);
+    45px 78px rgba(180,200,255,0.9), 178px 234px rgba(180,200,255,0.9),
+    289px 12px rgba(255,220,180,0.9), 389px 345px rgba(180,200,255,0.9),
+    67px 456px rgba(255,220,180,0.9), 201px 89px rgba(180,200,255,0.9),
+    334px 178px rgba(180,200,255,0.9), 456px 267px rgba(255,220,180,0.9),
+    123px 345px rgba(180,200,255,0.9), 267px 423px rgba(180,200,255,0.9),
+    601px 56px rgba(255,220,180,0.9), 534px 189px rgba(180,200,255,0.9),
+    756px 401px rgba(180,200,255,0.9), 812px 134px rgba(255,220,180,0.9),
+    678px 389px rgba(180,200,255,0.9), 900px 267px rgba(180,200,255,0.9),
+    1034px 312px rgba(180,200,255,0.9), 1167px 123px rgba(255,220,180,0.9),
+    1001px 445px rgba(180,200,255,0.9), 1145px 278px rgba(180,200,255,0.9),
+    1320px 160px rgba(180,200,255,0.9), 1480px 380px rgba(255,220,180,0.9),
+    1600px 240px rgba(180,200,255,0.9), 1750px 420px rgba(180,200,255,0.9),
+    1880px 100px rgba(255,220,180,0.9);
+  animation: starfield-twinkle-b 5s ease-in-out infinite alternate, starfield-drift 120s linear infinite;
 }
 
-.sparkle.star::before { width: 14px; height: 2px; top: -1px; left: -7px; }
-.sparkle.star::after { width: 2px; height: 14px; top: -7px; left: -1px; }
-
-.sparkle.light {
-  background: radial-gradient(circle at 30% 30%, #66e0ff, #33ccff 30%, #00aaff 60%, #0088cc);
-  box-shadow:
-    0 0 12px rgba(102, 224, 255, 1),
-    0 0 25px rgba(51, 204, 255, 0.9),
-    0 0 40px rgba(0, 170, 255, 0.6),
-    inset 0 0 6px rgba(102, 224, 255, 1);
-}
-
-.sparkle.bright {
-  background: radial-gradient(circle at 30% 30%, #80e6ff, #4dd2ff 35%, #1ab8ff 65%, #0099e6);
-  box-shadow:
-    0 0 12px rgba(128, 230, 255, 1),
-    0 0 24px rgba(77, 210, 255, 0.9),
-    0 0 38px rgba(26, 184, 255, 0.6),
-    inset 0 0 5px rgba(128, 230, 255, 1);
-}
-
-.sparkle.neon {
-  background: radial-gradient(circle at 30% 30%, #00d4ff, #00b3ff 38%, #0088dd 68%, #0055aa);
-  box-shadow:
-    0 0 14px rgba(0, 212, 255, 1),
-    0 0 26px rgba(0, 179, 255, 0.9),
-    0 0 42px rgba(0, 136, 221, 0.6),
-    inset 0 0 6px rgba(0, 212, 255, 0.95);
-}
-
-.sparkle.electric {
-  background: radial-gradient(circle at 30% 30%, #1ae4ff, #00c8ff 40%, #009acc 70%, #006699);
-  box-shadow:
-    0 0 12px rgba(26, 228, 255, 1),
-    0 0 24px rgba(0, 200, 255, 0.9),
-    0 0 38px rgba(0, 154, 204, 0.6),
-    inset 0 0 5px rgba(26, 228, 255, 0.85);
-}
-
-.sparkle.deep {
-  background: radial-gradient(circle at 30% 30%, #33b8ff, #0099ff 42%, #0077cc 72%, #004d88);
-  box-shadow:
-    0 0 10px rgba(51, 184, 255, 1),
-    0 0 22px rgba(0, 153, 255, 0.9),
-    0 0 36px rgba(0, 119, 204, 0.6),
-    inset 0 0 5px rgba(51, 184, 255, 0.8);
-}
-
-.sparkle.star.light::before,
-.sparkle.star.light::after {
-  background: linear-gradient(90deg, #66e0ff 0%, #33ccff 15%, #00aaff 50%, #33ccff 85%, #66e0ff 100%);
-  box-shadow:
-    0 0 18px rgba(102, 224, 255, 1),
-    0 0 30px rgba(51, 204, 255, 0.9),
-    inset 0 0 4px rgba(102, 224, 255, 1);
-}
-
-.sparkle.star.bright::before,
-.sparkle.star.bright::after {
-  background: linear-gradient(90deg, #80e6ff 0%, #4dd2ff 18%, #1ab8ff 50%, #4dd2ff 82%, #80e6ff 100%);
-  box-shadow:
-    0 0 16px rgba(128, 230, 255, 1),
-    0 0 28px rgba(77, 210, 255, 0.9),
-    inset 0 0 3px rgba(128, 230, 255, 0.95);
-}
-
-.sparkle.star.neon::before,
-.sparkle.star.neon::after {
-  background: linear-gradient(90deg, #00d4ff 0%, #00b3ff 20%, #0088dd 50%, #00b3ff 80%, #00d4ff 100%);
-  box-shadow:
-    0 0 17px rgba(0, 212, 255, 1),
-    0 0 29px rgba(0, 179, 255, 0.9),
-    inset 0 0 4px rgba(0, 212, 255, 1);
-}
-
-.sparkle.star.electric::before,
-.sparkle.star.electric::after {
-  background: linear-gradient(90deg, #1ae4ff 0%, #00c8ff 22%, #009acc 50%, #00c8ff 78%, #1ae4ff 100%);
-  box-shadow:
-    0 0 15px rgba(26, 228, 255, 1),
-    0 0 27px rgba(0, 200, 255, 0.9),
-    inset 0 0 3px rgba(26, 228, 255, 0.9);
-}
-
-.sparkle.star.deep::before,
-.sparkle.star.deep::after {
-  background: linear-gradient(90deg, #33b8ff 0%, #0099ff 24%, #0077cc 50%, #0099ff 76%, #33b8ff 100%);
-  box-shadow:
-    0 0 14px rgba(51, 184, 255, 1),
-    0 0 26px rgba(0, 153, 255, 0.9),
-    inset 0 0 3px rgba(51, 184, 255, 0.85);
-}
-
-@keyframes sparkle-fade { 0%, 100% { opacity: 0; transform: scale(0); } 50% { opacity: 1; transform: scale(1); } }
-@keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-@keyframes float-up { 0% { opacity: 0; transform: translateY(0) scale(0); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(-100px) scale(1); } }
-@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px currentColor; } 50% { box-shadow: 0 0 20px currentColor, 0 0 30px currentColor; } }
-.sparkle.twinkle { animation: twinkle 3s ease-in-out infinite; }
-.sparkle.float { animation: float-up 4s ease-out infinite; }
-.sparkle.pulse { animation: pulse-glow 2s ease-in-out infinite; }
-
-.shooting-star {
+.stars-lg {
   position: absolute;
   width: 3px;
   height: 3px;
-  background: radial-gradient(circle at 30% 30%, #00d4ff, #0099ff 50%, #0066cc);
   border-radius: 50%;
+  background: transparent;
   box-shadow:
-    0 0 18px rgba(0, 212, 255, 1),
-    0 0 30px rgba(0, 153, 255, 0.9),
-    0 0 45px rgba(0, 102, 204, 0.7),
-    inset 0 0 4px rgba(0, 212, 255, 1);
-  animation: shoot 3s linear infinite;
-  filter: blur(2px);
-  pointer-events: none;
+    112px 156px rgba(200,220,255,1), 334px 289px rgba(255,230,200,1),
+    456px 78px rgba(200,220,255,1), 78px 345px rgba(200,220,255,1),
+    234px 201px rgba(255,230,200,1), 689px 123px rgba(200,220,255,1),
+    867px 367px rgba(200,220,255,1), 1045px 189px rgba(255,230,200,1),
+    1300px 300px rgba(200,220,255,1), 1550px 120px rgba(255,230,200,1),
+    1780px 380px rgba(200,220,255,1);
+  animation: starfield-twinkle-c 4s ease-in-out infinite alternate;
 }
 
-@keyframes shoot { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(-300px, 300px); opacity: 0; } }
-
-.cursor-sparkle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: radial-gradient(circle at 30% 30%, #00d4ff, #0099ff 45%, #0066cc);
-  border-radius: 50%;
+/* Ambient glow — single static radial gradient, no animation */
+.ambient-glow {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  width: 600px;
+  height: 600px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(40,60,150,0.06) 0%, transparent 70%);
   pointer-events: none;
-  z-index: 0;
-  animation: cursor-fade 0.8s ease-out forwards;
-  box-shadow:
-    0 0 22px rgba(0, 212, 255, 1),
-    0 0 38px rgba(0, 153, 255, 0.9),
-    0 0 55px rgba(0, 102, 204, 0.7),
-    inset 0 0 5px rgba(0, 212, 255, 1);
-  filter: blur(2.5px);
+  z-index: -9;
 }
 
-@keyframes cursor-fade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0); } }
+/* Starfield keyframes — only transform & opacity (GPU composited, zero layout cost) */
+@keyframes starfield-twinkle-a { 0% { opacity: 0.4; } 100% { opacity: 1; } }
+@keyframes starfield-twinkle-b { 0% { opacity: 0.7; } 100% { opacity: 0.3; } }
+@keyframes starfield-twinkle-c { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+@keyframes starfield-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-40px); }
+}
 
-/* ===== MOBILE PERFORMANCE: reduce sparkle/animation GPU cost ===== */
+/* ===== MOBILE: disable drift animation for extra perf ===== */
 @media (max-width: 768px) {
-  .sparkle {
-    box-shadow: 0 0 6px rgba(0, 212, 255, 0.8);
-    filter: none;
-  }
-
-  .sparkle.star::before,
-  .sparkle.star::after {
-    box-shadow: 0 0 8px rgba(0, 212, 255, 0.8);
-    filter: none;
-  }
-
-  .shooting-star {
-    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
-    filter: none;
-  }
-
-  .cursor-sparkle {
-    box-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
-    filter: none;
-  }
-
-  .bubble-wobble {
-    box-shadow: 0 0 10px currentColor;
-  }
-
-  /* Reduce animation frame rate for decorative elements */
-  .sparkle-container {
-    contain: strict;
-  }
+  .stars-sm { animation: starfield-twinkle-a 3s ease-in-out infinite alternate; }
+  .stars-md { animation: starfield-twinkle-b 5s ease-in-out infinite alternate; }
 }

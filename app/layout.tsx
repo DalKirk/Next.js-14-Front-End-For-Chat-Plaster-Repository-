@@ -1,7 +1,8 @@
 import { Inter, Orbitron } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
-import SparkleBackground from '@/components/SparkleBackground';
+import Starfield from '@/components/Starfield';
+import CanvasTrail from '@/components/CanvasTrail';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -138,8 +139,9 @@ export default function RootLayout({
               background: 'transparent'
             }}
           >
-            {/* Global sparkle backdrop behind all pages */}
-            <SparkleBackground />
+            {/* Performant CSS starfield + canvas particle trail */}
+            <Starfield />
+            <CanvasTrail />
             <ErrorBoundary>
               <div className="relative z-10">
                 {children}
