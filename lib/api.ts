@@ -944,10 +944,18 @@ export const apiClient = {
 
   /**
    * Get feed posts by type (for you, following, trending)
+   * Supports pagination with page & limit params
    */
-  getFeed: async (type: 'foryou' | 'following' | 'trending' = 'foryou', userId?: string): Promise<any[]> => {
+  getFeed: async (
+    type: 'foryou' | 'following' | 'trending' = 'foryou',
+    userId?: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<any[]> => {
     try {
-      const response = await api.get('/feed', { params: { type, user_id: userId } });
+      const response = await api.get('/feed', {
+        params: { type, user_id: userId, page, limit }
+      });
       return response.data;
     } catch (e) {
       handleApiError(e, 'Load feed');

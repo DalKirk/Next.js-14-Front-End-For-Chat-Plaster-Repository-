@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PostComposer } from '@/components/feed/PostComposer';
 import { PostCard } from '@/components/feed/PostCard';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
-import { Home, TrendingUp, Users, Bell, User } from 'lucide-react';
+import { Home, TrendingUp, Users, Bell, User, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Post {
@@ -38,103 +39,193 @@ interface Post {
   };
 }
 
+const POSTS_PER_PAGE = 20;
+
 export default function FeedPage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'foryou' | 'following' | 'trending'>('foryou');
+  const loaderRef = useRef<HTMLDivElement>(null);
 
+  // Check auth on mount
   useEffect(() => {
-    // Check authentication
     const userData = StorageUtils.safeGetItem('chat-user');
     if (!userData) {
       router.push('/');
       return;
     }
-    const user = JSON.parse(userData);
-    setCurrentUser(user);
-    loadFeed(user.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, router]);
+    setCurrentUser(JSON.parse(userData));
+  }, [router]);
 
-  const loadFeed = async (userId?: string) => {
-    setLoading(true);
-    try {
-      const feedPosts = await apiClient.getFeed(activeTab, userId);
-      setPosts(feedPosts);
-    } catch (error) {
-      console.error('Failed to load feed:', error);
-      toast.error('Failed to load posts');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // React Query infinite scroll
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['feed', activeTab, currentUser?.id],
+    queryFn: async ({ pageParam = 1 }) => {
+      return apiClient.getFeed(activeTab, currentUser?.id, pageParam, POSTS_PER_PAGE);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      // If last page has fewer than POSTS_PER_PAGE, no more pages
+      return lastPage.length < POSTS_PER_PAGE ? undefined : allPages.length + 1;
+    },
+    initialPageParam: 1,
+    enabled: !!currentUser, // Only fetch when we have a user
+    staleTime: 60_000, // Cache for 1 minute
+    refetchOnWindowFocus: false,
+  });
+
+  // Flatten all pages into a single posts array
+  const posts: Post[] = data?.pages.flat() ?? [];
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    if (!loaderRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Helper to update a post in the cache
+  const updatePostInCache = useCallback((postId: string, updater: (post: Post) => Post) => {
+    queryClient.setQueryData(['feed', activeTab, currentUser?.id], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: Post[]) =>
+          page.map((post) => (post.id === postId ? updater(post) : post))
+        ),
+      };
+    });
+  }, [queryClient, activeTab, currentUser?.id]);
 
   const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts]);
+    // Optimistically add new post to the top of the first page
+    queryClient.setQueryData(['feed', activeTab, currentUser?.id], (oldData: any) => {
+      if (!oldData) return { pages: [[newPost]], pageParams: [1] };
+      return {
+        ...oldData,
+        pages: [[newPost, ...oldData.pages[0]], ...oldData.pages.slice(1)],
+      };
+    });
     toast.success('Post created!');
   };
 
   const handleLike = async (postId: string) => {
     if (!currentUser) return;
+    
+    // Find current state
+    const currentPost = posts.find(p => p.id === postId);
+    if (!currentPost) return;
+    
+    // Optimistic update
+    updatePostInCache(postId, (post) => ({
+      ...post,
+      likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1,
+      user_liked: !post.user_liked,
+    }));
+
     try {
-      const result = await apiClient.likePost(postId, currentUser.id);
-      setPosts(posts.map(post =>
-        post.id === postId
-          ? {
-              ...post,
-              likes_count: result.liked ? post.likes_count + 1 : post.likes_count - 1,
-              user_liked: result.liked
-            }
-          : post
-      ));
+      await apiClient.likePost(postId, currentUser.id);
     } catch (error) {
+      // Revert on error
+      updatePostInCache(postId, (post) => ({
+        ...post,
+        likes_count: currentPost.likes_count,
+        user_liked: currentPost.user_liked,
+      }));
       toast.error('Failed to like post');
     }
   };
 
   const handleComment = async (postId: string, content: string) => {
     if (!currentUser) return;
+    
+    // Optimistic update
+    updatePostInCache(postId, (post) => ({
+      ...post,
+      comments_count: post.comments_count + 1,
+    }));
+
     try {
       await apiClient.commentOnPost(postId, currentUser.id, content);
-      setPosts(posts.map(post =>
-        post.id === postId
-          ? { ...post, comments_count: post.comments_count + 1 }
-          : post
-      ));
       toast.success('Comment added!');
     } catch (error) {
+      // Revert on error
+      updatePostInCache(postId, (post) => ({
+        ...post,
+        comments_count: post.comments_count - 1,
+      }));
       toast.error('Failed to add comment');
     }
   };
 
   const handleShare = async (postId: string) => {
     if (!currentUser) return;
+    
+    // Optimistic update for share count
+    updatePostInCache(postId, (post) => ({
+      ...post,
+      shares_count: post.shares_count + 1,
+    }));
+
     try {
       const result = await apiClient.sharePost(postId, currentUser.id);
-      // If backend returns a new repost object, add it to the top of the feed
+      // If backend returns a new repost object, add it to the top
       if (result && result.id) {
-        setPosts(prev => [result, ...prev]);
+        queryClient.setQueryData(['feed', activeTab, currentUser?.id], (oldData: any) => {
+          if (!oldData) return { pages: [[result]], pageParams: [1] };
+          return {
+            ...oldData,
+            pages: [[result, ...oldData.pages[0]], ...oldData.pages.slice(1)],
+          };
+        });
       }
-      // Also increment the share count on the original post
-      setPosts(prev => prev.map(post =>
-        post.id === postId || (post.shared_post_id === postId)
-          ? { ...post, shares_count: post.shares_count + 1 }
-          : post
-      ));
       toast.success('Reposted!');
     } catch (error) {
+      // Revert on error
+      updatePostInCache(postId, (post) => ({
+        ...post,
+        shares_count: post.shares_count - 1,
+      }));
       toast.error('Failed to repost');
     }
   };
 
   const handleDelete = async (postId: string) => {
+    // Optimistically remove from cache
+    queryClient.setQueryData(['feed', activeTab, currentUser?.id], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: Post[]) =>
+          page.filter((post) => post.id !== postId)
+        ),
+      };
+    });
+
     try {
       await apiClient.deletePost(postId);
-      setPosts(posts.filter(post => post.id !== postId));
       toast.success('Post deleted');
     } catch (error) {
+      // Refetch on error to restore
+      refetch();
       toast.error('Failed to delete post');
     }
   };
@@ -243,34 +334,58 @@ export default function FeedPage() {
 
         {/* Posts Feed */}
         <div className="space-y-3 xs:space-y-4">
-          {loading ? (
+          {isLoading ? (
             <div className="glass-card p-6 xs:p-8 text-center">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-400" />
               <p className="text-sm xs:text-base text-slate-400">Loading posts...</p>
+            </div>
+          ) : isError ? (
+            <div className="glass-card p-6 xs:p-8 text-center">
+              <p className="text-sm xs:text-base text-red-400 mb-2">Failed to load posts</p>
+              <Button onClick={() => refetch()} variant="glass" size="sm">
+                Try Again
+              </Button>
             </div>
           ) : posts.length === 0 ? (
             <div className="glass-card p-6 xs:p-8 text-center">
               <p className="text-sm xs:text-base text-slate-400">No posts yet. Be the first to post!</p>
             </div>
           ) : (
-            posts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <PostCard
-                  post={post}
-                  currentUserId={currentUser?.id}
-                  currentUsername={currentUser?.username}
-                  currentAvatarUrls={currentUser?.avatar_urls}
-                  onLike={handleLike}
-                  onComment={handleComment}
-                  onShare={handleShare}
-                  onDelete={handleDelete}
-                />
-              </motion.div>
-            ))
+            <>
+              {posts.map((post, index) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.5) }}
+                >
+                  <PostCard
+                    post={post}
+                    currentUserId={currentUser?.id}
+                    currentUsername={currentUser?.username}
+                    currentAvatarUrls={currentUser?.avatar_urls}
+                    onLike={handleLike}
+                    onComment={handleComment}
+                    onShare={handleShare}
+                    onDelete={handleDelete}
+                  />
+                </motion.div>
+              ))}
+              
+              {/* Infinite scroll loader */}
+              <div ref={loaderRef} className="py-4 text-center">
+                {isFetchingNextPage ? (
+                  <div className="flex items-center justify-center gap-2 text-slate-400">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm">Loading more...</span>
+                  </div>
+                ) : hasNextPage ? (
+                  <p className="text-sm text-slate-500">Scroll for more</p>
+                ) : posts.length > POSTS_PER_PAGE - 1 ? (
+                  <p className="text-sm text-slate-500">You've reached the end ✨</p>
+                ) : null}
+              </div>
+            </>
           )}
         </div>
       </div>
