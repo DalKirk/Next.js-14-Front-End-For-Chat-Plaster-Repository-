@@ -52,7 +52,6 @@ export default function CanvasTrail() {
     p.active = true;
     p.hue = 220 + Math.random() * 60; // cool blue → warm purple
     poolIndexRef.current = (poolIndexRef.current + 1) % MAX_PARTICLES;
-    hasActiveRef.current = true;
   }, []);
 
   // Animation loop
