@@ -428,7 +428,13 @@ export default function ChatPage() {
                 
                 const getThumbnailStyle = () => {
                   if (thumbnailUrl) {
-                    return { backgroundImage: `url(${thumbnailUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+                    return { 
+                      backgroundImage: `url(${thumbnailUrl})`, 
+                      backgroundSize: 'contain',      // Show full image without cropping
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: 'rgb(15, 23, 42)' // slate-900 fallback for letterboxing
+                    };
                   } else if (roomData.thumbnailPreset) {
                     const preset = THUMBNAIL_PRESETS.find(p => p.id === roomData.thumbnailPreset);
                     return { background: preset?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' };
