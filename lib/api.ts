@@ -110,9 +110,11 @@ export const apiClient = {
     }
   },
 
-  getRooms: async (): Promise<Room[]> => {
+  getRooms: async (category?: string): Promise<Room[]> => {
     try {
-      const r = await api.get('/rooms');
+      const params: Record<string, string> = {};
+      if (category) params.category = category;
+      const r = await api.get('/rooms', { params });
       return r.data;
     } catch (e) {
       // Fallback to mock rooms when backend is unavailable

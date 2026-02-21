@@ -13,6 +13,9 @@ import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoom
 import { updateAvatarEverywhere } from '@/lib/message-utils';
 import { Lock, Users, Globe, Key } from 'lucide-react';
 
+// Room categories for filtering
+const CATEGORIES = ['Gaming', 'Study', 'Social', 'Work', 'Music', 'Art', 'Tech', 'Sports', 'Other'];
+
 export default function ChatPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -20,6 +23,7 @@ export default function ChatPage() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [, setIsCreating] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -126,10 +130,10 @@ export default function ChatPage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.id, userAvatar]);
 
-  const loadRooms = async () => {
+  const loadRooms = async (category?: string) => {
     setIsLoading(true);
     try {
-      const roomList = await apiClient.getRooms();
+      const roomList = await apiClient.getRooms(category || undefined);
       setRooms(roomList);
     } catch (error) {
       toast.error('Failed to load rooms');
@@ -138,6 +142,11 @@ export default function ChatPage() {
       setIsLoading(false);
     }
   };
+
+  // Reload rooms when category filter changes
+  useEffect(() => {
+    loadRooms(selectedCategory);
+  }, [selectedCategory]);
 
   const joinRoom = async (room: Room) => {
     if (!user) {
@@ -278,7 +287,7 @@ export default function ChatPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-slate-200">Available Rooms</h2>
             <Button
-              onClick={loadRooms}
+              onClick={() => loadRooms(selectedCategory)}
               disabled={isLoading}
               variant="glass"
               size="sm"
@@ -287,20 +296,63 @@ export default function ChatPage() {
             </Button>
           </div>
 
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              onClick={() => setSelectedCategory('')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                selectedCategory === ''
+                  ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+              }`}
+            >
+              All
+            </button>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedCategory === cat
+                    ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-pulse text-slate-400">Loading rooms...</div>
             </div>
-          ) : rooms.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-slate-400">No rooms available</div>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rooms.map((room, index) => {
-                // Load extended room data from localStorage
-                const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
-                const roomData = roomsData[room.id] || room;
+          ) : (() => {
+            // Client-side fallback filtering (works even if backend doesn't support category param yet)
+            const filteredRooms = selectedCategory
+              ? rooms.filter(room => {
+                  const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
+                  const data = roomsData[room.id] || room;
+                  return data.category === selectedCategory;
+                })
+              : rooms;
+
+            if (filteredRooms.length === 0) {
+              return (
+                <div className="text-center py-8">
+                  <div className="text-slate-400">
+                    {selectedCategory ? `No rooms in "${selectedCategory}" category` : 'No rooms available'}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredRooms.map((room, index) => {
+                  // Load extended room data from localStorage
+                  const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
+                  const roomData = roomsData[room.id] || room;
                 
                 // Prefer backend thumbnail_url over localStorage thumbnail
                 const thumbnailUrl = room.thumbnail_url || roomData.thumbnail;
@@ -399,8 +451,9 @@ export default function ChatPage() {
                   </motion.div>
                 );
               })}
-            </div>
-          )}
+              </div>
+            );
+          })()}
         </motion.div>
 
         {/* Features Info */}
