@@ -11,7 +11,7 @@ import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import toast from 'react-hot-toast';
 import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoomModal';
 import { updateAvatarEverywhere } from '@/lib/message-utils';
-import { Lock, Users, Globe, Key } from 'lucide-react';
+import { Lock, Users, Globe, Key, Search } from 'lucide-react';
 
 // Room categories for filtering
 const CATEGORIES = ['Gaming', 'Study', 'Social', 'Work', 'Music', 'Art', 'Tech', 'Sports', 'Other'];
@@ -24,6 +24,7 @@ export default function ChatPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [, setIsCreating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -297,9 +298,9 @@ export default function ChatPage() {
           </div>
 
           {/* Category Filter */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button
-              onClick={() => setSelectedCategory('')}
+              onClick={() => { setSelectedCategory(''); setSearchQuery(''); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 selectedCategory === ''
                   ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
@@ -311,7 +312,7 @@ export default function ChatPage() {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => { setSelectedCategory(cat); if (cat !== 'Other') setSearchQuery(''); }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedCategory === cat
                     ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.35)]'
@@ -323,26 +324,79 @@ export default function ChatPage() {
             ))}
           </div>
 
+          {/* Search Bar - shows for "Other" category or can be used anytime */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={selectedCategory === 'Other' ? 'Search in Other rooms...' : 'Search rooms by name, description, or tags...'}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-pulse text-slate-400">Loading rooms...</div>
             </div>
           ) : (() => {
-            // Client-side fallback filtering (works even if backend doesn't support category param yet)
-            const filteredRooms = selectedCategory
-              ? rooms.filter(room => {
-                  const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
-                  const data = roomsData[room.id] || room;
-                  return data.category === selectedCategory;
-                })
-              : rooms;
+            // Client-side filtering by category and search
+            const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
+            
+            let filteredRooms = rooms.filter(room => {
+              // Get room data - check room object first (for optimistically added rooms), then localStorage
+              const data = { ...room, ...roomsData[room.id] };
+              
+              // Category filter
+              if (selectedCategory) {
+                if (selectedCategory === 'Other') {
+                  // "Other" means rooms with category="Other" or no category at all
+                  const hasStandardCategory = CATEGORIES.slice(0, -1).includes(data.category || '');
+                  if (hasStandardCategory) return false;
+                } else {
+                  if (data.category !== selectedCategory) return false;
+                }
+              }
+              
+              // Search filter (only when "Other" is selected or for general search)
+              if (searchQuery.trim()) {
+                const query = searchQuery.toLowerCase();
+                const matchesName = room.name.toLowerCase().includes(query);
+                const matchesDescription = (data.description || '').toLowerCase().includes(query);
+                const matchesTags = (data.tags || []).some((tag: string) => tag.toLowerCase().includes(query));
+                if (!matchesName && !matchesDescription && !matchesTags) return false;
+              }
+              
+              return true;
+            });
 
             if (filteredRooms.length === 0) {
               return (
                 <div className="text-center py-8">
                   <div className="text-slate-400">
-                    {selectedCategory ? `No rooms in "${selectedCategory}" category` : 'No rooms available'}
+                    {searchQuery 
+                      ? `No rooms found matching "${searchQuery}"${selectedCategory ? ` in ${selectedCategory}` : ''}`
+                      : selectedCategory 
+                        ? `No rooms in "${selectedCategory}" category` 
+                        : 'No rooms available'}
                   </div>
+                  {(searchQuery || selectedCategory) && (
+                    <button
+                      onClick={() => { setSearchQuery(''); setSelectedCategory(''); }}
+                      className="mt-3 text-cyan-400 hover:text-cyan-300 text-sm underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               );
             }
@@ -350,9 +404,8 @@ export default function ChatPage() {
             return (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredRooms.map((room, index) => {
-                  // Load extended room data from localStorage
-                  const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
-                  const roomData = roomsData[room.id] || room;
+                  // Merge room data - room object first (for optimistically added rooms), then localStorage
+                  const roomData = { ...room, ...roomsData[room.id] };
                 
                 // Prefer backend thumbnail_url over localStorage thumbnail
                 const thumbnailUrl = room.thumbnail_url || roomData.thumbnail;
