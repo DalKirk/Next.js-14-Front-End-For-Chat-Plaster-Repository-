@@ -188,6 +188,8 @@ export default function ChatPage() {
         category: roomData.category,
         description: roomData.description,
         tags: roomData.tags,
+        privacy: roomData.privacy,
+        maxMembers: roomData.maxMembers,
       });
       
       // Enhance room with additional data
@@ -421,6 +423,8 @@ export default function ChatPage() {
                     category: localData.category || room.category || '',
                     description: localData.description || room.description || '',
                     tags: localData.tags || room.tags || [],
+                    privacy: localData.privacy || room.privacy || 'public',
+                    maxMembers: localData.maxMembers || room.maxMembers,
                   };
                 
                 // Prefer backend thumbnail_url over localStorage thumbnail

@@ -26,6 +26,8 @@ Currently, the frontend has a client-side fallback using localStorage, but for c
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS category VARCHAR(50);
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS privacy VARCHAR(20) DEFAULT 'public';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS max_members INTEGER DEFAULT 50;
 
 -- Add index for faster category filtering
 CREATE INDEX IF NOT EXISTS idx_rooms_category ON rooms(category);
@@ -54,7 +56,9 @@ No migration needed - just start storing the new fields.
   "thumbnail_url": "https://...",
   "category": "Gaming",
   "description": "A room for FPS gamers to hang out",
-  "tags": ["fps", "competitive", "casual"]
+  "tags": ["fps", "competitive", "casual"],
+  "privacy": "public",
+  "max_members": 50
 }
 ```
 
@@ -67,6 +71,8 @@ No migration needed - just start storing the new fields.
 | `category` | string | No | One of the predefined categories |
 | `description` | string | No | Room description (10-500 chars) |
 | `tags` | string[] | No | Array of tags (max 5 tags) |
+| `privacy` | string | No | `public`, `private`, or `password` (default: `public`) |
+| `max_members` | integer | No | Max room members (2-1000, default: 50) |
 
 ### Valid Categories
 
@@ -93,6 +99,8 @@ class CreateRoomRequest(BaseModel):
     category: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[List[str]] = None
+    privacy: Optional[str] = "public"
+    max_members: Optional[int] = 50
 
 @router.post("/rooms")
 async def create_room(req: CreateRoomRequest):
@@ -108,6 +116,16 @@ async def create_room(req: CreateRoomRequest):
     if req.category and req.category not in VALID_CATEGORIES:
         raise HTTPException(400, f"Invalid category. Must be one of: {', '.join(VALID_CATEGORIES)}")
     
+    # Validate privacy
+    valid_privacy = ['public', 'private', 'password']
+    if req.privacy and req.privacy not in valid_privacy:
+        raise HTTPException(400, f"Invalid privacy. Must be one of: {', '.join(valid_privacy)}")
+    
+    # Validate max_members
+    max_members = req.max_members or 50
+    if max_members < 2 or max_members > 1000:
+        raise HTTPException(400, "max_members must be between 2 and 1000")
+    
     # Validate tags if provided
     tags = req.tags[:5] if req.tags else []  # Max 5 tags
     
@@ -118,6 +136,8 @@ async def create_room(req: CreateRoomRequest):
         "category": req.category,
         "description": req.description,
         "tags": tags,
+        "privacy": req.privacy or "public",
+        "max_members": max_members,
         "created_at": datetime.utcnow().isoformat() + "Z"
     }
     
@@ -134,11 +154,13 @@ async def create_room(req: CreateRoomRequest):
 async def create_room(req: CreateRoomRequest):
     room_id = str(uuid.uuid4())
     tags_json = json.dumps(req.tags[:5] if req.tags else [])
+    privacy = req.privacy or "public"
+    max_members = req.max_members or 50
     
     await conn.execute("""
-        INSERT INTO rooms (id, name, thumbnail_url, category, description, tags, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
-    """, room_id, req.name.strip(), req.thumbnail_url, req.category, req.description, tags_json)
+        INSERT INTO rooms (id, name, thumbnail_url, category, description, tags, privacy, max_members, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, NOW())
+    """, room_id, req.name.strip(), req.thumbnail_url, req.category, req.description, tags_json, privacy, max_members)
     
     row = await conn.fetchrow("SELECT * FROM rooms WHERE id = $1", room_id)
     return dict(row)
@@ -228,11 +250,14 @@ Both endpoints should return rooms with this structure:
   "thumbnail_url": "https://cdn.example.com/thumb.jpg",
   "tags": ["fps", "competitive"],
   "privacy": "public",
-  "maxMembers": 50,
+  "max_members": 50,
   "memberCount": 5,
   "onlineCount": 3,
   "createdBy": "user-uuid"
 }
+```
+
+**Note:** Frontend sends `max_members` but displays it as `maxMembers`. The backend should return `max_members` (snake_case) for consistency with other fields.
 ```
 
 ---
@@ -242,13 +267,15 @@ Both endpoints should return rooms with this structure:
 The frontend already sends these requests:
 
 ```typescript
-// Create room with category
+// Create room with all options
 apiClient.createRoom("My Room", thumbnailUrl, {
   category: "Gaming",
   description: "A room for gamers",
-  tags: ["fps", "casual"]
+  tags: ["fps", "casual"],
+  privacy: "private",
+  maxMembers: 25
 });
-// → POST /rooms { name, thumbnail_url, category, description, tags }
+// → POST /rooms { name, thumbnail_url, category, description, tags, privacy, max_members }
 
 // Get rooms filtered by category
 apiClient.getRooms("Gaming");
@@ -260,11 +287,13 @@ apiClient.getRooms("Gaming");
 ## Testing Checklist
 
 ### POST /rooms
-- [ ] Create room with all fields (name, thumbnail_url, category, description, tags)
+- [ ] Create room with all fields (name, thumbnail_url, category, description, tags, privacy, max_members)
 - [ ] Create room with only name (other fields optional)
 - [ ] Verify category is stored and returned
 - [ ] Verify tags array is stored (max 5)
 - [ ] Verify invalid category is rejected
+- [ ] Verify privacy defaults to "public" if not provided
+- [ ] Verify max_members defaults to 50 if not provided
 
 ### GET /rooms
 - [ ] `GET /rooms` returns all rooms
@@ -280,12 +309,16 @@ apiClient.getRooms("Gaming");
 - [ ] Add `category` column (VARCHAR 50)
 - [ ] Add `description` column (TEXT)
 - [ ] Add `tags` column (JSONB/JSON array)
+- [ ] Add `privacy` column (VARCHAR 20, default 'public')
+- [ ] Add `max_members` column (INTEGER, default 50)
 - [ ] Add index on `category` column
 
 ### POST /rooms
 - [ ] Accept `category` in request body
 - [ ] Accept `description` in request body
 - [ ] Accept `tags` in request body
+- [ ] Accept `privacy` in request body (default: "public")
+- [ ] Accept `max_members` in request body (default: 50)
 - [ ] Store all fields in database
 - [ ] Return complete room object with new fields
 
@@ -293,7 +326,7 @@ apiClient.getRooms("Gaming");
 - [ ] Accept `?category=` query parameter
 - [ ] Filter by category when provided
 - [ ] Handle "Other" category specially (includes null/empty)
-- [ ] Return rooms with category, description, tags fields
+- [ ] Return rooms with all fields (category, description, tags, privacy, max_members)
 
 ### Deploy
 - [ ] Run database migration

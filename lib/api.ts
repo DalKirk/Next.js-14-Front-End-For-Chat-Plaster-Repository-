@@ -134,7 +134,7 @@ export const apiClient = {
     }
   },
 
-  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[] }): Promise<Room> => {
+  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[]; privacy?: string; maxMembers?: number }): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
       const payload: Record<string, unknown> = { name: name.trim() };
@@ -142,6 +142,8 @@ export const apiClient = {
       if (options?.category) payload.category = options.category;
       if (options?.description) payload.description = options.description;
       if (options?.tags && options.tags.length > 0) payload.tags = options.tags;
+      if (options?.privacy) payload.privacy = options.privacy;
+      if (options?.maxMembers) payload.max_members = options.maxMembers;
       console.log('📤 Creating room with payload:', payload);
       const r = await api.post('/rooms', payload);
       return r.data;
@@ -155,6 +157,8 @@ export const apiClient = {
         category: options?.category,
         description: options?.description,
         tags: options?.tags,
+        privacy: options?.privacy as 'public' | 'private' | 'password',
+        maxMembers: options?.maxMembers,
       };
       return mockRoom;
     }
