@@ -134,11 +134,14 @@ export const apiClient = {
     }
   },
 
-  createRoom: async (name: string, thumbnailUrl?: string): Promise<Room> => {
+  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[] }): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
       const payload: Record<string, unknown> = { name: name.trim() };
       if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
+      if (options?.category) payload.category = options.category;
+      if (options?.description) payload.description = options.description;
+      if (options?.tags && options.tags.length > 0) payload.tags = options.tags;
       console.log('📤 Creating room with payload:', payload);
       const r = await api.post('/rooms', payload);
       return r.data;
@@ -149,6 +152,9 @@ export const apiClient = {
         id: `mock-room-${Date.now()}`,
         name: name.trim(),
         created_at: new Date().toISOString(),
+        category: options?.category,
+        description: options?.description,
+        tags: options?.tags,
       };
       return mockRoom;
     }

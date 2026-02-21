@@ -184,7 +184,11 @@ export default function ChatPage() {
       }
       
       // Send thumbnail to backend when creating room
-      const room = await apiClient.createRoom(roomData.name, thumbnail);
+      const room = await apiClient.createRoom(roomData.name, thumbnail, {
+        category: roomData.category,
+        description: roomData.description,
+        tags: roomData.tags,
+      });
       
       // Enhance room with additional data
       const enhancedRoom = {
@@ -353,17 +357,21 @@ export default function ChatPage() {
             const roomsData = JSON.parse(localStorage.getItem('rooms-data') || '{}');
             
             let filteredRooms = rooms.filter(room => {
-              // Get room data - check room object first (for optimistically added rooms), then localStorage
-              const data = { ...room, ...roomsData[room.id] };
+              // Get room data - merge localStorage data with room object
+              // localStorage takes priority for category since backend may not have it yet
+              const localData = roomsData[room.id] || {};
+              const category = localData.category || room.category || '';
+              const description = localData.description || room.description || '';
+              const tags = localData.tags || room.tags || [];
               
               // Category filter
               if (selectedCategory) {
                 if (selectedCategory === 'Other') {
                   // "Other" means rooms with category="Other" or no category at all
-                  const hasStandardCategory = CATEGORIES.slice(0, -1).includes(data.category || '');
+                  const hasStandardCategory = CATEGORIES.slice(0, -1).includes(category);
                   if (hasStandardCategory) return false;
                 } else {
-                  if (data.category !== selectedCategory) return false;
+                  if (category !== selectedCategory) return false;
                 }
               }
               
@@ -371,8 +379,8 @@ export default function ChatPage() {
               if (searchQuery.trim()) {
                 const query = searchQuery.toLowerCase();
                 const matchesName = room.name.toLowerCase().includes(query);
-                const matchesDescription = (data.description || '').toLowerCase().includes(query);
-                const matchesTags = (data.tags || []).some((tag: string) => tag.toLowerCase().includes(query));
+                const matchesDescription = description.toLowerCase().includes(query);
+                const matchesTags = tags.some((tag: string) => tag.toLowerCase().includes(query));
                 if (!matchesName && !matchesDescription && !matchesTags) return false;
               }
               
@@ -404,8 +412,16 @@ export default function ChatPage() {
             return (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredRooms.map((room, index) => {
-                  // Merge room data - room object first (for optimistically added rooms), then localStorage
-                  const roomData = { ...room, ...roomsData[room.id] };
+                  // Merge room data - localStorage takes priority for extended fields
+                  const localData = roomsData[room.id] || {};
+                  const roomData = {
+                    ...room,
+                    ...localData,
+                    // Explicitly merge these to handle null/undefined from backend
+                    category: localData.category || room.category || '',
+                    description: localData.description || room.description || '',
+                    tags: localData.tags || room.tags || [],
+                  };
                 
                 // Prefer backend thumbnail_url over localStorage thumbnail
                 const thumbnailUrl = room.thumbnail_url || roomData.thumbnail;
