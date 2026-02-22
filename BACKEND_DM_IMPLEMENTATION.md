@@ -560,26 +560,112 @@ apiClient.deleteConversation(conversationId, userId);
 
 ---
 
-## 6. Optional: WebSocket Integration
+## 6. WebSocket Integration
 
 For real-time message delivery, extend the existing WebSocket:
 
-```python
-# In WebSocket handler
-@socketio.on('direct_message')
-async def handle_dm(data):
-    receiver_id = data['receiver_id']
-    
-    # Save message to DB
-    message = await send_direct_message(data)
-    
-    # Emit to receiver if online
-    await socketio.emit('new_dm', message, room=f'user_{receiver_id}')
+### Connection Manager (IMPORTANT - Don't iterate over message string!)
 
-# Client subscribes to their user room on connect
-@socketio.on('connect')
-async def handle_connect(user_id):
-    join_room(f'user_{user_id}')
+```python
+class ConnectionManager:
+    def __init__(self):
+        # Store connections by user_id
+        self.user_connections: Dict[str, WebSocket] = {}
+    
+    async def connect(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        self.user_connections[user_id] = websocket
+    
+    def disconnect(self, user_id: str):
+        if user_id in self.user_connections:
+            del self.user_connections[user_id]
+    
+    async def send_to_user(self, message: str, user_id: str):
+        """Send message to a specific user - MUST send entire string at once!"""
+        if user_id in self.user_connections:
+            ws = self.user_connections[user_id]
+            # ⚠️ CRITICAL: Send the ENTIRE message string at once
+            # DO NOT iterate over the message - that sends each character separately!
+            await ws.send_text(message)  # ✅ Correct
+            # NOT: for char in message: await ws.send_text(char)  # ❌ Wrong!
+
+manager = ConnectionManager()
+```
+
+### DM Message Handler
+
+```python
+# Handle real-time DM messages via WebSocket
+if msg_type == "dm_message":
+    dm_sender_id = message_data.get("sender_id") or user_id
+    dm_receiver_id = message_data.get("receiver_id")
+    dm_content = message_data.get("content", "").strip()
+    
+    if not dm_receiver_id or not dm_content:
+        await websocket.send_text(json.dumps({
+            "type": "error", 
+            "message": "DM requires receiver_id and content"
+        }))
+        continue
+    
+    try:
+        # Save the DM to database
+        saved_message = await db.send_direct_message(dm_sender_id, dm_receiver_id, dm_content)
+        
+        # Send confirmation to sender
+        await websocket.send_text(json.dumps({
+            "type": "dm_sent",
+            **saved_message
+        }))
+        
+        # Send to receiver if they're connected
+        if dm_receiver_id in manager.user_connections:
+            dm_payload = json.dumps({
+                "type": "dm_received",
+                "message": saved_message,  # Nest under 'message' key
+                **saved_message  # Also spread for backwards compatibility
+            })
+            # ⚠️ IMPORTANT: send_to_user must send the entire string at once!
+            await manager.send_to_user(dm_payload, dm_receiver_id)
+            logger.info(f"📨 DM delivered from {dm_sender_id} to {dm_receiver_id}")
+        else:
+            logger.info(f"📨 DM saved for offline user {dm_receiver_id}")
+    except Exception as e:
+        logger.error(f"Error sending DM: {e}")
+        await websocket.send_text(json.dumps({
+            "type": "error", 
+            "message": "Failed to send DM"
+        }))
+    continue
+```
+
+### DM Read Receipt Handler
+
+```python
+# Handle DM read receipts via WebSocket
+if msg_type == "dm_read":
+    reader_id = message_data.get("reader_id")
+    sender_id = message_data.get("sender_id")
+    conversation_id = message_data.get("conversation_id")
+    
+    if reader_id:
+        # Mark messages as read in database
+        if conversation_id:
+            try:
+                await db.mark_dm_messages_read(conversation_id, reader_id)
+            except Exception as e:
+                logger.error(f"Error marking DM messages as read: {e}")
+        
+        # Notify the sender that their messages were read
+        if sender_id and sender_id in manager.user_connections:
+            read_receipt = json.dumps({
+                "type": "dm_read_receipt",
+                "reader_id": reader_id,
+                "conversation_id": conversation_id,
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
+            })
+            await manager.send_to_user(read_receipt, sender_id)
+    continue
 ```
 
 ---

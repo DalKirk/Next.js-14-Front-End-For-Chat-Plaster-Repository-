@@ -99,8 +99,13 @@ class DMSocketManager {
 
       this.socket.onmessage = (event) => {
         try {
+          // Debug: Log raw data to see exactly what backend is sending
+          console.log('[DM Socket] 📨 Raw event.data:', event.data);
+          console.log('[DM Socket] 📨 Raw data type:', typeof event.data);
+          console.log('[DM Socket] 📨 Raw data length:', event.data?.length);
+          
           const data = JSON.parse(event.data);
-          console.log('[DM Socket] 📨 Received:', data);
+          console.log('[DM Socket] 📨 Parsed data:', data);
 
           if (data.type === 'ping') {
             this.socket?.send(JSON.stringify({ type: 'pong' }));
@@ -111,6 +116,7 @@ class DMSocketManager {
           if (data.type === 'dm_message' || data.type === 'dm_received') {
             const messageData = data.message || data;
             console.log('[DM Socket] 📬 Processing DM:', messageData);
+            console.log('[DM Socket] 📬 Content:', messageData.content, 'Type:', typeof messageData.content);
             this.callbacks.get('message')?.(messageData);
             return;
           }
