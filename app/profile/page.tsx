@@ -1374,30 +1374,45 @@ function ProfilePageContent() {
                       {/* Follow button (other users) or Edit button (own profile) */}
                       <div className="flex items-center gap-3">
                         {isViewOnly && currentUserId ? (
-                          <button
-                            onClick={handleToggleFollow}
-                            disabled={followLoading}
-                            className={`px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2 ${
-                              isFollowing
-                                ? 'bg-white/10 border-slate-500 text-slate-300 hover:bg-red-500/20 hover:border-red-500 hover:text-red-400'
-                                : ''
-                            }`}
-                            style={isFollowing ? {} : {
-                              background: liveTheme.accent,
-                              borderColor: 'rgba(255,255,255,0.3)',
-                              color: '#ffffff',
-                              boxShadow: `0 0 15px ${liveTheme.accent}60`
-                            }}
-                          >
-                            {followLoading ? (
-                              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            ) : isFollowing ? (
-                              <UserMinus className="w-4 h-4" />
-                            ) : (
-                              <UserPlus className="w-4 h-4" />
-                            )}
-                            {isFollowing ? 'Unfollow' : 'Follow'}
-                          </button>
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={handleToggleFollow}
+                              disabled={followLoading}
+                              className={`px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2 ${
+                                isFollowing
+                                  ? 'bg-white/10 border-slate-500 text-slate-300 hover:bg-red-500/20 hover:border-red-500 hover:text-red-400'
+                                  : ''
+                              }`}
+                              style={isFollowing ? {} : {
+                                background: liveTheme.accent,
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                color: '#ffffff',
+                                boxShadow: `0 0 15px ${liveTheme.accent}60`
+                              }}
+                            >
+                              {followLoading ? (
+                                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              ) : isFollowing ? (
+                                <UserMinus className="w-4 h-4" />
+                              ) : (
+                                <UserPlus className="w-4 h-4" />
+                              )}
+                              {isFollowing ? 'Unfollow' : 'Follow'}
+                            </button>
+                            <Link 
+                              href={`/messages?userId=${profile.id}&username=${encodeURIComponent(profile.username)}&avatar=${encodeURIComponent(profile.avatar || '')}`}
+                              className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" 
+                              style={{ 
+                                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', 
+                                borderColor: 'rgba(255,255,255,0.3)', 
+                                color: '#ffffff', 
+                                boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)' 
+                              }}
+                            >
+                              <Mail className="w-4 h-4" /> 
+                              Message
+                            </Link>
+                          </div>
                         ) : !isViewOnly ? (
                           <div className="flex gap-2 flex-wrap">
                             <Link 

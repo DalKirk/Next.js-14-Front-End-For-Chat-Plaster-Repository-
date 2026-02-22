@@ -1,17 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowLeft, Mail } from 'lucide-react';
 import DMSection from '@/components/dm/DMSection';
 import { User } from '@/lib/types';
 
-export default function MessagesPage() {
+interface InitialRecipient {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  avatar_urls?: {
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
+}
+
+function MessagesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [initialRecipient, setInitialRecipient] = useState<InitialRecipient | undefined>();
 
   useEffect(() => {
     // Get user from localStorage
@@ -23,7 +37,20 @@ export default function MessagesPage() {
       // Redirect to home if not logged in
       router.push('/');
     }
-  }, [router]);
+
+    // Check for initial recipient from URL params
+    const recipientId = searchParams.get('userId');
+    const recipientUsername = searchParams.get('username');
+    const recipientAvatar = searchParams.get('avatar');
+    
+    if (recipientId && recipientUsername) {
+      setInitialRecipient({
+        id: recipientId,
+        username: recipientUsername,
+        avatar_url: recipientAvatar || undefined,
+      });
+    }
+  }, [router, searchParams]);
 
   if (!user) {
     return (
@@ -90,9 +117,22 @@ export default function MessagesPage() {
               avatar_urls: user.avatar_urls,
             }}
             onUnreadCountChange={setUnreadCount}
+            initialRecipient={initialRecipient}
           />
         </motion.div>
       </main>
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <MessagesContent />
+    </Suspense>
   );
 }

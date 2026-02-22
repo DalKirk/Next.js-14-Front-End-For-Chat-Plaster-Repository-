@@ -9,6 +9,7 @@ import {
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
 import { User } from '@/lib/types';
+import UserSearchModal from './UserSearchModal';
 
 export interface DMContact {
   id: string;
@@ -43,9 +44,22 @@ export interface Conversation {
   unreadCount: number;
 }
 
+interface InitialRecipient {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  avatar_urls?: {
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
+}
+
 interface DMSectionProps {
   currentUser: User;
   onUnreadCountChange?: (count: number) => void;
+  initialRecipient?: InitialRecipient;
 }
 
 const statusColors = {
@@ -54,7 +68,7 @@ const statusColors = {
   offline: 'bg-slate-500',
 };
 
-export default function DMSection({ currentUser, onUnreadCountChange }: DMSectionProps) {
+export default function DMSection({ currentUser, onUnreadCountChange, initialRecipient }: DMSectionProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [contacts, setContacts] = useState<DMContact[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
@@ -63,12 +77,27 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUserSearch, setShowUserSearch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialRecipientHandled = useRef(false);
 
   // Load conversations and contacts
   useEffect(() => {
     loadConversations();
   }, [currentUser.id]);
+
+  // Handle initial recipient (when coming from profile page)
+  useEffect(() => {
+    if (initialRecipient && !isLoading && !initialRecipientHandled.current) {
+      initialRecipientHandled.current = true;
+      startNewConversation(
+        initialRecipient.id,
+        initialRecipient.username,
+        initialRecipient.avatar_url,
+        initialRecipient.avatar_urls
+      );
+    }
+  }, [initialRecipient, isLoading]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -181,7 +210,7 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
     );
   };
 
-  const startNewConversation = async (userId: string, username: string, avatarUrl?: string) => {
+  const startNewConversation = async (userId: string, username: string, avatarUrl?: string, avatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string }) => {
     // Check if conversation already exists
     const existing = contacts.find(c => c.id === userId);
     if (existing) {
@@ -194,6 +223,7 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
       id: userId,
       username,
       avatar_url: avatarUrl,
+      avatar_urls: avatarUrls,
       status: 'offline',
       unread: 0,
     };
@@ -201,6 +231,11 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
     setContacts(prev => [newContact, ...prev]);
     setMessages(prev => ({ ...prev, [userId]: [] }));
     selectConversation(userId);
+  };
+
+  // Handle user selection from search modal
+  const handleUserSelect = (user: { id: string; username: string; avatar_url?: string; avatar_urls?: { thumbnail?: string; small?: string; medium?: string; large?: string } }) => {
+    startNewConversation(user.id, user.username, user.avatar_url, user.avatar_urls);
   };
 
   const activeContact = contacts.find(c => c.id === activeConversation);
@@ -245,33 +280,43 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
   }
 
   return (
-    <div className="flex h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
-      {/* Sidebar - Contact List */}
-      <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700/50">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Messages</h2>
-            <button 
-              className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
-              title="New message"
-            >
-              <Plus size={18} />
-            </button>
+    <>
+      {/* User Search Modal */}
+      <UserSearchModal
+        isOpen={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+        onSelectUser={handleUserSelect}
+        currentUserId={currentUser.id}
+      />
+
+      <div className="flex h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
+        {/* Sidebar - Contact List */}
+        <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
+          {/* Header */}
+          <div className="p-4 border-b border-slate-700/50">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Messages</h2>
+              <button 
+                onClick={() => setShowUserSearch(true)}
+                className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
+                title="New message"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+            
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
+              />
+            </div>
           </div>
-          
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
-            />
-          </div>
-        </div>
 
         {/* Contact List */}
         <div className="flex-1 overflow-y-auto">
@@ -473,6 +518,7 @@ export default function DMSection({ currentUser, onUnreadCountChange }: DMSectio
         )}
       </div>
     </div>
+    </>
   );
 }
 

@@ -1217,6 +1217,19 @@ export const apiClient = {
       return 0;
     }
   },
+
+  /**
+   * Search users by username
+   */
+  searchUsers: async (query: string): Promise<any[]> => {
+    try {
+      const response = await api.get('/users/search', { params: { q: query, limit: 20 } });
+      return response.data || [];
+    } catch (e) {
+      console.warn('❌ Search users failed:', e);
+      return [];
+    }
+  },
 };
 
 export default apiClient;
