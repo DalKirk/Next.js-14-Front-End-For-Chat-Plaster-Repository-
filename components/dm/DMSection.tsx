@@ -371,16 +371,19 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         if (data.user_id) {
           console.log('[DM] Presence update received:', data.type, data.username, data.user_id);
           
+          // Cast to include avatar_urls which the WebSocket sends but isn't in the base type
+          const presenceData = data as typeof data & { avatar_urls?: { thumbnail?: string; small?: string; medium?: string; large?: string } };
+          
           setContacts(prev => {
-            const existing = prev.find(c => c.id === data.user_id);
+            const existing = prev.find(c => c.id === presenceData.user_id);
             if (existing) {
               // ALWAYS update username/avatar if provided (they may have changed their profile)
               const updatedContact = {
                 ...existing,
-                username: data.username || existing.username,
-                avatar_url: data.avatar_url || existing.avatar_url,
-                avatar_urls: data.avatar_urls || existing.avatar_urls,
-                status: data.type === 'user_joined' ? 'online' as const : 'offline' as const,
+                username: presenceData.username || existing.username,
+                avatar_url: presenceData.avatar_url || existing.avatar_url,
+                avatar_urls: presenceData.avatar_urls || existing.avatar_urls,
+                status: presenceData.type === 'user_joined' ? 'online' as const : 'offline' as const,
               };
               
               // Only save to localStorage if something changed
@@ -391,7 +394,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 StorageManager.saveContact(currentUser.id, updatedContact);
               }
               
-              return prev.map(c => c.id === data.user_id ? updatedContact : c);
+              return prev.map(c => c.id === presenceData.user_id ? updatedContact : c);
             }
             return prev;
           });
