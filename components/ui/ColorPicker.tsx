@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ColorPickerProps {
   value: string; // hex like "#FF6B6B"
@@ -54,6 +55,8 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
   const [isOpen, setIsOpen] = useState(false);
   const [hsl, setHSL] = useState(() => hexToHSL(value));
   const [hexInput, setHexInput] = useState(value.toUpperCase());
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // Sync when value prop changes externally
@@ -63,11 +66,58 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
     setHexInput(value.toUpperCase());
   }, [value]);
 
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = Math.min(300, window.innerWidth - 24);
+      const dropdownHeight = 420; // Approximate height of the picker
+      const padding = 12;
+      
+      let left = rect.left + rect.width / 2 - dropdownWidth / 2;
+      // Keep within viewport horizontally
+      if (left < padding) left = padding;
+      if (left + dropdownWidth > window.innerWidth - padding) left = window.innerWidth - padding - dropdownWidth;
+      
+      // Check available space above and below
+      const spaceBelow = window.innerHeight - rect.bottom - padding;
+      const spaceAbove = rect.top - padding;
+      
+      let top: number;
+      let maxHeight: number;
+      
+      if (spaceBelow >= dropdownHeight) {
+        // Enough space below - open downward
+        top = rect.bottom + 8;
+        maxHeight = spaceBelow - 8;
+      } else if (spaceAbove >= dropdownHeight) {
+        // Enough space above - open upward
+        top = rect.top - dropdownHeight - 8;
+        maxHeight = dropdownHeight;
+      } else if (spaceBelow >= spaceAbove) {
+        // More space below but not enough - open down with scroll
+        top = rect.bottom + 8;
+        maxHeight = spaceBelow - 8;
+      } else {
+        // More space above but not enough - open up with scroll
+        top = padding;
+        maxHeight = rect.top - padding - 8;
+      }
+      
+      // Ensure top is never negative
+      top = Math.max(padding, top);
+      maxHeight = Math.max(200, maxHeight); // Minimum usable height
+      
+      setDropdownPos({ top, left, maxHeight });
+    }
+  }, [isOpen]);
+
   // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -97,9 +147,10 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
   const lightGradient = `linear-gradient(to right, hsl(${hsl.h},${hsl.s}%,0%), hsl(${hsl.h},${hsl.s}%,50%), hsl(${hsl.h},${hsl.s}%,100%))`;
 
   return (
-    <div className="relative" ref={pickerRef}>
+    <div className="relative">
       {/* Swatch button */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full h-10 xs:h-12 sm:h-14 rounded-lg cursor-pointer border-2 transition-all hover:scale-[1.02] active:scale-95"
@@ -111,12 +162,16 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
         aria-label="Open color picker"
       />
 
-      {/* Picker dropdown */}
-      {isOpen && (
+      {/* Picker dropdown - rendered in portal to avoid overflow clipping */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute left-1/2 -translate-x-1/2 z-[60] mt-2 p-2.5 xs:p-3 sm:p-4 rounded-xl border space-y-3 xs:space-y-4 w-[min(300px,calc(100vw-1.5rem))]"
+          ref={pickerRef}
+          className="fixed z-[9999] p-2.5 xs:p-3 sm:p-4 rounded-xl border space-y-3 xs:space-y-4 w-[min(300px,calc(100vw-1.5rem))] overflow-y-auto"
           style={{
-            background: 'rgba(15, 20, 30, 0.95)',
+            top: dropdownPos?.top ?? 12,
+            left: dropdownPos?.left ?? 12,
+            maxHeight: dropdownPos?.maxHeight ?? 400,
+            background: 'rgba(15, 20, 30, 0.98)',
             borderColor: 'rgba(255,255,255,0.15)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
@@ -234,7 +289,8 @@ export function ColorPicker({ value, onChange, accentColor = '#00d4ff', textColo
           >
             Done
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

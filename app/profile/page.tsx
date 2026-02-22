@@ -958,9 +958,9 @@ function ProfilePageContent() {
                   <GlassCard className="p-3 sm:p-6" refIndex={1}>
                     {/* ══════════ PROFILE TAB ══════════ */}
                     {editTab === 'profile' && (
-                      <div className="space-y-5">
-                        <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <User className="w-5 h-5" style={{ color: liveTheme.accent }} /> Profile Info
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                          <User className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Profile Info
                         </h3>
                         {/* Avatar Upload */}
                         <div className="w-full lg:w-auto">
@@ -971,16 +971,16 @@ function ProfilePageContent() {
                             onAvatarChange={handleAvatarChange}
                           />
                         </div>
-                        <Input label="Display Name" value={editedProfile.username || ''} onChange={(e) => setEditedProfile({ ...editedProfile, username: e.target.value })} maxLength={30} className="bg-white/5" />
-                        <Input label="Email" type="email" name="email" autoComplete="email" value={editedProfile.email || ''} onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })} className="bg-white/5" />
+                        <Input label="Display Name" value={editedProfile.username || ''} onChange={(e) => setEditedProfile({ ...editedProfile, username: e.target.value })} maxLength={30} className="bg-white/5 text-sm" />
+                        <Input label="Email" type="email" name="email" autoComplete="email" value={editedProfile.email || ''} onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })} className="bg-white/5 text-sm" />
                         <div className="flex items-center gap-2" style={{ color: bodyColor }}>
                           <input id="show-email" type="checkbox" checked={showEmail} onChange={(e) => {
                             const value = e.target.checked; setShowEmail(value);
                             try { const raw = StorageUtils.safeGetItem('userPrivacy') || '{}'; StorageUtils.safeSetItem('userPrivacy', JSON.stringify({ ...JSON.parse(raw), showEmail: value })); } catch {}
                           }} className="h-4 w-4" style={{ accentColor: liveTheme.accent }} />
-                          <label htmlFor="show-email" className="text-sm">Show email on my profile</label>
+                          <label htmlFor="show-email" className="text-xs sm:text-sm">Show email on my profile</label>
                         </div>
-                        <Textarea label="Bio" value={editedProfile.bio || ''} onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })} maxLength={200} rows={3} className="bg-white/5" />
+                        <Textarea label="Bio" value={editedProfile.bio || ''} onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })} maxLength={200} rows={3} className="bg-white/5 text-sm" />
                       </div>
                     )}
 
@@ -1058,28 +1058,28 @@ function ProfilePageContent() {
                     {editTab === 'fonts' && (
                       <div className="space-y-4 sm:space-y-6">
                         <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Type className="w-5 h-5" style={{ color: liveTheme.accent }} /> Typography
+                          <Type className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Typography
                         </h3>
                         {/* Heading Font */}
                         <div>
-                          <label className="block text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Heading Font</label>
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Heading Font</label>
+                          <div className="space-y-1.5 sm:space-y-2 max-h-36 sm:max-h-48 overflow-y-auto pr-1 sm:pr-2">
                             {Object.entries(fontPresets).map(([key, font]) => (
-                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: key } }))} className="w-full p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
+                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: key } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
+                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
+                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
                               </button>
                             ))}
                             {uploadedFonts.map(font => (
-                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: font.name } }))} className="w-full p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
+                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: font.name } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
+                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
+                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
                               </button>
                             ))}
                           </div>
-                          <div className="mt-3 flex gap-2 items-end">
-                            <div className="flex-1">
-                              <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Heading Color</label>
+                          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 min-w-0">
+                              <label className="block text-[10px] sm:text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Heading Color</label>
                               <ColorPicker
                                 value={customTheme.fonts.headingColor}
                                 onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, headingColor: hex } }))}
@@ -1087,32 +1087,32 @@ function ProfilePageContent() {
                                 textColor={liveTheme.text}
                               />
                             </div>
-                            <label className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 cursor-pointer transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
-                              <Upload className="w-4 h-4" /><span className="text-xs font-medium">Upload</span>
+                            <label className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all hover:scale-105 w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
+                              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span className="text-xs font-medium">Upload Font</span>
                               <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFontUpload(e, 'heading')} className="hidden" />
                             </label>
                           </div>
                         </div>
                         {/* Body Font */}
-                        <div className="pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <label className="block text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Body Font</label>
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Body Font</label>
+                          <div className="space-y-1.5 sm:space-y-2 max-h-36 sm:max-h-48 overflow-y-auto pr-1 sm:pr-2">
                             {Object.entries(fontPresets).map(([key, font]) => (
-                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: key } }))} className="w-full p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
+                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: key } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
+                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
+                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
                               </button>
                             ))}
                             {uploadedFonts.map(font => (
-                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: font.name } }))} className="w-full p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
+                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: font.name } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
+                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
+                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
                               </button>
                             ))}
                           </div>
-                          <div className="mt-3 flex gap-2 items-end">
-                            <div className="flex-1">
-                              <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Body Color</label>
+                          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 min-w-0">
+                              <label className="block text-[10px] sm:text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Body Color</label>
                               <ColorPicker
                                 value={customTheme.fonts.bodyColor}
                                 onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, bodyColor: hex } }))}
@@ -1120,8 +1120,8 @@ function ProfilePageContent() {
                                 textColor={liveTheme.text}
                               />
                             </div>
-                            <label className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 cursor-pointer transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
-                              <Upload className="w-4 h-4" /><span className="text-xs font-medium">Upload</span>
+                            <label className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all hover:scale-105 w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
+                              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span className="text-xs font-medium">Upload Font</span>
                               <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFontUpload(e, 'body')} className="hidden" />
                             </label>
                           </div>
@@ -1190,30 +1190,30 @@ function ProfilePageContent() {
 
                     {/* ══════════ SECURITY TAB ══════════ */}
                     {editTab === 'security' && (
-                      <div className="space-y-5">
-                        <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Shield className="w-5 h-5" style={{ color: liveTheme.accent }} /> Security & Privacy
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                          <Shield className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Security & Privacy
                         </h3>
                         {passwordSupported === false ? (
-                          <div className="p-3 border rounded" style={{ borderColor: 'rgba(255,200,0,0.3)', background: 'rgba(255,200,0,0.05)' }}>
-                            <p className="text-sm" style={{ color: '#fbbf24' }}>Password updates are not enabled on the backend yet.</p>
+                          <div className="p-2.5 sm:p-3 border rounded" style={{ borderColor: 'rgba(255,200,0,0.3)', background: 'rgba(255,200,0,0.05)' }}>
+                            <p className="text-xs sm:text-sm" style={{ color: '#fbbf24' }}>Password updates are not enabled on the backend yet.</p>
                           </div>
                         ) : (
-                          <div className="space-y-3">
-                            <Input type="password" name="current-password" autoComplete="current-password" placeholder="Current password" value={passwordData.current} onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })} className="bg-white/5" disabled={passwordSupported === null} />
-                            <Input type="password" name="new-password" autoComplete="new-password" placeholder="New password" value={passwordData.new} onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })} className="bg-white/5" disabled={passwordSupported === null} />
-                            <Input type="password" name="confirm-new-password" autoComplete="new-password" placeholder="Confirm new password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} className="bg-white/5" disabled={passwordSupported === null} />
-                            <button onClick={handleChangePassword} className="px-4 py-2 rounded-xl font-medium border-2 transition-all hover:scale-105 text-sm" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} disabled={passwordSupported === null}>
+                          <div className="space-y-2.5 sm:space-y-3">
+                            <Input type="password" name="current-password" autoComplete="current-password" placeholder="Current password" value={passwordData.current} onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
+                            <Input type="password" name="new-password" autoComplete="new-password" placeholder="New password" value={passwordData.new} onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
+                            <Input type="password" name="confirm-new-password" autoComplete="new-password" placeholder="Confirm new password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
+                            <button onClick={handleChangePassword} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-xs sm:text-sm w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} disabled={passwordSupported === null}>
                               Update Password
                             </button>
                           </div>
                         )}
-                        <div className="mt-4 p-4 border rounded-lg" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
-                          <h4 className="font-medium mb-2 flex items-center gap-2" style={{ color: liveTheme.text }}>
-                            <Trash2 className="w-4 h-4 text-red-400" /> Danger Zone
+                        <div className="mt-3 sm:mt-4 p-3 sm:p-4 border rounded-lg" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
+                          <h4 className="font-medium mb-1.5 sm:mb-2 flex items-center gap-2 text-sm sm:text-base" style={{ color: liveTheme.text }}>
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> Danger Zone
                           </h4>
-                          <p className="text-sm mb-3" style={{ color: liveTheme.text, opacity: 0.6 }}>Permanently delete your account and all associated data.</p>
-                          <button onClick={handleDeleteAccount} className="px-4 py-2 rounded-xl font-medium text-sm bg-red-600 hover:bg-red-700 text-white transition-all">
+                          <p className="text-xs sm:text-sm mb-2.5 sm:mb-3" style={{ color: liveTheme.text, opacity: 0.6 }}>Permanently delete your account and all associated data.</p>
+                          <button onClick={handleDeleteAccount} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white transition-all w-full sm:w-auto">
                             Delete Account
                           </button>
                         </div>
