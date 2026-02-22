@@ -25,6 +25,7 @@ export interface DMContact {
   status: 'online' | 'away' | 'offline';
   lastSeen?: string;
   unread: number;
+  conversation_id?: string; // Backend's actual conversation UUID
 }
 
 export interface DMMessage {
@@ -219,23 +220,30 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         console.log('[DM] API response:', data);
         
         if (data?.contacts && data.contacts.length > 0) {
-          // Update contacts with server-side unread counts
-          // BUT only if server has actual data (don't overwrite with higher counts)
+          // Update contacts with server-side unread counts AND conversation IDs
           setContacts(prev => {
             const updated = prev.map(contact => {
               const serverContact = data.contacts.find((c: any) => c.id === contact.id);
+              // Also try to find the conversation to get the real conversation_id
+              const conversation = data.conversations?.find((conv: any) => 
+                conv.participants?.includes(contact.id) && conv.participants?.includes(currentUser.id)
+              );
+              
               if (serverContact) {
-                // Only update unread if server has a LOWER count (meaning backend acknowledged reads)
-                // OR if localStorage has no data for this contact
                 const localContact = StorageManager.getContacts(currentUser.id).find(c => c.id === contact.id);
                 const serverUnread = serverContact.unread ?? 0;
                 const localUnread = localContact?.unread ?? contact.unread;
                 
-                console.log(`[DM] Contact ${contact.username}: server=${serverUnread}, local=${localUnread}`);
+                console.log(`[DM] Contact ${contact.username}: server=${serverUnread}, local=${localUnread}, conv_id=${conversation?.id || serverContact.conversation_id || 'none'}`);
                 
                 // Use the LOWER of the two values (since reading can only decrease unread count)
                 const finalUnread = Math.min(serverUnread, localUnread);
-                const updatedContact = { ...contact, unread: finalUnread };
+                const updatedContact = { 
+                  ...contact, 
+                  unread: finalUnread,
+                  // Store the real backend conversation_id if available
+                  conversation_id: conversation?.id || serverContact.conversation_id || contact.conversation_id,
+                };
                 
                 // Persist to localStorage
                 StorageManager.saveContact(currentUser.id, updatedContact);
@@ -322,14 +330,17 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           setContacts(prev => {
             const existing = prev.find(c => c.id === otherUserId);
             if (existing) {
-              // Update existing contact with latest info from message
+              // Update existing contact with latest info from message AND conversation_id
               const updatedContact = {
                 ...existing,
                 username: incomingMessage.sender_username || existing.username,
                 avatar_url: incomingMessage.sender_avatar || existing.avatar_url,
                 unread: existing.unread + 1,
                 status: 'online' as const,
+                // IMPORTANT: Store the real backend conversation_id from the message
+                conversation_id: incomingMessage.conversation_id || existing.conversation_id,
               };
+              console.log('[DM] Updated contact with conversation_id:', updatedContact.conversation_id);
               StorageManager.saveContact(currentUser.id, updatedContact);
               return prev.map(c => c.id === otherUserId ? updatedContact : c);
             } else {
@@ -340,7 +351,10 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 avatar_url: incomingMessage.sender_avatar,
                 status: 'online',
                 unread: 1,
+                // IMPORTANT: Store the real backend conversation_id from the message
+                conversation_id: incomingMessage.conversation_id,
               };
+              console.log('[DM] Created new contact with conversation_id:', newContact.conversation_id);
               StorageManager.saveContact(currentUser.id, newContact);
               return [newContact, ...prev];
             }
@@ -510,20 +524,26 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     StorageManager.markMessagesAsRead(currentUser.id, contactId);
     
     // Call API to persist read status in database
-    // Try both the sorted conversation key AND the other user's ID
-    const conversationKey = getConversationKey(currentUser.id, contactId);
-    console.log('[DM] Marking read via API - conversationKey:', conversationKey, 'userId:', currentUser.id);
+    // Use the REAL backend conversation_id if we have it, otherwise try the computed key
+    const realConversationId = contact.conversation_id;
+    const fallbackKey = getConversationKey(currentUser.id, contactId);
+    const conversationIdToUse = realConversationId || fallbackKey;
+    
+    console.log('[DM] Marking read via API - realConvId:', realConversationId, 'fallback:', fallbackKey, 'using:', conversationIdToUse);
+    
     try {
-      await apiClient.markMessagesRead(conversationKey, currentUser.id);
-      console.log('[DM] ✅ API markMessagesRead succeeded');
+      await apiClient.markMessagesRead(conversationIdToUse, currentUser.id);
+      console.log('[DM] ✅ API markMessagesRead succeeded with:', conversationIdToUse);
     } catch (e) {
-      console.warn('[DM] Failed to mark messages as read via API:', e);
-      // Also try with just the contact ID as conversation ID (backend might use this)
-      try {
-        await apiClient.markMessagesRead(contactId, currentUser.id);
-        console.log('[DM] ✅ API markMessagesRead succeeded with contactId');
-      } catch (e2) {
-        console.warn('[DM] Also failed with contactId:', e2);
+      console.warn('[DM] Failed to mark messages as read via API with', conversationIdToUse, ':', e);
+      // If real conversation ID failed, try fallback
+      if (realConversationId && realConversationId !== fallbackKey) {
+        try {
+          await apiClient.markMessagesRead(fallbackKey, currentUser.id);
+          console.log('[DM] ✅ API markMessagesRead succeeded with fallback:', fallbackKey);
+        } catch (e2) {
+          console.warn('[DM] Also failed with fallback:', e2);
+        }
       }
     }
     
