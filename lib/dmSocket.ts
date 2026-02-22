@@ -48,7 +48,7 @@ class DMSocketManager {
 
     // Build WebSocket URL
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const WS_BASE = API_BASE.replace(/^http/, API_BASE.startsWith('https') ? 'wss' : 'ws');
+    const WS_BASE = API_BASE.replace(/^https?/, API_BASE.startsWith('https') ? 'wss' : 'ws');
     
     const params = new URLSearchParams();
     params.set('username', username);
