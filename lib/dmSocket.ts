@@ -107,8 +107,11 @@ class DMSocketManager {
             return;
           }
 
-          if (data.type === 'dm_message') {
-            this.callbacks.get('message')?.(data.message || data);
+          // Handle incoming DM messages (backend may send as dm_message or dm_received)
+          if (data.type === 'dm_message' || data.type === 'dm_received') {
+            const messageData = data.message || data;
+            console.log('[DM Socket] 📬 Processing DM:', messageData);
+            this.callbacks.get('message')?.(messageData);
             return;
           }
 
@@ -122,9 +125,19 @@ class DMSocketManager {
             return;
           }
 
-          // Ignore other message types (user_left, room_state, etc.)
-          // Only dm_message should trigger the message callback
-          console.log('[DM Socket] Ignoring non-DM message type:', data.type);
+          // dm_sent is confirmation to sender - ignore it
+          if (data.type === 'dm_sent') {
+            console.log('[DM Socket] ✓ Message confirmed by server');
+            return;
+          }
+
+          // Ignore room management messages (user_joined, user_left, room_state, etc.)
+          if (['user_joined', 'user_left', 'room_state', 'active-broadcasts'].includes(data.type)) {
+            return;
+          }
+
+          // Log unknown message types for debugging
+          console.log('[DM Socket] Unknown message type:', data.type, data);
         } catch (error) {
           console.error('[DM Socket] Error parsing message:', error);
         }
