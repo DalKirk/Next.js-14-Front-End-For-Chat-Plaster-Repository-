@@ -110,30 +110,123 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     onUnreadCountChange?.(totalUnread);
   }, [contacts, onUnreadCountChange]);
 
+  // Poll for new messages (localStorage fallback)
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      loadFromSharedStorage();
+    }, 3000); // Check every 3 seconds
+    
+    return () => clearInterval(pollInterval);
+  }, [currentUser.id]);
+
   const loadConversations = async () => {
     setIsLoading(true);
     try {
       // Try to load from API
       const data = await apiClient.getConversations(currentUser.id);
-      setConversations(data.conversations || []);
-      setContacts(data.contacts || []);
-      
-      // Load messages for each conversation
-      const messagesMap: Record<string, DMMessage[]> = {};
-      for (const conv of data.conversations || []) {
-        const convMessages = await apiClient.getDirectMessages(conv.id);
-        messagesMap[conv.id] = convMessages.map((m: any) => ({
-          ...m,
-          from: m.sender_id === currentUser.id ? 'me' : 'them',
-        }));
+      if (data.conversations && data.conversations.length > 0) {
+        setConversations(data.conversations || []);
+        setContacts(data.contacts || []);
+        
+        // Load messages for each conversation
+        const messagesMap: Record<string, DMMessage[]> = {};
+        for (const conv of data.conversations || []) {
+          const convMessages = await apiClient.getDirectMessages(conv.id);
+          messagesMap[conv.id] = convMessages.map((m: any) => ({
+            ...m,
+            from: m.sender_id === currentUser.id ? 'me' : 'them',
+          }));
+        }
+        setMessages(messagesMap);
+      } else {
+        // No API data, use localStorage fallback
+        loadFromSharedStorage();
       }
-      setMessages(messagesMap);
     } catch (error) {
       console.warn('Failed to load conversations, using local storage:', error);
       // Fallback to localStorage
-      loadFromLocalStorage();
+      loadFromSharedStorage();
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper to generate conversation ID for two users (consistent regardless of order)
+  const getConversationKey = (userId1: string, userId2: string) => {
+    return [userId1, userId2].sort().join('-');
+  };
+
+  // Load messages from shared storage (works for both sender and receiver)
+  const loadFromSharedStorage = () => {
+    try {
+      // Load all shared messages from localStorage
+      const allMessages: Record<string, DMMessage[]> = {};
+      const contactsMap: Map<string, DMContact> = new Map();
+      
+      // First, load user's own conversation data for contact info
+      const userDataKey = `dm-conversations-${currentUser.id}`;
+      const userData = localStorage.getItem(userDataKey);
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        (parsed.contacts || []).forEach((c: DMContact) => contactsMap.set(c.id, c));
+      }
+
+      // Scan for all shared message keys involving this user
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('dm-shared-')) {
+          const convKey = key.replace('dm-shared-', '');
+          // Check if this conversation involves current user
+          if (convKey.includes(currentUser.id)) {
+            const sharedData = localStorage.getItem(key);
+            if (sharedData) {
+              const parsed = JSON.parse(sharedData);
+              const otherUserId = convKey.split('-').find(id => id !== currentUser.id);
+              
+              if (otherUserId && parsed.messages) {
+                // Add messages with correct 'from' perspective
+                allMessages[otherUserId] = parsed.messages.map((m: DMMessage) => ({
+                  ...m,
+                  from: m.sender_id === currentUser.id ? 'me' : 'them',
+                }));
+                
+                // Create contact if not exists
+                if (!contactsMap.has(otherUserId) && parsed.participants) {
+                  const otherUser = parsed.participants.find((p: any) => p.id === otherUserId);
+                  if (otherUser) {
+                    const unreadCount = parsed.messages.filter(
+                      (m: DMMessage) => m.receiver_id === currentUser.id && !m.read
+                    ).length;
+                    contactsMap.set(otherUserId, {
+                      id: otherUserId,
+                      username: otherUser.username,
+                      avatar_url: otherUser.avatar_url,
+                      avatar_urls: otherUser.avatar_urls,
+                      status: 'offline',
+                      unread: unreadCount,
+                    });
+                  }
+                } else if (contactsMap.has(otherUserId)) {
+                  // Update unread count
+                  const contact = contactsMap.get(otherUserId)!;
+                  const unreadCount = parsed.messages.filter(
+                    (m: DMMessage) => m.receiver_id === currentUser.id && !m.read
+                  ).length;
+                  contact.unread = unreadCount;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Update state if we have data
+      if (contactsMap.size > 0 || Object.keys(allMessages).length > 0) {
+        setContacts(Array.from(contactsMap.values()));
+        setMessages(allMessages);
+      }
+    } catch (e) {
+      console.warn('Error loading from shared storage:', e);
     }
   };
 
@@ -162,34 +255,79 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   }, [conversations, contacts, messages, isLoading, saveToLocalStorage]);
 
   const handleSend = async () => {
-    if (!inputText.trim() || !activeConversation) return;
+    const messageText = inputText.trim();
+    if (!messageText || !activeConversation) return;
 
     const activeContact = contacts.find(c => c.id === activeConversation);
     if (!activeContact) return;
 
     const newMessage: DMMessage = {
-      id: `msg-${Date.now()}`,
-      conversation_id: activeConversation,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      conversation_id: getConversationKey(currentUser.id, activeContact.id),
       sender_id: currentUser.id,
       receiver_id: activeContact.id,
-      content: inputText.trim(),
+      content: messageText,
       timestamp: new Date().toISOString(),
       read: false,
       from: 'me',
     };
 
-    // Optimistically add message
+    // Clear input immediately
+    setInputText('');
+
+    // Optimistically add message to UI
     setMessages(prev => ({
       ...prev,
       [activeConversation]: [...(prev[activeConversation] || []), newMessage],
     }));
-    setInputText('');
 
-    // Try to send via API
+    // Save to shared storage so receiver can see it
+    saveToSharedStorage(activeContact, newMessage);
+
+    // Try to send via API (fire and forget)
+    apiClient.sendDirectMessage(activeContact.id, currentUser.id, messageText).catch(error => {
+      console.warn('Failed to send via API, message saved to shared localStorage:', error);
+    });
+  };
+
+  // Save message to shared storage that both users can read
+  const saveToSharedStorage = (contact: DMContact, message: DMMessage) => {
     try {
-      await apiClient.sendDirectMessage(activeContact.id, currentUser.id, inputText.trim());
-    } catch (error) {
-      console.warn('Failed to send via API, message saved locally:', error);
+      const convKey = getConversationKey(currentUser.id, contact.id);
+      const storageKey = `dm-shared-${convKey}`;
+      
+      // Load existing data
+      const existing = localStorage.getItem(storageKey);
+      const data = existing ? JSON.parse(existing) : {
+        participants: [],
+        messages: [],
+      };
+      
+      // Update participants (store both user info)
+      data.participants = [
+        {
+          id: currentUser.id,
+          username: currentUser.username,
+          avatar_url: (currentUser as any).avatar_url,
+          avatar_urls: currentUser.avatar_urls,
+        },
+        {
+          id: contact.id,
+          username: contact.username,
+          avatar_url: contact.avatar_url,
+          avatar_urls: contact.avatar_urls,
+        },
+      ];
+      
+      // Add message (without 'from' field - that's calculated on read)
+      const messageToStore = { ...message };
+      delete (messageToStore as any).from;
+      data.messages.push(messageToStore);
+      
+      // Save back
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    } catch (e) {
+      console.warn('Error saving to shared storage:', e);
     }
   };
 
