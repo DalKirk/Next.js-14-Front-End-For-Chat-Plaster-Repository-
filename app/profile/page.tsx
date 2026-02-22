@@ -1511,67 +1511,70 @@ function ProfilePageContent() {
                                 <p className="text-xs mt-1" style={{ color: liveTheme.text, opacity: 0.3 }}>Click "New Show" to schedule your first live!</p>
                               </div>
                             ) : (
-                              <div className="space-y-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 {scheduledShows
                                   .filter(s => s.status === 'scheduled')
                                   .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
                                   .map(show => (
-                                    <div
-                                      key={show.id}
-                                      className="p-3 rounded-lg border overflow-hidden"
-                                      style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
-                                    >
-                                      <div className="flex gap-3">
-                                        {/* Thumbnail */}
-                                        <div 
-                                          className="w-24 h-16 sm:w-32 sm:h-20 rounded-lg flex-shrink-0 bg-cover bg-center border"
-                                          style={{ 
-                                            backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                            borderColor: 'rgba(255,255,255,0.1)'
-                                          }}
-                                        >
-                                          {!show.thumbnail && (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                              <Video className="w-6 h-6 opacity-50" style={{ color: '#fff' }} />
-                                            </div>
-                                          )}
-                                        </div>
+                                    <div key={show.id} className="group">
+                                      {/* Title - Above Thumbnail */}
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="text-xs font-medium truncate flex-1" style={{ color: liveTheme.text }}>
+                                          {show.title}
+                                        </span>
+                                        {show.category && (
+                                          <span className="text-[10px] px-1 py-0.5 rounded flex-shrink-0" style={{ background: `${liveTheme.accent}90`, color: '#fff' }}>
+                                            {show.category}
+                                          </span>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Thumbnail - 5:7 aspect ratio */}
+                                      <div 
+                                        className="w-full aspect-[5/7] relative rounded-lg overflow-hidden border"
+                                        style={{ 
+                                          backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                          backgroundSize: 'cover',
+                                          backgroundPosition: 'center',
+                                          borderColor: 'rgba(255,255,255,0.1)'
+                                        }}
+                                      >
+                                        {/* Gradient overlay */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                                         
-                                        {/* Show Info */}
-                                        <div className="flex-1 min-w-0">
-                                          <h5 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h5>
-                                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                            <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.accent }}>
-                                              <Calendar className="w-3 h-3" />
-                                              {new Date(show.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        {/* Fallback icon */}
+                                        {!show.thumbnail && (
+                                          <div className="absolute inset-0 flex items-center justify-center">
+                                            <Video className="w-6 h-6 opacity-50" style={{ color: '#fff' }} />
+                                          </div>
+                                        )}
+                                        
+                                        {/* Date/Time - bottom */}
+                                        <div className="absolute bottom-2 left-2 right-2">
+                                          <div className="flex flex-wrap items-center gap-1 text-[9px] sm:text-[10px] text-white/90">
+                                            <span className="flex items-center gap-0.5 bg-black/50 px-1 py-0.5 rounded">
+                                              <Calendar className="w-2.5 h-2.5" />
+                                              {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                             </span>
-                                            <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.text, opacity: 0.6 }}>
-                                              <Clock className="w-3 h-3" />
+                                            <span className="flex items-center gap-0.5 bg-black/50 px-1 py-0.5 rounded">
+                                              <Clock className="w-2.5 h-2.5" />
                                               {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                                             </span>
-                                            {show.category && (
-                                              <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
-                                                {show.category}
-                                              </span>
-                                            )}
                                           </div>
-                                          {show.description && (
-                                            <p className="text-xs mt-1 line-clamp-1" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
-                                          )}
                                         </div>
                                         
-                                        {/* Actions */}
-                                        <div className="flex flex-col gap-1">
+                                        {/* Actions - top right */}
+                                        <div className="absolute top-1 right-1 flex gap-0.5">
                                           <button
                                             onClick={() => {
                                               setEditingShow(show);
                                               setShowScheduleForm(false);
                                             }}
-                                            className="p-1.5 rounded hover:bg-white/10 transition-colors"
+                                            className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
                                             style={{ color: liveTheme.accent }}
                                             title="Edit show"
                                           >
-                                            <Pencil className="w-4 h-4" />
+                                            <Pencil className="w-3 h-3" />
                                           </button>
                                           <button
                                             onClick={() => {
@@ -1582,13 +1585,18 @@ function ProfilePageContent() {
                                               localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
                                               toast.success('Show cancelled');
                                             }}
-                                            className="p-1.5 rounded hover:bg-red-500/20 transition-colors text-red-400"
+                                            className="p-1 rounded bg-black/60 hover:bg-red-500/60 transition-colors text-red-400"
                                             title="Cancel show"
                                           >
-                                            <X className="w-4 h-4" />
+                                            <X className="w-3 h-3" />
                                           </button>
                                         </div>
                                       </div>
+                                      
+                                      {/* Description - below thumbnail */}
+                                      {show.description && (
+                                        <p className="text-[10px] mt-1 line-clamp-1" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                                      )}
                                     </div>
                                   ))}
                               </div>
@@ -1879,52 +1887,73 @@ function ProfilePageContent() {
                       <Calendar className="w-4 h-4" style={{ color: liveTheme.accent }} /> 
                       {isViewOnly ? 'Upcoming Lives' : 'My Upcoming Shows'}
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                       {scheduledShows
                         .filter(s => s.status === 'scheduled')
                         .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
                         .slice(0, 6)
                         .map(show => (
-                          <div
-                            key={show.id}
-                            className="rounded-xl border overflow-hidden"
-                            style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
-                          >
-                            {/* Thumbnail */}
-                            <div 
-                              className="w-full h-24 sm:h-28 bg-cover bg-center"
-                              style={{ 
-                                backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              }}
-                            >
-                              {!show.thumbnail && (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Video className="w-8 h-8 opacity-40" style={{ color: '#fff' }} />
-                                </div>
-                              )}
-                            </div>
-                            {/* Show Info */}
-                            <div className="p-3">
-                              <h4 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h4>
-                              <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>
-                                <span className="flex items-center gap-1" style={{ color: liveTheme.accent }}>
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                </span>
-                              </div>
+                          <div key={show.id} className="group">
+                            {/* Title - Above Thumbnail (like host info on rooms) */}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="text-xs sm:text-sm font-medium truncate flex-1" style={{ color: liveTheme.text }}>
+                                {show.title}
+                              </span>
+                              {/* Category pill */}
                               {show.category && (
-                                <span className="inline-block mt-2 text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: `${liveTheme.accent}90`, color: '#fff' }}>
                                   {show.category}
                                 </span>
                               )}
-                              {show.description && (
-                                <p className="text-xs mt-2 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                            </div>
+                            
+                            {/* Thumbnail - 5:7 aspect ratio like room cards */}
+                            <div 
+                              className="w-full aspect-[5/7] relative rounded-lg overflow-hidden border transition-all duration-200"
+                              style={{ 
+                                backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                              }}
+                            >
+                              {/* Gradient overlay */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                              
+                              {/* Fallback icon when no thumbnail */}
+                              {!show.thumbnail && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Video className="w-8 h-8 opacity-40" style={{ color: '#fff' }} />
+                                </div>
+                              )}
+                              
+                              {/* Date/Time badge - bottom of thumbnail */}
+                              <div className="absolute bottom-2 left-2 right-2">
+                                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-white/90">
+                                  <span className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                  <span className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Duration badge - top right */}
+                              {show.duration && (
+                                <div className="absolute top-2 right-2 text-[10px] bg-black/60 px-1.5 py-0.5 rounded text-white/80">
+                                  {show.duration}m
+                                </div>
                               )}
                             </div>
+                            
+                            {/* Description - below thumbnail */}
+                            {show.description && (
+                              <p className="text-xs mt-1.5 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                            )}
                           </div>
                         ))}
                     </div>
