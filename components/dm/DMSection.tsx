@@ -775,13 +775,13 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         currentUserId={currentUser.id}
       />
 
-      <div className="flex h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
+      <div className="flex h-[calc(100vh-180px)] min-h-[400px] max-h-[800px] md:h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
         {/* Sidebar - Contact List */}
-        <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 absolute md:relative inset-0 md:inset-auto z-10 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
           {/* Header */}
-          <div className="p-4 border-b border-slate-700/50">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Messages</h2>
+          <div className="p-3 md:p-4 border-b border-slate-700/50">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h2 className="text-lg md:text-xl font-bold text-white">Messages</h2>
               <button 
                 onClick={() => setShowUserSearch(true)}
                 className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
@@ -799,7 +799,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
+                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
               />
             </div>
           </div>
@@ -821,16 +821,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   key={contact.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`group flex items-center gap-3 p-3 mx-2 my-1 rounded-lg cursor-pointer transition-all ${
+                  className={`group flex items-center gap-2 md:gap-3 p-2.5 md:p-3 mx-1.5 md:mx-2 my-0.5 md:my-1 rounded-lg cursor-pointer transition-all ${
                     activeConversation === contact.id
                       ? 'bg-cyan-400/10 border-l-2 border-cyan-400'
-                      : 'hover:bg-slate-800/50'
+                      : 'hover:bg-slate-800/50 active:bg-slate-800/70'
                   }`}
                   onClick={() => selectConversation(contact.id)}
                 >
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-600/50">
+                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl overflow-hidden border border-slate-600/50">
                       <ResponsiveAvatar
                         avatarUrls={contact.avatar_urls || (contact.avatar_url ? { thumbnail: contact.avatar_url, small: contact.avatar_url, medium: contact.avatar_url, large: contact.avatar_url } : undefined)}
                         username={contact.username}
@@ -881,16 +881,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         {activeContact ? (
           <>
             {/* Chat Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-slate-700/50 bg-slate-900/60">
+            <div className="flex items-center gap-2 md:gap-3 p-3 md:p-4 border-b border-slate-700/50 bg-slate-900/60">
               <button 
-                className="md:hidden w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                className="md:hidden w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:bg-slate-700 transition-colors flex-shrink-0"
                 onClick={() => setShowMobileList(true)}
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={16} />
               </button>
 
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-600/50">
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl overflow-hidden border border-slate-600/50">
                   <ResponsiveAvatar
                     avatarUrls={activeContact.avatar_urls || (activeContact.avatar_url ? { thumbnail: activeContact.avatar_url, small: activeContact.avatar_url, medium: activeContact.avatar_url, large: activeContact.avatar_url } : undefined)}
                     username={activeContact.username}
@@ -909,21 +909,22 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 </p>
               </div>
 
-              <div className="flex gap-1">
-                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="Voice call">
+              <div className="flex gap-0.5 md:gap-1 flex-shrink-0">
+                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-800 items-center justify-center text-slate-400 hover:text-white transition-colors" title="Voice call">
                   <Phone size={18} />
                 </button>
-                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="Video call">
+                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-800 items-center justify-center text-slate-400 hover:text-white transition-colors" title="Video call">
                   <Video size={18} />
                 </button>
-                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="More options">
-                  <MoreVertical size={18} />
+                <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="More options">
+                  <MoreVertical size={16} className="md:hidden" />
+                  <MoreVertical size={18} className="hidden md:block" />
                 </button>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-1">
               {chatMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500">
                   <MessageCircle size={48} className="mb-3 opacity-30" />
@@ -959,15 +960,15 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                           animate={{ opacity: 1, y: 0 }}
                           className={`group/msg flex flex-col w-full ${isMe ? 'items-end' : 'items-start'}`}
                         >
-                          <div className={`flex items-center gap-2 max-w-[75%] ${isMe ? 'flex-row-reverse' : ''}`}>
+                          <div className={`flex items-center gap-1 md:gap-2 max-w-[85%] md:max-w-[75%] ${isMe ? 'flex-row-reverse' : ''}`}>
                             <div
-                              className={`px-4 py-2.5 rounded-2xl ${
+                              className={`px-3 py-2 md:px-4 md:py-2.5 rounded-2xl ${
                                 isMe
                                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
                                   : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
                               }`}
                             >
-                              <p className="text-sm leading-relaxed break-words">{msg.content}</p>
+                              <p className="text-[13px] md:text-sm leading-relaxed break-words">{msg.content}</p>
                             </div>
                             {/* Delete message button - only show for own messages */}
                             {isMe && (
@@ -999,9 +1000,9 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-slate-700/50 bg-slate-900/60">
-              <div className="flex items-end gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-2 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all">
-                <button className="w-9 h-9 rounded-lg hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
+            <div className="p-2 md:p-4 border-t border-slate-700/50 bg-slate-900/60">
+              <div className="flex items-end gap-1 md:gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all">
+                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-700 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
                   <Paperclip size={18} />
                 </button>
                 <textarea
@@ -1010,16 +1011,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm resize-none outline-none max-h-24 py-2"
+                  className="flex-1 bg-transparent text-white placeholder-slate-500 text-[13px] md:text-sm resize-none outline-none max-h-24 py-2 px-2 md:px-0"
                   style={{ minHeight: '36px' }}
                 />
-                <button className="w-9 h-9 rounded-lg hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Add emoji">
+                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-700 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Add emoji">
                   <Smile size={18} />
                 </button>
                 <button
                   onClick={handleSend}
                   disabled={!inputText.trim()}
-                  className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all flex-shrink-0"
+                  className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] active:scale-95 transition-all flex-shrink-0"
                   title="Send message"
                 >
                   <Send size={16} />
