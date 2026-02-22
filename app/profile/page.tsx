@@ -210,8 +210,9 @@ function ProfilePageContent() {
   const showThumbnailInputRef = useRef<HTMLInputElement>(null);
 
   // Load scheduled shows from localStorage when profile loads
+  // Only load for own profile - other users' shows will come from backend in production
   useEffect(() => {
-    if (profile?.id) {
+    if (profile?.id && !isViewOnly) {
       try {
         const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
         if (saved) {
@@ -229,12 +230,18 @@ function ProfilePageContent() {
           if (JSON.stringify(shows) !== JSON.stringify(updated)) {
             localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(updated));
           }
+        } else {
+          setScheduledShows([]);
         }
       } catch (e) {
         console.error('Failed to load scheduled shows:', e);
+        setScheduledShows([]);
       }
+    } else {
+      // Clear shows when viewing other users' profiles (until backend is implemented)
+      setScheduledShows([]);
     }
-  }, [profile?.id]);
+  }, [profile?.id, isViewOnly]);
 
   // ─── Posts state ────────────────────────────────────────────────
   const [myPosts, setMyPosts] = useState<any[]>([]);
@@ -1590,9 +1597,9 @@ function ProfilePageContent() {
                         )}
 
                         {/* Info about backend storage */}
-                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
-                          <p className="text-xs" style={{ color: '#60a5fa' }}>
-                            💡 Scheduled shows are saved locally. In production, they will sync with the backend so followers can see your upcoming lives.
+                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.05)' }}>
+                          <p className="text-xs" style={{ color: '#fbbf24' }}>
+                            ⚠️ <strong>Local Storage Only:</strong> Shows and thumbnails are saved on this device only. They won't appear on other devices or to other users until backend integration is complete.
                           </p>
                         </div>
                       </div>
