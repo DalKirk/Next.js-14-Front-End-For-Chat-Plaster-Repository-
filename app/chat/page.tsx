@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ export default function ChatPage() {
     room: Room | null;
     roomData: any;
   }>({ isOpen: false, room: null, roomData: null });
+  const [shuffleSeed] = useState(() => Math.random()); // Random seed for stable shuffle
   const router = useRouter();
 
   useEffect(() => {
@@ -489,7 +490,19 @@ export default function ChatPage() {
               return true;
             });
 
-            if (filteredRooms.length === 0) {
+            // Shuffle rooms using seeded random for stable order during session
+            const seededRandom = (seed: number, index: number) => {
+              const x = Math.sin(seed * 9999 + index) * 10000;
+              return x - Math.floor(x);
+            };
+            
+            const randomizedRooms = [...filteredRooms].sort((a, b) => {
+              const aHash = seededRandom(shuffleSeed, filteredRooms.indexOf(a));
+              const bHash = seededRandom(shuffleSeed, filteredRooms.indexOf(b));
+              return aHash - bHash;
+            });
+
+            if (randomizedRooms.length === 0) {
               return (
                 <div className="text-center py-8">
                   <div className="text-slate-400">
@@ -513,7 +526,7 @@ export default function ChatPage() {
 
             return (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {filteredRooms.map((room, index) => {
+                {randomizedRooms.map((room, index) => {
                   // Merge room data - localStorage takes priority for extended fields
                   const localData = roomsData[room.id] || {};
                   const roomData = {
