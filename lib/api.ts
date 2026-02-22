@@ -1314,10 +1314,20 @@ export const apiClient = {
     thumbnail?: string;
   }): Promise<any> => {
     try {
+      // Convert datetime-local format to ISO with timezone
+      // Input format: "2026-02-28T20:00" (local time from datetime-local input)
+      // Output format: "2026-02-28T20:00:00Z" (ISO with UTC timezone)
+      let scheduledAtISO = show.scheduledAt;
+      if (scheduledAtISO && !scheduledAtISO.includes('Z') && !scheduledAtISO.includes('+')) {
+        // datetime-local gives us local time, convert to ISO string with timezone
+        const localDate = new Date(scheduledAtISO);
+        scheduledAtISO = localDate.toISOString(); // Converts to UTC with Z suffix
+      }
+      
       const response = await api.post(`/users/${userId}/scheduled-shows`, {
         title: show.title,
         description: show.description,
-        scheduled_at: show.scheduledAt,
+        scheduled_at: scheduledAtISO,
         duration: show.duration || 60,
         category: show.category,
         thumbnail: show.thumbnail,
@@ -1345,7 +1355,15 @@ export const apiClient = {
       const payload: any = {};
       if (updates.title !== undefined) payload.title = updates.title;
       if (updates.description !== undefined) payload.description = updates.description;
-      if (updates.scheduledAt !== undefined) payload.scheduled_at = updates.scheduledAt;
+      if (updates.scheduledAt !== undefined) {
+        // Convert datetime-local format to ISO with timezone
+        let scheduledAtISO = updates.scheduledAt;
+        if (scheduledAtISO && !scheduledAtISO.includes('Z') && !scheduledAtISO.includes('+')) {
+          const localDate = new Date(scheduledAtISO);
+          scheduledAtISO = localDate.toISOString();
+        }
+        payload.scheduled_at = scheduledAtISO;
+      }
       if (updates.duration !== undefined) payload.duration = updates.duration;
       if (updates.category !== undefined) payload.category = updates.category;
       if (updates.thumbnail !== undefined) payload.thumbnail = updates.thumbnail;
