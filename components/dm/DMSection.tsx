@@ -403,13 +403,17 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   );
   const chatMessages = activeConversation ? (messages[activeConversation] || []) : [];
 
-  const formatTime = (timestamp: string) => {
+  const formatTime = (timestamp: string | undefined) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
-  const formatDate = (timestamp: string) => {
+  const formatDate = (timestamp: string | undefined) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -520,7 +524,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-white text-sm truncate">{contact.username}</span>
-                      {lastMsg && (
+                      {lastMsg && lastMsg.timestamp && (
                         <span className="text-xs text-slate-500">{formatTime(lastMsg.timestamp)}</span>
                       )}
                     </div>
