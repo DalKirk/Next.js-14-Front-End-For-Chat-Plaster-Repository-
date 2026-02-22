@@ -131,8 +131,14 @@ class DMSocketManager {
             return;
           }
 
-          // Ignore room management messages (user_joined, user_left, room_state, etc.)
-          if (['user_joined', 'user_left', 'room_state', 'active-broadcasts'].includes(data.type)) {
+          // Handle user presence updates - pass to presence callback
+          if (data.type === 'user_joined' || data.type === 'user_left') {
+            this.callbacks.get('presence')?.(data);
+            return;
+          }
+
+          // Ignore other room management messages
+          if (['room_state', 'active-broadcasts'].includes(data.type)) {
             return;
           }
 
@@ -232,6 +238,10 @@ class DMSocketManager {
 
   onRead(callback: (data: { reader_id: string; sender_id: string }) => void): void {
     this.callbacks.set('read', callback);
+  }
+
+  onPresence(callback: (data: { type: string; user_id: string; username: string; avatar_url?: string }) => void): void {
+    this.callbacks.set('presence', callback);
   }
 
   onError(callback: (error: Error) => void): void {

@@ -251,6 +251,33 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         }
       });
 
+      // Handle user presence updates - update contact info when users join
+      dmSocketManager.onPresence((data) => {
+        if (data.user_id && data.username) {
+          setContacts(prev => {
+            const existing = prev.find(c => c.id === data.user_id);
+            if (existing && (existing.username === 'User' || !existing.avatar_url)) {
+              // Update the contact with real username/avatar
+              const updatedContact = {
+                ...existing,
+                username: data.username || existing.username,
+                avatar_url: data.avatar_url || existing.avatar_url,
+                status: data.type === 'user_joined' ? 'online' as const : 'offline' as const,
+              };
+              StorageManager.saveContact(currentUser.id, updatedContact);
+              return prev.map(c => c.id === data.user_id ? updatedContact : c);
+            } else if (existing) {
+              // Just update status
+              return prev.map(c => c.id === data.user_id 
+                ? { ...c, status: data.type === 'user_joined' ? 'online' as const : 'offline' as const }
+                : c
+              );
+            }
+            return prev;
+          });
+        }
+      });
+
       dmSocketManager.onError((error) => {
         console.warn('[DM] WebSocket not available (this is okay - using localStorage):', error.message);
       });
