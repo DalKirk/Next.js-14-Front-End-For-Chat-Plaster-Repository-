@@ -219,11 +219,20 @@ export default function RoomPage() {
       
       console.log('🔒 Room privacy check:', { roomId, privacy: roomPrivacy });
       
-      if (roomPrivacy === 'password' && !isPasswordVerified) {
+      // Check if this room was already verified (via chat page or as creator)
+      const alreadyVerified = sessionStorage.getItem(`room-password-verified-${roomId}`) === 'true';
+      
+      if (roomPrivacy === 'password' && !isPasswordVerified && !alreadyVerified) {
         // Show password modal - don't proceed until verified
         console.log('🔐 Room is password-protected, showing modal');
         setShowPasswordModal(true);
         return false; // Don't proceed with initialization
+      }
+      
+      // If already verified via sessionStorage, mark state as verified too
+      if (alreadyVerified && !isPasswordVerified) {
+        console.log('✅ Room already verified via sessionStorage');
+        setIsPasswordVerified(true);
       }
       
       return true; // Can proceed
@@ -361,6 +370,10 @@ export default function RoomPage() {
       
       // Password verified - close modal and proceed
       console.log('🔓 Password verified, proceeding to room');
+      
+      // Store verification in sessionStorage so it persists across re-renders
+      sessionStorage.setItem(`room-password-verified-${roomId}`, 'true');
+      
       setShowPasswordModal(false);
       setIsPasswordVerified(true);
       toast.success('Password verified!');

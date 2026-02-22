@@ -221,6 +221,10 @@ export default function ChatPage() {
       
       // Password verified - proceed to join
       console.log('🚪 Password verified, joining room:', passwordModalRoom.name);
+      
+      // Store verification in sessionStorage so room page knows we're verified
+      sessionStorage.setItem(`room-password-verified-${passwordModalRoom.id}`, 'true');
+      
       setPasswordModalRoom(null);
       
       router.push(`/room/${passwordModalRoom.id}?name=${encodeURIComponent(passwordModalRoom.name)}`);
@@ -291,6 +295,13 @@ export default function ChatPage() {
       setShowCreateModal(false);
       // Optimistically insert into list and navigate
       setRooms(prev => [enhancedRoom, ...prev]);
+      
+      // Mark this room as password-verified in sessionStorage so room page doesn't ask again
+      // (Creator automatically bypasses password for their own room)
+      if (roomData.privacy === 'password') {
+        sessionStorage.setItem(`room-password-verified-${room.id}`, 'true');
+      }
+      
       // Skip password check - creator doesn't need to enter password for their own room
       joinRoom(enhancedRoom, true);
     } catch (error) {
