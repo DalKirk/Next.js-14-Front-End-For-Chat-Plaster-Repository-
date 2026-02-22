@@ -134,7 +134,7 @@ export const apiClient = {
     }
   },
 
-  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[]; privacy?: string; maxMembers?: number }): Promise<Room> => {
+  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[]; privacy?: string; maxMembers?: number; password?: string }): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
       const payload: Record<string, unknown> = { name: name.trim() };
@@ -144,7 +144,10 @@ export const apiClient = {
       if (options?.tags && options.tags.length > 0) payload.tags = options.tags;
       if (options?.privacy) payload.privacy = options.privacy;
       if (options?.maxMembers) payload.max_members = options.maxMembers;
-      console.log('📤 Creating room with payload:', payload);
+      if (options?.privacy === 'password' && options?.password) {
+        payload.password = options.password;
+      }
+      console.log('📤 Creating room with payload:', { ...payload, password: payload.password ? '***' : undefined });
       const r = await api.post('/rooms', payload);
       return r.data;
     } catch (e) {
@@ -154,11 +157,14 @@ export const apiClient = {
         id: `mock-room-${Date.now()}`,
         name: name.trim(),
         created_at: new Date().toISOString(),
+        thumbnail: thumbnailUrl, // Include thumbnail in mock room
+        thumbnail_url: thumbnailUrl,
         category: options?.category,
         description: options?.description,
         tags: options?.tags,
         privacy: options?.privacy as 'public' | 'private' | 'password',
         maxMembers: options?.maxMembers,
+        password: options?.password, // Store for local testing only
       };
       return mockRoom;
     }
@@ -191,6 +197,26 @@ export const apiClient = {
         }
       }
       handleApiError(e, 'Join room');
+    }
+  },
+
+  verifyRoomPassword: async (roomId: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const r = await api.post(`/rooms/${roomId}/verify-password`, { password });
+      return { success: true };
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const status = e.response?.status;
+        if (status === 401 || status === 403) {
+          return { success: false, error: 'Incorrect password' };
+        }
+        if (status === 404) {
+          // Backend doesn't have verify endpoint yet, check locally
+          console.warn('Password verify endpoint not available, using local check');
+          return { success: false, error: 'Password verification not available' };
+        }
+      }
+      return { success: false, error: 'Failed to verify password' };
     }
   },
 

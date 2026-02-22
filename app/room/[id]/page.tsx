@@ -15,6 +15,7 @@ import { LiveStream } from '@/components/video/live-stream';
 import { StreamViewer } from '@/components/video/stream-viewer';
 import type { StreamViewerHandle } from '@/components/video/stream-viewer';
 import { webrtcManager } from '@/lib/webrtc-manager';
+import PasswordModal from '@/components/room/PasswordModal';
 // import { useChat } from '@/hooks/use-chat'; // Reserved for future use
 import { User, Message } from '@/lib/types';
 import { apiClient } from '@/lib/api';
@@ -94,6 +95,12 @@ export default function RoomPage() {
   // Video framing controls
   const [fitMode, setFitMode] = useState<'cover' | 'contain'>('cover');
   const [centerBias, setCenterBias] = useState<boolean>(false);
+
+  // Password protection state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
 
   // Ref to the mobile StreamViewer so the controls bar can call toggleMute
   const mobileStreamViewerRef = useRef<StreamViewerHandle>(null);
@@ -188,6 +195,40 @@ export default function RoomPage() {
       return;
     }
     
+    // Check if room is password-protected before allowing access
+    const checkRoomAccess = async (userData: User, loadedAvatar: string | null) => {
+      // First check localStorage (for mock rooms created locally)
+      const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
+      const localRoomData = roomsData[roomId];
+      let roomPrivacy = localRoomData?.privacy;
+      
+      // If not in localStorage, fetch room info from backend
+      if (!roomPrivacy) {
+        try {
+          console.log('🔍 Fetching room info from backend...');
+          const rooms = await apiClient.getRooms();
+          const backendRoom = rooms.find((r: any) => r.id === roomId);
+          if (backendRoom) {
+            roomPrivacy = backendRoom.privacy;
+            console.log('📡 Room privacy from backend:', roomPrivacy);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch room info from backend:', e);
+        }
+      }
+      
+      console.log('🔒 Room privacy check:', { roomId, privacy: roomPrivacy });
+      
+      if (roomPrivacy === 'password' && !isPasswordVerified) {
+        // Show password modal - don't proceed until verified
+        console.log('🔐 Room is password-protected, showing modal');
+        setShowPasswordModal(true);
+        return false; // Don't proceed with initialization
+      }
+      
+      return true; // Can proceed
+    };
+    
     // Get user from localStorage
     const savedUser = localStorage.getItem('chat-user');
     if (savedUser) {
@@ -217,16 +258,21 @@ export default function RoomPage() {
         console.log('⚠️ No userProfile in localStorage');
       }
       
-      // Mark as initialized
-      isInitializedRef.current = true;
-      
-      // Load initial messages with avatar available
-      loadMessages(userData, loadedAvatar);
-      
-      // Initialize WebSocket connection after user is set
-      setTimeout(() => {
-        initializeWebSocket(userData, loadedAvatar);
-      }, 100);
+      // Check room access before proceeding
+      checkRoomAccess(userData, loadedAvatar).then((canProceed) => {
+        if (!canProceed) return;
+        
+        // Mark as initialized
+        isInitializedRef.current = true;
+        
+        // Load initial messages with avatar available
+        loadMessages(userData, loadedAvatar);
+        
+        // Initialize WebSocket connection after user is set
+        setTimeout(() => {
+          initializeWebSocket(userData, loadedAvatar);
+        }, 100);
+      });
     } else {
       // No local user: strictly create one on backend, then proceed
       (async () => {
@@ -287,7 +333,50 @@ export default function RoomPage() {
       isInitializedRef.current = false; // Reset for next mount
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]); // Removed 'router' from dependencies to prevent re-renders
+  }, [roomId, isPasswordVerified]); // Re-run when password is verified
+
+  // Handle password submission
+  const handlePasswordSubmit = async (password: string) => {
+    setIsVerifyingPassword(true);
+    setPasswordError('');
+    
+    try {
+      // Try backend verification first
+      const result = await apiClient.verifyRoomPassword(roomId, password);
+      
+      if (!result.success) {
+        // Fallback: Check local storage for password (for testing when backend doesn't have the endpoint)
+        const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
+        const localRoomData = roomsData[roomId];
+        
+        if (localRoomData?.password && localRoomData.password === password) {
+          // Password matches locally
+          console.log('✅ Password verified locally');
+        } else {
+          setPasswordError(result.error || 'Incorrect password');
+          setIsVerifyingPassword(false);
+          return;
+        }
+      }
+      
+      // Password verified - close modal and proceed
+      console.log('🔓 Password verified, proceeding to room');
+      setShowPasswordModal(false);
+      setIsPasswordVerified(true);
+      toast.success('Password verified!');
+    } catch (error) {
+      console.error('❌ Error verifying password:', error);
+      setPasswordError('Failed to verify password');
+    } finally {
+      setIsVerifyingPassword(false);
+    }
+  };
+
+  // Handle password modal close (go back to chat list)
+  const handlePasswordModalClose = () => {
+    setShowPasswordModal(false);
+    router.push('/chat');
+  };
 
   // React to avatar changes from profile page (localStorage updates)
   useEffect(() => {
@@ -2351,6 +2440,16 @@ export default function RoomPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Password Modal for password-protected rooms */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        roomName={roomName}
+        onClose={handlePasswordModalClose}
+        onSubmit={handlePasswordSubmit}
+        isLoading={isVerifyingPassword}
+        error={passwordError}
+      />
     </div>
   );
 }

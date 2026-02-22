@@ -332,3 +332,90 @@ apiClient.getRooms("Gaming");
 - [ ] Run database migration
 - [ ] Deploy updated endpoints
 - [ ] Test with frontend
+
+---
+
+## 5. Password-Protected Rooms Implementation
+
+### Overview
+
+Rooms with `privacy: "password"` require users to enter a password before joining.
+
+### Database Migration
+
+```sql
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+```
+
+### Updated CreateRoomRequest
+
+```python
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class CreateRoomRequest(BaseModel):
+    name: str
+    thumbnail_url: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    privacy: Optional[str] = "public"
+    max_members: Optional[int] = 50
+    password: Optional[str] = None  # Required when privacy="password"
+```
+
+### Password Hashing in POST /rooms
+
+```python
+@router.post("/rooms")
+async def create_room(req: CreateRoomRequest):
+    # ... existing validation ...
+    
+    password_hash = None
+    if req.privacy == "password":
+        if not req.password or len(req.password) < 4:
+            raise HTTPException(400, "Password must be at least 4 characters")
+        password_hash = pwd_context.hash(req.password)
+    
+    room = {
+        # ... other fields ...
+        "password_hash": password_hash,
+    }
+    
+    # IMPORTANT: Remove password_hash before returning
+    response = dict(room)
+    response.pop("password_hash", None)
+    return response
+```
+
+### New Endpoint: POST /rooms/{room_id}/verify-password
+
+```python
+class VerifyPasswordRequest(BaseModel):
+    password: str
+
+@router.post("/rooms/{room_id}/verify-password")
+async def verify_room_password(room_id: str, req: VerifyPasswordRequest):
+    room = await db.rooms.find_one({"id": room_id})
+    if not room:
+        raise HTTPException(404, "Room not found")
+    
+    if room.get("privacy") != "password":
+        return {"success": True}  # Non-password rooms don't need verification
+    
+    if not pwd_context.verify(req.password, room.get("password_hash", "")):
+        raise HTTPException(401, "Incorrect password")
+    
+    return {"success": True}
+```
+
+### Password Checklist
+
+- [ ] Add `password_hash` column to rooms table
+- [ ] Accept `password` field in POST /rooms
+- [ ] Hash password using bcrypt before storing
+- [ ] Never return password_hash in API responses
+- [ ] Implement POST /rooms/{id}/verify-password endpoint
+- [ ] Return 401 for incorrect passwords
+- [ ] Return 200 for correct passwords or non-password rooms

@@ -10,6 +10,7 @@ import { StorageManager } from '@/lib/storage-manager';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import toast from 'react-hot-toast';
 import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoomModal';
+import PasswordModal from '@/components/room/PasswordModal';
 import { updateAvatarEverywhere } from '@/lib/message-utils';
 import { Lock, Users, Globe, Key, Search } from 'lucide-react';
 
@@ -25,6 +26,9 @@ export default function ChatPage() {
   const [, setIsCreating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [passwordModalRoom, setPasswordModalRoom] = useState<Room | null>(null);
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -149,11 +153,32 @@ export default function ChatPage() {
     loadRooms(selectedCategory);
   }, [selectedCategory]);
 
-  const joinRoom = async (room: Room) => {
+  const joinRoom = async (room: Room, skipPasswordCheck = false) => {
     if (!user) {
       toast.error('Please create a user profile first');
       router.push('/');
       return;
+    }
+    
+    // Check if room is password-protected (skip if creator is joining their own room)
+    if (!skipPasswordCheck) {
+      // Get local room data for password info (until backend fully supports it)
+      const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
+      const localRoomData = roomsData[room.id];
+      const roomPrivacy = localRoomData?.privacy || room.privacy;
+      
+      if (roomPrivacy === 'password') {
+        // Show password modal
+        setPasswordError('');
+        setPasswordModalRoom(room);
+        return;
+      }
+      
+      // Check if room is private (can only be accessed by creator or invited users)
+      if (roomPrivacy === 'private') {
+        // For now, allow access - backend should handle proper authorization
+        console.log('🔒 Joining private room:', room.name);
+      }
     }
     
     try {
@@ -166,6 +191,45 @@ export default function ChatPage() {
     } catch (error) {
       console.error('❌ Error navigating to room:', error);
       toast.error('Failed to join room. Please try again.');
+    }
+  };
+
+  const handlePasswordSubmit = async (password: string) => {
+    if (!passwordModalRoom || !user) return;
+    
+    setIsVerifyingPassword(true);
+    setPasswordError('');
+    
+    try {
+      // First try backend verification
+      const result = await apiClient.verifyRoomPassword(passwordModalRoom.id, password);
+      
+      if (!result.success) {
+        // Fallback: Check local storage for password (for testing when backend doesn't have the endpoint)
+        const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
+        const localRoomData = roomsData[passwordModalRoom.id];
+        
+        if (localRoomData?.password && localRoomData.password === password) {
+          // Password matches locally
+          console.log('✅ Password verified locally');
+        } else {
+          setPasswordError(result.error || 'Incorrect password');
+          setIsVerifyingPassword(false);
+          return;
+        }
+      }
+      
+      // Password verified - proceed to join
+      console.log('🚪 Password verified, joining room:', passwordModalRoom.name);
+      setPasswordModalRoom(null);
+      
+      router.push(`/room/${passwordModalRoom.id}?name=${encodeURIComponent(passwordModalRoom.name)}`);
+      toast.success(`Joining ${passwordModalRoom.name}...`);
+    } catch (error) {
+      console.error('❌ Error verifying password:', error);
+      setPasswordError('Failed to verify password');
+    } finally {
+      setIsVerifyingPassword(false);
     }
   };
 
@@ -190,10 +254,11 @@ export default function ChatPage() {
         tags: roomData.tags,
         privacy: roomData.privacy,
         maxMembers: roomData.maxMembers,
+        password: roomData.password, // Include password for password-protected rooms
       });
       
       // Enhance room with additional data
-      const enhancedRoom = {
+      const enhancedRoom: Room = {
         ...room,
         description: roomData.description,
         thumbnail: room.thumbnail_url || thumbnail, // Prefer backend thumbnail_url
@@ -206,9 +271,16 @@ export default function ChatPage() {
         onlineCount: 1,
       };
       
+      // Store room data in localStorage with quota handling
+      // Include password for local fallback verification (until backend supports it)
+      const roomDataToStore: Record<string, unknown> = { ...enhancedRoom };
+      if (roomData.privacy === 'password' && roomData.password) {
+        roomDataToStore.password = roomData.password;
+      }
+      
       // Store extended data in localStorage with quota handling
       const roomsData = StorageManager.getItem('rooms-data', {}) as Record<string, any>;
-      roomsData[room.id] = enhancedRoom;
+      roomsData[room.id] = roomDataToStore;
       const success = StorageManager.setItem('rooms-data', roomsData);
       
       if (!success) {
@@ -219,7 +291,8 @@ export default function ChatPage() {
       setShowCreateModal(false);
       // Optimistically insert into list and navigate
       setRooms(prev => [enhancedRoom, ...prev]);
-      joinRoom(enhancedRoom);
+      // Skip password check - creator doesn't need to enter password for their own room
+      joinRoom(enhancedRoom, true);
     } catch (error) {
       console.error('❌ Error creating room:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create room');
@@ -573,6 +646,19 @@ export default function ChatPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreateRoom={createRoom}
+      />
+
+      {/* Password Entry Modal */}
+      <PasswordModal
+        isOpen={!!passwordModalRoom}
+        roomName={passwordModalRoom?.name || ''}
+        onClose={() => {
+          setPasswordModalRoom(null);
+          setPasswordError('');
+        }}
+        onSubmit={handlePasswordSubmit}
+        isLoading={isVerifyingPassword}
+        error={passwordError}
       />
     </div>
   );
