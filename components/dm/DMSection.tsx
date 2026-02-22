@@ -775,11 +775,11 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         currentUserId={currentUser.id}
       />
 
-      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 md:rounded-xl border-0 md:border border-slate-700/50 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto pt-[env(safe-area-inset-top)] md:pt-0">
+      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 md:rounded-xl border-0 md:border border-slate-700/50 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto">
         {/* Sidebar - Contact List */}
         <div className={`w-full md:w-80 md:min-w-[280px] bg-slate-900/95 md:bg-slate-900/60 border-r-0 md:border-r border-slate-700/50 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 pt-4 md:p-4 border-b border-slate-700/50 flex-shrink-0">
+          <div className="p-3 pt-12 md:p-4 md:pt-4 border-b border-slate-700/50 flex-shrink-0">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <h2 className="text-lg md:text-xl font-bold text-white">Messages</h2>
               <button 
