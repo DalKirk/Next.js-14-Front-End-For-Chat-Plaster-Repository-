@@ -851,11 +851,11 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`group/msg flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                          className={`group/msg flex flex-col w-full ${isMe ? 'items-end' : 'items-start'}`}
                         >
-                          <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                          <div className={`flex items-center gap-2 max-w-[75%] ${isMe ? 'flex-row-reverse' : ''}`}>
                             <div
-                              className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
+                              className={`px-4 py-2.5 rounded-2xl ${
                                 isMe
                                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
                                   : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
