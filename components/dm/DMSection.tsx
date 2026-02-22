@@ -775,11 +775,11 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         currentUserId={currentUser.id}
       />
 
-      <div className="flex h-[calc(100vh-180px)] min-h-[400px] max-h-[800px] md:h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
+      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 md:rounded-xl border-0 md:border border-slate-700/50 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto">
         {/* Sidebar - Contact List */}
-        <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 absolute md:relative inset-0 md:inset-auto z-10 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-80 md:min-w-[280px] bg-slate-900/95 md:bg-slate-900/60 border-r-0 md:border-r border-slate-700/50 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 md:p-4 border-b border-slate-700/50">
+          <div className="p-3 md:p-4 border-b border-slate-700/50 flex-shrink-0">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <h2 className="text-lg md:text-xl font-bold text-white">Messages</h2>
               <button 
@@ -821,7 +821,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   key={contact.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`group flex items-center gap-2 md:gap-3 p-2.5 md:p-3 mx-1.5 md:mx-2 my-0.5 md:my-1 rounded-lg cursor-pointer transition-all ${
+                  className={`group flex items-center gap-2 p-2 mx-1 my-0.5 rounded-lg cursor-pointer transition-all ${
                     activeConversation === contact.id
                       ? 'bg-cyan-400/10 border-l-2 border-cyan-400'
                       : 'hover:bg-slate-800/50 active:bg-slate-800/70'
@@ -830,7 +830,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 >
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl overflow-hidden border border-slate-600/50">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-600/50">
                       <ResponsiveAvatar
                         avatarUrls={contact.avatar_urls || (contact.avatar_url ? { thumbnail: contact.avatar_url, small: contact.avatar_url, medium: contact.avatar_url, large: contact.avatar_url } : undefined)}
                         username={contact.username}
@@ -838,35 +838,35 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${statusColors[contact.status]}`} />
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${statusColors[contact.status]}`} />
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-white text-sm truncate">{contact.username}</span>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-semibold text-white text-sm truncate max-w-[120px]">{contact.username}</span>
                       {lastMsg && lastMsg.timestamp && (
-                        <span className="text-xs text-slate-500">{formatTime(lastMsg.timestamp)}</span>
+                        <span className="text-[10px] text-slate-500 flex-shrink-0">{formatTime(lastMsg.timestamp)}</span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
                       {getLastMessagePreview(contact.id)}
                     </p>
                   </div>
 
                   {/* Unread Badge & Delete Button */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {contact.unread > 0 && (
-                      <div className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-white">{contact.unread}</span>
+                      <div className="min-w-[18px] h-[18px] px-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-white">{contact.unread}</span>
                       </div>
                     )}
                     <button
                       onClick={(e) => openDeleteConversationModal(contact, e)}
-                      className="flex-shrink-0 w-7 h-7 rounded-lg hover:bg-red-500/20 flex items-center justify-center text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                      className="hidden md:flex flex-shrink-0 w-6 h-6 rounded-lg hover:bg-red-500/20 items-center justify-center text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                       title="Delete conversation"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </motion.div>
@@ -874,23 +874,23 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             })
           )}
         </div>
-      </div>
+        </div>
 
-      {/* Chat Area */}
-      <div className={`flex-1 flex flex-col bg-slate-950/40 ${showMobileList ? 'hidden md:flex' : 'flex'}`}>
+        {/* Chat Area */}
+        <div className={`flex-1 flex flex-col bg-slate-950/40 min-h-0 ${showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
         {activeContact ? (
           <>
-            {/* Chat Header */}
-            <div className="flex items-center gap-2 md:gap-3 p-3 md:p-4 border-b border-slate-700/50 bg-slate-900/60">
+            {/* Chat Header - Fixed at top */}
+            <div className="flex-shrink-0 flex items-center gap-2 p-2 border-b border-slate-700/50 bg-slate-900/95">
               <button 
-                className="md:hidden w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:bg-slate-700 transition-colors flex-shrink-0"
+                className="md:hidden w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:bg-slate-700 transition-colors flex-shrink-0"
                 onClick={() => setShowMobileList(true)}
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={14} />
               </button>
 
               <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl overflow-hidden border border-slate-600/50">
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-600/50">
                   <ResponsiveAvatar
                     avatarUrls={activeContact.avatar_urls || (activeContact.avatar_url ? { thumbnail: activeContact.avatar_url, small: activeContact.avatar_url, medium: activeContact.avatar_url, large: activeContact.avatar_url } : undefined)}
                     username={activeContact.username}
@@ -898,36 +898,27 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${statusColors[activeContact.status]}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${statusColors[activeContact.status]}`} />
               </div>
 
-              <div className="flex-1">
-                <h3 className="font-semibold text-white">{activeContact.username}</h3>
-                <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white text-sm truncate">{activeContact.username}</h3>
+                <p className="text-[10px] text-slate-400 flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${statusColors[activeContact.status]}`} />
-                  {activeContact.status === 'online' ? 'Online' : `Last seen ${activeContact.lastSeen || 'recently'}`}
+                  {activeContact.status === 'online' ? 'Online' : 'Away'}
                 </p>
               </div>
 
-              <div className="flex gap-0.5 md:gap-1 flex-shrink-0">
-                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-800 items-center justify-center text-slate-400 hover:text-white transition-colors" title="Voice call">
-                  <Phone size={18} />
-                </button>
-                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-800 items-center justify-center text-slate-400 hover:text-white transition-colors" title="Video call">
-                  <Video size={18} />
-                </button>
-                <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="More options">
-                  <MoreVertical size={16} className="md:hidden" />
-                  <MoreVertical size={18} className="hidden md:block" />
-                </button>
-              </div>
+              <button className="w-7 h-7 rounded-lg hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="More options">
+                <MoreVertical size={14} />
+              </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-1">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
               {chatMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                  <MessageCircle size={48} className="mb-3 opacity-30" />
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 px-4">
+                  <MessageCircle size={40} className="mb-3 opacity-30" />
                   <p className="text-sm">No messages yet</p>
                   <p className="text-xs text-slate-600 mt-1">Say hello to {activeContact.username}!</p>
                 </div>
@@ -999,42 +990,41 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               )}
             </div>
 
-            {/* Input Area */}
-            <div className="p-2 md:p-4 border-t border-slate-700/50 bg-slate-900/60">
-              <div className="flex items-end gap-1 md:gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all">
+            {/* Input Area - Fixed at bottom */}
+            <div className="flex-shrink-0 p-2 md:p-3 border-t border-slate-700/50 bg-slate-900/95">
+              <div className="flex items-end gap-1.5 md:gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
                 <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-700 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
                   <Paperclip size={18} />
                 </button>
                 <textarea
                   rows={1}
-                  placeholder={`Message ${activeContact.username}...`}
+                  placeholder={`Message...`}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-1 bg-transparent text-white placeholder-slate-500 text-[13px] md:text-sm resize-none outline-none max-h-24 py-2 px-2 md:px-0"
-                  style={{ minHeight: '36px' }}
+                  className="flex-1 min-w-0 bg-transparent text-white placeholder-slate-500 text-sm resize-none outline-none max-h-20 py-1.5 px-2"
+                  style={{ minHeight: '32px' }}
                 />
-                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-700 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Add emoji">
-                  <Smile size={18} />
-                </button>
                 <button
                   onClick={handleSend}
                   disabled={!inputText.trim()}
-                  className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] active:scale-95 transition-all flex-shrink-0"
+                  className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all flex-shrink-0"
                   title="Send message"
                 >
-                  <Send size={16} />
+                  <Send size={14} className="md:hidden" />
+                  <Send size={16} className="hidden md:block" />
                 </button>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-            <MessageCircle size={64} className="mb-4 opacity-20" />
-            <p className="text-lg font-medium">Select a conversation</p>
-            <p className="text-sm text-slate-600 mt-1">Choose from your existing conversations or start a new one</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-4">
+            <MessageCircle size={48} className="mb-4 opacity-20" />
+            <p className="text-base font-medium text-center">Select a conversation</p>
+            <p className="text-xs text-slate-600 mt-1 text-center">Choose from your existing conversations or start a new one</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Delete Conversation Confirmation Modal */}
