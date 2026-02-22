@@ -157,6 +157,8 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       const msgs = StorageManager.getMessages(currentUser.id, contact.id);
       messagesMap[contact.id] = msgs.map(m => ({
         ...m,
+        // Ensure timestamp exists (fallback for old messages)
+        timestamp: m.timestamp || new Date().toISOString(),
         from: m.sender_id === currentUser.id ? 'me' : 'them',
       }));
     });
@@ -404,16 +406,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   const chatMessages = activeConversation ? (messages[activeConversation] || []) : [];
 
   const formatTime = (timestamp: string | undefined) => {
-    if (!timestamp) return '';
+    if (!timestamp) return 'now';
     const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '';
+    if (isNaN(date.getTime())) return 'now';
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
   const formatDate = (timestamp: string | undefined) => {
-    if (!timestamp) return '';
+    if (!timestamp) return 'Today';
     const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '';
+    if (isNaN(date.getTime())) return 'Today';
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
