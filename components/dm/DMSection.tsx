@@ -779,7 +779,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         {/* Sidebar - Contact List */}
         <div className={`w-full md:w-80 md:min-w-[280px] bg-slate-900/95 md:bg-slate-900/60 border-r-0 md:border-r border-slate-700/50 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 pt-12 md:p-4 md:pt-4 border-b border-slate-700/50 flex-shrink-0">
+          <div className="p-3 pt-16 md:p-4 md:pt-4 border-b border-slate-700/50 flex-shrink-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
