@@ -331,9 +331,43 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
 
         // If it's from someone else, update/create contact
         if (!isMyMessage) {
+          // Helper to fetch user profile if we don't have their info
+          const fetchAndUpdateContact = async (userId: string, existingContact?: DMContact) => {
+            try {
+              console.log('[DM] Fetching profile for user:', userId);
+              const profile = await apiClient.getProfile(userId);
+              if (profile) {
+                const contactData: DMContact = {
+                  id: userId,
+                  username: profile.username || profile.display_name || existingContact?.username || 'User',
+                  avatar_url: profile.avatar_url || existingContact?.avatar_url,
+                  avatar_urls: profile.avatar_urls || existingContact?.avatar_urls,
+                  status: 'online' as const,
+                  unread: existingContact ? existingContact.unread + 1 : 1,
+                  conversation_id: incomingMessage.conversation_id || existingContact?.conversation_id,
+                };
+                console.log('[DM] Fetched profile for', contactData.username, '- avatar:', contactData.avatar_url);
+                StorageManager.saveContact(currentUser.id, contactData);
+                setContacts(prev => {
+                  const idx = prev.findIndex(c => c.id === userId);
+                  if (idx >= 0) {
+                    return prev.map(c => c.id === userId ? contactData : c);
+                  } else {
+                    return [contactData, ...prev];
+                  }
+                });
+              }
+            } catch (e) {
+              console.warn('[DM] Failed to fetch profile for', userId, e);
+            }
+          };
+
           setContacts(prev => {
             const existing = prev.find(c => c.id === otherUserId);
             if (existing) {
+              // Check if we need to fetch profile (username is 'User' or no avatar)
+              const needsProfileFetch = existing.username === 'User' || !existing.avatar_url;
+              
               // Update existing contact with latest info from message AND conversation_id
               const updatedContact = {
                 ...existing,
@@ -346,6 +380,12 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               };
               console.log('[DM] Updated contact with conversation_id:', updatedContact.conversation_id);
               StorageManager.saveContact(currentUser.id, updatedContact);
+              
+              // If we still don't have proper username/avatar, fetch from API
+              if (needsProfileFetch || updatedContact.username === 'User' || !updatedContact.avatar_url) {
+                fetchAndUpdateContact(otherUserId, updatedContact);
+              }
+              
               return prev.map(c => c.id === otherUserId ? updatedContact : c);
             } else {
               // Create new contact from message
@@ -360,6 +400,10 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               };
               console.log('[DM] Created new contact with conversation_id:', newContact.conversation_id);
               StorageManager.saveContact(currentUser.id, newContact);
+              
+              // Always fetch profile for new contacts to get proper username/avatar
+              fetchAndUpdateContact(otherUserId, newContact);
+              
               return [newContact, ...prev];
             }
           });
