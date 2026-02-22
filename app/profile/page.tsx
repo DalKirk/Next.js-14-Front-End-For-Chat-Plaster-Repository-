@@ -28,7 +28,7 @@ import {
   User, MessageSquare, Zap, Pencil, X, Palette,
   Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
   Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus, Mail,
-  Calendar, Clock, Plus, Video,
+  Calendar, Clock, Plus, Video, ImageIcon,
 } from 'lucide-react';
 import {
   fontPresets, presetThemes, glassStyles, ParticleShapes,
@@ -198,13 +198,16 @@ function ProfilePageContent() {
   // Scheduled shows state
   const [scheduledShows, setScheduledShows] = useState<ScheduledShow[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [editingShow, setEditingShow] = useState<ScheduledShow | null>(null);
   const [newShow, setNewShow] = useState<Partial<ScheduledShow>>({
     title: '',
     description: '',
     scheduledAt: '',
     duration: 60,
     category: 'Social',
+    thumbnail: '',
   });
+  const showThumbnailInputRef = useRef<HTMLInputElement>(null);
 
   // Load scheduled shows from localStorage when profile loads
   useEffect(() => {
@@ -1247,36 +1250,125 @@ function ProfilePageContent() {
                           <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
                             <Calendar className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Scheduled Shows
                           </h3>
-                          <button
-                            onClick={() => setShowScheduleForm(!showScheduleForm)}
-                            className="px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs sm:text-sm transition-all hover:scale-105"
-                            style={{ background: liveTheme.accent, color: '#fff' }}
-                          >
-                            <Plus className="w-3.5 h-3.5" /> New Show
-                          </button>
+                          {!editingShow && (
+                            <button
+                              onClick={() => {
+                                setShowScheduleForm(!showScheduleForm);
+                                setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
+                              }}
+                              className="px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs sm:text-sm transition-all hover:scale-105"
+                              style={{ background: liveTheme.accent, color: '#fff' }}
+                            >
+                              <Plus className="w-3.5 h-3.5" /> New Show
+                            </button>
+                          )}
                         </div>
 
-                        {/* New Show Form */}
-                        {showScheduleForm && (
+                        {/* Hidden file input for thumbnail */}
+                        <input
+                          type="file"
+                          ref={showThumbnailInputRef}
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                toast.error('Image must be under 2MB');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const dataUrl = ev.target?.result as string;
+                                if (editingShow) {
+                                  setEditingShow({ ...editingShow, thumbnail: dataUrl });
+                                } else {
+                                  setNewShow({ ...newShow, thumbnail: dataUrl });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+
+                        {/* New Show / Edit Show Form */}
+                        {(showScheduleForm || editingShow) && (
                           <div className="p-4 rounded-xl border space-y-3" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
                             <h4 className="font-medium text-sm flex items-center gap-2" style={{ color: liveTheme.text }}>
-                              <Video className="w-4 h-4" style={{ color: liveTheme.accent }} /> Schedule a New Live
+                              <Video className="w-4 h-4" style={{ color: liveTheme.accent }} /> 
+                              {editingShow ? 'Edit Show' : 'Schedule a New Live'}
                             </h4>
+                            
+                            {/* Thumbnail Upload */}
+                            <div>
+                              <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Show Thumbnail</label>
+                              <div className="flex items-start gap-3">
+                                <div 
+                                  className="w-32 h-20 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:border-opacity-80 transition-colors overflow-hidden"
+                                  style={{ 
+                                    borderColor: 'rgba(255,255,255,0.2)',
+                                    background: (editingShow?.thumbnail || newShow.thumbnail) ? 'transparent' : 'rgba(255,255,255,0.05)'
+                                  }}
+                                  onClick={() => showThumbnailInputRef.current?.click()}
+                                >
+                                  {(editingShow?.thumbnail || newShow.thumbnail) ? (
+                                    <img 
+                                      src={editingShow?.thumbnail || newShow.thumbnail} 
+                                      alt="Thumbnail preview" 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="text-center p-2">
+                                      <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-40" style={{ color: liveTheme.text }} />
+                                      <span className="text-[10px] opacity-40" style={{ color: liveTheme.text }}>Add image</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {(editingShow?.thumbnail || newShow.thumbnail) && (
+                                  <button
+                                    onClick={() => {
+                                      if (editingShow) {
+                                        setEditingShow({ ...editingShow, thumbnail: undefined });
+                                      } else {
+                                        setNewShow({ ...newShow, thumbnail: '' });
+                                      }
+                                    }}
+                                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400 text-xs"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Show Title *</label>
                                 <Input
                                   placeholder="My Awesome Stream"
-                                  value={newShow.title || ''}
-                                  onChange={(e) => setNewShow({ ...newShow, title: e.target.value })}
+                                  value={editingShow?.title || newShow.title || ''}
+                                  onChange={(e) => {
+                                    if (editingShow) {
+                                      setEditingShow({ ...editingShow, title: e.target.value });
+                                    } else {
+                                      setNewShow({ ...newShow, title: e.target.value });
+                                    }
+                                  }}
                                   className="bg-white/5 text-sm"
                                 />
                               </div>
                               <div>
                                 <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Category</label>
                                 <select
-                                  value={newShow.category || 'Social'}
-                                  onChange={(e) => setNewShow({ ...newShow, category: e.target.value })}
+                                  value={editingShow?.category || newShow.category || 'Social'}
+                                  onChange={(e) => {
+                                    if (editingShow) {
+                                      setEditingShow({ ...editingShow, category: e.target.value });
+                                    } else {
+                                      setNewShow({ ...newShow, category: e.target.value });
+                                    }
+                                  }}
                                   className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
                                   style={{ color: liveTheme.text }}
                                 >
@@ -1290,8 +1382,14 @@ function ProfilePageContent() {
                               <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Description</label>
                               <Textarea
                                 placeholder="What's your show about?"
-                                value={newShow.description || ''}
-                                onChange={(e) => setNewShow({ ...newShow, description: e.target.value })}
+                                value={editingShow?.description || newShow.description || ''}
+                                onChange={(e) => {
+                                  if (editingShow) {
+                                    setEditingShow({ ...editingShow, description: e.target.value });
+                                  } else {
+                                    setNewShow({ ...newShow, description: e.target.value });
+                                  }
+                                }}
                                 className="bg-white/5 text-sm min-h-[60px]"
                                 rows={2}
                               />
@@ -1301,8 +1399,14 @@ function ProfilePageContent() {
                                 <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Date & Time *</label>
                                 <Input
                                   type="datetime-local"
-                                  value={newShow.scheduledAt || ''}
-                                  onChange={(e) => setNewShow({ ...newShow, scheduledAt: e.target.value })}
+                                  value={editingShow?.scheduledAt || newShow.scheduledAt || ''}
+                                  onChange={(e) => {
+                                    if (editingShow) {
+                                      setEditingShow({ ...editingShow, scheduledAt: e.target.value });
+                                    } else {
+                                      setNewShow({ ...newShow, scheduledAt: e.target.value });
+                                    }
+                                  }}
                                   className="bg-white/5 text-sm"
                                   min={new Date().toISOString().slice(0, 16)}
                                 />
@@ -1312,8 +1416,15 @@ function ProfilePageContent() {
                                 <Input
                                   type="number"
                                   placeholder="60"
-                                  value={newShow.duration || 60}
-                                  onChange={(e) => setNewShow({ ...newShow, duration: parseInt(e.target.value) || 60 })}
+                                  value={editingShow?.duration || newShow.duration || 60}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 60;
+                                    if (editingShow) {
+                                      setEditingShow({ ...editingShow, duration: val });
+                                    } else {
+                                      setNewShow({ ...newShow, duration: val });
+                                    }
+                                  }}
                                   className="bg-white/5 text-sm"
                                   min={15}
                                   max={480}
@@ -1323,34 +1434,54 @@ function ProfilePageContent() {
                             <div className="flex gap-2 pt-2">
                               <button
                                 onClick={() => {
-                                  if (!newShow.title || !newShow.scheduledAt) {
-                                    toast.error('Please fill in title and date/time');
-                                    return;
+                                  if (editingShow) {
+                                    // Update existing show
+                                    if (!editingShow.title || !editingShow.scheduledAt) {
+                                      toast.error('Please fill in title and date/time');
+                                      return;
+                                    }
+                                    const updated = scheduledShows.map(s => 
+                                      s.id === editingShow.id ? editingShow : s
+                                    );
+                                    setScheduledShows(updated);
+                                    localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
+                                    toast.success('Show updated!');
+                                    setEditingShow(null);
+                                  } else {
+                                    // Create new show
+                                    if (!newShow.title || !newShow.scheduledAt) {
+                                      toast.error('Please fill in title and date/time');
+                                      return;
+                                    }
+                                    const show: ScheduledShow = {
+                                      id: `show-${Date.now()}`,
+                                      title: newShow.title,
+                                      description: newShow.description,
+                                      scheduledAt: newShow.scheduledAt,
+                                      duration: newShow.duration || 60,
+                                      category: newShow.category || 'Social',
+                                      thumbnail: newShow.thumbnail,
+                                      status: 'scheduled',
+                                    };
+                                    const newShows = [...scheduledShows, show];
+                                    setScheduledShows(newShows);
+                                    localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(newShows));
+                                    toast.success('Show scheduled!');
+                                    setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
+                                    setShowScheduleForm(false);
                                   }
-                                  const show: ScheduledShow = {
-                                    id: `show-${Date.now()}`,
-                                    title: newShow.title,
-                                    description: newShow.description,
-                                    scheduledAt: newShow.scheduledAt,
-                                    duration: newShow.duration || 60,
-                                    category: newShow.category || 'Social',
-                                    status: 'scheduled',
-                                  };
-                                  setScheduledShows([...scheduledShows, show]);
-                                  // Save to localStorage for now (backend will store in production)
-                                  const existing = JSON.parse(localStorage.getItem(`scheduled-shows-${profile?.id}`) || '[]');
-                                  localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify([...existing, show]));
-                                  toast.success('Show scheduled!');
-                                  setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social' });
-                                  setShowScheduleForm(false);
                                 }}
                                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105"
                                 style={{ background: liveTheme.accent, color: '#fff' }}
                               >
-                                Schedule Show
+                                {editingShow ? 'Save Changes' : 'Schedule Show'}
                               </button>
                               <button
-                                onClick={() => setShowScheduleForm(false)}
+                                onClick={() => {
+                                  setShowScheduleForm(false);
+                                  setEditingShow(null);
+                                  setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
+                                }}
                                 className="px-4 py-2 rounded-lg font-medium text-sm border"
                                 style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}
                               >
@@ -1361,72 +1492,102 @@ function ProfilePageContent() {
                         )}
 
                         {/* Upcoming Shows List */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: liveTheme.text, opacity: 0.8 }}>
-                            <Clock className="w-3.5 h-3.5" /> Upcoming Shows
-                          </h4>
-                          {scheduledShows.filter(s => s.status === 'scheduled').length === 0 ? (
-                            <div className="text-center py-8 rounded-xl border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                              <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" style={{ color: liveTheme.text }} />
-                              <p className="text-sm" style={{ color: liveTheme.text, opacity: 0.5 }}>No upcoming shows scheduled</p>
-                              <p className="text-xs mt-1" style={{ color: liveTheme.text, opacity: 0.3 }}>Click "New Show" to schedule your first live!</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {scheduledShows
-                                .filter(s => s.status === 'scheduled')
-                                .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                                .map(show => (
-                                  <div
-                                    key={show.id}
-                                    className="p-3 rounded-lg border flex items-start justify-between gap-3"
-                                    style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h5>
-                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.accent }}>
-                                          <Calendar className="w-3 h-3" />
-                                          {new Date(show.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                        </span>
-                                        <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.text, opacity: 0.6 }}>
-                                          <Clock className="w-3 h-3" />
-                                          {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                        </span>
-                                        {show.duration && (
-                                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.1)', color: liveTheme.text, opacity: 0.6 }}>
-                                            {show.duration}min
-                                          </span>
-                                        )}
-                                        {show.category && (
-                                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
-                                            {show.category}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {show.description && (
-                                        <p className="text-xs mt-1.5 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
-                                      )}
-                                    </div>
-                                    <button
-                                      onClick={() => {
-                                        const updated = scheduledShows.map(s => 
-                                          s.id === show.id ? { ...s, status: 'cancelled' as const } : s
-                                        );
-                                        setScheduledShows(updated);
-                                        localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
-                                        toast.success('Show cancelled');
-                                      }}
-                                      className="p-1.5 rounded hover:bg-red-500/20 transition-colors text-red-400"
-                                      title="Cancel show"
+                        {!editingShow && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: liveTheme.text, opacity: 0.8 }}>
+                              <Clock className="w-3.5 h-3.5" /> Upcoming Shows
+                            </h4>
+                            {scheduledShows.filter(s => s.status === 'scheduled').length === 0 ? (
+                              <div className="text-center py-8 rounded-xl border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                                <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" style={{ color: liveTheme.text }} />
+                                <p className="text-sm" style={{ color: liveTheme.text, opacity: 0.5 }}>No upcoming shows scheduled</p>
+                                <p className="text-xs mt-1" style={{ color: liveTheme.text, opacity: 0.3 }}>Click "New Show" to schedule your first live!</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {scheduledShows
+                                  .filter(s => s.status === 'scheduled')
+                                  .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                                  .map(show => (
+                                    <div
+                                      key={show.id}
+                                      className="p-3 rounded-lg border overflow-hidden"
+                                      style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
                                     >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
+                                      <div className="flex gap-3">
+                                        {/* Thumbnail */}
+                                        <div 
+                                          className="w-24 h-16 sm:w-32 sm:h-20 rounded-lg flex-shrink-0 bg-cover bg-center border"
+                                          style={{ 
+                                            backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            borderColor: 'rgba(255,255,255,0.1)'
+                                          }}
+                                        >
+                                          {!show.thumbnail && (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                              <Video className="w-6 h-6 opacity-50" style={{ color: '#fff' }} />
+                                            </div>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Show Info */}
+                                        <div className="flex-1 min-w-0">
+                                          <h5 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h5>
+                                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.accent }}>
+                                              <Calendar className="w-3 h-3" />
+                                              {new Date(show.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                            </span>
+                                            <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.text, opacity: 0.6 }}>
+                                              <Clock className="w-3 h-3" />
+                                              {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                            </span>
+                                            {show.category && (
+                                              <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
+                                                {show.category}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {show.description && (
+                                            <p className="text-xs mt-1 line-clamp-1" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Actions */}
+                                        <div className="flex flex-col gap-1">
+                                          <button
+                                            onClick={() => {
+                                              setEditingShow(show);
+                                              setShowScheduleForm(false);
+                                            }}
+                                            className="p-1.5 rounded hover:bg-white/10 transition-colors"
+                                            style={{ color: liveTheme.accent }}
+                                            title="Edit show"
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              const updated = scheduledShows.map(s => 
+                                                s.id === show.id ? { ...s, status: 'cancelled' as const } : s
+                                              );
+                                              setScheduledShows(updated);
+                                              localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
+                                              toast.success('Show cancelled');
+                                            }}
+                                            className="p-1.5 rounded hover:bg-red-500/20 transition-colors text-red-400"
+                                            title="Cancel show"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Info about backend storage */}
                         <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
@@ -1715,35 +1876,47 @@ function ProfilePageContent() {
                       {scheduledShows
                         .filter(s => s.status === 'scheduled')
                         .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                        .slice(0, 3)
+                        .slice(0, 6)
                         .map(show => (
                           <div
                             key={show.id}
-                            className="p-3 rounded-xl border"
+                            className="rounded-xl border overflow-hidden"
                             style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
                           >
-                            <div className="flex items-start gap-2">
-                              <div className="p-2 rounded-lg" style={{ background: `${liveTheme.accent}20` }}>
-                                <Video className="w-4 h-4" style={{ color: liveTheme.accent }} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h4>
-                                <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                  </span>
+                            {/* Thumbnail */}
+                            <div 
+                              className="w-full h-24 sm:h-28 bg-cover bg-center"
+                              style={{ 
+                                backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              }}
+                            >
+                              {!show.thumbnail && (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Video className="w-8 h-8 opacity-40" style={{ color: '#fff' }} />
                                 </div>
-                                {show.category && (
-                                  <span className="inline-block mt-1.5 text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
-                                    {show.category}
-                                  </span>
-                                )}
+                              )}
+                            </div>
+                            {/* Show Info */}
+                            <div className="p-3">
+                              <h4 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h4>
+                              <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>
+                                <span className="flex items-center gap-1" style={{ color: liveTheme.accent }}>
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                </span>
                               </div>
+                              {show.category && (
+                                <span className="inline-block mt-2 text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
+                                  {show.category}
+                                </span>
+                              )}
+                              {show.description && (
+                                <p className="text-xs mt-2 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                              )}
                             </div>
                           </div>
                         ))}

@@ -10,6 +10,7 @@ Users can schedule upcoming live shows from their profile. The backend needs to:
 1. Store scheduled shows in the database
 2. Provide CRUD endpoints for scheduled shows
 3. Return scheduled shows when fetching user profiles
+4. Support thumbnail images for shows (base64 or URL)
 
 ---
 
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS scheduled_shows (
     scheduled_at TIMESTAMP NOT NULL,
     duration INTEGER DEFAULT 60,  -- minutes
     category VARCHAR(100),
-    thumbnail TEXT,
+    thumbnail TEXT,  -- Can store base64 data URL or CDN URL
     status VARCHAR(50) DEFAULT 'scheduled',  -- scheduled, live, completed, cancelled
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
