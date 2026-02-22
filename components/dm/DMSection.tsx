@@ -4,12 +4,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Send, Paperclip, Smile, Phone, Video, MoreVertical, 
-  ArrowLeft, Plus, MessageCircle, Check, CheckCheck 
+  ArrowLeft, Plus, MessageCircle, Check, CheckCheck, Trash2, X 
 } from 'lucide-react';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { User } from '@/lib/types';
 import UserSearchModal from './UserSearchModal';
 import { dmSocketManager } from '@/lib/dmSocket';
+import { apiClient } from '@/lib/api';
 
 export interface DMContact {
   id: string;
@@ -130,6 +131,47 @@ const StorageManager = {
       console.warn('Failed to save contact to localStorage:', e);
     }
   },
+  
+  markMessagesAsRead: (userId: string, otherUserId: string) => {
+    try {
+      const key = `dm-messages-${getConversationKey(userId, otherUserId)}`;
+      const messages = StorageManager.getMessages(userId, otherUserId);
+      // Mark all messages from other user as read
+      const updated = messages.map(m => 
+        m.sender_id === otherUserId ? { ...m, read: true } : m
+      );
+      localStorage.setItem(key, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to mark messages as read in localStorage:', e);
+    }
+  },
+  
+  deleteMessage: (userId: string, otherUserId: string, messageId: string) => {
+    try {
+      const key = `dm-messages-${getConversationKey(userId, otherUserId)}`;
+      const messages = StorageManager.getMessages(userId, otherUserId);
+      const filtered = messages.filter(m => m.id !== messageId);
+      localStorage.setItem(key, JSON.stringify(filtered));
+    } catch (e) {
+      console.warn('Failed to delete message from localStorage:', e);
+    }
+  },
+  
+  deleteConversation: (userId: string, otherUserId: string) => {
+    try {
+      // Delete messages
+      const messagesKey = `dm-messages-${getConversationKey(userId, otherUserId)}`;
+      localStorage.removeItem(messagesKey);
+      
+      // Delete contact
+      const contactsKey = `dm-contacts-${userId}`;
+      const contacts = StorageManager.getContacts(userId);
+      const filtered = contacts.filter(c => c.id !== otherUserId);
+      localStorage.setItem(contactsKey, JSON.stringify(filtered));
+    } catch (e) {
+      console.warn('Failed to delete conversation from localStorage:', e);
+    }
+  },
 };
 
 export default function DMSection({ currentUser, onUnreadCountChange, initialRecipient }: DMSectionProps) {
@@ -142,6 +184,10 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   const [showMobileList, setShowMobileList] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showDeleteConversationModal, setShowDeleteConversationModal] = useState(false);
+  const [deleteConversationTarget, setDeleteConversationTarget] = useState<DMContact | null>(null);
+  const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
+  const [deletingMessage, setDeletingMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialRecipientHandled = useRef(false);
 
@@ -164,6 +210,32 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     });
     setMessages(messagesMap);
     setIsLoading(false);
+
+    // Sync with API to get accurate unread counts from server
+    const syncWithAPI = async () => {
+      try {
+        const data = await apiClient.getConversations(currentUser.id);
+        if (data?.contacts && data.contacts.length > 0) {
+          // Update contacts with server-side unread counts
+          setContacts(prev => {
+            const updated = prev.map(contact => {
+              const serverContact = data.contacts.find((c: any) => c.id === contact.id);
+              if (serverContact) {
+                const updatedContact = { ...contact, unread: serverContact.unread ?? 0 };
+                // Persist to localStorage
+                StorageManager.saveContact(currentUser.id, updatedContact);
+                return updatedContact;
+              }
+              return contact;
+            });
+            return updated;
+          });
+        }
+      } catch (e) {
+        console.warn('[DM] Failed to sync conversations from API:', e);
+      }
+    };
+    syncWithAPI();
 
     // Try to connect to WebSocket for real-time updates (gracefully fails if endpoint doesn't exist)
     try {
@@ -391,19 +463,42 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     }
   };
 
-  const selectConversation = (contactId: string) => {
+  const selectConversation = async (contactId: string) => {
     setActiveConversation(contactId);
     setShowMobileList(false);
     
-    // Mark messages as read
+    // Find the contact to update
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return;
+    
+    // Mark messages as read in UI state
     setContacts(prev =>
       prev.map(c => (c.id === contactId ? { ...c, unread: 0 } : c))
     );
+    
+    // Update contact in localStorage with unread: 0
+    StorageManager.saveContact(currentUser.id, { ...contact, unread: 0 });
+    
+    // Mark individual messages as read in localStorage
+    StorageManager.markMessagesAsRead(currentUser.id, contactId);
+    
+    // Call API to persist read status in database
+    const conversationKey = getConversationKey(currentUser.id, contactId);
+    try {
+      await apiClient.markMessagesRead(conversationKey, currentUser.id);
+    } catch (e) {
+      console.warn('[DM] Failed to mark messages as read via API:', e);
+    }
     
     // Notify sender that messages were read via WebSocket
     if (wsConnected) {
       dmSocketManager.markAsRead(contactId);
     }
+    
+    // Dispatch event to update notification badges
+    window.dispatchEvent(new CustomEvent('dm-messages-read', {
+      detail: { userId: currentUser.id, unreadCount: contacts.reduce((sum, c) => sum + (c.id === contactId ? 0 : c.unread), 0) }
+    }));
   };
 
   const startNewConversation = (userId: string, username: string, avatarUrl?: string, avatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string }) => {
@@ -435,6 +530,70 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   // Handle user selection from search modal
   const handleUserSelect = (user: { id: string; username: string; avatar_url?: string; avatar_urls?: { thumbnail?: string; small?: string; medium?: string; large?: string } }) => {
     startNewConversation(user.id, user.username, user.avatar_url, user.avatar_urls);
+  };
+
+  // Delete a single message
+  const handleDeleteMessage = async (messageId: string, otherUserId: string) => {
+    setDeletingMessage(messageId);
+    setShowMessageMenu(null);
+    
+    try {
+      // Delete from API/database
+      const conversationKey = getConversationKey(currentUser.id, otherUserId);
+      await apiClient.deleteDirectMessage(messageId, currentUser.id);
+      
+      // Delete from localStorage
+      StorageManager.deleteMessage(currentUser.id, otherUserId, messageId);
+      
+      // Update UI state
+      setMessages(prev => ({
+        ...prev,
+        [otherUserId]: (prev[otherUserId] || []).filter(m => m.id !== messageId)
+      }));
+    } catch (e) {
+      console.warn('[DM] Failed to delete message:', e);
+    } finally {
+      setDeletingMessage(null);
+    }
+  };
+
+  // Delete entire conversation (all messages with a user)
+  const handleDeleteConversation = async (contact: DMContact) => {
+    try {
+      // Delete from API/database
+      const conversationKey = getConversationKey(currentUser.id, contact.id);
+      await apiClient.deleteConversation(conversationKey, currentUser.id);
+      
+      // Delete from localStorage
+      StorageManager.deleteConversation(currentUser.id, contact.id);
+      
+      // Update UI state
+      setContacts(prev => prev.filter(c => c.id !== contact.id));
+      setMessages(prev => {
+        const updated = { ...prev };
+        delete updated[contact.id];
+        return updated;
+      });
+      
+      // Clear active conversation if it was deleted
+      if (activeConversation === contact.id) {
+        setActiveConversation(null);
+        setShowMobileList(true);
+      }
+      
+      // Close modal
+      setShowDeleteConversationModal(false);
+      setDeleteConversationTarget(null);
+    } catch (e) {
+      console.warn('[DM] Failed to delete conversation:', e);
+    }
+  };
+
+  // Open delete conversation confirmation
+  const openDeleteConversationModal = (contact: DMContact, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteConversationTarget(contact);
+    setShowDeleteConversationModal(true);
   };
 
   const activeContact = contacts.find(c => c.id === activeConversation);
@@ -549,7 +708,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   key={contact.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`flex items-center gap-3 p-3 mx-2 my-1 rounded-lg cursor-pointer transition-all ${
+                  className={`group flex items-center gap-3 p-3 mx-2 my-1 rounded-lg cursor-pointer transition-all ${
                     activeConversation === contact.id
                       ? 'bg-cyan-400/10 border-l-2 border-cyan-400'
                       : 'hover:bg-slate-800/50'
@@ -582,12 +741,21 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                     </p>
                   </div>
 
-                  {/* Unread Badge */}
-                  {contact.unread > 0 && (
-                    <div className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">{contact.unread}</span>
-                    </div>
-                  )}
+                  {/* Unread Badge & Delete Button */}
+                  <div className="flex items-center gap-2">
+                    {contact.unread > 0 && (
+                      <div className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">{contact.unread}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => openDeleteConversationModal(contact, e)}
+                      className="flex-shrink-0 w-7 h-7 rounded-lg hover:bg-red-500/20 flex items-center justify-center text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete conversation"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })
@@ -667,16 +835,29 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                          className={`group/msg flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                         >
-                          <div
-                            className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
-                              isMe
-                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
-                                : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
-                            }`}
-                          >
-                            <p className="text-sm leading-relaxed break-words">{msg.content}</p>
+                          <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                            <div
+                              className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
+                                isMe
+                                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
+                                  : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed break-words">{msg.content}</p>
+                            </div>
+                            {/* Delete message button - only show for own messages */}
+                            {isMe && (
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id, activeConversation!)}
+                                disabled={deletingMessage === msg.id}
+                                className={`flex-shrink-0 w-6 h-6 rounded-lg hover:bg-red-500/20 flex items-center justify-center text-slate-500 hover:text-red-400 transition-all opacity-0 group-hover/msg:opacity-100 ${deletingMessage === msg.id ? 'opacity-100 animate-pulse' : ''}`}
+                                title="Delete message"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
                           </div>
                           <div className={`flex items-center gap-1 mt-1 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                             <span className="text-[10px] text-slate-600">{formatTime(msg.timestamp)}</span>
@@ -732,6 +913,75 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           </div>
         )}
       </div>
+
+      {/* Delete Conversation Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConversationModal && deleteConversationTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowDeleteConversationModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Delete Conversation</h3>
+                  <p className="text-sm text-slate-400">This action cannot be undone</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl mb-4">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600/50">
+                  <ResponsiveAvatar
+                    avatarUrls={deleteConversationTarget.avatar_urls || (deleteConversationTarget.avatar_url ? { thumbnail: deleteConversationTarget.avatar_url, small: deleteConversationTarget.avatar_url, medium: deleteConversationTarget.avatar_url, large: deleteConversationTarget.avatar_url } : undefined)}
+                    username={deleteConversationTarget.username}
+                    size="small"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <p className="font-medium text-white">{deleteConversationTarget.username}</p>
+                  <p className="text-xs text-slate-400">
+                    {messages[deleteConversationTarget.id]?.length || 0} messages will be deleted
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-300 mb-6">
+                Are you sure you want to delete your entire conversation with <span className="font-semibold text-white">{deleteConversationTarget.username}</span>? 
+                All messages will be permanently removed from both the app and the database.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConversationModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteConversation(deleteConversationTarget)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </>
   );

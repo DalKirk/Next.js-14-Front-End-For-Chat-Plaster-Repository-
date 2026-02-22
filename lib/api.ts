@@ -1246,6 +1246,32 @@ export const apiClient = {
       return [];
     }
   },
+
+  /**
+   * Delete a single direct message
+   */
+  deleteDirectMessage: async (messageId: string, userId: string): Promise<boolean> => {
+    try {
+      await api.delete(`/messages/${messageId}`, { data: { user_id: userId } });
+      return true;
+    } catch (e) {
+      console.warn('❌ Delete message failed:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Delete an entire conversation and all its messages
+   */
+  deleteConversation: async (conversationId: string, userId: string): Promise<boolean> => {
+    try {
+      await api.delete(`/conversations/${conversationId}`, { data: { user_id: userId } });
+      return true;
+    } catch (e) {
+      console.warn('❌ Delete conversation failed:', e);
+      return false;
+    }
+  },
 };
 
 export default apiClient;

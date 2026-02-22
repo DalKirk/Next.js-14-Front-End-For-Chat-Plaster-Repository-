@@ -194,6 +194,44 @@ Get total unread message count for notification badge.
 }
 ```
 
+### DELETE /messages/{message_id}
+
+Delete a single direct message.
+
+**Request Body:**
+```json
+{
+  "user_id": "user-1"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "deleted": true
+}
+```
+
+### DELETE /conversations/{conversation_id}
+
+Delete an entire conversation and all its messages.
+
+**Request Body:**
+```json
+{
+  "user_id": "user-1"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages_deleted": 15
+}
+```
+
 ---
 
 ## 3. Implementation (FastAPI)
@@ -379,6 +417,65 @@ async def get_unread_count(user_id: str):
     })
     
     return {"count": count}
+
+class DeleteMessageRequest(BaseModel):
+    user_id: str
+
+@router.delete("/messages/{message_id}")
+async def delete_message(message_id: str, req: DeleteMessageRequest):
+    """Delete a single direct message."""
+    # Verify the user owns this message (is the sender)
+    message = await db.direct_messages.find_one({"_id": message_id})
+    
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    if message["sender_id"] != req.user_id:
+        raise HTTPException(403, "You can only delete your own messages")
+    
+    await db.direct_messages.delete_one({"_id": message_id})
+    
+    return {
+        "success": True,
+        "deleted": True
+    }
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str, req: DeleteMessageRequest):
+    """Delete an entire conversation and all its messages for a user."""
+    # Verify user is part of this conversation
+    conversation = await db.conversations.find_one({"_id": conversation_id})
+    
+    if not conversation:
+        raise HTTPException(404, "Conversation not found")
+    
+    if req.user_id not in conversation.get("participants", []):
+        raise HTTPException(403, "You are not part of this conversation")
+    
+    # Delete all messages in the conversation
+    result = await db.direct_messages.delete_many({
+        "conversation_id": conversation_id
+    })
+    
+    # Remove conversation participants entry for this user
+    await db.conversation_participants.delete_one({
+        "conversation_id": conversation_id,
+        "user_id": req.user_id
+    })
+    
+    # Check if any participants remain
+    remaining = await db.conversation_participants.count_documents({
+        "conversation_id": conversation_id
+    })
+    
+    # If no participants remain, delete the conversation itself
+    if remaining == 0:
+        await db.conversations.delete_one({"_id": conversation_id})
+    
+    return {
+        "success": True,
+        "messages_deleted": result.deleted_count
+    }
 ```
 
 ---
@@ -407,6 +504,14 @@ apiClient.markMessagesRead(conversationId, userId);
 // Get unread count for notification badge
 apiClient.getUnreadCount(userId);
 // → GET /users/{userId}/unread-count
+
+// Delete a single message
+apiClient.deleteDirectMessage(messageId, userId);
+// → DELETE /messages/{messageId} { user_id }
+
+// Delete entire conversation
+apiClient.deleteConversation(conversationId, userId);
+// → DELETE /conversations/{conversationId} { user_id }
 ```
 
 ---
@@ -439,6 +544,19 @@ apiClient.getUnreadCount(userId);
 - [ ] Returns correct count
 - [ ] Updates after marking messages read
 - [ ] Updates after receiving new messages
+
+### DELETE /messages/{message_id}
+- [ ] Only allows sender to delete their own messages
+- [ ] Returns 403 if user tries to delete someone else's message
+- [ ] Returns 404 if message doesn't exist
+- [ ] Actually removes message from database
+
+### DELETE /conversations/{conversation_id}
+- [ ] Only allows participants to delete conversation
+- [ ] Deletes all messages in conversation
+- [ ] Removes user from conversation participants
+- [ ] Deletes conversation if no participants remain
+- [ ] Returns 403 if user is not a participant
 
 ---
 
@@ -480,8 +598,7 @@ async def handle_connect(user_id):
 - [ ] POST /messages/direct
 - [ ] POST /conversations/{conversation_id}/read
 - [ ] GET /users/{user_id}/unread-count
-
-### Deploy
-- [ ] Run database migration
+- [ ] DELETE /messages/{message_id}
+- [ ] DELETE /conversations/{conversation_id}
 - [ ] Deploy new endpoints
 - [ ] Test with frontend

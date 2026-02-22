@@ -51,10 +51,10 @@ export function MessageNotificationBadge({ userId, onClick, className = '' }: Me
       setUnreadCount(count);
     } catch {
       // Fallback to localStorage
-      const stored = localStorage.getItem(`dm-conversations-${userId}`);
+      const stored = localStorage.getItem(`dm-contacts-${userId}`);
       if (stored) {
-        const data = JSON.parse(stored);
-        const total = (data.contacts || []).reduce((sum: number, c: any) => sum + (c.unread || 0), 0);
+        const contacts = JSON.parse(stored);
+        const total = contacts.reduce((sum: number, c: any) => sum + (c.unread || 0), 0);
         setUnreadCount(total);
       }
     }
