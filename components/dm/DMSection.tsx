@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, Send, Paperclip, Smile, Phone, Video, MoreVertical, 
-  ArrowLeft, Plus, MessageCircle, Check, CheckCheck, Trash2, X 
+  Search, Send, Paperclip, Smile, MoreVertical, 
+  ArrowLeft, MessageCircle, Check, CheckCheck, Trash2, X 
 } from 'lucide-react';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { User } from '@/lib/types';
@@ -780,17 +780,6 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         <div className={`w-full md:w-80 md:min-w-[280px] bg-slate-900/95 md:bg-slate-900/60 border-r-0 md:border-r border-slate-700/50 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
           <div className="p-3 pt-12 md:p-4 md:pt-4 border-b border-slate-700/50 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h2 className="text-lg md:text-xl font-bold text-white">Messages</h2>
-              <button 
-                onClick={() => setShowUserSearch(true)}
-                className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
-                title="New message"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
-            
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
