@@ -140,7 +140,7 @@ function TabButton({ id, label, icon: Icon }: { id: EditTab; label: string; icon
   return (
     <button
       onClick={() => setEditTab(id)}
-      className="px-4 py-2 rounded-xl font-semibold transition-all hover:scale-105 flex items-center gap-2 border-2 text-sm"
+      className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all hover:scale-105 flex items-center gap-1 sm:gap-2 border-2 text-xs sm:text-sm"
       style={{
         background: editTab === id ? liveTheme.accent : 'rgba(255,255,255,0.1)',
         borderColor: editTab === id ? liveTheme.accent : 'rgba(255,255,255,0.2)',
@@ -148,7 +148,7 @@ function TabButton({ id, label, icon: Icon }: { id: EditTab; label: string; icon
         backdropFilter: 'blur(8px)',
       }}
     >
-      <Icon className="w-4 h-4" />{label}
+      <Icon className="w-3 h-3 sm:w-4 sm:h-4" /><span className="hidden xs:inline sm:inline">{label}</span>
     </button>
   );
 }
@@ -879,14 +879,16 @@ function ProfilePageContent() {
       <FloatingParticles />
 
       {/* Top-right navigation buttons */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <Button onClick={() => router.push('/feed')} variant="glass" className="flex items-center gap-2">
-          <Newspaper className="w-4 h-4" />
-          Social Feed
+      <div className="fixed top-4 right-2 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
+        <Button onClick={() => router.push('/feed')} variant="glass" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2">
+          <Newspaper className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Social Feed</span>
+          <span className="sm:hidden">Feed</span>
         </Button>
-        <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4" />
-          Search Chat Rooms
+        <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2">
+          <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Chat Rooms</span>
+          <span className="sm:hidden">Rooms</span>
         </Button>
       </div>
 
@@ -911,11 +913,11 @@ function ProfilePageContent() {
       )}
 
       {/* Main content */}
-      <div className="relative z-10 p-4 sm:p-6 lg:p-8 pt-20 max-w-6xl mx-auto space-y-6">
+      <div className="relative z-10 p-2 sm:p-4 md:p-6 lg:p-8 pt-16 sm:pt-20 max-w-6xl mx-auto space-y-4 sm:space-y-6">
         {/* Back Button */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <Link href="/">
-            <button className="px-4 py-2 rounded-xl font-medium border-2 transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text, backdropFilter: 'blur(8px)' }}>
+            <button className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-sm sm:text-base" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text, backdropFilter: 'blur(8px)' }}>
               ← Back to Home
             </button>
           </Link>
@@ -928,20 +930,20 @@ function ProfilePageContent() {
           <>
             {/* Tab Bar */}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-              <GlassCard className="p-4" refIndex={0}>
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex gap-2 flex-wrap">
+              <GlassCard className="p-2 sm:p-4" refIndex={0}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                  <div className="flex gap-1 sm:gap-2 flex-wrap justify-center sm:justify-start">
                     <TabButton id="profile" label="Profile" icon={User} />
-                    <TabButton id="appearance" label="Appearance" icon={Palette} />
+                    <TabButton id="appearance" label="Theme" icon={Palette} />
                     <TabButton id="fonts" label="Fonts" icon={Type} />
                     <TabButton id="effects" label="Effects" icon={Sparkles} />
                     <TabButton id="security" label="Security" icon={Shield} />
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={handleSaveAll} className="px-5 py-2 rounded-xl font-bold flex items-center gap-2 border-2 transition-all hover:scale-105" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 20px ${liveTheme.accent}80` }}>
-                      <Save className="w-4 h-4" /> Save All
+                  <div className="flex gap-2 justify-center sm:justify-end">
+                    <button onClick={handleSaveAll} className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-lg sm:rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 border-2 transition-all hover:scale-105 text-xs sm:text-sm" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 20px ${liveTheme.accent}80` }}>
+                      <Save className="w-3 h-3 sm:w-4 sm:h-4" /> Save
                     </button>
-                    <button onClick={handleCancelEdit} className="px-5 py-2 rounded-xl font-medium border-2 transition-all hover:scale-105" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
+                    <button onClick={handleCancelEdit} className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-xs sm:text-sm" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
                       Cancel
                     </button>
                   </div>
@@ -949,11 +951,11 @@ function ProfilePageContent() {
               </GlassCard>
             </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* ─── Left: Tab Content ─────────────────────── */}
               <div className="lg:col-span-2">
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                  <GlassCard className="p-6" refIndex={1}>
+                  <GlassCard className="p-3 sm:p-6" refIndex={1}>
                     {/* ══════════ PROFILE TAB ══════════ */}
                     {editTab === 'profile' && (
                       <div className="space-y-5">
@@ -984,37 +986,37 @@ function ProfilePageContent() {
 
                     {/* ══════════ APPEARANCE TAB ══════════ */}
                     {editTab === 'appearance' && (
-                      <div className="space-y-6">
-                        <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Palette className="w-5 h-5" style={{ color: liveTheme.accent }} /> Appearance
+                      <div className="space-y-4 sm:space-y-6">
+                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                          <Palette className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Appearance
                         </h3>
                         {/* Preset / Custom toggle */}
                         <div className="flex gap-2">
-                          <button onClick={() => setThemeMode('presets')} className="px-4 py-2 rounded-xl border-2 font-medium transition-all" style={{ background: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'presets' ? '#fff' : liveTheme.text }}>
-                            <Star className="w-4 h-4 inline mr-1" /> Presets
+                          <button onClick={() => setThemeMode('presets')} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border-2 font-medium transition-all text-xs sm:text-sm" style={{ background: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'presets' ? '#fff' : liveTheme.text }}>
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" /> Presets
                           </button>
-                          <button onClick={() => setThemeMode('custom')} className="px-4 py-2 rounded-xl border-2 font-medium transition-all" style={{ background: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'custom' ? '#fff' : liveTheme.text }}>
-                            <Wand2 className="w-4 h-4 inline mr-1" /> Custom
+                          <button onClick={() => setThemeMode('custom')} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border-2 font-medium transition-all text-xs sm:text-sm" style={{ background: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'custom' ? '#fff' : liveTheme.text }}>
+                            <Wand2 className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" /> Custom
                           </button>
                         </div>
 
                         {themeMode === 'presets' ? (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
                             {Object.entries(presetThemes).map(([key, preset]) => (
-                              <button key={key} onClick={() => setSelectedPreset(key)} className="p-3 rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative overflow-hidden" style={{ background: selectedPreset === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedPreset === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
-                                <div className="h-10 rounded-lg mb-2" style={{ background: preset.gradient }} />
-                                <div className="text-sm font-semibold" style={{ color: liveTheme.text }}>{preset.name}</div>
-                                {selectedPreset === key && (<div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
+                              <button key={key} onClick={() => setSelectedPreset(key)} className="p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative overflow-hidden" style={{ background: selectedPreset === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedPreset === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
+                                <div className="h-8 sm:h-10 rounded-lg mb-1.5 sm:mb-2" style={{ background: preset.gradient }} />
+                                <div className="text-xs sm:text-sm font-semibold truncate" style={{ color: liveTheme.text }}>{preset.name}</div>
+                                {selectedPreset === key && (<div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
                               </button>
                             ))}
                           </div>
                         ) : (
-                          <div className="space-y-5">
+                          <div className="space-y-4 sm:space-y-5">
                             <div>
-                              <label className="block text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Gradient Preview</label>
-                              <div className="h-16 rounded-xl border-2 pointer-events-none" style={{ background: resolveTheme('custom', customTheme.colors, 'custom').gradient, borderColor: 'rgba(255,255,255,0.3)' }} />
+                              <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Gradient Preview</label>
+                              <div className="h-12 sm:h-16 rounded-lg sm:rounded-xl border-2 pointer-events-none" style={{ background: resolveTheme('custom', customTheme.colors, 'custom').gradient, borderColor: 'rgba(255,255,255,0.3)' }} />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
                               {customTheme.colors.map((color, i) => (
                                 <div key={i}>
                                   <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text, opacity: 0.7 }}>Color {i + 1}</label>
@@ -1028,23 +1030,23 @@ function ProfilePageContent() {
                               ))}
                             </div>
                             <div>
-                              <label className="block text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Blur Strength: {customTheme.blurStrength}px</label>
+                              <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Blur Strength: {customTheme.blurStrength}px</label>
                               <input type="range" min="4" max="32" value={customTheme.blurStrength} onChange={(e) => setCustomTheme(prev => ({ ...prev, blurStrength: parseInt(e.target.value) }))} className="w-full h-3 rounded-lg cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
                             </div>
                           </div>
                         )}
 
                         {/* Glass Styles */}
-                        <div className="pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <h4 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                            <Layers className="w-5 h-5" style={{ color: liveTheme.accent }} /> Glass Style
+                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                          <h4 className="text-base sm:text-lg font-bold mb-2 sm:mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                            <Layers className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Glass Style
                           </h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
                             {Object.entries(glassStyles).map(([key, style]) => (
-                              <button key={key} onClick={() => setSelectedGlassStyle(key)} className="p-3 rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative" style={{ background: selectedGlassStyle === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedGlassStyle === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
-                                <div className="font-semibold text-sm mb-1" style={{ color: liveTheme.text }}>{style.name}</div>
-                                <div className="text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Blur: {style.blur}px</div>
-                                {selectedGlassStyle === key && (<div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
+                              <button key={key} onClick={() => setSelectedGlassStyle(key)} className="p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative" style={{ background: selectedGlassStyle === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedGlassStyle === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
+                                <div className="font-semibold text-xs sm:text-sm mb-0.5 sm:mb-1 truncate" style={{ color: liveTheme.text }}>{style.name}</div>
+                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Blur: {style.blur}px</div>
+                                {selectedGlassStyle === key && (<div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
                               </button>
                             ))}
                           </div>
@@ -1054,8 +1056,8 @@ function ProfilePageContent() {
 
                     {/* ══════════ FONTS TAB ══════════ */}
                     {editTab === 'fonts' && (
-                      <div className="space-y-6">
-                        <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                      <div className="space-y-4 sm:space-y-6">
+                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
                           <Type className="w-5 h-5" style={{ color: liveTheme.accent }} /> Typography
                         </h3>
                         {/* Heading Font */}
@@ -1129,52 +1131,52 @@ function ProfilePageContent() {
 
                     {/* ══════════ EFFECTS TAB ══════════ */}
                     {editTab === 'effects' && (
-                      <div className="space-y-5">
-                        <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Sparkles className="w-5 h-5" style={{ color: liveTheme.accent }} /> Effects & Animations
+                      <div className="space-y-4 sm:space-y-5">
+                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Effects
                         </h3>
                         {/* Toggle effects */}
                         {([
-                          { key: 'depthLayers' as const, label: 'Depth Layers', icon: '🎚️', desc: 'Nested border glow layers' },
-                          { key: 'tilt3D' as const, label: '3D Tilt', icon: '🎲', desc: 'Cards tilt on mouse move' },
-                          { key: 'ripple' as const, label: 'Click Ripple', icon: '💧', desc: 'Ripple on click' },
+                          { key: 'depthLayers' as const, label: 'Depth Layers', icon: '🎚️', desc: 'Nested border glow' },
+                          { key: 'tilt3D' as const, label: '3D Tilt', icon: '🎲', desc: 'Cards tilt on hover' },
+                          { key: 'ripple' as const, label: 'Click Ripple', icon: '💧', desc: 'Ripple effect' },
                         ]).map(effect => (
-                          <label key={effect.key} className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-white/5 border transition-all" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                            <span className="flex items-center gap-3" style={{ color: liveTheme.text }}>
-                              <span className="text-xl">{effect.icon}</span>
+                          <label key={effect.key} className="flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl cursor-pointer hover:bg-white/5 border transition-all" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <span className="flex items-center gap-2 sm:gap-3" style={{ color: liveTheme.text }}>
+                              <span className="text-base sm:text-xl">{effect.icon}</span>
                               <span>
-                                <span className="font-medium block">{effect.label}</span>
-                                <span className="text-xs opacity-60">{effect.desc}</span>
+                                <span className="font-medium block text-sm sm:text-base">{effect.label}</span>
+                                <span className="text-[10px] sm:text-xs opacity-60">{effect.desc}</span>
                               </span>
                             </span>
-                            <input type="checkbox" checked={effects[effect.key] as boolean} onChange={(e) => setEffects(prev => ({ ...prev, [effect.key]: e.target.checked }))} className="w-5 h-5 rounded" style={{ accentColor: liveTheme.accent }} />
+                            <input type="checkbox" checked={effects[effect.key] as boolean} onChange={(e) => setEffects(prev => ({ ...prev, [effect.key]: e.target.checked }))} className="w-4 h-4 sm:w-5 sm:h-5 rounded" style={{ accentColor: liveTheme.accent }} />
                           </label>
                         ))}
                         {/* Floating Particles */}
-                        <div className="pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <label className="block text-sm font-medium mb-3" style={{ color: liveTheme.text }}>Floating Particles</label>
-                          <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                          <label className="block text-xs sm:text-sm font-medium mb-2 sm:mb-3" style={{ color: liveTheme.text }}>Floating Particles</label>
+                          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                             {Object.keys(ParticleShapes).map(type => (
-                              <button key={type} onClick={() => setEffects(prev => ({ ...prev, particles: type }))} className="px-3 py-2 rounded-lg border-2 capitalize text-xs transition-all hover:scale-105 flex items-center justify-center gap-1" style={{ background: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === type ? '#ffffff' : liveTheme.text }}>
-                                <span className="w-4 h-4 flex items-center justify-center">{ParticleShapes[type](effects.particles === type ? '#fff' : liveTheme.text)}</span>
-                                {type}
+                              <button key={type} onClick={() => setEffects(prev => ({ ...prev, particles: type }))} className="px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border-2 capitalize text-[10px] sm:text-xs transition-all hover:scale-105 flex items-center justify-center gap-0.5 sm:gap-1" style={{ background: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === type ? '#ffffff' : liveTheme.text }}>
+                                <span className="w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center">{ParticleShapes[type](effects.particles === type ? '#fff' : liveTheme.text)}</span>
+                                <span className="hidden sm:inline">{type}</span>
                               </button>
                             ))}
-                            <button onClick={() => setEffects(prev => ({ ...prev, particles: 'none' }))} className="px-3 py-2 rounded-lg border-2 capitalize text-xs transition-all hover:scale-105" style={{ background: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === 'none' ? '#ffffff' : liveTheme.text }}>
+                            <button onClick={() => setEffects(prev => ({ ...prev, particles: 'none' }))} className="px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border-2 capitalize text-[10px] sm:text-xs transition-all hover:scale-105" style={{ background: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === 'none' ? '#ffffff' : liveTheme.text }}>
                               none
                             </button>
                           </div>
                           {effects.particles !== 'none' && (
-                            <div className="space-y-4">
+                            <div className="space-y-3 sm:space-y-4">
                               <div>
-                                <label className="block text-sm mb-1" style={{ color: liveTheme.text }}>Count: <strong>{effects.particleCount}</strong></label>
+                                <label className="block text-xs sm:text-sm mb-1" style={{ color: liveTheme.text }}>Count: <strong>{effects.particleCount}</strong></label>
                                 <input type="range" min="5" max="40" step="5" value={effects.particleCount} onChange={(e) => setEffects(prev => ({ ...prev, particleCount: parseInt(e.target.value) }))} className="w-full h-3 cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
                               </div>
                               <div>
-                                <label className="block text-sm mb-2" style={{ color: liveTheme.text }}>Speed</label>
-                                <div className="grid grid-cols-3 gap-2">
+                                <label className="block text-xs sm:text-sm mb-2" style={{ color: liveTheme.text }}>Speed</label>
+                                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                                   {['slow', 'medium', 'fast'].map(speed => (
-                                    <button key={speed} onClick={() => setEffects(prev => ({ ...prev, particleSpeed: speed }))} className="px-3 py-2 rounded-lg border capitalize text-sm" style={{ background: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particleSpeed === speed ? '#fff' : liveTheme.text }}>
+                                    <button key={speed} onClick={() => setEffects(prev => ({ ...prev, particleSpeed: speed }))} className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg border capitalize text-xs sm:text-sm" style={{ background: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particleSpeed === speed ? '#fff' : liveTheme.text }}>
                                       {speed}
                                     </button>
                                   ))}
