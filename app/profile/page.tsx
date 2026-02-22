@@ -28,6 +28,7 @@ import {
   User, MessageSquare, Zap, Pencil, X, Palette,
   Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
   Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus, Mail,
+  Calendar, Clock, Plus, Video,
 } from 'lucide-react';
 import {
   fontPresets, presetThemes, glassStyles, ParticleShapes,
@@ -60,7 +61,19 @@ interface UserProfile {
   notifications: boolean;
 }
 
-type EditTab = 'profile' | 'appearance' | 'fonts' | 'effects' | 'security';
+type EditTab = 'profile' | 'appearance' | 'fonts' | 'effects' | 'security' | 'schedule';
+
+// Scheduled show interface
+interface ScheduledShow {
+  id: string;
+  title: string;
+  description?: string;
+  scheduledAt: string; // ISO date string
+  duration?: number; // minutes
+  category?: string;
+  thumbnail?: string;
+  status: 'scheduled' | 'live' | 'completed' | 'cancelled';
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Theme Context + Extracted Sub-Components (stable React identity)
@@ -181,6 +194,44 @@ function ProfilePageContent() {
   // Security state
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
   const [passwordSupported, setPasswordSupported] = useState<boolean | null>(null);
+
+  // Scheduled shows state
+  const [scheduledShows, setScheduledShows] = useState<ScheduledShow[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [newShow, setNewShow] = useState<Partial<ScheduledShow>>({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    duration: 60,
+    category: 'Social',
+  });
+
+  // Load scheduled shows from localStorage when profile loads
+  useEffect(() => {
+    if (profile?.id) {
+      try {
+        const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
+        if (saved) {
+          const shows = JSON.parse(saved) as ScheduledShow[];
+          // Filter out past shows that were scheduled (auto-complete them)
+          const now = new Date();
+          const updated = shows.map(s => {
+            if (s.status === 'scheduled' && new Date(s.scheduledAt) < now) {
+              return { ...s, status: 'completed' as const };
+            }
+            return s;
+          });
+          setScheduledShows(updated);
+          // Update localStorage if any shows were auto-completed
+          if (JSON.stringify(shows) !== JSON.stringify(updated)) {
+            localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(updated));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load scheduled shows:', e);
+      }
+    }
+  }, [profile?.id]);
 
   // ─── Posts state ────────────────────────────────────────────────
   const [myPosts, setMyPosts] = useState<any[]>([]);
@@ -937,6 +988,7 @@ function ProfilePageContent() {
                     <TabButton id="appearance" label="Theme" icon={Palette} />
                     <TabButton id="fonts" label="Fonts" icon={Type} />
                     <TabButton id="effects" label="Effects" icon={Sparkles} />
+                    <TabButton id="schedule" label="Schedule" icon={Calendar} />
                     <TabButton id="security" label="Security" icon={Shield} />
                   </div>
                   <div className="flex gap-2 justify-center sm:justify-end">
@@ -1184,6 +1236,203 @@ function ProfilePageContent() {
                               </div>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ══════════ SCHEDULE TAB ══════════ */}
+                    {editTab === 'schedule' && (
+                      <div className="space-y-4 sm:space-y-5">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Scheduled Shows
+                          </h3>
+                          <button
+                            onClick={() => setShowScheduleForm(!showScheduleForm)}
+                            className="px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs sm:text-sm transition-all hover:scale-105"
+                            style={{ background: liveTheme.accent, color: '#fff' }}
+                          >
+                            <Plus className="w-3.5 h-3.5" /> New Show
+                          </button>
+                        </div>
+
+                        {/* New Show Form */}
+                        {showScheduleForm && (
+                          <div className="p-4 rounded-xl border space-y-3" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <h4 className="font-medium text-sm flex items-center gap-2" style={{ color: liveTheme.text }}>
+                              <Video className="w-4 h-4" style={{ color: liveTheme.accent }} /> Schedule a New Live
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Show Title *</label>
+                                <Input
+                                  placeholder="My Awesome Stream"
+                                  value={newShow.title || ''}
+                                  onChange={(e) => setNewShow({ ...newShow, title: e.target.value })}
+                                  className="bg-white/5 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Category</label>
+                                <select
+                                  value={newShow.category || 'Social'}
+                                  onChange={(e) => setNewShow({ ...newShow, category: e.target.value })}
+                                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
+                                  style={{ color: liveTheme.text }}
+                                >
+                                  {['Gaming', 'Study', 'Social', 'Work', 'Music', 'Art', 'Tech', 'Sports', 'Other'].map(cat => (
+                                    <option key={cat} value={cat} style={{ background: '#1e293b' }}>{cat}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Description</label>
+                              <Textarea
+                                placeholder="What's your show about?"
+                                value={newShow.description || ''}
+                                onChange={(e) => setNewShow({ ...newShow, description: e.target.value })}
+                                className="bg-white/5 text-sm min-h-[60px]"
+                                rows={2}
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Date & Time *</label>
+                                <Input
+                                  type="datetime-local"
+                                  value={newShow.scheduledAt || ''}
+                                  onChange={(e) => setNewShow({ ...newShow, scheduledAt: e.target.value })}
+                                  className="bg-white/5 text-sm"
+                                  min={new Date().toISOString().slice(0, 16)}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Duration (minutes)</label>
+                                <Input
+                                  type="number"
+                                  placeholder="60"
+                                  value={newShow.duration || 60}
+                                  onChange={(e) => setNewShow({ ...newShow, duration: parseInt(e.target.value) || 60 })}
+                                  className="bg-white/5 text-sm"
+                                  min={15}
+                                  max={480}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                onClick={() => {
+                                  if (!newShow.title || !newShow.scheduledAt) {
+                                    toast.error('Please fill in title and date/time');
+                                    return;
+                                  }
+                                  const show: ScheduledShow = {
+                                    id: `show-${Date.now()}`,
+                                    title: newShow.title,
+                                    description: newShow.description,
+                                    scheduledAt: newShow.scheduledAt,
+                                    duration: newShow.duration || 60,
+                                    category: newShow.category || 'Social',
+                                    status: 'scheduled',
+                                  };
+                                  setScheduledShows([...scheduledShows, show]);
+                                  // Save to localStorage for now (backend will store in production)
+                                  const existing = JSON.parse(localStorage.getItem(`scheduled-shows-${profile?.id}`) || '[]');
+                                  localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify([...existing, show]));
+                                  toast.success('Show scheduled!');
+                                  setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social' });
+                                  setShowScheduleForm(false);
+                                }}
+                                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105"
+                                style={{ background: liveTheme.accent, color: '#fff' }}
+                              >
+                                Schedule Show
+                              </button>
+                              <button
+                                onClick={() => setShowScheduleForm(false)}
+                                className="px-4 py-2 rounded-lg font-medium text-sm border"
+                                style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Upcoming Shows List */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: liveTheme.text, opacity: 0.8 }}>
+                            <Clock className="w-3.5 h-3.5" /> Upcoming Shows
+                          </h4>
+                          {scheduledShows.filter(s => s.status === 'scheduled').length === 0 ? (
+                            <div className="text-center py-8 rounded-xl border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                              <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" style={{ color: liveTheme.text }} />
+                              <p className="text-sm" style={{ color: liveTheme.text, opacity: 0.5 }}>No upcoming shows scheduled</p>
+                              <p className="text-xs mt-1" style={{ color: liveTheme.text, opacity: 0.3 }}>Click "New Show" to schedule your first live!</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {scheduledShows
+                                .filter(s => s.status === 'scheduled')
+                                .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                                .map(show => (
+                                  <div
+                                    key={show.id}
+                                    className="p-3 rounded-lg border flex items-start justify-between gap-3"
+                                    style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h5>
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.accent }}>
+                                          <Calendar className="w-3 h-3" />
+                                          {new Date(show.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        </span>
+                                        <span className="text-xs flex items-center gap-1" style={{ color: liveTheme.text, opacity: 0.6 }}>
+                                          <Clock className="w-3 h-3" />
+                                          {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                        </span>
+                                        {show.duration && (
+                                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.1)', color: liveTheme.text, opacity: 0.6 }}>
+                                            {show.duration}min
+                                          </span>
+                                        )}
+                                        {show.category && (
+                                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
+                                            {show.category}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {show.description && (
+                                        <p className="text-xs mt-1.5 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const updated = scheduledShows.map(s => 
+                                          s.id === show.id ? { ...s, status: 'cancelled' as const } : s
+                                        );
+                                        setScheduledShows(updated);
+                                        localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
+                                        toast.success('Show cancelled');
+                                      }}
+                                      className="p-1.5 rounded hover:bg-red-500/20 transition-colors text-red-400"
+                                      title="Cancel show"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Info about backend storage */}
+                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
+                          <p className="text-xs" style={{ color: '#60a5fa' }}>
+                            💡 Scheduled shows are saved locally. In production, they will sync with the backend so followers can see your upcoming lives.
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1454,6 +1703,53 @@ function ProfilePageContent() {
                     </div>
                   </div>
                 </div>
+
+                {/* Upcoming Shows Section (shows for all users) */}
+                {scheduledShows.filter(s => s.status === 'scheduled').length > 0 && (
+                  <div className="mt-6 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                    <h3 className="text-base font-semibold mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                      <Calendar className="w-4 h-4" style={{ color: liveTheme.accent }} /> 
+                      {isViewOnly ? 'Upcoming Lives' : 'My Upcoming Shows'}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {scheduledShows
+                        .filter(s => s.status === 'scheduled')
+                        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                        .slice(0, 3)
+                        .map(show => (
+                          <div
+                            key={show.id}
+                            className="p-3 rounded-xl border"
+                            style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="p-2 rounded-lg" style={{ background: `${liveTheme.accent}20` }}>
+                                <Video className="w-4 h-4" style={{ color: liveTheme.accent }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm truncate" style={{ color: liveTheme.text }}>{show.title}</h4>
+                                <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                {show.category && (
+                                  <span className="inline-block mt-1.5 text-xs px-1.5 py-0.5 rounded" style={{ background: `${liveTheme.accent}20`, color: liveTheme.accent }}>
+                                    {show.category}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </GlassCard>
             </motion.div>
 
