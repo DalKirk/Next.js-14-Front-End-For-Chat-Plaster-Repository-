@@ -591,30 +591,29 @@ export default function ChatPage() {
                     
                     {/* Thumbnail - Clickable Card */}
                     <div 
-                      className="w-full aspect-[4/3] relative rounded-lg overflow-hidden border border-slate-700/50 group-hover:border-cyan-400/60 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
+                      className="w-full aspect-[5/7] relative rounded-lg overflow-hidden border border-slate-700/50 group-hover:border-cyan-400/60 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
                       style={getThumbnailStyle()}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                       
-                      {/* Top right controls - Privacy icon and Kebab menu */}
-                      <div className="absolute top-2 right-2 flex items-center gap-1">
-                        {roomData.privacy && roomData.privacy !== 'public' && (
-                          <div className="p-1 bg-black/60 rounded text-white/80">
-                            {getPrivacyIcon()}
-                          </div>
-                        )}
-                        {/* Kebab menu for description */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDescriptionModal({ isOpen: true, room, roomData });
-                          }}
-                          className="p-1 bg-black/60 hover:bg-black/80 rounded text-white/80 hover:text-white transition-colors"
-                          title="View description"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                      </div>
+                      {/* Privacy icon - top left */}
+                      {roomData.privacy && roomData.privacy !== 'public' && (
+                        <div className="absolute top-2 left-2 p-1 bg-black/60 rounded text-white/80">
+                          {getPrivacyIcon()}
+                        </div>
+                      )}
+                      
+                      {/* Kebab menu - top right */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDescriptionModal({ isOpen: true, room, roomData });
+                        }}
+                        className="absolute top-1 right-1 p-1 text-white/70 hover:text-white transition-colors"
+                        title="View description"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
                       
                       {/* Room name overlay at bottom */}
                       <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3">
