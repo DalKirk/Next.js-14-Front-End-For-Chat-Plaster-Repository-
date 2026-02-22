@@ -209,39 +209,69 @@ function ProfilePageContent() {
   });
   const showThumbnailInputRef = useRef<HTMLInputElement>(null);
 
-  // Load scheduled shows from localStorage when profile loads
-  // Only load for own profile - other users' shows will come from backend in production
+  // Load scheduled shows from backend API (works for both own profile and viewing others)
   useEffect(() => {
-    if (profile?.id && !isViewOnly) {
+    const loadScheduledShows = async () => {
+      const targetUserId = isViewOnly ? viewedUserId : profile?.id;
+      if (!targetUserId) {
+        setScheduledShows([]);
+        return;
+      }
+
       try {
-        const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
-        if (saved) {
-          const shows = JSON.parse(saved) as ScheduledShow[];
-          // Filter out past shows that were scheduled (auto-complete them)
-          const now = new Date();
-          const updated = shows.map(s => {
-            if (s.status === 'scheduled' && new Date(s.scheduledAt) < now) {
-              return { ...s, status: 'completed' as const };
+        // Fetch from backend API
+        const shows = await apiClient.getScheduledShows(targetUserId);
+        
+        // Map backend response to frontend format
+        const mappedShows: ScheduledShow[] = shows.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          description: s.description,
+          scheduledAt: s.scheduled_at,
+          duration: s.duration,
+          category: s.category,
+          thumbnail: s.thumbnail,
+          status: s.status,
+        }));
+        
+        setScheduledShows(mappedShows);
+        
+        // Cache own shows to localStorage as fallback
+        if (!isViewOnly && profile?.id) {
+          localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(mappedShows));
+        }
+      } catch (error) {
+        console.error('Failed to fetch scheduled shows from backend:', error);
+        
+        // Fallback to localStorage for own profile only
+        if (!isViewOnly && profile?.id) {
+          try {
+            const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
+            if (saved) {
+              const shows = JSON.parse(saved) as ScheduledShow[];
+              // Filter out past shows
+              const now = new Date();
+              const updated = shows.map(s => {
+                if (s.status === 'scheduled' && new Date(s.scheduledAt) < now) {
+                  return { ...s, status: 'completed' as const };
+                }
+                return s;
+              });
+              setScheduledShows(updated);
+            } else {
+              setScheduledShows([]);
             }
-            return s;
-          });
-          setScheduledShows(updated);
-          // Update localStorage if any shows were auto-completed
-          if (JSON.stringify(shows) !== JSON.stringify(updated)) {
-            localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(updated));
+          } catch (e) {
+            setScheduledShows([]);
           }
         } else {
           setScheduledShows([]);
         }
-      } catch (e) {
-        console.error('Failed to load scheduled shows:', e);
-        setScheduledShows([]);
       }
-    } else {
-      // Clear shows when viewing other users' profiles (until backend is implemented)
-      setScheduledShows([]);
-    }
-  }, [profile?.id, isViewOnly]);
+    };
+    
+    loadScheduledShows();
+  }, [profile?.id, isViewOnly, viewedUserId]);
 
   // ─── Posts state ────────────────────────────────────────────────
   const [myPosts, setMyPosts] = useState<any[]>([]);
@@ -1440,42 +1470,68 @@ function ProfilePageContent() {
                             </div>
                             <div className="flex gap-2 pt-2">
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   if (editingShow) {
-                                    // Update existing show
+                                    // Update existing show via API
                                     if (!editingShow.title || !editingShow.scheduledAt) {
                                       toast.error('Please fill in title and date/time');
                                       return;
                                     }
-                                    const updated = scheduledShows.map(s => 
-                                      s.id === editingShow.id ? editingShow : s
-                                    );
-                                    setScheduledShows(updated);
-                                    localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
-                                    toast.success('Show updated!');
-                                    setEditingShow(null);
+                                    try {
+                                      await apiClient.updateScheduledShow(profile!.id, editingShow.id, {
+                                        title: editingShow.title,
+                                        description: editingShow.description,
+                                        scheduledAt: editingShow.scheduledAt,
+                                        duration: editingShow.duration,
+                                        category: editingShow.category,
+                                        thumbnail: editingShow.thumbnail,
+                                      });
+                                      const updated = scheduledShows.map(s => 
+                                        s.id === editingShow.id ? editingShow : s
+                                      );
+                                      setScheduledShows(updated);
+                                      localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
+                                      toast.success('Show updated!');
+                                      setEditingShow(null);
+                                    } catch (e) {
+                                      console.error('Failed to update show:', e);
+                                      toast.error('Failed to update show');
+                                    }
                                   } else {
-                                    // Create new show
+                                    // Create new show via API
                                     if (!newShow.title || !newShow.scheduledAt) {
                                       toast.error('Please fill in title and date/time');
                                       return;
                                     }
-                                    const show: ScheduledShow = {
-                                      id: `show-${Date.now()}`,
-                                      title: newShow.title,
-                                      description: newShow.description,
-                                      scheduledAt: newShow.scheduledAt,
-                                      duration: newShow.duration || 60,
-                                      category: newShow.category || 'Social',
-                                      thumbnail: newShow.thumbnail,
-                                      status: 'scheduled',
-                                    };
-                                    const newShows = [...scheduledShows, show];
-                                    setScheduledShows(newShows);
-                                    localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(newShows));
-                                    toast.success('Show scheduled!');
-                                    setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
-                                    setShowScheduleForm(false);
+                                    try {
+                                      const created = await apiClient.createScheduledShow(profile!.id, {
+                                        title: newShow.title!,
+                                        description: newShow.description,
+                                        scheduledAt: newShow.scheduledAt!,
+                                        duration: newShow.duration || 60,
+                                        category: newShow.category || 'Social',
+                                        thumbnail: newShow.thumbnail,
+                                      });
+                                      const show: ScheduledShow = {
+                                        id: created.id,
+                                        title: created.title,
+                                        description: created.description,
+                                        scheduledAt: created.scheduled_at,
+                                        duration: created.duration,
+                                        category: created.category,
+                                        thumbnail: created.thumbnail,
+                                        status: created.status,
+                                      };
+                                      const newShows = [...scheduledShows, show];
+                                      setScheduledShows(newShows);
+                                      localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(newShows));
+                                      toast.success('Show scheduled!');
+                                      setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
+                                      setShowScheduleForm(false);
+                                    } catch (e) {
+                                      console.error('Failed to create show:', e);
+                                      toast.error('Failed to schedule show');
+                                    }
                                   }
                                 }}
                                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105"
@@ -1577,13 +1633,19 @@ function ProfilePageContent() {
                                             <Pencil className="w-3 h-3" />
                                           </button>
                                           <button
-                                            onClick={() => {
-                                              const updated = scheduledShows.map(s => 
-                                                s.id === show.id ? { ...s, status: 'cancelled' as const } : s
-                                              );
-                                              setScheduledShows(updated);
-                                              localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
-                                              toast.success('Show cancelled');
+                                            onClick={async () => {
+                                              try {
+                                                await apiClient.cancelScheduledShow(profile!.id, show.id);
+                                                const updated = scheduledShows.map(s => 
+                                                  s.id === show.id ? { ...s, status: 'cancelled' as const } : s
+                                                );
+                                                setScheduledShows(updated);
+                                                localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
+                                                toast.success('Show cancelled');
+                                              } catch (e) {
+                                                console.error('Failed to cancel show:', e);
+                                                toast.error('Failed to cancel show');
+                                              }
                                             }}
                                             className="p-1 rounded bg-black/60 hover:bg-red-500/60 transition-colors text-red-400"
                                             title="Cancel show"
@@ -1604,10 +1666,10 @@ function ProfilePageContent() {
                           </div>
                         )}
 
-                        {/* Info about backend storage */}
-                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.05)' }}>
-                          <p className="text-xs" style={{ color: '#fbbf24' }}>
-                            ⚠️ <strong>Local Storage Only:</strong> Shows and thumbnails are saved on this device only. They won't appear on other devices or to other users until backend integration is complete.
+                        {/* Info about syncing */}
+                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
+                          <p className="text-xs" style={{ color: '#60a5fa' }}>
+                            💡 <strong>Synced:</strong> Your scheduled shows are saved to the server and visible to anyone who visits your profile.
                           </p>
                         </div>
                       </div>

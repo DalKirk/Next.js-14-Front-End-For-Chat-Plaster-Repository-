@@ -383,10 +383,105 @@ GET /users/user-123/scheduled-shows?upcoming_only=true&status=scheduled
 
 The frontend currently stores shows in localStorage. Once the backend is ready:
 
-1. Replace localStorage calls with API calls in `app/profile/page.tsx`
-2. Load shows on profile view with `GET /users/{user_id}/scheduled-shows`
-3. Create shows with `POST /users/{user_id}/scheduled-shows`
-4. Cancel shows with `PUT /users/{user_id}/scheduled-shows/{show_id}` (status: 'cancelled')
+### For Own Profile (Edit Mode)
+1. Load shows with `GET /users/{current_user_id}/scheduled-shows`
+2. Create shows with `POST /users/{current_user_id}/scheduled-shows`
+3. Update shows with `PUT /users/{current_user_id}/scheduled-shows/{show_id}`
+4. Cancel shows with `DELETE /users/{current_user_id}/scheduled-shows/{show_id}`
+5. Save to localStorage as fallback cache
+
+### For Viewing Other Users' Profiles
+1. When `isViewOnly === true`, fetch from backend instead of localStorage
+2. Call `GET /users/{viewed_user_id}/scheduled-shows?upcoming_only=true&status=scheduled`
+3. Display shows in "Upcoming Lives" section
+4. No edit/cancel buttons (read-only view)
+
+### Code Changes Required in `app/profile/page.tsx`
+
+Replace the localStorage loading useEffect with API calls:
+
+```typescript
+// Add to apiClient in lib/api.ts
+async getScheduledShows(userId: string, upcomingOnly = true): Promise<ScheduledShow[]> {
+  const res = await fetch(
+    `${this.baseUrl}/users/${userId}/scheduled-shows?upcoming_only=${upcomingOnly}&status=scheduled`
+  );
+  if (!res.ok) throw new Error('Failed to fetch scheduled shows');
+  return res.json();
+}
+
+async createScheduledShow(userId: string, show: Omit<ScheduledShow, 'id' | 'status'>): Promise<ScheduledShow> {
+  const res = await fetch(`${this.baseUrl}/users/${userId}/scheduled-shows`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+    body: JSON.stringify(show),
+  });
+  if (!res.ok) throw new Error('Failed to create scheduled show');
+  return res.json();
+}
+
+async updateScheduledShow(userId: string, showId: string, updates: Partial<ScheduledShow>): Promise<ScheduledShow> {
+  const res = await fetch(`${this.baseUrl}/users/${userId}/scheduled-shows/${showId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error('Failed to update scheduled show');
+  return res.json();
+}
+
+async cancelScheduledShow(userId: string, showId: string): Promise<void> {
+  const res = await fetch(`${this.baseUrl}/users/${userId}/scheduled-shows/${showId}`, {
+    method: 'DELETE',
+    headers: this.authHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to cancel scheduled show');
+}
+```
+
+### Updated useEffect in profile/page.tsx
+
+```typescript
+// Load scheduled shows - works for BOTH own profile AND viewing others
+useEffect(() => {
+  const loadShows = async () => {
+    const targetUserId = isViewOnly ? viewedUserId : profile?.id;
+    if (!targetUserId) {
+      setScheduledShows([]);
+      return;
+    }
+    
+    try {
+      // Try backend first
+      const shows = await apiClient.getScheduledShows(targetUserId);
+      setScheduledShows(shows);
+      
+      // Cache own shows to localStorage
+      if (!isViewOnly && profile?.id) {
+        localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(shows));
+      }
+    } catch (error) {
+      console.error('Failed to fetch shows from backend:', error);
+      
+      // Fallback to localStorage for own profile only
+      if (!isViewOnly && profile?.id) {
+        try {
+          const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
+          if (saved) {
+            setScheduledShows(JSON.parse(saved));
+          }
+        } catch (e) {
+          setScheduledShows([]);
+        }
+      } else {
+        setScheduledShows([]);
+      }
+    }
+  };
+  
+  loadShows();
+}, [profile?.id, isViewOnly, viewedUserId]);
+```
 
 ---
 
@@ -437,3 +532,32 @@ async def check_upcoming_shows():
 | `/users/{user_id}/scheduled-shows/{show_id}` | DELETE | Cancel/delete a show |
 
 Once these endpoints are deployed, scheduled shows will sync across all devices and be visible to profile visitors.
+---
+
+## 8. Deployment Checklist
+
+### Backend Tasks
+- [ ] Run database migration to create `scheduled_shows` table
+- [ ] Add SQLAlchemy model to models.py
+- [ ] Add relationship to User model
+- [ ] Create API endpoints in routes
+- [ ] Add CORS headers for frontend domain
+- [ ] Test endpoints with Postman/curl
+- [ ] Deploy to Railway/production
+
+### Frontend Tasks (after backend is ready)
+- [ ] Add API methods to `lib/api.ts`
+- [ ] Update profile page useEffect to fetch from backend
+- [ ] Update create/edit/cancel handlers to use API
+- [ ] Test cross-user visibility (User A sees User B's shows)
+- [ ] Remove localStorage-only warning message
+- [ ] Deploy frontend update
+
+### Testing Checklist
+- [ ] User can create scheduled show (own profile)
+- [ ] User can edit scheduled show (own profile)
+- [ ] User can cancel scheduled show (own profile)
+- [ ] User A can view User B's scheduled shows
+- [ ] Shows display with correct thumbnails
+- [ ] Shows sync across devices for same user
+- [ ] Past shows auto-complete correctly

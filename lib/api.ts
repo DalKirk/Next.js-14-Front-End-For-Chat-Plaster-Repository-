@@ -1282,6 +1282,95 @@ export const apiClient = {
       return false;
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Scheduled Shows API
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get scheduled shows for a user (works for viewing any user's profile)
+   */
+  getScheduledShows: async (userId: string, upcomingOnly = true): Promise<any[]> => {
+    try {
+      const response = await api.get(`/users/${userId}/scheduled-shows`, {
+        params: { upcoming_only: upcomingOnly, status: 'scheduled' }
+      });
+      return response.data || [];
+    } catch (e) {
+      console.warn('❌ Get scheduled shows failed:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Create a new scheduled show (own profile only)
+   */
+  createScheduledShow: async (userId: string, show: {
+    title: string;
+    description?: string;
+    scheduledAt: string;
+    duration?: number;
+    category?: string;
+    thumbnail?: string;
+  }): Promise<any> => {
+    try {
+      const response = await api.post(`/users/${userId}/scheduled-shows`, {
+        title: show.title,
+        description: show.description,
+        scheduled_at: show.scheduledAt,
+        duration: show.duration || 60,
+        category: show.category,
+        thumbnail: show.thumbnail,
+      });
+      return response.data;
+    } catch (e) {
+      console.error('❌ Create scheduled show failed:', e);
+      throw e;
+    }
+  },
+
+  /**
+   * Update a scheduled show (own profile only)
+   */
+  updateScheduledShow: async (userId: string, showId: string, updates: {
+    title?: string;
+    description?: string;
+    scheduledAt?: string;
+    duration?: number;
+    category?: string;
+    thumbnail?: string;
+    status?: string;
+  }): Promise<any> => {
+    try {
+      const payload: any = {};
+      if (updates.title !== undefined) payload.title = updates.title;
+      if (updates.description !== undefined) payload.description = updates.description;
+      if (updates.scheduledAt !== undefined) payload.scheduled_at = updates.scheduledAt;
+      if (updates.duration !== undefined) payload.duration = updates.duration;
+      if (updates.category !== undefined) payload.category = updates.category;
+      if (updates.thumbnail !== undefined) payload.thumbnail = updates.thumbnail;
+      if (updates.status !== undefined) payload.status = updates.status;
+      
+      const response = await api.put(`/users/${userId}/scheduled-shows/${showId}`, payload);
+      return response.data;
+    } catch (e) {
+      console.error('❌ Update scheduled show failed:', e);
+      throw e;
+    }
+  },
+
+  /**
+   * Cancel/delete a scheduled show (own profile only)
+   */
+  cancelScheduledShow: async (userId: string, showId: string): Promise<boolean> => {
+    try {
+      await api.delete(`/users/${userId}/scheduled-shows/${showId}`);
+      return true;
+    } catch (e) {
+      console.warn('❌ Cancel scheduled show failed:', e);
+      return false;
+    }
+  },
 };
 
 export default apiClient;
