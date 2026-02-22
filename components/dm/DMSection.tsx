@@ -220,7 +220,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         console.log('[DM] API response:', data);
         
         if (data?.contacts && data.contacts.length > 0) {
-          // Update contacts with server-side unread counts AND conversation IDs
+          // Update contacts with server-side data: unread counts, conversation IDs, AND profile info
           setContacts(prev => {
             const updated = prev.map(contact => {
               const serverContact = data.contacts.find((c: any) => c.id === contact.id);
@@ -243,6 +243,10 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   unread: finalUnread,
                   // Store the real backend conversation_id if available
                   conversation_id: conversation?.id || serverContact.conversation_id || contact.conversation_id,
+                  // ALWAYS update username and avatar from server (they may have changed)
+                  username: serverContact.username || contact.username,
+                  avatar_url: serverContact.avatar_url || contact.avatar_url,
+                  avatar_urls: serverContact.avatar_urls || contact.avatar_urls,
                 };
                 
                 // Persist to localStorage
@@ -362,27 +366,32 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         }
       });
 
-      // Handle user presence updates - update contact info when users join
+      // Handle user presence updates - update contact info when users join/leave
       dmSocketManager.onPresence((data) => {
-        if (data.user_id && data.username) {
+        if (data.user_id) {
+          console.log('[DM] Presence update received:', data.type, data.username, data.user_id);
+          
           setContacts(prev => {
             const existing = prev.find(c => c.id === data.user_id);
-            if (existing && (existing.username === 'User' || !existing.avatar_url)) {
-              // Update the contact with real username/avatar
+            if (existing) {
+              // ALWAYS update username/avatar if provided (they may have changed their profile)
               const updatedContact = {
                 ...existing,
                 username: data.username || existing.username,
                 avatar_url: data.avatar_url || existing.avatar_url,
+                avatar_urls: data.avatar_urls || existing.avatar_urls,
                 status: data.type === 'user_joined' ? 'online' as const : 'offline' as const,
               };
-              StorageManager.saveContact(currentUser.id, updatedContact);
+              
+              // Only save to localStorage if something changed
+              if (updatedContact.username !== existing.username || 
+                  updatedContact.avatar_url !== existing.avatar_url ||
+                  updatedContact.status !== existing.status) {
+                console.log('[DM] Contact updated from presence:', updatedContact.username);
+                StorageManager.saveContact(currentUser.id, updatedContact);
+              }
+              
               return prev.map(c => c.id === data.user_id ? updatedContact : c);
-            } else if (existing) {
-              // Just update status
-              return prev.map(c => c.id === data.user_id 
-                ? { ...c, status: data.type === 'user_joined' ? 'online' as const : 'offline' as const }
-                : c
-              );
             }
             return prev;
           });
