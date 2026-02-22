@@ -225,11 +225,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           setContacts(prev => {
             const existing = prev.find(c => c.id === otherUserId);
             if (existing) {
-              return prev.map(c => 
-                c.id === otherUserId 
-                  ? { ...c, unread: c.unread + 1, status: 'online' as const }
-                  : c
-              );
+              // Update existing contact with latest info from message
+              const updatedContact = {
+                ...existing,
+                username: incomingMessage.sender_username || existing.username,
+                avatar_url: incomingMessage.sender_avatar || existing.avatar_url,
+                unread: existing.unread + 1,
+                status: 'online' as const,
+              };
+              StorageManager.saveContact(currentUser.id, updatedContact);
+              return prev.map(c => c.id === otherUserId ? updatedContact : c);
             } else {
               // Create new contact from message
               const newContact: DMContact = {
