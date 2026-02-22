@@ -251,7 +251,15 @@ export default function ChatPage() {
         thumbnail = await StorageManager.compressImage(thumbnail);
       }
       
-      // Send thumbnail to backend when creating room
+      // Build host info to send to backend
+      const hostInfo = {
+        id: user.id,
+        username: user.username,
+        avatar_url: (user as any).avatar,
+        avatar_urls: user.avatar_urls,
+      };
+      
+      // Send thumbnail and host info to backend when creating room
       const room = await apiClient.createRoom(roomData.name, thumbnail, {
         category: roomData.category,
         description: roomData.description,
@@ -259,9 +267,10 @@ export default function ChatPage() {
         privacy: roomData.privacy,
         maxMembers: roomData.maxMembers,
         password: roomData.password, // Include password for password-protected rooms
+        host: hostInfo, // Include host info so other devices can see it
       });
       
-      // Enhance room with additional data
+      // Enhance room with additional data (use backend host if returned, else use local)
       const enhancedRoom: Room = {
         ...room,
         description: roomData.description,
@@ -274,12 +283,7 @@ export default function ChatPage() {
         memberCount: 1,
         onlineCount: 1,
         createdBy: user.id,
-        host: {
-          id: user.id,
-          username: user.username,
-          avatar_url: (user as any).avatar,
-          avatar_urls: user.avatar_urls,
-        },
+        host: room.host || hostInfo, // Use backend host if available
       };
       
       // Store room data in localStorage with quota handling

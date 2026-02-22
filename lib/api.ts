@@ -134,7 +134,7 @@ export const apiClient = {
     }
   },
 
-  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[]; privacy?: string; maxMembers?: number; password?: string }): Promise<Room> => {
+  createRoom: async (name: string, thumbnailUrl?: string, options?: { category?: string; description?: string; tags?: string[]; privacy?: string; maxMembers?: number; password?: string; host?: { id: string; username: string; avatar_url?: string; avatar_urls?: { thumbnail?: string; small?: string; medium?: string; large?: string } } }): Promise<Room> => {
     if (!name || !name.trim()) throw new Error('Please provide a room name');
     try {
       const payload: Record<string, unknown> = { name: name.trim() };
@@ -146,6 +146,11 @@ export const apiClient = {
       if (options?.maxMembers) payload.max_members = options.maxMembers;
       if (options?.privacy === 'password' && options?.password) {
         payload.password = options.password;
+      }
+      // Include host information for display on other devices
+      if (options?.host) {
+        payload.host = options.host;
+        payload.created_by = options.host.id;
       }
       console.log('📤 Creating room with payload:', { ...payload, password: payload.password ? '***' : undefined });
       const r = await api.post('/rooms', payload);
@@ -165,6 +170,8 @@ export const apiClient = {
         privacy: options?.privacy as 'public' | 'private' | 'password',
         maxMembers: options?.maxMembers,
         password: options?.password, // Store for local testing only
+        host: options?.host,
+        createdBy: options?.host?.id,
       };
       return mockRoom;
     }
