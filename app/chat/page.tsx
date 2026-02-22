@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import CreateRoomModal, { THUMBNAIL_PRESETS } from '@/components/room/CreateRoomModal';
 import PasswordModal from '@/components/room/PasswordModal';
 import { updateAvatarEverywhere } from '@/lib/message-utils';
-import { Lock, Users, Globe, Key, Search } from 'lucide-react';
+import { Lock, Users, Globe, Key, Search, MoreVertical, X } from 'lucide-react';
 
 // Room categories for filtering
 const CATEGORIES = ['Gaming', 'Study', 'Social', 'Work', 'Music', 'Art', 'Tech', 'Sports', 'Other'];
@@ -29,6 +29,11 @@ export default function ChatPage() {
   const [passwordModalRoom, setPasswordModalRoom] = useState<Room | null>(null);
   const [passwordError, setPasswordError] = useState<string>('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [descriptionModal, setDescriptionModal] = useState<{
+    isOpen: boolean;
+    room: Room | null;
+    roomData: any;
+  }>({ isOpen: false, room: null, roomData: null });
   const router = useRouter();
 
   useEffect(() => {
@@ -530,10 +535,9 @@ export default function ChatPage() {
                   if (thumbnailUrl) {
                     return { 
                       backgroundImage: `url(${thumbnailUrl})`, 
-                      backgroundSize: 'contain',      // Show full image without cropping
+                      backgroundSize: 'cover',       // Fill the thumbnail area
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat',
-                      backgroundColor: 'rgb(15, 23, 42)' // slate-900 fallback for letterboxing
                     };
                   } else if (roomData.thumbnailPreset) {
                     const preset = THUMBNAIL_PRESETS.find(p => p.id === roomData.thumbnailPreset);
@@ -587,17 +591,30 @@ export default function ChatPage() {
                     
                     {/* Thumbnail - Clickable Card */}
                     <div 
-                      className="w-full aspect-video relative rounded-lg overflow-hidden border border-slate-700/50 group-hover:border-cyan-400/60 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
+                      className="w-full aspect-[4/3] relative rounded-lg overflow-hidden border border-slate-700/50 group-hover:border-cyan-400/60 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
                       style={getThumbnailStyle()}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                       
-                      {/* Privacy icon badge */}
-                      {roomData.privacy && roomData.privacy !== 'public' && (
-                        <div className="absolute top-2 right-2 p-1 bg-black/60 rounded text-white/80">
-                          {getPrivacyIcon()}
-                        </div>
-                      )}
+                      {/* Top right controls - Privacy icon and Kebab menu */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        {roomData.privacy && roomData.privacy !== 'public' && (
+                          <div className="p-1 bg-black/60 rounded text-white/80">
+                            {getPrivacyIcon()}
+                          </div>
+                        )}
+                        {/* Kebab menu for description */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDescriptionModal({ isOpen: true, room, roomData });
+                          }}
+                          className="p-1 bg-black/60 hover:bg-black/80 rounded text-white/80 hover:text-white transition-colors"
+                          title="View description"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      </div>
                       
                       {/* Room name overlay at bottom */}
                       <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3">
@@ -639,6 +656,130 @@ export default function ChatPage() {
         isLoading={isVerifyingPassword}
         error={passwordError}
       />
+
+      {/* Room Description Modal */}
+      {descriptionModal.isOpen && descriptionModal.room && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setDescriptionModal({ isOpen: false, room: null, roomData: null })}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <h3 className="text-lg font-semibold text-white truncate pr-4">
+                {descriptionModal.room.name}
+              </h3>
+              <button
+                onClick={() => setDescriptionModal({ isOpen: false, room: null, roomData: null })}
+                className="p-1 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {/* Host Info */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-600 flex-shrink-0">
+                  {descriptionModal.roomData?.host ? (
+                    <ResponsiveAvatar
+                      avatarUrls={descriptionModal.roomData.host.avatar_urls || (descriptionModal.roomData.host.avatar_url ? { thumbnail: descriptionModal.roomData.host.avatar_url, small: descriptionModal.roomData.host.avatar_url, medium: descriptionModal.roomData.host.avatar_url, large: descriptionModal.roomData.host.avatar_url } : undefined)}
+                      username={descriptionModal.roomData.host.username}
+                      size="small"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                      {descriptionModal.room.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-slate-400">Hosted by</p>
+                  <p className="text-white font-medium">{descriptionModal.roomData?.host?.username || 'Unknown Host'}</p>
+                </div>
+              </div>
+
+              {/* Category & Privacy */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {descriptionModal.roomData?.category && (
+                  <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded-lg text-sm">
+                    {descriptionModal.roomData.category}
+                  </span>
+                )}
+                {descriptionModal.roomData?.privacy && (
+                  <span className="px-2 py-1 bg-slate-700 text-slate-300 rounded-lg text-sm flex items-center gap-1">
+                    {descriptionModal.roomData.privacy === 'private' && <Lock size={12} />}
+                    {descriptionModal.roomData.privacy === 'password' && <Key size={12} />}
+                    {descriptionModal.roomData.privacy === 'public' && <Globe size={12} />}
+                    {descriptionModal.roomData.privacy.charAt(0).toUpperCase() + descriptionModal.roomData.privacy.slice(1)}
+                  </span>
+                )}
+              </div>
+              
+              {/* Description */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-slate-400 mb-2">Description</h4>
+                <p className="text-slate-200 text-sm leading-relaxed">
+                  {descriptionModal.roomData?.description || 'No description provided.'}
+                </p>
+              </div>
+              
+              {/* Tags */}
+              {descriptionModal.roomData?.tags && descriptionModal.roomData.tags.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">Tags</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {descriptionModal.roomData.tags.map((tag: string, idx: number) => (
+                      <span 
+                        key={idx}
+                        className="px-2 py-1 bg-slate-700/50 text-slate-300 rounded text-xs"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Room Stats */}
+              <div className="flex items-center gap-4 pt-4 border-t border-slate-700">
+                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                  <Users size={16} />
+                  <span>{descriptionModal.roomData?.memberCount ?? descriptionModal.roomData?.onlineCount ?? 0} viewers</span>
+                </div>
+                {descriptionModal.roomData?.maxMembers && (
+                  <div className="text-slate-400 text-sm">
+                    Max: {descriptionModal.roomData.maxMembers}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-700">
+              <Button
+                onClick={() => {
+                  setDescriptionModal({ isOpen: false, room: null, roomData: null });
+                  if (descriptionModal.room) {
+                    joinRoom(descriptionModal.room);
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+              >
+                Join Room
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
