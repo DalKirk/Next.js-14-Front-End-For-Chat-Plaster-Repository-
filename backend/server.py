@@ -1,10 +1,13 @@
 import os
 import asyncio
 import uuid
+import logging
 from datetime import datetime
 from typing import Dict, Any, Set, Optional
 
 from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
+
+logger = logging.getLogger("main")
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json as _json
@@ -52,6 +55,10 @@ room_connections: Dict[str, Dict[str, WebSocket]] = {}
 # room_id -> { user_id -> {username, started_at} } - track active broadcasters
 active_broadcasters: Dict[str, Dict[str, Dict[str, Any]]] = {}
 rooms_lock = asyncio.Lock()
+
+# DM user connections: user_id -> WebSocket (for delivering DMs to the right user)
+dm_connections: Dict[str, WebSocket] = {}
+dm_connections_lock = asyncio.Lock()
 
 # Minimal in-memory user directory for profile/password updates
 users: Dict[str, Dict[str, Any]] = {}
@@ -748,6 +755,12 @@ async def websocket_endpoint(
 
     await websocket.accept()
 
+    # Track DM connection for direct message delivery
+    if room_id == "dm":
+        async with dm_connections_lock:
+            dm_connections[user_id] = websocket
+            logger.info(f"📱 DM connection registered for user {user_id}")
+
     # Track connection mapped to user
     room_connections.setdefault(room_id, {})[user_id] = websocket
 
@@ -948,6 +961,112 @@ async def websocket_endpoint(
                             pass
                     continue
 
+                # ─── DM Message Types ───────────────────────────────────
+                
+                # Handle direct messages - relay to target user
+                if ptype == "dm_message":
+                    receiver_id = payload.get("receiver_id")
+                    sender_id = payload.get("sender_id") or user_id
+                    dm_content = payload.get("content", "")
+                    
+                    if not receiver_id or not dm_content:
+                        logger.warning(f"⚠️ DM missing receiver_id or content")
+                        continue
+                    
+                    # Build the message to send
+                    dm_payload = {
+                        "type": "dm_message",
+                        "message": {
+                            "id": str(uuid.uuid4()),
+                            "sender_id": sender_id,
+                            "sender_username": payload.get("sender_username") or username or "Anonymous",
+                            "sender_avatar": payload.get("sender_avatar") or avatar_url,
+                            "receiver_id": receiver_id,
+                            "content": dm_content,
+                            "timestamp": payload.get("timestamp") or datetime.utcnow().isoformat(),
+                        }
+                    }
+                    
+                    # Find receiver's WebSocket - check DM connections first
+                    receiver_ws = None
+                    async with dm_connections_lock:
+                        receiver_ws = dm_connections.get(receiver_id)
+                    
+                    # Also check all room connections if not in DM connections
+                    if not receiver_ws:
+                        for rid, conns in room_connections.items():
+                            if receiver_id in conns:
+                                receiver_ws = conns[receiver_id]
+                                break
+                    
+                    if receiver_ws:
+                        try:
+                            await receiver_ws.send_json(dm_payload)
+                            logger.info(f"📨 DM delivered from {sender_id} to {receiver_id}")
+                        except Exception as e:
+                            logger.warning(f"Failed to deliver DM to {receiver_id}: {e}")
+                    else:
+                        logger.info(f"📭 DM queued - {receiver_id} is offline")
+                    
+                    continue
+                
+                # Handle read receipts
+                if ptype == "dm_read":
+                    reader_id = payload.get("reader_id") or user_id
+                    dm_sender_id = payload.get("sender_id")
+                    
+                    # If sender_id provided, notify that user their messages were read
+                    if dm_sender_id:
+                        sender_ws = None
+                        async with dm_connections_lock:
+                            sender_ws = dm_connections.get(dm_sender_id)
+                        if not sender_ws:
+                            for rid, conns in room_connections.items():
+                                if dm_sender_id in conns:
+                                    sender_ws = conns[dm_sender_id]
+                                    break
+                        
+                        if sender_ws:
+                            try:
+                                await sender_ws.send_json({
+                                    "type": "dm_read",
+                                    "reader_id": reader_id,
+                                    "sender_id": dm_sender_id,
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                })
+                                logger.info(f"✓ Read receipt sent to {dm_sender_id}")
+                            except Exception:
+                                pass
+                    continue
+                
+                # Handle typing indicators
+                if ptype == "dm_typing":
+                    typing_sender_id = payload.get("sender_id") or user_id
+                    typing_receiver_id = payload.get("receiver_id")
+                    is_typing = payload.get("is_typing", False)
+                    
+                    if typing_receiver_id:
+                        receiver_ws = None
+                        async with dm_connections_lock:
+                            receiver_ws = dm_connections.get(typing_receiver_id)
+                        if not receiver_ws:
+                            for rid, conns in room_connections.items():
+                                if typing_receiver_id in conns:
+                                    receiver_ws = conns[typing_receiver_id]
+                                    break
+                        
+                        if receiver_ws:
+                            try:
+                                await receiver_ws.send_json({
+                                    "type": "dm_typing",
+                                    "sender_id": typing_sender_id,
+                                    "is_typing": is_typing,
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                })
+                            except Exception:
+                                pass
+                    continue
+
                 # Treat as message - skip if no content
                 content = payload.get("content")
                 if not content:
@@ -988,6 +1107,13 @@ async def websocket_endpoint(
                 await websocket.send_json({"type": "error", "message": "Invalid message format"})
 
     except WebSocketDisconnect:
+        # Cleanup DM connection
+        if room_id == "dm":
+            async with dm_connections_lock:
+                if user_id in dm_connections:
+                    del dm_connections[user_id]
+                    logger.info(f"📴 DM connection removed for user {user_id}")
+        
         # Cleanup on disconnect
         try:
             conns = room_connections.get(room_id, {})
