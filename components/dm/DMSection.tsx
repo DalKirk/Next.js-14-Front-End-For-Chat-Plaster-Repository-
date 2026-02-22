@@ -281,13 +281,18 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   // Send message - using WebSocket with localStorage as storage
   const handleSend = () => {
     const messageText = inputText.trim();
+    console.log('[DM] handleSend called:', { messageText, activeConversation, inputText });
     
     if (!messageText || !activeConversation) {
+      console.log('[DM] Send blocked - empty text or no conversation:', { messageText: !!messageText, activeConversation });
       return;
     }
 
     const activeContact = contacts.find(c => c.id === activeConversation);
+    console.log('[DM] Active contact:', activeContact);
+    
     if (!activeContact) {
+      console.log('[DM] No active contact found for:', activeConversation);
       return;
     }
 
@@ -304,18 +309,25 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       from: 'me',
     };
 
+    console.log('[DM] Creating message:', newMessage);
+
     // Clear input immediately
     setInputText('');
 
     // Optimistically add message to UI
-    setMessages(prev => ({
-      ...prev,
-      [activeConversation]: [...(prev[activeConversation] || []), newMessage],
-    }));
+    setMessages(prev => {
+      const updated = {
+        ...prev,
+        [activeConversation]: [...(prev[activeConversation] || []), newMessage],
+      };
+      console.log('[DM] Updated messages state');
+      return updated;
+    });
 
     // Save contact and message to localStorage (ensures persistence)
     StorageManager.saveContact(currentUser.id, activeContact);
     StorageManager.saveMessage(currentUser.id, newMessage);
+    console.log('[DM] Saved to localStorage');
 
     // Try to send via WebSocket (for real-time delivery to other user)
     if (wsConnected && dmSocketManager.isConnected()) {
