@@ -276,6 +276,12 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           from: isMyMessage ? 'me' : 'them',
         };
 
+        console.log('[DM] Creating dmMessage with content:', {
+          originalContent: incomingMessage.content,
+          dmMessageContent: dmMessage.content,
+          contentType: typeof dmMessage.content,
+        });
+
         // Save to localStorage
         StorageManager.saveMessage(currentUser.id, dmMessage);
 
@@ -286,6 +292,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           if (convMessages.find(m => m.id === dmMessage.id)) {
             return prev;
           }
+          console.log('[DM] Adding message to state:', dmMessage.content);
           return {
             ...prev,
             [otherUserId]: [...convMessages, dmMessage],
@@ -822,6 +829,15 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   {chatMessages.map((msg, i) => {
                     const showDate = i === 0 || formatDate(chatMessages[i - 1].timestamp) !== formatDate(msg.timestamp);
                     const isMe = msg.from === 'me';
+                    
+                    // Debug render
+                    console.log('[DM Render] Message:', {
+                      id: msg.id,
+                      content: msg.content,
+                      contentType: typeof msg.content,
+                      contentLength: msg.content?.length,
+                      isArray: Array.isArray(msg.content),
+                    });
 
                     return (
                       <div key={msg.id}>
