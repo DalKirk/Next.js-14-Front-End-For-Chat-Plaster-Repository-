@@ -487,7 +487,8 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             </div>
           ) : (
             filteredContacts.map((contact) => {
-              const lastMsg = messages[contact.id]?.[messages[contact.id].length - 1];
+              const contactMsgs = messages[contact.id] || [];
+              const lastMsg = contactMsgs.length > 0 ? contactMsgs[contactMsgs.length - 1] : null;
               return (
                 <motion.div
                   key={contact.id}
