@@ -117,13 +117,14 @@ class DMSocketManager {
             return;
           }
 
-          if (data.type === 'dm_read') {
+          if (data.type === 'dm_read' || data.type === 'dm_read_receipt') {
             this.callbacks.get('read')?.(data);
             return;
           }
 
-          // Generic message callback
-          this.callbacks.get('message')?.(data);
+          // Ignore other message types (user_left, room_state, etc.)
+          // Only dm_message should trigger the message callback
+          console.log('[DM Socket] Ignoring non-DM message type:', data.type);
         } catch (error) {
           console.error('[DM Socket] Error parsing message:', error);
         }

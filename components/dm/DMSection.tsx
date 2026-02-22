@@ -181,6 +181,12 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       dmSocketManager.onMessage((incomingMessage: any) => {
         console.log('[DM] Received message via WebSocket:', incomingMessage);
         
+        // Validate message has required fields
+        if (!incomingMessage.sender_id || !incomingMessage.receiver_id || !incomingMessage.content) {
+          console.log('[DM] Ignoring invalid message - missing required fields');
+          return;
+        }
+        
         // Determine the other user in this conversation
         const isMyMessage = incomingMessage.sender_id === currentUser.id;
         const otherUserId = isMyMessage ? incomingMessage.receiver_id : incomingMessage.sender_id;
@@ -406,15 +412,24 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   const chatMessages = activeConversation ? (messages[activeConversation] || []) : [];
 
   const formatTime = (timestamp: string | undefined) => {
-    if (!timestamp) return 'now';
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return 'now';
+    if (!timestamp) return '';
+    // Handle various timestamp formats
+    let date = new Date(timestamp);
+    // Try removing trailing Z if there's already a timezone offset
+    if (isNaN(date.getTime()) && timestamp.includes('+') && timestamp.endsWith('Z')) {
+      date = new Date(timestamp.slice(0, -1));
+    }
+    if (isNaN(date.getTime())) return '';
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
   const formatDate = (timestamp: string | undefined) => {
     if (!timestamp) return 'Today';
-    const date = new Date(timestamp);
+    let date = new Date(timestamp);
+    // Handle malformed timestamps like "2026-02-22T05:12:27.425338+00:00Z"
+    if (isNaN(date.getTime()) && timestamp.includes('+') && timestamp.endsWith('Z')) {
+      date = new Date(timestamp.slice(0, -1));
+    }
     if (isNaN(date.getTime())) return 'Today';
     const today = new Date();
     const yesterday = new Date(today);
