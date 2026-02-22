@@ -421,12 +421,14 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
 
   const getLastMessagePreview = (contactId: string) => {
     const contactMessages = messages[contactId] || [];
+    if (contactMessages.length === 0) return 'No messages yet';
     const lastMsg = contactMessages[contactMessages.length - 1];
-    if (!lastMsg) return 'No messages yet';
+    if (!lastMsg || !lastMsg.content) return 'No messages yet';
     const prefix = lastMsg.from === 'me' ? 'You: ' : '';
-    const text = lastMsg.content.length > 30 
-      ? lastMsg.content.substring(0, 30) + '...' 
-      : lastMsg.content;
+    const content = lastMsg.content || '';
+    const text = content.length > 30 
+      ? content.substring(0, 30) + '...' 
+      : content;
     return prefix + text;
   };
 
