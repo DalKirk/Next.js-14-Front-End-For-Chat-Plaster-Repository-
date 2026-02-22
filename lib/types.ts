@@ -31,6 +31,18 @@ export interface Room {
   category?: string;
   tags?: string[];
   createdBy?: string;
+  // Host information
+  host?: {
+    id: string;
+    username: string;
+    avatar_url?: string;
+    avatar_urls?: {
+      thumbnail?: string;
+      small?: string;
+      medium?: string;
+      large?: string;
+    };
+  };
 }
 
 export interface Message {

@@ -273,6 +273,13 @@ export default function ChatPage() {
         tags: roomData.tags,
         memberCount: 1,
         onlineCount: 1,
+        createdBy: user.id,
+        host: {
+          id: user.id,
+          username: user.username,
+          avatar_url: (user as any).avatar,
+          avatar_urls: user.avatar_urls,
+        },
       };
       
       // Store room data in localStorage with quota handling
@@ -496,7 +503,7 @@ export default function ChatPage() {
             }
 
             return (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredRooms.map((room, index) => {
                   // Merge room data - localStorage takes priority for extended fields
                   const localData = roomsData[room.id] || {};
@@ -509,6 +516,7 @@ export default function ChatPage() {
                     tags: localData.tags || room.tags || [],
                     privacy: localData.privacy || room.privacy || 'public',
                     maxMembers: localData.maxMembers || room.maxMembers,
+                    host: localData.host || room.host,
                   };
                 
                 // Prefer backend thumbnail_url over localStorage thumbnail
@@ -541,74 +549,92 @@ export default function ChatPage() {
                     key={room.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.05 }}
                     className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg overflow-hidden hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all duration-200 group"
                   >
+                    {/* Host Info - Above Thumbnail */}
+                    {roomData.host && (
+                      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-black/40 border-b border-slate-700/30">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden border border-cyan-400/50 flex-shrink-0">
+                          <ResponsiveAvatar
+                            avatarUrls={roomData.host.avatar_urls || (roomData.host.avatar_url ? { thumbnail: roomData.host.avatar_url, small: roomData.host.avatar_url, medium: roomData.host.avatar_url, large: roomData.host.avatar_url } : undefined)}
+                            username={roomData.host.username}
+                            size="thumbnail"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-xs sm:text-sm text-cyan-400 font-medium truncate">@{roomData.host.username}</span>
+                      </div>
+                    )}
+                    
                     {/* Thumbnail */}
                     <div 
-                      className="w-full h-32 relative"
+                      className="w-full aspect-video sm:h-32 relative"
                       style={getThumbnailStyle()}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
-                        <div className="flex items-center space-x-1 text-xs text-cyan-300">
-                          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_12px_rgba(0,212,255,0.85)]"></div>
+                      <div className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 right-1.5 sm:right-2 flex items-end justify-between">
+                        <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-cyan-300">
+                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_12px_rgba(0,212,255,0.85)]"></div>
                           <span>Active</span>
                         </div>
-                        <div className="flex items-center space-x-1 text-xs text-white/80">
+                        <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-white/80">
                           {getPrivacyIcon()}
-                          <span className="capitalize">{roomData.privacy || 'public'}</span>
+                          <span className="capitalize hidden xs:inline">{roomData.privacy || 'public'}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-white text-lg truncate flex-1">
+                    <div className="p-2 sm:p-4">
+                      <div className="flex items-start justify-between mb-1 sm:mb-2">
+                        <h3 className="font-semibold text-white text-sm sm:text-lg truncate flex-1">
                           {room.name}
                         </h3>
                       </div>
 
-                      {/* Topic / Description */}
-                      <p className="text-sm text-slate-400 mb-3 line-clamp-2">
+                      {/* Topic / Description - Hidden on very small screens */}
+                      <p className="hidden xs:block text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 line-clamp-2">
                         <span className="text-slate-500">Topic:</span> {roomData.topic || roomData.description || 'No topic yet'}
                       </p>
 
-                      {/* Category & Tags */}
-                      <div className="flex flex-wrap gap-1 mb-3">
+                      {/* Category & Tags - Simplified on mobile */}
+                      <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
                         {roomData.category && (
-                          <span className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
+                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-700/50 text-gray-300 rounded text-[10px] sm:text-xs border border-gray-600/50">
                             {roomData.category}
                           </span>
                         )}
-                        {(roomData.tags && roomData.tags.length > 0) ? (
-                          roomData.tags.slice(0, 4).map((tag: string) => (
-                            <span key={tag} className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
-                              {tag}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="px-2 py-1 bg-gray-800/50 text-gray-500 rounded text-xs border border-gray-700/50">No tags</span>
-                        )}
+                        {/* Show tags only on larger screens */}
+                        <span className="hidden sm:contents">
+                          {(roomData.tags && roomData.tags.length > 0) ? (
+                            roomData.tags.slice(0, 4).map((tag: string) => (
+                              <span key={tag} className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
+                                {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="px-2 py-1 bg-gray-800/50 text-gray-500 rounded text-xs border border-gray-700/50">No tags</span>
+                          )}
+                        </span>
                       </div>
 
                       {/* Member count */}
-                      <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                        <Users size={14} />
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-400 mb-2 sm:mb-3">
+                        <Users size={12} className="sm:w-3.5 sm:h-3.5" />
                         {roomData.maxMembers ? (
-                          <span>{roomData.memberCount || 0}/{roomData.maxMembers} members</span>
+                          <span>{roomData.memberCount || 0}/{roomData.maxMembers}</span>
                         ) : (
-                          <span>{roomData.memberCount ?? roomData.onlineCount ?? 0} members</span>
+                          <span>{roomData.memberCount ?? roomData.onlineCount ?? 0} <span className="hidden xs:inline">members</span></span>
                         )}
                       </div>
                       
                       <Button
                         onClick={() => joinRoom(room)}
-                        className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-[0_0_25px_rgba(0,212,255,0.55)] text-black font-bold group-hover:scale-105 transition-transform"
+                        className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-[0_0_25px_rgba(0,212,255,0.55)] text-black font-bold group-hover:scale-105 transition-transform text-xs sm:text-sm py-1.5 sm:py-2"
                         variant="primary"
                         size="sm"
                       >
-                        Join Room
+                        Join
                       </Button>
                     </div>
                   </motion.div>
