@@ -1146,6 +1146,77 @@ export const apiClient = {
       return [];
     }
   },
+
+  // ─── Direct Messages ─────────────────────────────────────────────────
+
+  /**
+   * Get conversations for a user
+   */
+  getConversations: async (userId: string): Promise<{ conversations: any[]; contacts: any[] }> => {
+    try {
+      const response = await api.get(`/users/${userId}/conversations`);
+      return response.data;
+    } catch (e) {
+      console.warn('❌ Load conversations failed (may not be implemented):', e);
+      // Return empty for fallback to localStorage
+      return { conversations: [], contacts: [] };
+    }
+  },
+
+  /**
+   * Get direct messages for a conversation
+   */
+  getDirectMessages: async (conversationId: string, limit?: number): Promise<any[]> => {
+    try {
+      const params = limit ? { limit } : undefined;
+      const response = await api.get(`/conversations/${conversationId}/messages`, { params });
+      return response.data;
+    } catch (e) {
+      console.warn('❌ Load direct messages failed:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Send a direct message
+   */
+  sendDirectMessage: async (receiverId: string, senderId: string, content: string): Promise<any> => {
+    try {
+      const response = await api.post('/messages/direct', {
+        receiver_id: receiverId,
+        sender_id: senderId,
+        content,
+      });
+      return response.data;
+    } catch (e) {
+      console.warn('❌ Send direct message failed (may not be implemented):', e);
+      throw e;
+    }
+  },
+
+  /**
+   * Mark messages as read
+   */
+  markMessagesRead: async (conversationId: string, userId: string): Promise<void> => {
+    try {
+      await api.post(`/conversations/${conversationId}/read`, { user_id: userId });
+    } catch (e) {
+      console.warn('❌ Mark messages read failed:', e);
+    }
+  },
+
+  /**
+   * Get unread message count
+   */
+  getUnreadCount: async (userId: string): Promise<number> => {
+    try {
+      const response = await api.get(`/users/${userId}/unread-count`);
+      return response.data.count ?? 0;
+    } catch (e) {
+      console.warn('❌ Get unread count failed:', e);
+      return 0;
+    }
+  },
 };
 
 export default apiClient;

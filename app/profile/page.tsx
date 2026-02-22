@@ -14,6 +14,7 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { GalleryUpload } from '@/components/GalleryUpload';
 import { PostComposer } from '@/components/feed/PostComposer';
 import { PostCard } from '@/components/feed/PostCard';
+import DMSection from '@/components/dm/DMSection';
 import type { GalleryItem } from '@/types/backend';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
@@ -27,7 +28,7 @@ import {
   Camera, Activity, Trash2,
   User, MessageSquare, Zap, Pencil, X, Palette,
   Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
-  Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus,
+  Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus, Mail,
 } from 'lucide-react';
 import {
   fontPresets, presetThemes, glassStyles, ParticleShapes,
@@ -185,6 +186,9 @@ function ProfilePageContent() {
   // ─── Posts state ────────────────────────────────────────────────
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+
+  // ─── DM/Messages state ──────────────────────────────────────────
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   // ─── Follow state ───────────────────────────────────────────────
   const [isFollowing, setIsFollowing] = useState(false);
@@ -1463,6 +1467,34 @@ function ProfilePageContent() {
                 </div>
               </GlassCard>
             </motion.div>
+
+            {/* ═══════════════════════════════════════════════════════════
+               DIRECT MESSAGES — Chat inbox (own profile only)
+               ═══════════════════════════════════════════════════════════ */}
+            {!isViewOnly && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <GlassCard className="p-3 sm:p-6 lg:p-8" refIndex={2}>
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} />
+                    Messages
+                    {unreadMessages > 0 && (
+                      <span className="ml-2 px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 text-white">
+                        {unreadMessages}
+                      </span>
+                    )}
+                  </h3>
+                  <DMSection
+                    currentUser={{
+                      id: profile.id,
+                      username: profile.username,
+                      avatar_url: profile.avatar,
+                      avatar_urls: profile.avatar_urls,
+                    }}
+                    onUnreadCountChange={setUnreadMessages}
+                  />
+                </GlassCard>
+              </motion.div>
+            )}
           </>
         )}
       </div>

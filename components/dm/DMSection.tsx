@@ -1,0 +1,480 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Search, Send, Paperclip, Smile, Phone, Video, MoreVertical, 
+  ArrowLeft, Plus, MessageCircle, Check, CheckCheck 
+} from 'lucide-react';
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
+import { apiClient } from '@/lib/api';
+import { User } from '@/lib/types';
+
+export interface DMContact {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  avatar_urls?: {
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
+  status: 'online' | 'away' | 'offline';
+  lastSeen?: string;
+  unread: number;
+}
+
+export interface DMMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  timestamp: string;
+  read: boolean;
+  from: 'me' | 'them';
+}
+
+export interface Conversation {
+  id: string;
+  participants: string[];
+  lastMessage?: DMMessage;
+  unreadCount: number;
+}
+
+interface DMSectionProps {
+  currentUser: User;
+  onUnreadCountChange?: (count: number) => void;
+}
+
+const statusColors = {
+  online: 'bg-green-500',
+  away: 'bg-amber-500',
+  offline: 'bg-slate-500',
+};
+
+export default function DMSection({ currentUser, onUnreadCountChange }: DMSectionProps) {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [contacts, setContacts] = useState<DMContact[]>([]);
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Record<string, DMMessage[]>>({});
+  const [inputText, setInputText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMobileList, setShowMobileList] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load conversations and contacts
+  useEffect(() => {
+    loadConversations();
+  }, [currentUser.id]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, activeConversation]);
+
+  // Notify parent of unread count changes
+  useEffect(() => {
+    const totalUnread = contacts.reduce((sum, c) => sum + c.unread, 0);
+    onUnreadCountChange?.(totalUnread);
+  }, [contacts, onUnreadCountChange]);
+
+  const loadConversations = async () => {
+    setIsLoading(true);
+    try {
+      // Try to load from API
+      const data = await apiClient.getConversations(currentUser.id);
+      setConversations(data.conversations || []);
+      setContacts(data.contacts || []);
+      
+      // Load messages for each conversation
+      const messagesMap: Record<string, DMMessage[]> = {};
+      for (const conv of data.conversations || []) {
+        const convMessages = await apiClient.getDirectMessages(conv.id);
+        messagesMap[conv.id] = convMessages.map((m: any) => ({
+          ...m,
+          from: m.sender_id === currentUser.id ? 'me' : 'them',
+        }));
+      }
+      setMessages(messagesMap);
+    } catch (error) {
+      console.warn('Failed to load conversations, using local storage:', error);
+      // Fallback to localStorage
+      loadFromLocalStorage();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadFromLocalStorage = () => {
+    const stored = localStorage.getItem(`dm-conversations-${currentUser.id}`);
+    if (stored) {
+      const data = JSON.parse(stored);
+      setConversations(data.conversations || []);
+      setContacts(data.contacts || []);
+      setMessages(data.messages || {});
+    }
+  };
+
+  const saveToLocalStorage = useCallback(() => {
+    localStorage.setItem(`dm-conversations-${currentUser.id}`, JSON.stringify({
+      conversations,
+      contacts,
+      messages,
+    }));
+  }, [conversations, contacts, messages, currentUser.id]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      saveToLocalStorage();
+    }
+  }, [conversations, contacts, messages, isLoading, saveToLocalStorage]);
+
+  const handleSend = async () => {
+    if (!inputText.trim() || !activeConversation) return;
+
+    const activeContact = contacts.find(c => c.id === activeConversation);
+    if (!activeContact) return;
+
+    const newMessage: DMMessage = {
+      id: `msg-${Date.now()}`,
+      conversation_id: activeConversation,
+      sender_id: currentUser.id,
+      receiver_id: activeContact.id,
+      content: inputText.trim(),
+      timestamp: new Date().toISOString(),
+      read: false,
+      from: 'me',
+    };
+
+    // Optimistically add message
+    setMessages(prev => ({
+      ...prev,
+      [activeConversation]: [...(prev[activeConversation] || []), newMessage],
+    }));
+    setInputText('');
+
+    // Try to send via API
+    try {
+      await apiClient.sendDirectMessage(activeContact.id, currentUser.id, inputText.trim());
+    } catch (error) {
+      console.warn('Failed to send via API, message saved locally:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const selectConversation = (contactId: string) => {
+    setActiveConversation(contactId);
+    setShowMobileList(false);
+    
+    // Mark messages as read
+    setContacts(prev =>
+      prev.map(c => (c.id === contactId ? { ...c, unread: 0 } : c))
+    );
+  };
+
+  const startNewConversation = async (userId: string, username: string, avatarUrl?: string) => {
+    // Check if conversation already exists
+    const existing = contacts.find(c => c.id === userId);
+    if (existing) {
+      selectConversation(userId);
+      return;
+    }
+
+    // Create new contact/conversation
+    const newContact: DMContact = {
+      id: userId,
+      username,
+      avatar_url: avatarUrl,
+      status: 'offline',
+      unread: 0,
+    };
+
+    setContacts(prev => [newContact, ...prev]);
+    setMessages(prev => ({ ...prev, [userId]: [] }));
+    selectConversation(userId);
+  };
+
+  const activeContact = contacts.find(c => c.id === activeConversation);
+  const filteredContacts = contacts.filter(c =>
+    c.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const chatMessages = activeConversation ? (messages[activeConversation] || []) : [];
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const formatDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const getLastMessagePreview = (contactId: string) => {
+    const contactMessages = messages[contactId] || [];
+    const lastMsg = contactMessages[contactMessages.length - 1];
+    if (!lastMsg) return 'No messages yet';
+    const prefix = lastMsg.from === 'me' ? 'You: ' : '';
+    const text = lastMsg.content.length > 30 
+      ? lastMsg.content.substring(0, 30) + '...' 
+      : lastMsg.content;
+    return prefix + text;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-[600px] bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden">
+      {/* Sidebar - Contact List */}
+      <div className={`w-full md:w-80 md:min-w-[320px] bg-slate-900/60 border-r border-slate-700/50 flex flex-col transition-transform duration-300 ${!showMobileList ? 'hidden md:flex' : 'flex'}`}>
+        {/* Header */}
+        <div className="p-4 border-b border-slate-700/50">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Messages</h2>
+            <button 
+              className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
+              title="New message"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+          
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Contact List */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredContacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-4">
+              <MessageCircle size={48} className="mb-3 opacity-30" />
+              <p className="text-sm">No conversations yet</p>
+              <p className="text-xs text-slate-600 mt-1">Start a new message!</p>
+            </div>
+          ) : (
+            filteredContacts.map((contact) => {
+              const lastMsg = messages[contact.id]?.[messages[contact.id].length - 1];
+              return (
+                <motion.div
+                  key={contact.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex items-center gap-3 p-3 mx-2 my-1 rounded-lg cursor-pointer transition-all ${
+                    activeConversation === contact.id
+                      ? 'bg-cyan-400/10 border-l-2 border-cyan-400'
+                      : 'hover:bg-slate-800/50'
+                  }`}
+                  onClick={() => selectConversation(contact.id)}
+                >
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-600/50">
+                      <ResponsiveAvatar
+                        avatarUrls={contact.avatar_urls || (contact.avatar_url ? { thumbnail: contact.avatar_url, small: contact.avatar_url, medium: contact.avatar_url, large: contact.avatar_url } : undefined)}
+                        username={contact.username}
+                        size="small"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${statusColors[contact.status]}`} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-white text-sm truncate">{contact.username}</span>
+                      {lastMsg && (
+                        <span className="text-xs text-slate-500">{formatTime(lastMsg.timestamp)}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                      {getLastMessagePreview(contact.id)}
+                    </p>
+                  </div>
+
+                  {/* Unread Badge */}
+                  {contact.unread > 0 && (
+                    <div className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">{contact.unread}</span>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className={`flex-1 flex flex-col bg-slate-950/40 ${showMobileList ? 'hidden md:flex' : 'flex'}`}>
+        {activeContact ? (
+          <>
+            {/* Chat Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-slate-700/50 bg-slate-900/60">
+              <button 
+                className="md:hidden w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                onClick={() => setShowMobileList(true)}
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="relative">
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-600/50">
+                  <ResponsiveAvatar
+                    avatarUrls={activeContact.avatar_urls || (activeContact.avatar_url ? { thumbnail: activeContact.avatar_url, small: activeContact.avatar_url, medium: activeContact.avatar_url, large: activeContact.avatar_url } : undefined)}
+                    username={activeContact.username}
+                    size="small"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${statusColors[activeContact.status]}`} />
+              </div>
+
+              <div className="flex-1">
+                <h3 className="font-semibold text-white">{activeContact.username}</h3>
+                <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusColors[activeContact.status]}`} />
+                  {activeContact.status === 'online' ? 'Online' : `Last seen ${activeContact.lastSeen || 'recently'}`}
+                </p>
+              </div>
+
+              <div className="flex gap-1">
+                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="Voice call">
+                  <Phone size={18} />
+                </button>
+                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="Video call">
+                  <Video size={18} />
+                </button>
+                <button className="w-9 h-9 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="More options">
+                  <MoreVertical size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              {chatMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                  <MessageCircle size={48} className="mb-3 opacity-30" />
+                  <p className="text-sm">No messages yet</p>
+                  <p className="text-xs text-slate-600 mt-1">Say hello to {activeContact.username}!</p>
+                </div>
+              ) : (
+                <>
+                  {chatMessages.map((msg, i) => {
+                    const showDate = i === 0 || formatDate(chatMessages[i - 1].timestamp) !== formatDate(msg.timestamp);
+                    const isMe = msg.from === 'me';
+
+                    return (
+                      <div key={msg.id}>
+                        {showDate && (
+                          <div className="flex justify-center my-4">
+                            <span className="px-3 py-1 bg-slate-800/50 rounded-full text-xs text-slate-500 font-medium">
+                              {formatDate(msg.timestamp)}
+                            </span>
+                          </div>
+                        )}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                        >
+                          <div
+                            className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
+                              isMe
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
+                                : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
+                            }`}
+                          >
+                            <p className="text-sm leading-relaxed break-words">{msg.content}</p>
+                          </div>
+                          <div className={`flex items-center gap-1 mt-1 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-[10px] text-slate-600">{formatTime(msg.timestamp)}</span>
+                            {isMe && (
+                              msg.read 
+                                ? <CheckCheck size={12} className="text-cyan-400" />
+                                : <Check size={12} className="text-slate-600" />
+                            )}
+                          </div>
+                        </motion.div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 border-t border-slate-700/50 bg-slate-900/60">
+              <div className="flex items-end gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-2 focus-within:border-cyan-400/60 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all">
+                <button className="w-9 h-9 rounded-lg hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
+                  <Paperclip size={18} />
+                </button>
+                <textarea
+                  rows={1}
+                  placeholder={`Message ${activeContact.username}...`}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="flex-1 bg-transparent text-white placeholder-slate-500 text-sm resize-none outline-none max-h-24 py-2"
+                  style={{ minHeight: '36px' }}
+                />
+                <button className="w-9 h-9 rounded-lg hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Add emoji">
+                  <Smile size={18} />
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={!inputText.trim()}
+                  className="w-9 h-9 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all flex-shrink-0"
+                  title="Send message"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+            <MessageCircle size={64} className="mb-4 opacity-20" />
+            <p className="text-lg font-medium">Select a conversation</p>
+            <p className="text-sm text-slate-600 mt-1">Choose from your existing conversations or start a new one</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Export helper for starting conversations from other components
+export { DMSection };
