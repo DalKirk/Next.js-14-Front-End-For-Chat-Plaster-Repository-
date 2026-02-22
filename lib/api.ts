@@ -1215,9 +1215,12 @@ export const apiClient = {
    */
   markMessagesRead: async (conversationId: string, userId: string): Promise<void> => {
     try {
-      await api.post(`/conversations/${conversationId}/read`, { user_id: userId });
-    } catch (e) {
-      console.warn('❌ Mark messages read failed:', e);
+      console.log(`[API] markMessagesRead - POST /conversations/${conversationId}/read`, { user_id: userId });
+      const response = await api.post(`/conversations/${conversationId}/read`, { user_id: userId });
+      console.log('[API] markMessagesRead response:', response.data);
+    } catch (e: any) {
+      console.warn('❌ Mark messages read failed:', e?.response?.status, e?.response?.data || e.message);
+      throw e; // Re-throw so caller knows it failed
     }
   },
 

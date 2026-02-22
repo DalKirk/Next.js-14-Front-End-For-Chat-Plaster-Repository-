@@ -214,14 +214,29 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     // Sync with API to get accurate unread counts from server
     const syncWithAPI = async () => {
       try {
+        console.log('[DM] Syncing with API for user:', currentUser.id);
         const data = await apiClient.getConversations(currentUser.id);
+        console.log('[DM] API response:', data);
+        
         if (data?.contacts && data.contacts.length > 0) {
           // Update contacts with server-side unread counts
+          // BUT only if server has actual data (don't overwrite with higher counts)
           setContacts(prev => {
             const updated = prev.map(contact => {
               const serverContact = data.contacts.find((c: any) => c.id === contact.id);
               if (serverContact) {
-                const updatedContact = { ...contact, unread: serverContact.unread ?? 0 };
+                // Only update unread if server has a LOWER count (meaning backend acknowledged reads)
+                // OR if localStorage has no data for this contact
+                const localContact = StorageManager.getContacts(currentUser.id).find(c => c.id === contact.id);
+                const serverUnread = serverContact.unread ?? 0;
+                const localUnread = localContact?.unread ?? contact.unread;
+                
+                console.log(`[DM] Contact ${contact.username}: server=${serverUnread}, local=${localUnread}`);
+                
+                // Use the LOWER of the two values (since reading can only decrease unread count)
+                const finalUnread = Math.min(serverUnread, localUnread);
+                const updatedContact = { ...contact, unread: finalUnread };
+                
                 // Persist to localStorage
                 StorageManager.saveContact(currentUser.id, updatedContact);
                 return updatedContact;
@@ -230,9 +245,12 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             });
             return updated;
           });
+        } else {
+          console.log('[DM] No contacts from API, keeping localStorage data');
         }
       } catch (e) {
         console.warn('[DM] Failed to sync conversations from API:', e);
+        // On API failure, keep localStorage data (which has the read status)
       }
     };
     syncWithAPI();
@@ -478,6 +496,8 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
     
+    console.log('[DM] Selecting conversation with:', contactId, 'Current unread:', contact.unread);
+    
     // Mark messages as read in UI state
     setContacts(prev =>
       prev.map(c => (c.id === contactId ? { ...c, unread: 0 } : c))
@@ -490,11 +510,21 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     StorageManager.markMessagesAsRead(currentUser.id, contactId);
     
     // Call API to persist read status in database
+    // Try both the sorted conversation key AND the other user's ID
     const conversationKey = getConversationKey(currentUser.id, contactId);
+    console.log('[DM] Marking read via API - conversationKey:', conversationKey, 'userId:', currentUser.id);
     try {
       await apiClient.markMessagesRead(conversationKey, currentUser.id);
+      console.log('[DM] ✅ API markMessagesRead succeeded');
     } catch (e) {
       console.warn('[DM] Failed to mark messages as read via API:', e);
+      // Also try with just the contact ID as conversation ID (backend might use this)
+      try {
+        await apiClient.markMessagesRead(contactId, currentUser.id);
+        console.log('[DM] ✅ API markMessagesRead succeeded with contactId');
+      } catch (e2) {
+        console.warn('[DM] Also failed with contactId:', e2);
+      }
     }
     
     // Notify sender that messages were read via WebSocket
