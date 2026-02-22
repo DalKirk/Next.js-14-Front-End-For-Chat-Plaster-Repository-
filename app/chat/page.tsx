@@ -503,7 +503,7 @@ export default function ChatPage() {
             }
 
             return (
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {filteredRooms.map((room, index) => {
                   // Merge room data - localStorage takes priority for extended fields
                   const localData = roomsData[room.id] || {};
@@ -539,10 +539,12 @@ export default function ChatPage() {
                 };
 
                 const getPrivacyIcon = () => {
-                  if (roomData.privacy === 'private') return <Lock size={14} />;
-                  if (roomData.privacy === 'password') return <Key size={14} />;
-                  return <Globe size={14} />;
+                  if (roomData.privacy === 'private') return <Lock size={10} />;
+                  if (roomData.privacy === 'password') return <Key size={10} />;
+                  return null;
                 };
+
+                const viewerCount = roomData.memberCount ?? roomData.onlineCount ?? 0;
 
                 return (
                   <motion.div
@@ -550,92 +552,60 @@ export default function ChatPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-lg overflow-hidden hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all duration-200 group"
+                    onClick={() => joinRoom(room)}
+                    className="cursor-pointer group"
                   >
                     {/* Host Info - Above Thumbnail */}
-                    {roomData.host && (
-                      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-black/40 border-b border-slate-700/30">
-                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden border border-cyan-400/50 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden border-2 border-slate-600 group-hover:border-cyan-400/70 transition-colors flex-shrink-0">
+                        {roomData.host ? (
                           <ResponsiveAvatar
                             avatarUrls={roomData.host.avatar_urls || (roomData.host.avatar_url ? { thumbnail: roomData.host.avatar_url, small: roomData.host.avatar_url, medium: roomData.host.avatar_url, large: roomData.host.avatar_url } : undefined)}
                             username={roomData.host.username}
                             size="thumbnail"
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                        <span className="text-xs sm:text-sm text-cyan-400 font-medium truncate">@{roomData.host.username}</span>
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            {room.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    
-                    {/* Thumbnail */}
-                    <div 
-                      className="w-full aspect-video sm:h-32 relative"
-                      style={getThumbnailStyle()}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 right-1.5 sm:right-2 flex items-end justify-between">
-                        <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-cyan-300">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_12px_rgba(0,212,255,0.85)]"></div>
-                          <span>Active</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-white/80">
-                          {getPrivacyIcon()}
-                          <span className="capitalize hidden xs:inline">{roomData.privacy || 'public'}</span>
-                        </div>
+                      <span className="text-xs sm:text-sm text-slate-300 font-medium truncate flex-1 group-hover:text-cyan-400 transition-colors">
+                        {roomData.host?.username || 'Unknown Host'}
+                      </span>
+                      {/* Viewer count pill */}
+                      <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-red-500/90 rounded text-[10px] sm:text-xs text-white font-medium flex-shrink-0">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                        <span>{viewerCount}</span>
                       </div>
                     </div>
-
-                    <div className="p-2 sm:p-4">
-                      <div className="flex items-start justify-between mb-1 sm:mb-2">
-                        <h3 className="font-semibold text-white text-sm sm:text-lg truncate flex-1">
+                    
+                    {/* Thumbnail - Clickable Card */}
+                    <div 
+                      className="w-full aspect-video relative rounded-lg overflow-hidden border border-slate-700/50 group-hover:border-cyan-400/60 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
+                      style={getThumbnailStyle()}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      
+                      {/* Privacy icon badge */}
+                      {roomData.privacy && roomData.privacy !== 'public' && (
+                        <div className="absolute top-2 right-2 p-1 bg-black/60 rounded text-white/80">
+                          {getPrivacyIcon()}
+                        </div>
+                      )}
+                      
+                      {/* Room name overlay at bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3">
+                        <h3 className="font-semibold text-white text-xs sm:text-sm truncate drop-shadow-lg">
                           {room.name}
                         </h3>
-                      </div>
-
-                      {/* Topic / Description - Hidden on very small screens */}
-                      <p className="hidden xs:block text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 line-clamp-2">
-                        <span className="text-slate-500">Topic:</span> {roomData.topic || roomData.description || 'No topic yet'}
-                      </p>
-
-                      {/* Category & Tags - Simplified on mobile */}
-                      <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
                         {roomData.category && (
-                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-700/50 text-gray-300 rounded text-[10px] sm:text-xs border border-gray-600/50">
+                          <span className="inline-block mt-1 px-1.5 py-0.5 bg-black/50 text-slate-300 rounded text-[10px] sm:text-xs">
                             {roomData.category}
                           </span>
                         )}
-                        {/* Show tags only on larger screens */}
-                        <span className="hidden sm:contents">
-                          {(roomData.tags && roomData.tags.length > 0) ? (
-                            roomData.tags.slice(0, 4).map((tag: string) => (
-                              <span key={tag} className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded text-xs border border-gray-600/50">
-                                {tag}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="px-2 py-1 bg-gray-800/50 text-gray-500 rounded text-xs border border-gray-700/50">No tags</span>
-                          )}
-                        </span>
                       </div>
-
-                      {/* Member count */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-400 mb-2 sm:mb-3">
-                        <Users size={12} className="sm:w-3.5 sm:h-3.5" />
-                        {roomData.maxMembers ? (
-                          <span>{roomData.memberCount || 0}/{roomData.maxMembers}</span>
-                        ) : (
-                          <span>{roomData.memberCount ?? roomData.onlineCount ?? 0} <span className="hidden xs:inline">members</span></span>
-                        )}
-                      </div>
-                      
-                      <Button
-                        onClick={() => joinRoom(room)}
-                        className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-[0_0_25px_rgba(0,212,255,0.55)] text-black font-bold group-hover:scale-105 transition-transform text-xs sm:text-sm py-1.5 sm:py-2"
-                        variant="primary"
-                        size="sm"
-                      >
-                        Join
-                      </Button>
                     </div>
                   </motion.div>
                 );
