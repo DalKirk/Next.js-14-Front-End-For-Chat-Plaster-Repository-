@@ -1155,7 +1155,15 @@ export const apiClient = {
   getConversations: async (userId: string): Promise<{ conversations: any[]; contacts: any[] }> => {
     try {
       const response = await api.get(`/users/${userId}/conversations`);
-      return response.data;
+      const data = response.data;
+      // Handle various response formats
+      if (Array.isArray(data)) {
+        return { conversations: data, contacts: [] };
+      }
+      return {
+        conversations: Array.isArray(data?.conversations) ? data.conversations : [],
+        contacts: Array.isArray(data?.contacts) ? data.contacts : [],
+      };
     } catch (e) {
       console.warn('❌ Load conversations failed (may not be implemented):', e);
       // Return empty for fallback to localStorage
@@ -1170,7 +1178,15 @@ export const apiClient = {
     try {
       const params = limit ? { limit } : undefined;
       const response = await api.get(`/conversations/${conversationId}/messages`, { params });
-      return response.data;
+      // Ensure we always return an array
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data?.messages && Array.isArray(data.messages)) {
+        return data.messages;
+      }
+      return [];
     } catch (e) {
       console.warn('❌ Load direct messages failed:', e);
       return [];

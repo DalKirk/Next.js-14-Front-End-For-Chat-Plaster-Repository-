@@ -7,9 +7,9 @@ import {
   ArrowLeft, Plus, MessageCircle, Check, CheckCheck 
 } from 'lucide-react';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
-import { apiClient } from '@/lib/api';
 import { User } from '@/lib/types';
 import UserSearchModal from './UserSearchModal';
+import { dmSocketManager } from '@/lib/dmSocket';
 
 export interface DMContact {
   id: string;
@@ -30,6 +30,8 @@ export interface DMMessage {
   id: string;
   conversation_id: string;
   sender_id: string;
+  sender_username?: string;
+  sender_avatar?: string;
   receiver_id: string;
   content: string;
   timestamp: string;
@@ -68,11 +70,73 @@ const statusColors = {
   offline: 'bg-slate-500',
 };
 
+// Storage key helper - consistent conversation ID
+const getConversationKey = (userId1: string, userId2: string) => {
+  return [userId1, userId2].sort().join('-');
+};
+
+// LocalStorage helper for DM messages
+const StorageManager = {
+  getMessages: (userId: string, otherUserId: string): DMMessage[] => {
+    try {
+      const key = `dm-messages-${getConversationKey(userId, otherUserId)}`;
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+  
+  saveMessage: (userId: string, message: DMMessage) => {
+    try {
+      const otherUserId = message.sender_id === userId ? message.receiver_id : message.sender_id;
+      const key = `dm-messages-${getConversationKey(userId, otherUserId)}`;
+      const messages = StorageManager.getMessages(userId, otherUserId);
+      
+      // Avoid duplicates
+      if (!messages.find(m => m.id === message.id)) {
+        messages.push(message);
+        // Keep only last 200 messages per conversation
+        const trimmed = messages.slice(-200);
+        localStorage.setItem(key, JSON.stringify(trimmed));
+      }
+    } catch (e) {
+      console.warn('Failed to save message to localStorage:', e);
+    }
+  },
+  
+  getContacts: (userId: string): DMContact[] => {
+    try {
+      const key = `dm-contacts-${userId}`;
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+  
+  saveContact: (userId: string, contact: DMContact) => {
+    try {
+      const key = `dm-contacts-${userId}`;
+      const contacts = StorageManager.getContacts(userId);
+      const idx = contacts.findIndex(c => c.id === contact.id);
+      if (idx >= 0) {
+        contacts[idx] = { ...contacts[idx], ...contact };
+      } else {
+        contacts.unshift(contact);
+      }
+      localStorage.setItem(key, JSON.stringify(contacts.slice(0, 50)));
+    } catch (e) {
+      console.warn('Failed to save contact to localStorage:', e);
+    }
+  },
+};
+
 export default function DMSection({ currentUser, onUnreadCountChange, initialRecipient }: DMSectionProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [contacts, setContacts] = useState<DMContact[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, DMMessage[]>>({});
+  const [wsConnected, setWsConnected] = useState(false);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
@@ -81,10 +145,114 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialRecipientHandled = useRef(false);
 
-  // Load conversations and contacts
+  // Connect to DM WebSocket and load from localStorage
   useEffect(() => {
-    loadConversations();
-  }, [currentUser.id]);
+    // Load contacts and messages from localStorage
+    const savedContacts = StorageManager.getContacts(currentUser.id);
+    setContacts(savedContacts);
+    
+    // Load messages for each contact
+    const messagesMap: Record<string, DMMessage[]> = {};
+    savedContacts.forEach(contact => {
+      const msgs = StorageManager.getMessages(currentUser.id, contact.id);
+      messagesMap[contact.id] = msgs.map(m => ({
+        ...m,
+        from: m.sender_id === currentUser.id ? 'me' : 'them',
+      }));
+    });
+    setMessages(messagesMap);
+    setIsLoading(false);
+
+    // Try to connect to WebSocket for real-time updates (gracefully fails if endpoint doesn't exist)
+    try {
+      dmSocketManager.connect(
+        currentUser.id, 
+        currentUser.username, 
+        currentUser.avatar_url || currentUser.avatar_urls?.medium
+      );
+
+      dmSocketManager.onConnect((connected) => {
+        console.log('[DM] WebSocket connected:', connected);
+        setWsConnected(connected);
+      });
+
+      dmSocketManager.onMessage((incomingMessage: any) => {
+        console.log('[DM] Received message via WebSocket:', incomingMessage);
+        
+        // Determine the other user in this conversation
+        const isMyMessage = incomingMessage.sender_id === currentUser.id;
+        const otherUserId = isMyMessage ? incomingMessage.receiver_id : incomingMessage.sender_id;
+        
+        const dmMessage: DMMessage = {
+          id: incomingMessage.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          conversation_id: getConversationKey(currentUser.id, otherUserId),
+          sender_id: incomingMessage.sender_id,
+          sender_username: incomingMessage.sender_username,
+          sender_avatar: incomingMessage.sender_avatar,
+          receiver_id: incomingMessage.receiver_id,
+          content: incomingMessage.content,
+          timestamp: incomingMessage.timestamp || new Date().toISOString(),
+          read: false,
+          from: isMyMessage ? 'me' : 'them',
+        };
+
+        // Save to localStorage
+        StorageManager.saveMessage(currentUser.id, dmMessage);
+
+        // Update UI
+        setMessages(prev => {
+          const convMessages = prev[otherUserId] || [];
+          // Avoid duplicates
+          if (convMessages.find(m => m.id === dmMessage.id)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [otherUserId]: [...convMessages, dmMessage],
+          };
+        });
+
+        // If it's from someone else, update/create contact
+        if (!isMyMessage) {
+          setContacts(prev => {
+            const existing = prev.find(c => c.id === otherUserId);
+            if (existing) {
+              return prev.map(c => 
+                c.id === otherUserId 
+                  ? { ...c, unread: c.unread + 1, status: 'online' as const }
+                  : c
+              );
+            } else {
+              // Create new contact from message
+              const newContact: DMContact = {
+                id: otherUserId,
+                username: incomingMessage.sender_username || 'User',
+                avatar_url: incomingMessage.sender_avatar,
+                status: 'online',
+                unread: 1,
+              };
+              StorageManager.saveContact(currentUser.id, newContact);
+              return [newContact, ...prev];
+            }
+          });
+        }
+      });
+
+      dmSocketManager.onError((error) => {
+        console.warn('[DM] WebSocket not available (this is okay - using localStorage):', error.message);
+      });
+    } catch (e) {
+      console.log('[DM] WebSocket not supported - using localStorage only');
+    }
+
+    return () => {
+      try {
+        dmSocketManager.disconnect();
+      } catch (e) {
+        // Ignore disconnect errors
+      }
+    };
+  }, [currentUser.id, currentUser.username, currentUser.avatar_url, currentUser.avatar_urls]);
 
   // Handle initial recipient (when coming from profile page)
   useEffect(() => {
@@ -110,161 +278,25 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     onUnreadCountChange?.(totalUnread);
   }, [contacts, onUnreadCountChange]);
 
-  // Poll for new messages (localStorage fallback)
-  useEffect(() => {
-    const pollInterval = setInterval(() => {
-      loadFromSharedStorage();
-    }, 3000); // Check every 3 seconds
-    
-    return () => clearInterval(pollInterval);
-  }, [currentUser.id]);
-
-  const loadConversations = async () => {
-    setIsLoading(true);
-    try {
-      // Try to load from API
-      const data = await apiClient.getConversations(currentUser.id);
-      if (data.conversations && data.conversations.length > 0) {
-        setConversations(data.conversations || []);
-        setContacts(data.contacts || []);
-        
-        // Load messages for each conversation
-        const messagesMap: Record<string, DMMessage[]> = {};
-        for (const conv of data.conversations || []) {
-          const convMessages = await apiClient.getDirectMessages(conv.id);
-          messagesMap[conv.id] = convMessages.map((m: any) => ({
-            ...m,
-            from: m.sender_id === currentUser.id ? 'me' : 'them',
-          }));
-        }
-        setMessages(messagesMap);
-      } else {
-        // No API data, use localStorage fallback
-        loadFromSharedStorage();
-      }
-    } catch (error) {
-      console.warn('Failed to load conversations, using local storage:', error);
-      // Fallback to localStorage
-      loadFromSharedStorage();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper to generate conversation ID for two users (consistent regardless of order)
-  const getConversationKey = (userId1: string, userId2: string) => {
-    return [userId1, userId2].sort().join('-');
-  };
-
-  // Load messages from shared storage (works for both sender and receiver)
-  const loadFromSharedStorage = () => {
-    try {
-      // Load all shared messages from localStorage
-      const allMessages: Record<string, DMMessage[]> = {};
-      const contactsMap: Map<string, DMContact> = new Map();
-      
-      // First, load user's own conversation data for contact info
-      const userDataKey = `dm-conversations-${currentUser.id}`;
-      const userData = localStorage.getItem(userDataKey);
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        (parsed.contacts || []).forEach((c: DMContact) => contactsMap.set(c.id, c));
-      }
-
-      // Scan for all shared message keys involving this user
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('dm-shared-')) {
-          const convKey = key.replace('dm-shared-', '');
-          // Check if this conversation involves current user
-          if (convKey.includes(currentUser.id)) {
-            const sharedData = localStorage.getItem(key);
-            if (sharedData) {
-              const parsed = JSON.parse(sharedData);
-              const otherUserId = convKey.split('-').find(id => id !== currentUser.id);
-              
-              if (otherUserId && parsed.messages) {
-                // Add messages with correct 'from' perspective
-                allMessages[otherUserId] = parsed.messages.map((m: DMMessage) => ({
-                  ...m,
-                  from: m.sender_id === currentUser.id ? 'me' : 'them',
-                }));
-                
-                // Create contact if not exists
-                if (!contactsMap.has(otherUserId) && parsed.participants) {
-                  const otherUser = parsed.participants.find((p: any) => p.id === otherUserId);
-                  if (otherUser) {
-                    const unreadCount = parsed.messages.filter(
-                      (m: DMMessage) => m.receiver_id === currentUser.id && !m.read
-                    ).length;
-                    contactsMap.set(otherUserId, {
-                      id: otherUserId,
-                      username: otherUser.username,
-                      avatar_url: otherUser.avatar_url,
-                      avatar_urls: otherUser.avatar_urls,
-                      status: 'offline',
-                      unread: unreadCount,
-                    });
-                  }
-                } else if (contactsMap.has(otherUserId)) {
-                  // Update unread count
-                  const contact = contactsMap.get(otherUserId)!;
-                  const unreadCount = parsed.messages.filter(
-                    (m: DMMessage) => m.receiver_id === currentUser.id && !m.read
-                  ).length;
-                  contact.unread = unreadCount;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Update state if we have data
-      if (contactsMap.size > 0 || Object.keys(allMessages).length > 0) {
-        setContacts(Array.from(contactsMap.values()));
-        setMessages(allMessages);
-      }
-    } catch (e) {
-      console.warn('Error loading from shared storage:', e);
-    }
-  };
-
-  const loadFromLocalStorage = () => {
-    const stored = localStorage.getItem(`dm-conversations-${currentUser.id}`);
-    if (stored) {
-      const data = JSON.parse(stored);
-      setConversations(data.conversations || []);
-      setContacts(data.contacts || []);
-      setMessages(data.messages || {});
-    }
-  };
-
-  const saveToLocalStorage = useCallback(() => {
-    localStorage.setItem(`dm-conversations-${currentUser.id}`, JSON.stringify({
-      conversations,
-      contacts,
-      messages,
-    }));
-  }, [conversations, contacts, messages, currentUser.id]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      saveToLocalStorage();
-    }
-  }, [conversations, contacts, messages, isLoading, saveToLocalStorage]);
-
-  const handleSend = async () => {
+  // Send message - using WebSocket with localStorage as storage
+  const handleSend = () => {
     const messageText = inputText.trim();
-    if (!messageText || !activeConversation) return;
+    
+    if (!messageText || !activeConversation) {
+      return;
+    }
 
     const activeContact = contacts.find(c => c.id === activeConversation);
-    if (!activeContact) return;
+    if (!activeContact) {
+      return;
+    }
 
     const newMessage: DMMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       conversation_id: getConversationKey(currentUser.id, activeContact.id),
       sender_id: currentUser.id,
+      sender_username: currentUser.username,
+      sender_avatar: currentUser.avatar_url || currentUser.avatar_urls?.medium,
       receiver_id: activeContact.id,
       content: messageText,
       timestamp: new Date().toISOString(),
@@ -281,53 +313,22 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       [activeConversation]: [...(prev[activeConversation] || []), newMessage],
     }));
 
-    // Save to shared storage so receiver can see it
-    saveToSharedStorage(activeContact, newMessage);
+    // Save contact and message to localStorage (ensures persistence)
+    StorageManager.saveContact(currentUser.id, activeContact);
+    StorageManager.saveMessage(currentUser.id, newMessage);
 
-    // Try to send via API (fire and forget)
-    apiClient.sendDirectMessage(activeContact.id, currentUser.id, messageText).catch(error => {
-      console.warn('Failed to send via API, message saved to shared localStorage:', error);
-    });
-  };
-
-  // Save message to shared storage that both users can read
-  const saveToSharedStorage = (contact: DMContact, message: DMMessage) => {
-    try {
-      const convKey = getConversationKey(currentUser.id, contact.id);
-      const storageKey = `dm-shared-${convKey}`;
-      
-      // Load existing data
-      const existing = localStorage.getItem(storageKey);
-      const data = existing ? JSON.parse(existing) : {
-        participants: [],
-        messages: [],
-      };
-      
-      // Update participants (store both user info)
-      data.participants = [
-        {
-          id: currentUser.id,
-          username: currentUser.username,
-          avatar_url: (currentUser as any).avatar_url,
-          avatar_urls: currentUser.avatar_urls,
-        },
-        {
-          id: contact.id,
-          username: contact.username,
-          avatar_url: contact.avatar_url,
-          avatar_urls: contact.avatar_urls,
-        },
-      ];
-      
-      // Add message (without 'from' field - that's calculated on read)
-      const messageToStore = { ...message };
-      delete (messageToStore as any).from;
-      data.messages.push(messageToStore);
-      
-      // Save back
-      localStorage.setItem(storageKey, JSON.stringify(data));
-    } catch (e) {
-      console.warn('Error saving to shared storage:', e);
+    // Try to send via WebSocket (for real-time delivery to other user)
+    if (wsConnected && dmSocketManager.isConnected()) {
+      const sent = dmSocketManager.sendMessage(
+        activeContact.id,
+        messageText,
+        currentUser.avatar_url || currentUser.avatar_urls?.medium
+      );
+      if (sent) {
+        console.log('[DM] 📤 Message sent via WebSocket');
+      }
+    } else {
+      console.log('[DM] ⚠️ WebSocket not connected, message saved to localStorage only');
     }
   };
 
@@ -346,9 +347,14 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     setContacts(prev =>
       prev.map(c => (c.id === contactId ? { ...c, unread: 0 } : c))
     );
+    
+    // Notify sender that messages were read via WebSocket
+    if (wsConnected) {
+      dmSocketManager.markAsRead(contactId);
+    }
   };
 
-  const startNewConversation = async (userId: string, username: string, avatarUrl?: string, avatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string }) => {
+  const startNewConversation = (userId: string, username: string, avatarUrl?: string, avatarUrls?: { thumbnail?: string; small?: string; medium?: string; large?: string }) => {
     // Check if conversation already exists
     const existing = contacts.find(c => c.id === userId);
     if (existing) {
@@ -366,6 +372,9 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       unread: 0,
     };
 
+    // Save to localStorage
+    StorageManager.saveContact(currentUser.id, newContact);
+    
     setContacts(prev => [newContact, ...prev]);
     setMessages(prev => ({ ...prev, [userId]: [] }));
     selectConversation(userId);
