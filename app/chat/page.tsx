@@ -618,38 +618,6 @@ export default function ChatPage() {
             );
           })()}
         </motion.div>
-
-        {/* Features Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
-            <div className="text-3xl mb-2">💬</div>
-            <h3 className="font-medium text-slate-300 mb-1">Real-time Chat</h3>
-            <p className="text-sm text-slate-400">
-              Instant messaging with all room members
-            </p>
-          </div>
-          
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
-            <div className="text-3xl mb-2">🔴</div>
-            <h3 className="font-medium text-slate-300 mb-1">Live Streaming</h3>
-            <p className="text-sm text-slate-400">
-              Stream live video with RTMP support
-            </p>
-          </div>
-          
-          <div className="glass-card p-4 text-center bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.35)] transition-all">
-            <div className="text-3xl mb-2">🎥</div>
-            <h3 className="font-medium text-slate-300 mb-1">Video Sharing</h3>
-            <p className="text-sm text-slate-400">
-              Upload and share videos instantly
-            </p>
-          </div>
-        </motion.div>
       </div>
 
       {/* Create Room Modal */}
