@@ -969,9 +969,18 @@ async def websocket_endpoint(
                     sender_id = payload.get("sender_id") or user_id
                     dm_content = payload.get("content", "")
                     
+                    logger.info(f"📥 DM received - sender_id: {sender_id}, receiver_id: {receiver_id}")
+                    logger.info(f"📥 DM payload: sender_username={payload.get('sender_username')}, sender_avatar={payload.get('sender_avatar')[:50] if payload.get('sender_avatar') else None}")
+                    
                     if not receiver_id or not dm_content:
                         logger.warning(f"⚠️ DM missing receiver_id or content")
                         continue
+                    
+                    # Use payload values first, fallback to connection values
+                    msg_sender_username = payload.get("sender_username") or username or "Anonymous"
+                    msg_sender_avatar = payload.get("sender_avatar") or avatar_url or ""
+                    
+                    logger.info(f"📥 DM final: sender_username={msg_sender_username}, has_avatar={bool(msg_sender_avatar)}")
                     
                     # Build the message to send
                     dm_payload = {
@@ -979,8 +988,8 @@ async def websocket_endpoint(
                         "message": {
                             "id": str(uuid.uuid4()),
                             "sender_id": sender_id,
-                            "sender_username": payload.get("sender_username") or username or "Anonymous",
-                            "sender_avatar": payload.get("sender_avatar") or avatar_url,
+                            "sender_username": msg_sender_username,
+                            "sender_avatar": msg_sender_avatar,
                             "receiver_id": receiver_id,
                             "content": dm_content,
                             "timestamp": payload.get("timestamp") or datetime.utcnow().isoformat(),

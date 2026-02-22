@@ -170,14 +170,14 @@ class DMSocketManager {
     const message = {
       type: 'dm_message',
       sender_id: this.userId,
-      sender_username: this.username,
-      sender_avatar: avatar || this.avatarUrl,
+      sender_username: this.username || 'Anonymous',
+      sender_avatar: avatar || this.avatarUrl || '',
       receiver_id: receiverId,
       content,
       timestamp: new Date().toISOString(),
     };
 
-    console.log('[DM Socket] 📤 Sending message:', { to: receiverId, content: content.substring(0, 50) });
+    console.log('[DM Socket] 📤 Sending message:', JSON.stringify(message));
     this.socket.send(JSON.stringify(message));
     return true;
   }
