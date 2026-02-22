@@ -1095,7 +1095,6 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
     </>
   );
 }
