@@ -14,7 +14,6 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { GalleryUpload } from '@/components/GalleryUpload';
 import { PostComposer } from '@/components/feed/PostComposer';
 import { PostCard } from '@/components/feed/PostCard';
-import DMSection from '@/components/dm/DMSection';
 import type { GalleryItem } from '@/types/backend';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { apiClient } from '@/lib/api';
@@ -189,6 +188,15 @@ function ProfilePageContent() {
 
   // ─── DM/Messages state ──────────────────────────────────────────
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Fetch unread count when profile loads
+  useEffect(() => {
+    if (profile?.id && !isViewOnly) {
+      apiClient.getUnreadCount(profile.id)
+        .then((count) => setUnreadMessages(count))
+        .catch(() => setUnreadMessages(0));
+    }
+  }, [profile?.id, isViewOnly]);
 
   // ─── Follow state ───────────────────────────────────────────────
   const [isFollowing, setIsFollowing] = useState(false);
@@ -1391,9 +1399,29 @@ function ProfilePageContent() {
                             {isFollowing ? 'Unfollow' : 'Follow'}
                           </button>
                         ) : !isViewOnly ? (
-                          <button onClick={() => { setIsEditing(true); setEditTab('profile'); }} className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 15px ${liveTheme.accent}60` }}>
-                            <Pencil className="w-4 h-4" /> Edit Profile
-                          </button>
+                          <div className="flex gap-2 flex-wrap">
+                            <Link 
+                              href="/messages" 
+                              className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" 
+                              style={{ 
+                                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', 
+                                borderColor: 'rgba(255,255,255,0.3)', 
+                                color: '#ffffff', 
+                                boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)' 
+                              }}
+                            >
+                              <Mail className="w-4 h-4" /> 
+                              Messages
+                              {unreadMessages > 0 && (
+                                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-white/20">
+                                  {unreadMessages}
+                                </span>
+                              )}
+                            </Link>
+                            <button onClick={() => { setIsEditing(true); setEditTab('profile'); }} className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 15px ${liveTheme.accent}60` }}>
+                              <Pencil className="w-4 h-4" /> Edit Profile
+                            </button>
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -1468,33 +1496,7 @@ function ProfilePageContent() {
               </GlassCard>
             </motion.div>
 
-            {/* ═══════════════════════════════════════════════════════════
-               DIRECT MESSAGES — Chat inbox (own profile only)
-               ═══════════════════════════════════════════════════════════ */}
-            {!isViewOnly && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <GlassCard className="p-3 sm:p-6 lg:p-8" refIndex={2}>
-                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                    <Mail className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} />
-                    Messages
-                    {unreadMessages > 0 && (
-                      <span className="ml-2 px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 text-white">
-                        {unreadMessages}
-                      </span>
-                    )}
-                  </h3>
-                  <DMSection
-                    currentUser={{
-                      id: profile.id,
-                      username: profile.username,
-                      avatar_url: profile.avatar,
-                      avatar_urls: profile.avatar_urls,
-                    }}
-                    onUnreadCountChange={setUnreadMessages}
-                  />
-                </GlassCard>
-              </motion.div>
-            )}
+
           </>
         )}
       </div>

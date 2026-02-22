@@ -917,6 +917,16 @@ export default function HomePage() {
                   Rooms
                 </button>
                 <button
+                  onClick={() => {
+                    router.push("/messages");
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-slate-300 hover:bg-cyan-500/15 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                  Messages
+                </button>
+                <button
                   onClick={handleLogout}
                   className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all flex items-center gap-2 border-t border-slate-700/50 mt-2 pt-3"
                 >
