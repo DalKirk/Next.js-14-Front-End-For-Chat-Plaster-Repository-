@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { Settings } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import type { GPUGenerationJob } from '@/lib/api';
 import Model3DViewer from './Model3DViewer';
@@ -67,7 +68,7 @@ export default function ImageTo3DGenerator({
         const estimatedTotal = 45000;
         const processingProgress = Math.min(90, 20 + (elapsed / estimatedTotal) * 70);
         setProgress(Math.round(processingProgress));
-        setStatus('Generating 3D model with TripoSR...');
+        setStatus('Generating');
       } else if (job.status === 'complete') {
         setProgress(100);
         setStatus('Model generated successfully!');
@@ -189,34 +190,40 @@ export default function ImageTo3DGenerator({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6">
       {/* Upload Section */}
       {!currentJob && (
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 space-y-4">
+        <div className="rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5" style={{ background: 'rgba(249,115,22,0.03)', border: '1px solid rgba(249,115,22,0.08)' }}>
           <div className="space-y-4">
             {imagePreview ? (
-              <div className="relative">
+              <div className="relative rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)' }}>
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="w-full max-h-96 object-contain rounded-lg bg-gray-800"
+                  className="w-full max-h-96 object-contain"
                 />
                 <button
                   onClick={handleReset}
-                  className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
+                  className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white transition-colors text-sm"
+                  style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
                 >
-                  ✕ Remove
+                  ✕
                 </button>
               </div>
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-600 rounded-lg p-12 text-center cursor-pointer hover:border-blue-500 transition-colors"
+                className="rounded-xl p-8 sm:p-16 text-center cursor-pointer transition-all duration-300 hover:border-orange-500/40"
+                style={{ border: '1.5px dashed rgba(249,115,22,0.15)', background: 'rgba(249,115,22,0.02)' }}
               >
-                <div className="space-y-2">
-                  <div className="text-4xl">📸</div>
-                  <p className="text-gray-300">Click to upload an image</p>
-                  <p className="text-gray-500 text-sm">PNG, JPG up to 10MB</p>
+                <div className="space-y-3">
+                  <div className="w-10 h-10 mx-auto rounded-full flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.12)' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" style={{ color: 'rgba(249,115,22,0.4)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                  </div>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>Click to upload an image</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>PNG, JPG up to 10MB</p>
                 </div>
               </div>
             )}
@@ -231,28 +238,25 @@ export default function ImageTo3DGenerator({
           </div>
 
           {selectedImage && (
-            <div className="space-y-4 border-t border-gray-700 pt-4">
-              <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4 text-blue-300">
-                <p className="font-semibold">⚡ High Quality Mode</p>
-                <p className="text-sm mt-1">
-                  Optimized settings: Texture 2048px, Mesh 384 resolution
-                </p>
+            <div className="space-y-4 pt-4" style={{ borderTop: '1px solid rgba(249,115,22,0.06)' }}>
+              <div className="rounded-xl p-3.5 text-sm" style={{ background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.1)', color: 'rgba(249,115,22,0.6)' }}>
+                Texture 2048px &middot; Mesh 384 resolution
               </div>
 
               <button
                 onClick={handleGenerate}
                 disabled={!selectedImage || isGenerating}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full py-3 px-6 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                style={{ background: '#f97316', color: '#000', boxShadow: '0 0 20px rgba(249,115,22,0.25)' }}
               >
-                {isGenerating ? '⏳ Generating...' : '🚀 Generate 3D Model'}
+                {isGenerating ? (<span className="flex items-center justify-center gap-2"><Settings className="w-4 h-4 animate-spin" style={{ color: '#fff' }} />Generating</span>) : 'Generate 3D Model'}
               </button>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 text-red-400">
-              <p className="font-semibold">❌ Error</p>
-              <p className="text-sm mt-1">{error}</p>
+            <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', color: 'rgba(248,113,113,0.8)' }}>
+              {error}
             </div>
           )}
         </div>
@@ -260,78 +264,76 @@ export default function ImageTo3DGenerator({
 
       {/* Progress Section */}
       {isGenerating && currentJob && (
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 space-y-4">
-          <div className="space-y-2">
+        <div className="rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4" style={{ background: 'rgba(249,115,22,0.03)', border: '1px solid rgba(249,115,22,0.08)' }}>
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <p className="text-gray-300 font-medium">{status}</p>
-              <p className="text-blue-400 font-mono">{progress}%</p>
+              <p className="text-sm flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.5)' }}><Settings className="w-3.5 h-3.5 animate-spin" style={{ color: '#fff' }} />{status}</p>
+              <p className="text-sm font-mono" style={{ color: '#f97316' }}>{progress}%</p>
             </div>
-            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(249,115,22,0.08)' }}>
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500 ease-out"
-                style={{ width: `${progress}%` }}
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #f97316, #fb923c)' }}
               />
             </div>
           </div>
-
-          <div className="text-sm text-gray-400 space-y-1">
-            <p>🔹 Job ID: {currentJob.job_id}</p>
-            {currentJob.estimated_time && (
-              <p>⏱️ Estimated time: {currentJob.estimated_time}s</p>
-            )}
+          <div className="text-xs space-y-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <p>Job: {currentJob.job_id}</p>
+            {currentJob.estimated_time && <p>Est. {currentJob.estimated_time}s</p>}
           </div>
         </div>
       )}
 
-      {/* Result Section WITH 3D PREVIEW! */}
+      {/* Result Section */}
       {currentJob?.status === 'complete' && currentJob.glb_url && (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/50 rounded-xl p-4">
-            <p className="text-cyan-300 font-semibold">✅ Model Generated Successfully!</p>
+        <div className="space-y-5">
+          <div className="rounded-2xl p-4" style={{ background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.12)' }}>
+            <p className="text-sm font-medium" style={{ color: '#f97316' }}>Model generated successfully</p>
             {currentJob.generation_time && (
-              <p className="text-sm text-gray-400 mt-1">
-                Generated in {currentJob.generation_time.toFixed(1)}s
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                {currentJob.generation_time.toFixed(1)}s
               </p>
             )}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             <button
               onClick={handleDownload}
-              className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+              style={{ background: '#f97316', color: '#000', boxShadow: '0 0 20px rgba(249,115,22,0.25)' }}
             >
-              📥 Download Full Model (.zip)
+              Download Model (.zip)
             </button>
             <button
               onClick={handleReset}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-sm font-medium transition-all"
+              style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.12)', color: 'rgba(249,115,22,0.7)' }}
             >
-              🔄 Generate Another
+              Generate Another
             </button>
           </div>
 
-          {/* 3D PREVIEW - THIS IS THE KEY PART! */}
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+          {/* 3D Preview */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(249,115,22,0.06)' }}>
+            <div className="px-3.5 sm:px-5 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:items-center" style={{ borderBottom: '1px solid rgba(249,115,22,0.06)' }}>
               <div>
-                <p className="text-gray-300 font-medium">🎨 3D Model Preview</p>
-                <p className="text-sm text-gray-500">
-                  Rotate with mouse • Scroll to zoom • Right-click to pan
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>3D Preview</p>
+                <p className="text-xs hidden sm:block" style={{ color: 'rgba(255,255,255,0.15)' }}>
+                  Rotate &middot; Scroll to zoom &middot; Right-click to pan
                 </p>
               </div>
-              <div className="text-xs text-gray-500">
-                GLB Format • {currentJob.generation_time?.toFixed(1)}s
-              </div>
+              <span className="text-xs" style={{ color: 'rgba(249,115,22,0.3)' }}>
+                GLB &middot; {currentJob.generation_time?.toFixed(1)}s
+              </span>
             </div>
             {(() => {
               const fullUrl = currentJob.glb_url.startsWith('http')
                 ? currentJob.glb_url
                 : `https://api.starcyeed.com${currentJob.glb_url}`;
-              console.log('🔍 Loading 3D model from:', fullUrl);
               return (
                 <Model3DViewer
                   modelUrl={fullUrl}
-                  className="w-full h-[500px]"
+                  className="w-full h-[300px] sm:h-[500px]"
                   autoRotate={true}
                   showControls={true}
                 />
@@ -340,12 +342,12 @@ export default function ImageTo3DGenerator({
           </div>
 
           {/* Download Info */}
-          <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 text-sm text-gray-300">
-            <p className="font-semibold mb-2">📦 Download includes:</p>
-            <ul className="list-disc list-inside space-y-1 text-gray-400">
-              <li>model.obj - 3D mesh (import into Blender, Maya, etc.)</li>
-              <li>texture.png - {textureResolution}x{textureResolution} texture map</li>
-              <li>model.mtl - Material file</li>
+          <div className="rounded-xl p-3 sm:p-4 text-xs" style={{ background: 'rgba(249,115,22,0.02)', border: '1px solid rgba(249,115,22,0.06)', color: 'rgba(255,255,255,0.25)' }}>
+            <p className="font-medium mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Download includes:</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>model.obj &mdash; 3D mesh</li>
+              <li>texture.png &mdash; {textureResolution}x{textureResolution} texture map</li>
+              <li>model.mtl &mdash; Material file</li>
             </ul>
           </div>
         </div>

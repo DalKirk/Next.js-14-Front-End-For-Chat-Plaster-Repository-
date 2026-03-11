@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Settings } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-// Icons removed for a simpler UI; using text labels instead
 
 interface Message {
   role: 'user' | 'assistant';
@@ -275,7 +275,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     <div className={`flex flex-col h-full bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}>
       {/* Header with Clear Button */}
       <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
-        <h2 className="text-xl font-bold text-[oklch(90%_0.05_260)]">AI Chat Assistant</h2>
+        <h2 className="text-xl font-bold flex items-center gap-2.5">
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', animation: 'agenticBlink 1.4s ease-in-out infinite', boxShadow: '0 0 8px #f59e0b', display: 'inline-block' }} />
+        </h2>
         <Button
           onClick={clearChat}
           disabled={messages.length === 0}
@@ -315,25 +317,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-[oklch(30%_0.05_260)]">
-        <div className="flex items-center gap-2">
+      <style>{`@keyframes agenticBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } } @keyframes neonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <div className="p-3 border-t border-[oklch(25%_0.03_260)]">
+        <div className="flex items-end gap-2 bg-[oklch(14%_0.02_260)] border border-[oklch(25%_0.04_260)] rounded-xl p-2 focus-within:border-[oklch(45%_0.12_260)] transition-all">
+          <div className="flex items-center self-center pl-1" style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 4px #f59e0b)', animation: 'neonSpin 2.5s linear infinite' }}>
+            <Settings size={18} />
+          </div>
           <Textarea
             ref={textareaRef}
             onKeyDown={handleKeyPress}
-            placeholder="Type your message... (Shift+Enter for new line)"
-            className="flex-1 resize-none bg-[oklch(20%_0.03_260)] border-[oklch(35%_0.08_260)] text-[oklch(90%_0.05_260)] placeholder:text-[oklch(50%_0.05_260)] focus:border-[oklch(50%_0.15_260)] focus:ring-[oklch(50%_0.15_260)]"
-            rows={3}
+            placeholder=""
+            className="flex-1 resize-none bg-transparent border-0 text-[oklch(90%_0.03_260)] placeholder:text-[oklch(40%_0.03_260)] focus:ring-0 focus:outline-none text-sm py-1.5 px-2 min-h-[32px] max-h-[120px]"
+            rows={1}
             disabled={loading}
           />
-          <Button
+          <button
             onClick={sendMessage}
             disabled={loading}
-            className="bg-[oklch(50%_0.2_260)] hover:bg-[oklch(55%_0.22_260)] text-white px-4 py-2"
-            size="md"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-white transition-all disabled:opacity-40 shrink-0"
+            style={{ background: loading ? 'oklch(35% 0.05 260)' : 'linear-gradient(135deg, oklch(55% 0.18 260), oklch(50% 0.2 240))' }}
             aria-label={loading ? 'Sending' : 'Send'}
           >
-            {loading ? 'Sending…' : 'Send'}
-          </Button>
+            <Send size={16} />
+          </button>
         </div>
       </div>
     </div>

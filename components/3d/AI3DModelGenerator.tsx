@@ -1,14 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import Model3DViewer from './Model3DViewer';
 import toast from 'react-hot-toast';
-import { HomeIcon } from '@heroicons/react/24/outline';
 
 export default function AI3DModelGenerator() {
-  const router = useRouter();
   const [prompt, setPrompt] = useState('');
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -44,51 +41,44 @@ export default function AI3DModelGenerator() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#0a0a0a]">
+    <div className="w-full flex flex-col gap-6">
       {/* Input Section */}
-      <div className="p-4 sm:p-6 bg-[oklch(0.15_0.02_160/0.08)] backdrop-blur-[20px] border-b border-[oklch(0.85_0.2_160/0.15)]">
-        <div className="max-w-4xl mx-auto">
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the 3D model..."
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm sm:text-base placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[oklch(0.85_0.2_160)]"
-              onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-              disabled={isGenerating}
-            />
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-[oklch(0.85_0.2_160)] text-black font-semibold text-sm sm:text-base rounded-lg hover:bg-[oklch(0.9_0.2_160)] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_oklch(0.85_0.2_160/0.3)] active:scale-95"
-              >
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-              {/* Home Button */}
-              <button
-                onClick={() => router.push('/')}
-                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-[oklch(0.15_0.02_160/0.08)] border border-[oklch(0.85_0.2_160/0.15)] text-[oklch(0.85_0.2_160)] font-semibold text-sm sm:text-base rounded-lg hover:bg-[oklch(0.85_0.2_160/0.15)] hover:border-[oklch(0.85_0.2_160/0.3)] transition-all flex items-center justify-center gap-2 group active:scale-95"
-                title="Back to Home"
-              >
-                <HomeIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
-                <span>Home</span>
-              </button>
-            </div>
-          </div>
+      <div className="rounded-2xl p-3 sm:p-5" style={{ background: 'rgba(249,115,22,0.03)', border: '1px solid rgba(249,115,22,0.08)' }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the 3D model..."
+            className="flex-1 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(249,115,22,0.1)' }}
+            onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+            disabled={isGenerating}
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="px-6 py-2.5 sm:py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 shrink-0"
+            style={{ background: '#f97316', color: '#000', boxShadow: '0 0 20px rgba(249,115,22,0.25)' }}
+          >
+            {isGenerating ? 'Generating...' : 'Generate'}
+          </button>
         </div>
       </div>
 
       {/* Viewer Section */}
-      <div className="flex-1 relative">
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(249,115,22,0.06)', minHeight: 300 }}>
         {modelUrl ? (
-          <Model3DViewer modelUrl={modelUrl} className="w-full h-full" />
+          <Model3DViewer modelUrl={modelUrl} className="w-full h-[300px] sm:h-[500px]" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center px-4">
-            <div className="text-center">
-              <p className="text-lg sm:text-xl mb-2 text-[oklch(0.85_0.2_160/0.7)]">No model loaded</p>
-              <p className="text-xs sm:text-sm text-[oklch(0.85_0.2_160/0.4)]">Enter a prompt above to generate a 3D model</p>
+          <div className="w-full h-[300px] sm:h-[500px] flex items-center justify-center">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.1)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-5 h-5" style={{ color: 'rgba(249,115,22,0.3)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                </svg>
+              </div>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.2)' }}>Enter a prompt to generate a 3D model</p>
             </div>
           </div>
         )}

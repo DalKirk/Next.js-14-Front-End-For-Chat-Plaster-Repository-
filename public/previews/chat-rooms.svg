@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260" viewBox="0 0 400 260">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#1a0533"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+  </defs>
+  <rect width="400" height="260" rx="16" fill="url(#bg)"/>
+  <rect x="1" y="1" width="398" height="258" rx="15" fill="none" stroke="url(#accent)" stroke-opacity="0.3" stroke-width="1"/>
+  <g transform="translate(130,35)">
+    <rect x="10" y="10" width="120" height="85" rx="10" fill="#3b82f6" opacity="0.04" stroke="#3b82f6" stroke-opacity="0.2" stroke-width="1"/>
+    <circle cx="35" cy="35" r="12" fill="#3b82f6" opacity="0.12"/>
+    <circle cx="35" cy="35" r="5" fill="#3b82f6" opacity="0.25"/>
+    <rect x="55" y="28" width="65" height="5" rx="2.5" fill="#8b5cf6" opacity="0.12"/>
+    <rect x="55" y="38" width="45" height="4" rx="2" fill="#8b5cf6" opacity="0.08"/>
+    <line x1="20" y1="55" x2="120" y2="55" stroke="#3b82f6" stroke-opacity="0.1" stroke-width="1"/>
+    <circle cx="35" cy="72" r="8" fill="#8b5cf6" opacity="0.1"/>
+    <rect x="50" y="66" width="70" height="4" rx="2" fill="#3b82f6" opacity="0.1"/>
+    <rect x="50" y="74" width="50" height="4" rx="2" fill="#3b82f6" opacity="0.07"/>
+    <circle cx="130" cy="50" r="3" fill="#22c55e" opacity="0.5"/>
+  </g>
+  <text x="200" y="185" text-anchor="middle" fill="white" font-family="system-ui" font-size="16" font-weight="600" opacity="0.9">Chat Rooms</text>
+  <text x="200" y="207" text-anchor="middle" fill="#93c5fd" font-family="system-ui" font-size="11" opacity="0.6">Live • Video • Text</text>
+</svg>

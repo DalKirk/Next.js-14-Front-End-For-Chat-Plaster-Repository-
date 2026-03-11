@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260" viewBox="0 0 400 260">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#1a0533"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eab308"/><stop offset="100%" stop-color="#f97316"/></linearGradient>
+  </defs>
+  <rect width="400" height="260" rx="16" fill="url(#bg)"/>
+  <rect x="1" y="1" width="398" height="258" rx="15" fill="none" stroke="url(#accent)" stroke-opacity="0.3" stroke-width="1"/>
+  <g transform="translate(140,40)">
+    <circle cx="60" cy="50" r="40" fill="none" stroke="#eab308" stroke-opacity="0.15" stroke-width="1"/>
+    <circle cx="60" cy="50" r="28" fill="none" stroke="#f97316" stroke-opacity="0.2" stroke-width="1"/>
+    <circle cx="60" cy="50" r="16" fill="#eab308" opacity="0.1"/>
+    <line x1="60" y1="10" x2="60" y2="22" stroke="#eab308" stroke-opacity="0.4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="95" y1="30" x2="85" y2="38" stroke="#eab308" stroke-opacity="0.4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="100" y1="50" x2="88" y2="50" stroke="#eab308" stroke-opacity="0.4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="25" y1="30" x2="35" y2="38" stroke="#f97316" stroke-opacity="0.3" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="20" y1="50" x2="32" y2="50" stroke="#f97316" stroke-opacity="0.3" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M45 45 L55 45 L55 35 L65 35 L65 45 L75 45 L75 55 L65 55 L65 65 L55 65 L55 55 L45 55 Z" fill="#eab308" opacity="0.15" stroke="#eab308" stroke-opacity="0.3" stroke-width="1"/>
+  </g>
+  <text x="200" y="185" text-anchor="middle" fill="white" font-family="system-ui" font-size="16" font-weight="600" opacity="0.9">Snapshot Analyzer</text>
+  <text x="200" y="207" text-anchor="middle" fill="#fde047" font-family="system-ui" font-size="11" opacity="0.6">Vision AI • Real-time</text>
+</svg>

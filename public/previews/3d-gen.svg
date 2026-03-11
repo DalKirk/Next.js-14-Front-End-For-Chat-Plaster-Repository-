@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260" viewBox="0 0 400 260">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#1a0533"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+  </defs>
+  <rect width="400" height="260" rx="16" fill="url(#bg)"/>
+  <rect x="1" y="1" width="398" height="258" rx="15" fill="none" stroke="url(#accent)" stroke-opacity="0.3" stroke-width="1"/>
+  <g transform="translate(160,55)">
+    <path d="M40 0 L80 90 H0 Z" fill="none" stroke="#06b6d4" stroke-opacity="0.4" stroke-width="1.5"/>
+    <path d="M40 15 L70 80 H10 Z" fill="#06b6d4" opacity="0.08"/>
+    <path d="M25 40 L55 40 L55 85 H25 Z" fill="none" stroke="#7c3aed" stroke-opacity="0.3" stroke-width="1"/>
+    <circle cx="40" cy="35" r="6" fill="#06b6d4" opacity="0.3"/>
+    <line x1="40" y1="0" x2="40" y2="-10" stroke="#06b6d4" stroke-opacity="0.5" stroke-width="1"/>
+    <line x1="80" y1="90" x2="88" y2="95" stroke="#06b6d4" stroke-opacity="0.5" stroke-width="1"/>
+    <line x1="0" y1="90" x2="-8" y2="95" stroke="#06b6d4" stroke-opacity="0.5" stroke-width="1"/>
+  </g>
+  <text x="200" y="195" text-anchor="middle" fill="white" font-family="system-ui" font-size="16" font-weight="600" opacity="0.9">3D Model Generator</text>
+  <text x="200" y="217" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="11" opacity="0.6">Real-time • Interactive</text>
+</svg>
