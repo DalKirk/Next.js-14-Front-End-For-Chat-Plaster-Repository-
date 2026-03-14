@@ -49,7 +49,7 @@ const features = [
     stat: "~2s per image",
     badge: "NEW" as string | null,
     badgeStyle: { border: "1px solid rgba(34,211,238,0.4)", color: "#22d3ee", background: "rgba(34,211,238,0.08)" },
-    href: "/3d-generator",
+    href: "/image-gen",
   },
   {
     id: "3d-gen",
