@@ -98,7 +98,7 @@ const features = [
 const secondaryFeatures = [
   { title: "Chat Rooms", desc: "Live video & text rooms", icon: <MessageSquare className="w-5 h-5" />, gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)", href: "/chat", requiresAuth: true },
   { title: "Marketplace", desc: "Buy & sell digital assets", icon: <ShoppingCart className="w-5 h-5" />, gradient: "linear-gradient(135deg, #8b5cf6, #ec4899)", href: "/marketplace", requiresAuth: false },
-  { title: "Game Builder", desc: "Build 2D games with Pluto", icon: <Gamepad2 className="w-5 h-5" />, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", href: "/game-builder", requiresAuth: false },
+  { title: "Pluto v.2", desc: "Build 2D games with Pluto", icon: <Gamepad2 className="w-5 h-5" />, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", href: "/game-builder", requiresAuth: false },
   { title: "Pentest Sim", desc: "Cybersecurity training", icon: <Shield className="w-5 h-5" />, gradient: "linear-gradient(135deg, #10b981, #06b6d4)", href: "/pentest-simulator", requiresAuth: false },
   { title: "Snapshot Analyzer", desc: "AI image analysis", icon: <Camera className="w-5 h-5" />, gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)", href: "/image-analysis", requiresAuth: false },
   { title: "Sprite Editor", desc: "Pixel art creation", icon: <Palette className="w-5 h-5" />, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)", href: "/advanced-features-demo?tab=sprites", requiresAuth: false },
@@ -143,7 +143,7 @@ function GradientBorderSmall({
   gradient, isHovered, children, onMouseEnter, onMouseLeave, onClick,
 }: {
   gradient: string; isHovered: boolean; children: React.ReactNode;
-  onMouseEnter: () => void; onMouseLeave: () => void; onClick?: () => void;
+  onMouseEnter: () => void; onMouseLeave: () => void; onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
     <div
@@ -202,6 +202,26 @@ export default function HomePage() {
   const ctaRef = useRef<HTMLElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const bannerPaused = useRef(false);
+
+  /* ── Auto-scroll banner ── */
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el) return;
+    let raf: number;
+    const speed = 0.5; // px per frame
+    const step = () => {
+      if (!bannerPaused.current && el.scrollWidth > 0) {
+        el.scrollLeft += speed;
+        // seamless loop: when we've scrolled past the first set, jump back
+        if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   /* ═══════════════════════════════════════════
      AUTH & AVATAR EFFECTS (preserved from v1)
@@ -676,30 +696,71 @@ export default function HomePage() {
           className="text-center transition-all duration-1000 w-full"
           style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateY(0)" : "translateY(40px)" }}
         >
-          {/* Scrolling Preview Bar */}
-          <div className="w-full relative mb-8 overflow-hidden" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-            <div className="flex gap-5 py-4" style={{ animation: "marquee 35s linear infinite", width: "max-content" }}>
-              {[
-                { src: "/previews/image-gen.svg", alt: "Image Generation" },
-                { src: "/previews/3d-gen.svg", alt: "3D Model Generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation" },
-                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI" },
-                { src: "/previews/game-builder.svg", alt: "Game Builder" },
-                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer" },
-                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor" },
-                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms" },
-                { src: "/previews/image-gen.svg", alt: "Image Generation" },
-                { src: "/previews/3d-gen.svg", alt: "3D Model Generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation" },
-                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI" },
-                { src: "/previews/game-builder.svg", alt: "Game Builder" },
-                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer" },
-                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor" },
-                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms" },
-              ].map((item, i) => (
-                <div key={i} className="flex-shrink-0 rounded-xl overflow-hidden transition-transform duration-300 hover:scale-105" style={{ width: 280, height: 182, boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative" }}>
-                  <img src={item.src} alt={item.alt} className="w-full h-full object-cover" draggable={false} style={{ position: "relative", zIndex: 0 }} />
+          {/* Scrolling Preview Bar — auto-scroll + drag to scroll, click to navigate */}
+          <div
+            ref={bannerRef}
+            className="w-full relative mb-8 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
+            style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", scrollbarWidth: "none", msOverflowStyle: "none" }}
+            onMouseEnter={() => { bannerPaused.current = true; }}
+            onMouseLeave={() => { bannerPaused.current = false; }}
+            onMouseDown={(e) => {
+              bannerPaused.current = true;
+              const el = e.currentTarget;
+              const startX = e.pageX - el.offsetLeft;
+              const scrollLeft = el.scrollLeft;
+              let dragged = false;
+              const onMove = (ev: MouseEvent) => { dragged = true; el.scrollLeft = scrollLeft - (ev.pageX - el.offsetLeft - startX); };
+              const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); if (dragged) { el.dataset.dragged = "true"; setTimeout(() => delete el.dataset.dragged, 0); } };
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            }}
+          >
+            <div className="flex gap-5 py-4 px-4" style={{ width: "max-content" }}>
+              {[...[
+                { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
+                { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
+                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "#" },
+                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
+                { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
+                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
+                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor", href: "/advanced-features-demo?tab=sprites" },
+                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms", href: "/chat" },
+              ], ...[
+                { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
+                { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
+                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "#" },
+                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
+                { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
+                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
+                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor", href: "/advanced-features-demo?tab=sprites" },
+                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms", href: "/chat" },
+              ]].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 rounded-xl overflow-hidden transition-transform duration-300 hover:scale-105"
+                  style={{ width: 280, height: 182, boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", cursor: "pointer" }}
+                  onClick={(e) => {
+                    const container = e.currentTarget.closest("[data-dragged]");
+                    if (container) return;
+                    if (item.href === "#") return;
+                    if (item.alt === "Chat Rooms" && !currentUser) { setShowAuthModal(true); return; }
+                    router.push(item.href);
+                  }}
+                >
+                  {(item.alt === "Agentic AI" || item.alt === "Video Generation") ? (
+                    <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #0a0a1a, #111128)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 16, fontWeight: 700, letterSpacing: "0.05em" }}>{item.alt}</span>
+                    </div>
+                  ) : (
+                    <img src={item.src} alt={item.alt} className="w-full h-full object-cover" draggable={false} style={{ position: "relative", zIndex: 0 }} />
+                  )}
                   {item.alt === "Agentic AI" && (
+                    <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", background: "rgba(0,0,0,0.85)", border: "1.5px solid #f59e0b", color: "#f59e0b", zIndex: 20, whiteSpace: "nowrap" as const }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", animation: "blink 1.4s ease-in-out infinite", boxShadow: "0 0 8px #f59e0b", display: "inline-block" }} />
+                      COMING SOON
+                    </div>
+                  )}
+                  {item.alt === "Video Generation" && (
                     <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", background: "rgba(0,0,0,0.85)", border: "1.5px solid #f59e0b", color: "#f59e0b", zIndex: 20, whiteSpace: "nowrap" as const }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", animation: "blink 1.4s ease-in-out infinite", boxShadow: "0 0 8px #f59e0b", display: "inline-block" }} />
                       COMING SOON
@@ -805,7 +866,20 @@ export default function HomePage() {
             <h2 className="text-2xl sm:text-4xl font-bold" style={{ letterSpacing: "-0.02em" }}>Explore the Platform</h2>
           </div>
 
-          <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
+          <div
+            className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+            onMouseDown={(e) => {
+              const el = e.currentTarget;
+              const startX = e.pageX - el.offsetLeft;
+              const scrollLeft = el.scrollLeft;
+              let dragged = false;
+              const onMove = (ev: MouseEvent) => { dragged = true; el.scrollLeft = scrollLeft - (ev.pageX - el.offsetLeft - startX); };
+              const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); if (dragged) { el.dataset.dragged = "true"; setTimeout(() => delete el.dataset.dragged, 0); } };
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            }}
+          >
             {secondaryFeatures.map((f, i) => (
               <GradientBorderSmall
                 key={f.title}
@@ -813,7 +887,11 @@ export default function HomePage() {
                 isHovered={hoveredSecondary === f.title}
                 onMouseEnter={() => setHoveredSecondary(f.title)}
                 onMouseLeave={() => setHoveredSecondary(null)}
-                onClick={() => navigateOrAuth(f.href, f.requiresAuth)}
+                onClick={(e) => {
+                  const container = (e.currentTarget as HTMLElement).closest("[data-dragged]");
+                  if (container) return;
+                  navigateOrAuth(f.href, f.requiresAuth);
+                }}
               >
                 <div
                   className="p-5 cursor-pointer"

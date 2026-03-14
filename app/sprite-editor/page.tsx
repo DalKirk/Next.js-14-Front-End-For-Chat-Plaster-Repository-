@@ -147,7 +147,7 @@ export default function SpriteEditorPage() {
                 <p>• Set frame dimensions to match your sprite size (common: 16x16, 32x32, 64x64)</p>
                 <p>• The editor will automatically split your sheet into frames</p>
                 <p>• You can create multi-state animations with transitions</p>
-                <p>• Export animations to integrate with the Game Builder</p>
+                <p>• Export animations to integrate with Pluto v.2</p>
               </div>
             </div>
             
@@ -156,7 +156,7 @@ export default function SpriteEditorPage() {
                 onClick={() => router.push('/game-builder')}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded transition-all font-medium shadow-lg hover:shadow-purple-500/50"
               >
-                ← Back to Game Builder
+                ← Back to Pluto v.2
               </button>
               <button
                 onClick={() => router.push('/')}

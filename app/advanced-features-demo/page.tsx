@@ -504,7 +504,7 @@ export default function AdvancedFeaturesDemo() {
                 <path d="m12 19-7-7 7-7"/>
                 <path d="M19 12H5"/>
               </svg>
-              <span className="hidden sm:inline">Game Builder</span>
+              <span className="hidden sm:inline">Pluto v.2</span>
             </button>
             <button
               onClick={() => window.history.back()}
