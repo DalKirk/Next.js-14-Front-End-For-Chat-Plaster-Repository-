@@ -317,7 +317,7 @@ export default function ImageGenerator() {
                     color: model === m ? '#c084fc' : 'rgba(255,255,255,0.3)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
                   }}>
-                    {m === 'dev' ? '🎨 Dev (Quality)' : '⚡ Schnell (Fast)'}
+                    {m === 'dev' ? '🎨 Quality' : '⚡ Fast'}
                   </button>
                 ))}
               </div>
