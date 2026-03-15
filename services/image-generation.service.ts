@@ -24,15 +24,19 @@ export interface ImageJobResponse {
 
 export async function generateImage({
   prompt,
+  model = 'dev',
   width = 1024,
   height = 1024,
-  steps = 4,
+  steps = null,
+  guidance = null,
   seed = null,
 }: {
   prompt: string;
+  model?: 'dev' | 'schnell';
   width?: number;
   height?: number;
-  steps?: number;
+  steps?: number | null;
+  guidance?: number | null;
   seed?: number | null;
 }): Promise<ImageJobResponse> {
   const res = await fetch(`${API_URL}/image/generate`, {
@@ -40,9 +44,11 @@ export async function generateImage({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt,
+      model,
       width,
       height,
       num_inference_steps: steps,
+      guidance_scale: guidance,
       seed,
     }),
   });

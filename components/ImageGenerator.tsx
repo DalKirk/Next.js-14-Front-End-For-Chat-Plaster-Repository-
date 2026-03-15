@@ -59,7 +59,9 @@ export default function ImageGenerator() {
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [steps, setSteps] = useState(4);
+  const [steps, setSteps] = useState(28);
+  const [guidance, setGuidance] = useState(7.0);
+  const [model, setModel] = useState<'dev' | 'schnell'>('dev');
   const [seed, setSeed] = useState('');
   const [expanded, setExpanded] = useState<GeneratedImage | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
@@ -68,6 +70,17 @@ export default function ImageGenerator() {
 
   const cur = allStyles.find(s => s.id === style);
   const curRatio = ratios.find(r => r.id === ratio) || ratios[0];
+
+  const handleModelChange = (m: 'dev' | 'schnell') => {
+    setModel(m);
+    if (m === 'schnell') {
+      setSteps(4);
+      setGuidance(0);
+    } else {
+      setSteps(28);
+      setGuidance(7.0);
+    }
+  };
 
   /* Build final prompt with style prefix */
   const buildPrompt = (raw: string, styleId: string): string => {
@@ -102,9 +115,11 @@ export default function ImageGenerator() {
       const parsedSeed = seed ? parseInt(seed, 10) : null;
       const { job_id } = await generateImage({
         prompt: finalPrompt,
+        model,
         width: curRatio.w,
         height: curRatio.h,
         steps,
+        guidance,
         seed: Number.isNaN(parsedSeed) ? null : parsedSeed,
       });
 
@@ -150,7 +165,7 @@ export default function ImageGenerator() {
       );
       setGenerating(false);
     }
-  }, [prompt, generating, style, ratio, steps, seed, curRatio]);
+  }, [prompt, generating, style, ratio, steps, guidance, model, seed, curRatio]);
 
   const handleDownload = async (img: GeneratedImage, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -292,14 +307,37 @@ export default function ImageGenerator() {
                 <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)' }}>ADVANCED</span>
                 <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)' }}><X size={13} /></button>
               </div>
+              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>MODEL</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                {(['dev', 'schnell'] as const).map(m => (
+                  <button key={m} onClick={() => handleModelChange(m)} style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8,
+                    border: model === m ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
+                    background: model === m ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
+                    color: model === m ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                    fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
+                  }}>
+                    {m === 'dev' ? '🎨 Dev (Quality)' : '⚡ Schnell (Fast)'}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>STEPS (1–8)</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>STEPS (1–50)</label>
                   <input
                     type="number" value={steps}
-                    onChange={e => setSteps(Math.min(8, Math.max(1, +e.target.value)))}
-                    min={1} max={8}
+                    onChange={e => setSteps(Math.min(50, Math.max(1, +e.target.value)))}
+                    min={1} max={50}
                     style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>GUIDANCE ({guidance.toFixed(1)})</label>
+                  <input
+                    type="range" min={0} max={20} step={0.5}
+                    value={guidance}
+                    onChange={e => setGuidance(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: '#7c3aed', marginTop: 8 }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
