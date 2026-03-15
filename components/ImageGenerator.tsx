@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
   Settings2, ChevronDown, RefreshCw, X, Maximize2, Copy, ArrowLeft,
+  Trash2, Check, RotateCcw,
 } from 'lucide-react';
 import {
   generateImage,
@@ -15,18 +16,18 @@ import {
 
 /* ─── Style presets ─── */
 const allStyles = [
-  { id: 'none', name: 'No Style', desc: 'Raw output', emoji: '—', bg: 'rgba(255,255,255,0.06)' },
-  { id: 'photorealistic', name: 'Photorealistic', desc: 'Ultra-realistic', emoji: '📷', bg: 'rgba(6,182,212,0.12)', image: '/styles/photorealistic.png' },
-  { id: 'anime', name: 'Anime', desc: 'Japanese animation', emoji: '🎌', bg: 'rgba(236,72,153,0.12)', image: '/styles/anime.png' },
-  { id: 'oil-painting', name: 'Oil Painting', desc: 'Classical fine art', emoji: '🎨', bg: 'rgba(245,158,11,0.12)', image: '/styles/oil-painting.png' },
-  { id: 'cyberpunk', name: 'Cyberpunk', desc: 'Neon futurism', emoji: '🌆', bg: 'rgba(139,92,246,0.12)', image: '/styles/cyberpunk.png' },
-  { id: 'watercolor', name: 'Watercolor', desc: 'Soft pigments', emoji: '💧', bg: 'rgba(59,130,246,0.12)', image: '/styles/watercolor.png' },
-  { id: 'pixel-art', name: 'Pixel Art', desc: 'Retro 8-bit', emoji: '👾', bg: 'rgba(16,185,129,0.12)' },
-  { id: '3d-render', name: '3D Render', desc: 'Clean CGI', emoji: '💎', bg: 'rgba(168,85,247,0.12)' },
-  { id: 'comic', name: 'Comic Book', desc: 'Bold halftone', emoji: '💥', bg: 'rgba(239,68,68,0.12)', image: '/styles/comic.png' },
-  { id: 'cinematic', name: 'Cinematic', desc: 'Film grading', emoji: '🎬', bg: 'rgba(251,191,36,0.12)' },
-  { id: 'sketch', name: 'Pencil Sketch', desc: 'Hand-drawn', emoji: '✏️', bg: 'rgba(255,255,255,0.06)', image: '/styles/sketch.png' },
-  { id: 'neon', name: 'Neon Glow', desc: 'Vivid lights', emoji: '✨', bg: 'rgba(236,72,153,0.15)', image: '/styles/neon.png' },
+  { id: 'none', name: 'No Style', desc: 'Raw output', emoji: '—', bg: 'rgba(255,255,255,0.06)', promptPrefix: '', promptSuffix: '' },
+  { id: 'photorealistic', name: 'Photorealistic', desc: 'Ultra-realistic', emoji: '📷', bg: 'rgba(6,182,212,0.12)', image: '/styles/photorealistic.png', promptPrefix: 'ultra realistic photograph, 8K UHD, DSLR camera, sharp focus, high detail, natural lighting, photographic, real life,', promptSuffix: ', NOT a painting, NOT illustrated, NOT canvas texture, photorealism only' },
+  { id: 'anime', name: 'Anime', desc: 'Japanese animation', emoji: '🎌', bg: 'rgba(236,72,153,0.12)', image: '/styles/anime.png', promptPrefix: 'anime artwork, studio ghibli style, cel shading, vibrant flat colors, manga illustration, clean lineart, anime key visual, digital art,', promptSuffix: ', NOT oil painting, NOT canvas, NOT realistic, clean digital anime style only' },
+  { id: 'oil-painting', name: 'Oil Painting', desc: 'Classical fine art', emoji: '🎨', bg: 'rgba(245,158,11,0.12)', image: '/styles/oil-painting.png', promptPrefix: 'oil painting on canvas, thick impasto brushstrokes, classical fine art, rich pigments, museum quality, painterly texture, visible brush marks,', promptSuffix: ', traditional oil painting on canvas' },
+  { id: 'cyberpunk', name: 'Cyberpunk', desc: 'Neon futurism', emoji: '🌆', bg: 'rgba(139,92,246,0.12)', image: '/styles/cyberpunk.png', promptPrefix: 'cyberpunk digital art, neon lights, futuristic, holographic, glowing edges, dark atmosphere, rain-soaked streets, synthwave colors, blade runner aesthetic, digital illustration,', promptSuffix: ', NOT a painting, NOT canvas, NOT oil paint, clean digital cyberpunk render' },
+  { id: 'watercolor', name: 'Watercolor', desc: 'Soft pigments', emoji: '💧', bg: 'rgba(59,130,246,0.12)', image: '/styles/watercolor.png', promptPrefix: 'watercolor painting on white paper, soft pigments bleeding into wet paper, delicate washes, translucent layers, artistic splashes, pastel tones, watercolour,', promptSuffix: ', NOT oil painting, NOT canvas texture, watercolor on paper only' },
+  { id: 'pixel-art', name: 'Pixel Art', desc: 'Retro 8-bit', emoji: '👾', bg: 'rgba(16,185,129,0.12)', promptPrefix: 'pixel art, 16-bit retro video game sprite, limited color palette, pixelated, crisp square pixels, nostalgic, no anti-aliasing, retro game screenshot,', promptSuffix: ', NOT a painting, NOT smooth, NOT realistic, pure pixel art only' },
+  { id: '3d-render', name: '3D Render', desc: 'Clean CGI', emoji: '💎', bg: 'rgba(168,85,247,0.12)', promptPrefix: '3D render, octane render, blender cycles, smooth shading, subsurface scattering, volumetric lighting, ray traced, clean CGI, studio lighting, unreal engine 5,', promptSuffix: ', NOT a painting, NOT canvas, NOT brushstrokes, clean 3D CGI render only' },
+  { id: 'comic', name: 'Comic Book', desc: 'Bold halftone', emoji: '💥', bg: 'rgba(239,68,68,0.12)', image: '/styles/comic.png', promptPrefix: 'comic book art, bold black outlines, halftone dots, flat cel-shaded colors, dynamic composition, pop art, inked illustration, marvel DC style,', promptSuffix: ', NOT oil painting, NOT canvas, NOT realistic, flat comic book colors only' },
+  { id: 'cinematic', name: 'Cinematic', desc: 'Film grading', emoji: '🎬', bg: 'rgba(251,191,36,0.12)', promptPrefix: 'cinematic film still, anamorphic lens, dramatic lighting, shallow depth of field, color graded, movie scene, 35mm film grain, widescreen, photographic,', promptSuffix: ', NOT a painting, NOT canvas, NOT illustrated, photographic cinematic still only' },
+  { id: 'sketch', name: 'Pencil Sketch', desc: 'Hand-drawn', emoji: '✏️', bg: 'rgba(255,255,255,0.06)', image: '/styles/sketch.png', promptPrefix: 'pencil sketch on white paper, graphite drawing, hand-drawn, cross-hatching shading, detailed linework, charcoal, black and white, monochrome,', promptSuffix: ', NOT a painting, NOT color, NOT canvas, black and white pencil drawing only' },
+  { id: 'neon', name: 'Neon Glow', desc: 'Vivid lights', emoji: '✨', bg: 'rgba(236,72,153,0.15)', image: '/styles/neon.png', promptPrefix: 'neon glow effect, glowing neon tube lights, pure black background, vivid electric colors, light trails, fluorescent, blacklight, luminescent, digital art,', promptSuffix: ', NOT oil painting, NOT canvas texture, NOT brushstrokes, clean glowing neon on black background only' },
 ];
 
 const ratios = [
@@ -47,6 +48,7 @@ interface GeneratedImage {
   error?: string;
   c1: string;
   c2: string;
+  kept?: boolean;
 }
 
 export default function ImageGenerator() {
@@ -71,7 +73,8 @@ export default function ImageGenerator() {
   const buildPrompt = (raw: string, styleId: string): string => {
     if (styleId === 'none') return raw;
     const s = allStyles.find(x => x.id === styleId);
-    return s ? `${s.name} style: ${raw}` : raw;
+    if (!s || !s.promptPrefix) return raw;
+    return `${s.promptPrefix} ${raw}${s.promptSuffix || ''}`;
   };
 
   const generate = useCallback(async () => {
@@ -174,6 +177,30 @@ export default function ImageGenerator() {
     } catch { /* ignore */ }
   };
 
+  const handleKeep = (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setImages(prev => prev.map(i => i.id === img.id ? { ...i, kept: !i.kept } : i));
+    if (expanded?.id === img.id) setExpanded(prev => prev ? { ...prev, kept: !prev.kept } : null);
+  };
+
+  const handleTrash = (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setImages(prev => prev.filter(i => i.id !== img.id));
+    if (expanded?.id === img.id) setExpanded(null);
+  };
+
+  const handleRegenerate = (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setImages(prev => prev.filter(i => i.id !== img.id));
+    if (expanded?.id === img.id) setExpanded(null);
+    setPrompt(img.prompt);
+    setStyle(img.style);
+    setTimeout(() => {
+      const btn = document.querySelector('[data-generate-btn]') as HTMLButtonElement | null;
+      btn?.click();
+    }, 100);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#030308', color: '#e2e2e8', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       {/* Ambient */}
@@ -236,6 +263,7 @@ export default function ImageGenerator() {
                     </button>
                   </div>
                   <button
+                    data-generate-btn
                     onClick={generate}
                     disabled={!prompt.trim() || generating}
                     style={{
@@ -360,11 +388,19 @@ export default function ImageGenerator() {
                           )}
                         </>
                       )}
+                      {img.kept && (
+                        <div style={{ position: 'absolute', top: 6, right: 6, padding: '3px 7px', borderRadius: 6, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: 3, zIndex: 2 }}>
+                          <Check size={10} color="#10b981" />
+                          <span style={{ fontSize: 9, fontWeight: 600, color: '#10b981' }}>KEPT</span>
+                        </div>
+                      )}
                       {hov && img.imageUrl && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                          <button onClick={(e) => handleDownload(img, e)} style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Download size={14} /></button>
-                          <button onClick={(e) => handleCopy(img, e)} style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Copy size={14} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); setExpanded(img); }} style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Maximize2 size={14} /></button>
+                          <button onClick={(e) => handleKeep(img, e)} title={img.kept ? 'Unkeep' : 'Keep'} style={{ padding: 7, borderRadius: 7, background: img.kept ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', border: `1px solid ${img.kept ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: img.kept ? '#10b981' : '#fff', cursor: 'pointer', display: 'flex' }}><Check size={14} /></button>
+                          <button onClick={(e) => handleRegenerate(img, e)} title="Regenerate (trash & redo)" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><RotateCcw size={14} /></button>
+                          <button onClick={(e) => handleTrash(img, e)} title="Trash" style={{ padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><Trash2 size={14} /></button>
+                          <button onClick={(e) => handleDownload(img, e)} title="Download" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Download size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setExpanded(img); }} title="Expand" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Maximize2 size={14} /></button>
                         </div>
                       )}
                     </div>
@@ -479,10 +515,28 @@ export default function ImageGenerator() {
               </div>
               <div style={{ padding: 18 }}>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.1)', color: 'rgba(139,92,246,0.5)' }}>{expanded.style}</span>
                   {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>{expanded.time.toFixed(1)}s</span>}
                   <div style={{ flex: 1 }} />
+                  <button
+                    onClick={() => handleKeep(expanded)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: expanded.kept ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${expanded.kept ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.08)'}`, color: expanded.kept ? '#10b981' : 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                  >
+                    <Check size={12} />{expanded.kept ? 'Kept' : 'Keep'}
+                  </button>
+                  <button
+                    onClick={() => handleRegenerate(expanded)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.12)', color: '#a78bfa', cursor: 'pointer' }}
+                  >
+                    <RotateCcw size={12} />Regenerate
+                  </button>
+                  <button
+                    onClick={() => handleTrash(expanded)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={12} />Trash
+                  </button>
                   <button
                     onClick={() => handleDownload(expanded)}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', color: '#22d3ee', cursor: 'pointer' }}
