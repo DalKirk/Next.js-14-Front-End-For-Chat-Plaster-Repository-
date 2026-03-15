@@ -255,8 +255,10 @@ export default function ImageGenerator() {
           <div style={{ marginBottom: 24 }}>
             <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15),rgba(236,72,153,0.12))' }}>
               <div style={{ borderRadius: 13, background: '#0a0a14', padding: '18px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <Sparkles size={14} color="#a78bfa" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="prompt-rainbow-glow" />
+                  </div>
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)' }}>PROMPT</span>
                 </div>
                 <textarea
@@ -592,6 +594,11 @@ export default function ImageGenerator() {
       <style>{`
         @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @keyframes rainbowSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        @keyframes rainbowPulse{0%,100%{opacity:0.7;filter:blur(3px)}50%{opacity:1;filter:blur(5px)}}
+        .prompt-rainbow-glow{position:absolute;inset:-3px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2.5s ease-in-out infinite}
+        .prompt-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ef4444,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#ec4899,#ef4444);animation:rainbowSpin 3s linear infinite}
+        .prompt-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
         textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.16)}
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}

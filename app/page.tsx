@@ -949,7 +949,9 @@ export default function HomePage() {
 
       {/* ═══ AI CHAT WIDGET (full streaming) ═══ */}
       {isChatOpen && (
-        <div className="fixed flex flex-col rounded-xl overflow-hidden shadow-2xl" style={{ bottom: 80, right: 16, left: "auto", zIndex: 2000, width: "min(360px, calc(100vw - 32px))", maxHeight: "65vh", background: "rgba(8,8,15,0.95)", border: "1px solid rgba(139,92,246,0.12)", backdropFilter: "blur(20px)" }}>
+        <div className="fixed" style={{ bottom: 80, right: 16, left: "auto", zIndex: 2000, width: "min(360px, calc(100vw - 32px))", maxHeight: "65vh" }}>
+          <div className="ai-chat-rainbow-border" />
+          <div className="flex flex-col rounded-xl overflow-hidden shadow-2xl relative" style={{ width: "100%", maxHeight: "65vh", background: "rgba(8,8,15,0.95)", backdropFilter: "blur(20px)", zIndex: 1 }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
             <div className="flex items-center gap-2">
@@ -1053,17 +1055,19 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {/* Chat toggle */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.4)]"
-        style={{ bottom: 24, right: 16, zIndex: 40, padding: 12, background: "rgba(8,8,15,0.8)", border: "1px solid rgba(139,92,246,0.2)", backdropFilter: "blur(8px)" }}
+        className="fixed rounded-full transition-all duration-300"
+        style={{ bottom: 24, right: 16, zIndex: 40, padding: 13, background: "rgba(8,8,15,0.85)", border: "none", backdropFilter: "blur(8px)", boxShadow: "0 0 12px rgba(139,92,246,0.2)", position: "fixed" }}
         title={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
         aria-label={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
       >
-        <SparklesIcon className="w-5 h-5 text-cyan-400" />
+        <div className="ai-btn-rainbow-border" />
+        <SparklesIcon className="w-5 h-5 text-cyan-400 relative z-10" />
       </button>
 
       {/* Shimmer animation */}
@@ -1071,6 +1075,34 @@ export default function HomePage() {
         @keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes rainbowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes rainbowPulse { 0%,100% { opacity: 0.7; filter: blur(3px); } 50% { opacity: 1; filter: blur(5px); } }
+        .ai-btn-rainbow-border {
+          position: absolute; inset: -2px; border-radius: 9999px; z-index: 0; overflow: hidden;
+          animation: rainbowPulse 2.5s ease-in-out infinite;
+        }
+        .ai-btn-rainbow-border::before {
+          content: ''; position: absolute; inset: -50%; border-radius: 9999px;
+          background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #8b5cf6, #ec4899, #ef4444);
+          animation: rainbowSpin 3s linear infinite;
+        }
+        .ai-btn-rainbow-border::after {
+          content: ''; position: absolute; inset: 2px; border-radius: 9999px;
+          background: rgba(8,8,15,0.85);
+        }
+        .ai-chat-rainbow-border {
+          position: absolute; inset: -2px; border-radius: 14px; z-index: 0; overflow: hidden;
+          animation: rainbowPulse 2.5s ease-in-out infinite;
+        }
+        .ai-chat-rainbow-border::before {
+          content: ''; position: absolute; inset: -100%; border-radius: 14px;
+          background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #8b5cf6, #ec4899, #ef4444);
+          animation: rainbowSpin 3s linear infinite;
+        }
+        .ai-chat-rainbow-border::after {
+          content: ''; position: absolute; inset: 2px; border-radius: 12px;
+          background: rgba(8,8,15,0.95);
+        }
       `}</style>
     </div>
   );
