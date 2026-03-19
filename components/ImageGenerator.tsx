@@ -66,7 +66,10 @@ export default function ImageGenerator() {
   const [expanded, setExpanded] = useState<GeneratedImage | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
   const [hStyle, setHStyle] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeJobs, setActiveJobs] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSubmitRef = useRef(0);
 
   const cur = allStyles.find(s => s.id === style);
   const curRatio = ratios.find(r => r.id === ratio) || ratios[0];
@@ -92,7 +95,14 @@ export default function ImageGenerator() {
 
   const generate = useCallback(async () => {
     if (!prompt.trim() || generating) return;
+
+    // Debounce: ignore clicks within 2s of last submit
+    const now = Date.now();
+    if (now - lastSubmitRef.current < 2000) return;
+    lastSubmitRef.current = now;
+
     setGenerating(true);
+    setError(null);
 
     const h1 = Math.floor(Math.random() * 360);
     const h2 = Math.floor(Math.random() * 360);
@@ -109,6 +119,8 @@ export default function ImageGenerator() {
       c2: `hsl(${h2},60%,45%)`,
     };
     setImages(prev => [newImg, ...prev]);
+
+    setActiveJobs(prev => prev + 1);
 
     try {
       const finalPrompt = buildPrompt(prompt.trim(), style);
@@ -144,7 +156,9 @@ export default function ImageGenerator() {
 
           if (job.status === 'complete' || job.status === 'failed') {
             if (pollRef.current) clearInterval(pollRef.current);
-            setGenerating(false);
+            setActiveJobs(prev => Math.max(0, prev - 1));
+            // 3-second cooldown before allowing another generation
+            setTimeout(() => setGenerating(false), 3000);
           }
         } catch {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -153,16 +167,19 @@ export default function ImageGenerator() {
               img.id === tempId ? { ...img, status: 'failed', error: 'Polling error' } : img,
             ),
           );
-          setGenerating(false);
+          setActiveJobs(prev => Math.max(0, prev - 1));
+          setTimeout(() => setGenerating(false), 3000);
         }
       }, 2000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
+      setError(msg);
       setImages(prev =>
         prev.map(img =>
           img.id === tempId ? { ...img, status: 'failed', error: msg } : img,
         ),
       );
+      setActiveJobs(prev => Math.max(0, prev - 1));
       setGenerating(false);
     }
   }, [prompt, generating, style, ratio, steps, guidance, model, seed, curRatio]);
@@ -369,6 +386,22 @@ export default function ImageGenerator() {
             </div>
           )}
 
+          {/* Rate limit / error banner */}
+          {error && (
+            <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{error}</span>
+              <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: 2, display: 'flex' }}><X size={13} /></button>
+            </div>
+          )}
+
+          {/* Active jobs indicator */}
+          {activeJobs > 0 && (
+            <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)', fontSize: 11, color: 'rgba(167,139,250,0.7)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+              {activeJobs} image{activeJobs > 1 ? 's' : ''} generating...
+            </div>
+          )}
+
           {/* Cold-start banner */}
           {generating && images[0]?.status === 'queued' && (
             <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.12)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
@@ -380,20 +413,6 @@ export default function ImageGenerator() {
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.2)', marginBottom: 12 }}>
             GENERATED · {images.length}
           </div>
-
-          {/* Loading skeleton */}
-          {generating && (
-            <div style={{ padding: 1, borderRadius: 12, marginBottom: 12, background: 'linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))', backgroundSize: '200% 200%', animation: 'shimmer 2s ease infinite' }}>
-              <div style={{ borderRadius: 11, padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(8,8,15,0.95)' }}>
-                <div style={{ width: 52, height: 52, borderRadius: 8, background: 'rgba(139,92,246,0.07)' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.05)', width: '60%', marginBottom: 7 }} />
-                  <div style={{ height: 7, borderRadius: 99, background: 'rgba(255,255,255,0.03)', width: '35%' }} />
-                </div>
-                <RefreshCw size={16} color="rgba(139,92,246,0.3)" style={{ animation: 'spin 1s linear infinite' }} />
-              </div>
-            </div>
-          )}
 
           {/* Cards — 2 cols mobile, 3 on md, 4 on lg like chat rooms */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -595,9 +614,9 @@ export default function ImageGenerator() {
         @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes rainbowSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        @keyframes rainbowPulse{0%,100%{opacity:0.7;filter:blur(3px)}50%{opacity:1;filter:blur(5px)}}
-        .prompt-rainbow-glow{position:absolute;inset:-3px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2.5s ease-in-out infinite}
-        .prompt-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ef4444,#f59e0b,#22c55e,#06b6d4,#8b5cf6,#ec4899,#ef4444);animation:rainbowSpin 3s linear infinite}
+        @keyframes rainbowPulse{0%,100%{opacity:1;filter:blur(4px) brightness(1.8)}50%{opacity:1;filter:blur(6px) brightness(2.2)}}
+        .prompt-rainbow-glow{position:absolute;inset:-4px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2s ease-in-out infinite}
+        .prompt-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}
         .prompt-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
         textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.16)}
         ::-webkit-scrollbar{width:3px}

@@ -1076,28 +1076,28 @@ export default function HomePage() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
         @keyframes rainbowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes rainbowPulse { 0%,100% { opacity: 0.7; filter: blur(3px); } 50% { opacity: 1; filter: blur(5px); } }
+        @keyframes rainbowPulse { 0%,100% { opacity: 1; filter: blur(4px) brightness(1.8); } 50% { opacity: 1; filter: blur(6px) brightness(2.2); } }
         .ai-btn-rainbow-border {
-          position: absolute; inset: -2px; border-radius: 9999px; z-index: 0; overflow: hidden;
-          animation: rainbowPulse 2.5s ease-in-out infinite;
+          position: absolute; inset: -3px; border-radius: 9999px; z-index: 0; overflow: hidden;
+          animation: rainbowPulse 2s ease-in-out infinite;
         }
         .ai-btn-rainbow-border::before {
           content: ''; position: absolute; inset: -50%; border-radius: 9999px;
-          background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #8b5cf6, #ec4899, #ef4444);
-          animation: rainbowSpin 3s linear infinite;
+          background: conic-gradient(from 0deg, #ff3333, #ffaa00, #33ff66, #00ddff, #aa66ff, #ff44aa, #ff3333);
+          animation: rainbowSpin 2.5s linear infinite;
         }
         .ai-btn-rainbow-border::after {
           content: ''; position: absolute; inset: 2px; border-radius: 9999px;
           background: rgba(8,8,15,0.85);
         }
         .ai-chat-rainbow-border {
-          position: absolute; inset: -2px; border-radius: 14px; z-index: 0; overflow: hidden;
-          animation: rainbowPulse 2.5s ease-in-out infinite;
+          position: absolute; inset: -3px; border-radius: 14px; z-index: 0; overflow: hidden;
+          animation: rainbowPulse 2s ease-in-out infinite;
         }
         .ai-chat-rainbow-border::before {
           content: ''; position: absolute; inset: -100%; border-radius: 14px;
-          background: conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #8b5cf6, #ec4899, #ef4444);
-          animation: rainbowSpin 3s linear infinite;
+          background: conic-gradient(from 0deg, #ff3333, #ffaa00, #33ff66, #00ddff, #aa66ff, #ff44aa, #ff3333);
+          animation: rainbowSpin 2.5s linear infinite;
         }
         .ai-chat-rainbow-border::after {
           content: ''; position: absolute; inset: 2px; border-radius: 12px;

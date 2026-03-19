@@ -52,6 +52,10 @@ export async function generateImage({
       seed,
     }),
   });
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Too many requests. Please wait for your current images to finish.');
+  }
   if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
   return res.json();
 }
