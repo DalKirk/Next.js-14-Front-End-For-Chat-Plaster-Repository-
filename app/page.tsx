@@ -75,9 +75,9 @@ const features = [
     accentColor: "#fbbf24",
     icon: <Video className="w-5 h-5" />,
     stat: "~2-4 min per clip",
-    badge: "COMING SOON",
-    badgeStyle: { border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", background: "rgba(251,191,36,0.08)" },
-    href: "#",
+    badge: null,
+    badgeStyle: {},
+    href: "/video-gen",
   },
   {
     id: "ai-chat",
@@ -719,7 +719,7 @@ export default function HomePage() {
               {[...[
                 { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
                 { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "#" },
+                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "/video-gen" },
                 { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
                 { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
                 { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
@@ -728,7 +728,7 @@ export default function HomePage() {
               ], ...[
                 { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
                 { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "#" },
+                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "/video-gen" },
                 { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
                 { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
                 { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
@@ -747,7 +747,7 @@ export default function HomePage() {
                     router.push(item.href);
                   }}
                 >
-                  {(item.alt === "Agentic AI" || item.alt === "Video Generation") ? (
+                  {(item.alt === "Agentic AI") ? (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #0a0a1a, #111128)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 16, fontWeight: 700, letterSpacing: "0.05em" }}>{item.alt}</span>
                     </div>
@@ -760,12 +760,7 @@ export default function HomePage() {
                       COMING SOON
                     </div>
                   )}
-                  {item.alt === "Video Generation" && (
-                    <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", background: "rgba(0,0,0,0.85)", border: "1.5px solid #f59e0b", color: "#f59e0b", zIndex: 20, whiteSpace: "nowrap" as const }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", animation: "blink 1.4s ease-in-out infinite", boxShadow: "0 0 8px #f59e0b", display: "inline-block" }} />
-                      COMING SOON
-                    </div>
-                  )}
+
                 </div>
               ))}
             </div>
