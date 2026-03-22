@@ -59,10 +59,11 @@ export default function ImageGenerator() {
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [steps, setSteps] = useState(28);
+  const [steps, setSteps] = useState(20);
   const [guidance, setGuidance] = useState(7.0);
-  const [model, setModel] = useState<'dev' | 'schnell'>('dev');
+  const [model, setModel] = useState<'dev' | 'schnell' | 'sd35'>('dev');
   const [seed, setSeed] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
   const [expanded, setExpanded] = useState<GeneratedImage | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
   const [hStyle, setHStyle] = useState<string | null>(null);
@@ -74,16 +75,21 @@ export default function ImageGenerator() {
   const cur = allStyles.find(s => s.id === style);
   const curRatio = ratios.find(r => r.id === ratio) || ratios[0];
 
-  const handleModelChange = (m: 'dev' | 'schnell') => {
+  const handleModelChange = (m: 'dev' | 'schnell' | 'sd35') => {
     setModel(m);
     if (m === 'schnell') {
       setSteps(4);
       setGuidance(0);
-    } else {
+    } else if (m === 'sd35') {
       setSteps(28);
+      setGuidance(4.5);
+    } else {
+      setSteps(20);
       setGuidance(7.0);
     }
   };
+
+  const creditCost = model === 'schnell' ? 1 : model === 'sd35' ? 2 : 3;
 
   /* Build final prompt with style prefix */
   const buildPrompt = (raw: string, styleId: string): string => {
@@ -133,6 +139,7 @@ export default function ImageGenerator() {
         steps,
         guidance,
         seed: Number.isNaN(parsedSeed) ? null : parsedSeed,
+        negativePrompt: model === 'sd35' ? negativePrompt || null : null,
       });
 
       /* Poll every 2s */
@@ -182,7 +189,7 @@ export default function ImageGenerator() {
       setActiveJobs(prev => Math.max(0, prev - 1));
       setGenerating(false);
     }
-  }, [prompt, generating, style, ratio, steps, guidance, model, seed, curRatio]);
+  }, [prompt, generating, style, ratio, steps, guidance, model, seed, negativePrompt, curRatio]);
 
   const handleDownload = async (img: GeneratedImage, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -312,7 +319,7 @@ export default function ImageGenerator() {
                   >
                     {generating
                       ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />Generating...</>
-                      : <><Zap size={14} />Generate</>}
+                      : <><Zap size={14} />Generate · {creditCost} cr</>}
                   </button>
                 </div>
               </div>
@@ -328,18 +335,29 @@ export default function ImageGenerator() {
               </div>
               <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>MODEL</label>
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                {(['dev', 'schnell'] as const).map(m => (
-                  <button key={m} onClick={() => handleModelChange(m)} style={{
+                {([['schnell', '⚡ Fast', '1 credit'], ['dev', '🎨 Quality', '3 credits'], ['sd35', '✨ SD 3.5', '2 credits']] as const).map(([m, label, cost]) => (
+                  <button key={m} onClick={() => handleModelChange(m as 'dev' | 'schnell' | 'sd35')} style={{
                     flex: 1, padding: '8px 0', borderRadius: 8,
                     border: model === m ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
                     background: model === m ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
                     color: model === m ? '#c084fc' : 'rgba(255,255,255,0.3)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
                   }}>
-                    {m === 'dev' ? '🎨 Quality' : '⚡ Fast'}
+                    {label}<br /><span style={{ fontSize: 9, fontWeight: 400, opacity: 0.5 }}>{cost}</span>
                   </button>
                 ))}
               </div>
+              {model === 'sd35' && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>NEGATIVE PROMPT</label>
+                  <input
+                    placeholder="blurry, low quality, watermark..."
+                    value={negativePrompt}
+                    onChange={e => setNegativePrompt(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                  />
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>STEPS (1–50)</label>

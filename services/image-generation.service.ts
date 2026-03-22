@@ -30,27 +30,33 @@ export async function generateImage({
   steps = null,
   guidance = null,
   seed = null,
+  negativePrompt = null,
 }: {
   prompt: string;
-  model?: 'dev' | 'schnell';
+  model?: 'dev' | 'schnell' | 'sd35';
   width?: number;
   height?: number;
   steps?: number | null;
   guidance?: number | null;
   seed?: number | null;
+  negativePrompt?: string | null;
 }): Promise<ImageJobResponse> {
+  const body: Record<string, unknown> = {
+    prompt,
+    model,
+    width,
+    height,
+    num_inference_steps: steps,
+    guidance_scale: guidance,
+    seed,
+  };
+  if (negativePrompt && model === 'sd35') {
+    body.negative_prompt = negativePrompt;
+  }
   const res = await fetch(`${API_URL}/image/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt,
-      model,
-      width,
-      height,
-      num_inference_steps: steps,
-      guidance_scale: guidance,
-      seed,
-    }),
+    body: JSON.stringify(body),
   });
   if (res.status === 429) {
     const data = await res.json().catch(() => ({}));
