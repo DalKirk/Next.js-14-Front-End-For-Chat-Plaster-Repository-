@@ -16,10 +16,10 @@ import {
 /* ─── Duration & resolution presets ─── */
 const durations = [
   { id: '1.4s', label: 'Short (1.4s)', frames: 33 },
+  { id: '3s', label: 'Medium (3s)', frames: 81 },
   { id: '5s', label: 'Standard (5s)', frames: 121 },
-  { id: '30s', label: '30 seconds', frames: 721 },
-  { id: '1m', label: '1 minute', frames: 1441 },
-  { id: '2.5m', label: '2.5 minutes', frames: 3601 },
+  { id: '10s', label: 'Long (10s)', frames: 241 },
+  { id: '15s', label: 'Max (15s)', frames: 361 },
 ];
 
 const resolutions = [

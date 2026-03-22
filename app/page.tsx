@@ -47,8 +47,8 @@ const features = [
     accentColor: "#c084fc",
     icon: <ImageIcon className="w-5 h-5" />,
     stat: "~2s per image",
-    badge: "NEW" as string | null,
-    badgeStyle: { border: "1px solid rgba(34,211,238,0.4)", color: "#22d3ee", background: "rgba(34,211,238,0.08)" },
+    badge: "ONLINE" as string | null,
+    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
     href: "/image-gen",
   },
   {
@@ -61,8 +61,8 @@ const features = [
     accentColor: "#67e8f9",
     icon: <Box className="w-5 h-5" />,
     stat: "~10-45s per model",
-    badge: null,
-    badgeStyle: {},
+    badge: "TESTING" as string | null,
+    badgeStyle: { border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", background: "rgba(251,191,36,0.08)" },
     href: "/3d-generator",
   },
   {
@@ -75,8 +75,8 @@ const features = [
     accentColor: "#fbbf24",
     icon: <Video className="w-5 h-5" />,
     stat: "~2-4 min per clip",
-    badge: null,
-    badgeStyle: {},
+    badge: "ONLINE" as string | null,
+    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
     href: "/video-gen",
   },
   {
@@ -826,7 +826,7 @@ export default function HomePage() {
                       <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.15)", transition: "color 0.3s" }}>{f.icon}</span>
                       <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.2)" }}>{f.tag}</span>
                     </div>
-                    {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#fbbf24", animation: "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
+                    {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#34d399" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(52,211,153,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
                   </div>
                   <h3
                     className="text-xl sm:text-2xl font-bold mb-2.5 transition-colors duration-300"
@@ -914,7 +914,7 @@ export default function HomePage() {
         >
           <div className="mx-auto mb-10" style={{ width: 60, height: 1, background: "linear-gradient(90deg, #06b6d4, #8b5cf6)" }} />
           <h2 className="text-3xl sm:text-5xl font-bold mb-4" style={{ letterSpacing: "-0.03em" }}>Start Creating</h2>
-          <p className="text-sm mb-10" style={{ color: "rgba(255,255,255,0.25)" }}>Free to use. Open source AI. No watermarks.</p>
+
           <div style={{ padding: 1, borderRadius: 10, background: "linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)", display: "inline-block" }}>
             <button
               onClick={() => {
