@@ -716,31 +716,33 @@ export default function HomePage() {
           {/* Scrolling Preview Bar — pure CSS auto-scroll, click to navigate */}
           <div
             ref={bannerRef}
-            className="w-full relative mb-8 overflow-hidden"
+            className="w-full relative mb-8 mt-6 overflow-hidden"
             style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}
           >
             <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content", willChange: "transform" }}>
               {[
-                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
                 { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
                 { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
+                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
                 // duplicate set for seamless scroll loop
-                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
                 { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
                 { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
+                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
               ].map((item, i) => (
                 <div
                   key={i}
                   className="flex-shrink-0 rounded-xl overflow-hidden"
-                  style={{ width: 'clamp(260px, 45vw, 280px)', height: 'clamp(182px, 30vw, 220px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
+                  style={{ width: 'clamp(300px, 50vw, 340px)', height: 'clamp(280px, 45vw, 380px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
                 >
                   {item.src.endsWith('.mp4') ? (
                     <LazyVideo

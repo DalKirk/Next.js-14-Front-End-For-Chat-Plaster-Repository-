@@ -372,7 +372,7 @@ export default function VideoGenerator() {
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
           <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.60)' }}>Video Generation</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Video Generation</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
@@ -415,7 +415,7 @@ export default function VideoGenerator() {
                   {key === 'wan' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.06em' }}>SMART</span>}
                   {key === 'ltx' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#22d3ee', fontWeight: 600, letterSpacing: '0.06em' }}>V2V</span>}
                 </div>
-                <div style={{ fontSize: 10, color: model === key ? 'rgba(192,132,252,0.5)' : 'rgba(255,255,255,0.40)' }}>{m.sub}</div>
+                <div style={{ fontSize: 10, color: model === key ? 'rgba(192,132,252,0.7)' : 'rgba(255,255,255,0.6)' }}>{m.sub}</div>
               </button>
             ))}
           </div>
@@ -426,7 +426,7 @@ export default function VideoGenerator() {
               const labels: Record<string, { label: string; icon: React.ReactNode }> = {
                 t2v: { label: 'Text to Video', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
                 i2v: { label: 'Image to Video', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-                smart: { label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                smart: { label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4, marginBottom: 4, color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.6))' }} /> },
                 v2v: { label: 'Video to Video', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
               };
               const info = labels[tab] || { label: tab, icon: null };
@@ -437,13 +437,12 @@ export default function VideoGenerator() {
                 style={{
                   padding: '8px 18px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
                   background: mode === tab ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))' : 'transparent',
-                  color: mode === tab ? '#c084fc' : 'rgba(255,255,255,0.55)',
+                  color: mode === tab ? '#c084fc' : 'rgba(255,255,255,0.75)',
                   ...(mode === tab ? { border: '1px solid rgba(139,92,246,0.25)' } : {}),
                 }}
               >
                 {info.icon}
                 {info.label}
-                {tab === 'smart' && <span style={{ fontSize: 9, marginLeft: 4, padding: '1px 5px', borderRadius: 4, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', fontWeight: 600 }}>AI</span>}
                 <span style={{ fontSize: 9, marginLeft: 6, color: 'rgba(255,255,255,0.62)' }}>({modelCfg.creditCost[tab]}cr)</span>
               </button>
               );
@@ -453,7 +452,7 @@ export default function VideoGenerator() {
           {/* Smart mode info banner */}
           {mode === 'smart' && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
-              ✨ Smart mode: AI enhances your prompt, generates a starting frame, then animates it. Best for complex scenes. Uses 8 credits.
+              ✨ Smart mode: Enhances your prompt, generates a starting frame, then animates it. Best for complex scenes. Uses 8 credits.
             </div>
           )}
 
@@ -464,8 +463,8 @@ export default function VideoGenerator() {
               style={{ border: '1px dashed rgba(139,92,246,0.30)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(139,92,246,0.04)' }}
             >
               <Upload size={28} color="rgba(139,92,246,0.5)" style={{ marginBottom: 8 }} />
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.68)', margin: 0 }}>Upload a source image</p>
-              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.58)' }}>PNG, JPG up to 10MB · This image will be animated</small>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Upload a source image</p>
+              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>PNG, JPG up to 10MB · This image will be animated</small>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
@@ -486,8 +485,8 @@ export default function VideoGenerator() {
               style={{ border: '1px dashed rgba(6,182,212,0.35)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(6,182,212,0.04)' }}
             >
               <Video size={28} color="rgba(6,182,212,0.5)" style={{ marginBottom: 8 }} />
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.68)', margin: 0 }}>Upload a source video</p>
-              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.58)' }}>MP4 up to 50MB · This video will be remixed</small>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Upload a source video</p>
+              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>MP4 up to 50MB · This video will be remixed</small>
             </div>
           )}
           <input ref={videoInputRef} type="file" accept="video/mp4,video/webm" onChange={handleVideoUpload} style={{ display: 'none' }} />
@@ -497,7 +496,7 @@ export default function VideoGenerator() {
               <button onClick={removeVideo} style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 6, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={14} />
               </button>
-              <div style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 Strength: {v2vStrength.toFixed(1)}
               </div>
             </div>
@@ -610,7 +609,7 @@ export default function VideoGenerator() {
                       flex: 1, padding: '8px 0', borderRadius: 8,
                       border: resolution === r.id ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
                       background: resolution === r.id ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
-                      color: resolution === r.id ? '#c084fc' : 'rgba(255,255,255,0.50)',
+                      color: resolution === r.id ? '#c084fc' : 'rgba(255,255,255,0.7)',
                       fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
                     }}>
                       {r.label}
@@ -633,7 +632,7 @@ export default function VideoGenerator() {
                     onChange={e => setV2vStrength(parseFloat(e.target.value))}
                     style={{ width: '100%', accentColor: '#22d3ee', marginTop: 4 }}
                   />
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', marginTop: 2 }}>Lower = more of original, Higher = more creative</div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Lower = more of original, Higher = more creative</div>
                 </div>
               )}
               <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>DURATION</label>
@@ -643,7 +642,7 @@ export default function VideoGenerator() {
                     padding: '8px 12px', borderRadius: 8,
                     border: duration === d.id ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
                     background: duration === d.id ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
-                    color: duration === d.id ? '#c084fc' : 'rgba(255,255,255,0.50)',
+                    color: duration === d.id ? '#c084fc' : 'rgba(255,255,255,0.7)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit', whiteSpace: 'nowrap',
                   }}>
                     {d.label}
@@ -672,7 +671,7 @@ export default function VideoGenerator() {
           {/* Progress bar */}
           {generating && progress > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
                 <span>{progressMsg || 'Generating video...'}</span>
                 <span>{progress}%</span>
               </div>
@@ -703,7 +702,7 @@ export default function VideoGenerator() {
           )}
 
           {/* Gallery label */}
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.2)', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
             GENERATED · {videos.length}
           </div>
 
@@ -756,7 +755,7 @@ export default function VideoGenerator() {
                       )}
                     </div>
                     <div style={{ padding: '9px 11px' }}>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
                         <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
                         <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : 'rgba(139,92,246,0.5)' }}>{vid.mode}{vid.mode === 'smart' && ' ✨'}</span>
@@ -825,13 +824,13 @@ export default function VideoGenerator() {
           <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '18px 0' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 18, padding: '10px 0' }}>
             <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7 }} />
-            <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.7)' }}>starcyeed</span>
+            <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.85)' }}>starcyeed</span>
           </div>
           <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', marginBottom: 18 }} />
 
           {/* Tips */}
           <div style={{ borderRadius: 10, padding: 14, background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.06)' }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(139,92,246,0.4)', marginBottom: 7 }}>VIDEO PROMPT TIPS</div>
+            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(139,92,246,0.6)', marginBottom: 7 }}>VIDEO PROMPT TIPS</div>
             {(model === 'wan' ? [
               'Best for realistic human faces & bodies',
               'Use "cinematic", "shallow depth of field" for film quality',
@@ -845,7 +844,7 @@ export default function VideoGenerator() {
               'guidance_scale sweet spot: 7.0–7.5',
               'Great for landscapes & abstract scenes',
             ]).map((t, i) => (
-              <p key={i} style={{ fontSize: 11, lineHeight: 1.65, color: 'rgba(255,255,255,0.2)', margin: '0 0 1px' }}>• {t}</p>
+              <p key={i} style={{ fontSize: 11, lineHeight: 1.65, color: 'rgba(255,255,255,0.55)', margin: '0 0 1px' }}>• {t}</p>
             ))}
           </div>
         </div>
