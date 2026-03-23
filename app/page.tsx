@@ -203,25 +203,6 @@ export default function HomePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
-  const bannerPaused = useRef(false);
-
-  /* ── Auto-scroll banner ── */
-  useEffect(() => {
-    const el = bannerRef.current;
-    if (!el) return;
-    let raf: number;
-    const speed = 0.5; // px per frame
-    const step = () => {
-      if (!bannerPaused.current && el.scrollWidth > 0) {
-        el.scrollLeft += speed;
-        // seamless loop: when we've scrolled past the first set, jump back
-        if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0;
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, []);
 
   /* ═══════════════════════════════════════════
      AUTH & AVATAR EFFECTS (preserved from v1)
@@ -691,58 +672,39 @@ export default function HomePage() {
       </header>
 
       {/* ═══ HERO ═══ */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 overflow-hidden">
+      <section className="relative min-h-screen flex flex-col items-center justify-center pt-12 sm:pt-20 overflow-hidden" style={{ justifyContent: 'flex-start', paddingTop: 'clamp(60px, 12vh, 120px)' }}>
         <div
           className="text-center transition-all duration-1000 w-full"
           style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateY(0)" : "translateY(40px)" }}
         >
-          {/* Scrolling Preview Bar — auto-scroll + drag to scroll, click to navigate */}
+          {/* Scrolling Preview Bar — pure CSS auto-scroll, click to navigate */}
           <div
             ref={bannerRef}
-            className="w-full relative mb-8 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
-            style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", scrollbarWidth: "none", msOverflowStyle: "none" }}
-            onMouseEnter={() => { bannerPaused.current = true; }}
-            onMouseLeave={() => { bannerPaused.current = false; }}
-            onMouseDown={(e) => {
-              bannerPaused.current = true;
-              const el = e.currentTarget;
-              const startX = e.pageX - el.offsetLeft;
-              const scrollLeft = el.scrollLeft;
-              let dragged = false;
-              const onMove = (ev: MouseEvent) => { dragged = true; el.scrollLeft = scrollLeft - (ev.pageX - el.offsetLeft - startX); };
-              const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); if (dragged) { el.dataset.dragged = "true"; setTimeout(() => delete el.dataset.dragged, 0); } };
-              document.addEventListener("mousemove", onMove);
-              document.addEventListener("mouseup", onUp);
-            }}
+            className="w-full relative mb-8 overflow-hidden"
+            style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}
           >
-            <div className="flex gap-5 py-4 px-4" style={{ width: "max-content" }}>
+            <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content" }}>
               {[
                 { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
                 { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
-                { src: "/previews/Lizard.mp4", alt: "Lizard", href: "/ai-chat" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
+                { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
                 // duplicate set for seamless scroll loop
                 { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
                 { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
-                { src: "/previews/Lizard.mp4", alt: "Lizard", href: "/ai-chat" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
+                { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
               ].map((item, i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 rounded-xl overflow-hidden transition-transform duration-300 hover:scale-105"
-                  style={{ width: 280, height: 182, boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", cursor: "pointer" }}
-                  onClick={(e) => {
-                    const container = e.currentTarget.closest("[data-dragged]");
-                    if (container) return;
-                    if (item.href === "#") return;
-                    router.push(item.href);
-                  }}
+                  className="flex-shrink-0 rounded-xl overflow-hidden"
+                  style={{ width: 'clamp(260px, 45vw, 280px)', height: 'clamp(182px, 30vw, 220px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative" }}
                 >
                   {item.src.endsWith('.mp4') ? (
                     <video
@@ -1072,6 +1034,9 @@ export default function HomePage() {
       <style>{`
         @keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .banner-scroll-track {
+          animation: marquee 40s linear infinite;
+        }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
         @keyframes rainbowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes rainbowPulse { 0%,100% { opacity: 1; filter: blur(4px) brightness(1.8); } 50% { opacity: 1; filter: blur(6px) brightness(2.2); } }
