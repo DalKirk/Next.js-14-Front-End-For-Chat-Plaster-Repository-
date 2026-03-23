@@ -762,7 +762,7 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-16" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-24" style={{ color: "rgba(255,255,255,0.3)" }}>
             Generate images, 3D models, and videos with AI. Build games, chat in real-time, and explore a creative universe.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
