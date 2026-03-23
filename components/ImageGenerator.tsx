@@ -250,22 +250,22 @@ export default function ImageGenerator() {
       </div>
 
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => router.push('/')}
-            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 0 }}
+            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0 }}
           >
             <ArrowLeft size={16} />
           </button>
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
-          <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>/</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Image Generation</span>
+          <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.60)' }}>Image Generation</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.25)' }}>SERVER READY</span>
+          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>SERVER READY</span>
         </div>
       </div>
 
@@ -273,17 +273,17 @@ export default function ImageGenerator() {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px]" style={{ position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 56px)' }}>
 
         {/* ────── LEFT: Prompt + Gallery ────── */}
-        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           {/* Prompt area */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15),rgba(236,72,153,0.12))' }}>
+            <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.40),rgba(6,182,212,0.25),rgba(236,72,153,0.20))' }}>
               <div style={{ borderRadius: 13, background: '#0a0a14', padding: '18px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
                   <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <div className="prompt-rainbow-glow" />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)' }}>PROMPT</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.75)' }}>PROMPT</span>
                 </div>
                 <textarea
                   value={prompt}
@@ -293,13 +293,13 @@ export default function ImageGenerator() {
                   rows={3}
                   style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 1.7, fontFamily: 'inherit', caretColor: '#22d3ee' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, fontSize: 11, background: cur?.bg || 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', maxWidth: 130, overflow: 'hidden' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, fontSize: 11, background: cur?.bg || 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', cursor: 'pointer', maxWidth: 130, overflow: 'hidden' }}>
                       <Layers size={11} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cur?.name}</span>
                     </button>
-                    <span style={{ fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)' }}>{ratio}</span>
-                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.2)' }}>
+                    <span style={{ fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.72)' }}>{ratio}</span>
+                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.40)' }}>
                       <Settings2 size={14} />
                     </button>
                   </div>
@@ -328,19 +328,19 @@ export default function ImageGenerator() {
 
           {/* Settings drawer */}
           {settings && (
-            <div style={{ borderRadius: 12, padding: 16, marginBottom: 20, background: 'rgba(10,10,20,0.7)', border: '1px solid rgba(139,92,246,0.08)' }}>
+            <div style={{ borderRadius: 12, padding: 16, marginBottom: 20, background: 'rgba(10,10,20,0.7)', border: '1px solid rgba(139,92,246,0.18)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)' }}>ADVANCED</span>
-                <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)' }}><X size={13} /></button>
+                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.72)' }}>ADVANCED</span>
+                <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.62)' }}><X size={13} /></button>
               </div>
-              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>MODEL</label>
+              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>MODEL</label>
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 {([['schnell', '⚡ Fast', '1 credit'], ['dev', '🎨 Quality', '3 credits'], ['sd35', '✨ SD 3.5', '2 credits']] as const).map(([m, label, cost]) => (
                   <button key={m} onClick={() => handleModelChange(m as 'dev' | 'schnell' | 'sd35')} style={{
                     flex: 1, padding: '8px 0', borderRadius: 8,
-                    border: model === m ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
-                    background: model === m ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
-                    color: model === m ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                    border: model === m ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                    background: model === m ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: model === m ? '#c084fc' : 'rgba(255,255,255,0.50)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
                   }}>
                     {label}<br /><span style={{ fontSize: 9, fontWeight: 400, opacity: 0.5 }}>{cost}</span>
@@ -349,27 +349,27 @@ export default function ImageGenerator() {
               </div>
               {model === 'sd35' && (
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>NEGATIVE PROMPT</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>NEGATIVE PROMPT</label>
                   <input
                     placeholder="blurry, low quality, watermark..."
                     value={negativePrompt}
                     onChange={e => setNegativePrompt(e.target.value)}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>STEPS (1–50)</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>STEPS (1–50)</label>
                   <input
                     type="number" value={steps}
                     onChange={e => setSteps(Math.min(50, Math.max(1, +e.target.value)))}
                     min={1} max={50}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>GUIDANCE ({guidance.toFixed(1)})</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>GUIDANCE ({guidance.toFixed(1)})</label>
                   <input
                     type="range" min={0} max={20} step={0.5}
                     value={guidance}
@@ -378,26 +378,26 @@ export default function ImageGenerator() {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>SEED</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>SEED</label>
                   <input
                     placeholder="Random"
                     value={seed}
                     onChange={e => setSeed(e.target.value.replace(/\D/g, ''))}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
               </div>
-              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>ASPECT RATIO</label>
+              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>ASPECT RATIO</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {ratios.map(r => (
                   <button key={r.id} onClick={() => setRatio(r.id)} style={{
                     flex: 1, padding: '8px 0', borderRadius: 8,
-                    border: ratio === r.id ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
-                    background: ratio === r.id ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
-                    color: ratio === r.id ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                    border: ratio === r.id ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                    background: ratio === r.id ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: ratio === r.id ? '#c084fc' : 'rgba(255,255,255,0.50)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
                   }}>
-                    {r.id}<br /><span style={{ fontSize: 9, fontWeight: 400, color: 'rgba(255,255,255,0.2)' }}>{r.desc}</span>
+                    {r.id}<br /><span style={{ fontSize: 9, fontWeight: 400, color: 'rgba(255,255,255,0.58)' }}>{r.desc}</span>
                   </button>
                 ))}
               </div>
@@ -428,7 +428,7 @@ export default function ImageGenerator() {
           )}
 
           {/* Gallery label */}
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.2)', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.62)', marginBottom: 12 }}>
             GENERATED · {images.length}
           </div>
 
@@ -483,11 +483,11 @@ export default function ImageGenerator() {
                       )}
                     </div>
                     <div style={{ padding: '9px 11px' }}>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.prompt}</p>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.prompt}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.22)' }}>{img.style}</span>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.62)' }}>{img.style}</span>
                         {img.time != null && (
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{img.time.toFixed(1)}s</span>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{img.time.toFixed(1)}s</span>
                         )}
                         {img.status === 'failed' && (
                           <span style={{ fontSize: 9, color: 'rgba(239,68,68,0.5)' }}>Failed</span>
@@ -506,9 +506,9 @@ export default function ImageGenerator() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <Layers size={15} color="#a78bfa" />
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)' }}>STYLE</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.75)' }}>STYLE</span>
             </div>
-            <span style={{ fontSize: 9, letterSpacing: '0.1em', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(139,92,246,0.2)', color: 'rgba(139,92,246,0.5)' }}>{allStyles.length - 1} AVAILABLE</span>
+            <span style={{ fontSize: 9, letterSpacing: '0.1em', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(139,92,246,0.35)', color: 'rgba(139,92,246,0.70)' }}>{allStyles.length - 1} AVAILABLE</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', paddingRight: 4 }}>
@@ -523,17 +523,17 @@ export default function ImageGenerator() {
                   onMouseLeave={() => setHStyle(null)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', borderRadius: 9,
-                    border: active ? '1px solid rgba(139,92,246,0.22)' : '1px solid transparent',
-                    background: active ? s.bg : hover ? 'rgba(255,255,255,0.02)' : 'transparent',
+                    border: active ? '1px solid rgba(139,92,246,0.35)' : '1px solid transparent',
+                    background: active ? s.bg : hover ? 'rgba(255,255,255,0.04)' : 'transparent',
                     cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s',
                   }}
                 >
-                  <div style={{ width: 34, height: 34, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: s.bg, border: active ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.03)', flexShrink: 0 }}>
-                    {'image' in s && s.image ? <img src={s.image} alt={s.name} style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover' }} /> : s.emoji === '—' ? <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: 11 }}>—</span> : s.emoji}
+                  <div style={{ width: 34, height: 34, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, background: s.bg, border: active ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+                    {'image' in s && s.image ? <img src={s.image} alt={s.name} style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover' }} /> : s.emoji === '—' ? <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>—</span> : s.emoji}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: active ? '#fff' : 'rgba(255,255,255,0.6)' }}>{s.name}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.desc}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: active ? '#fff' : 'rgba(255,255,255,0.75)' }}>{s.name}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.58)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.desc}</div>
                   </div>
                   {active && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22d3ee', boxShadow: '0 0 6px rgba(34,211,238,0.5)', flexShrink: 0 }} />}
                 </button>
@@ -541,7 +541,7 @@ export default function ImageGenerator() {
             })}
           </div>
 
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '18px 0' }} />
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '18px 0' }} />
 
           {/* Starcyeed branding */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 18, padding: '10px 0' }}>
@@ -557,22 +557,22 @@ export default function ImageGenerator() {
             ].map(s => (
               <div key={s.l}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3, color: 'rgba(255,255,255,0.1)' }}>{s.i}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{s.v}</div>
-                <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.16)' }}>{s.l}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{s.v}</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.58)' }}>{s.l}</div>
               </div>
             ))}
           </div>
 
           {/* Tips */}
-          <div style={{ borderRadius: 10, padding: 14, background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.06)' }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(139,92,246,0.4)', marginBottom: 7 }}>PROMPT TIPS</div>
+          <div style={{ borderRadius: 10, padding: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.14)' }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(139,92,246,0.65)', marginBottom: 7 }}>PROMPT TIPS</div>
             {[
               'Be specific with details, lighting, mood',
               '"cinematic lighting" adds drama',
               'Combine: "oil painting of a cyberpunk city"',
               '"8K, detailed, sharp focus" boosts fidelity',
             ].map((t, i) => (
-              <p key={i} style={{ fontSize: 11, lineHeight: 1.65, color: 'rgba(255,255,255,0.22)', margin: '0 0 1px' }}>• {t}</p>
+              <p key={i} style={{ fontSize: 11, lineHeight: 1.65, color: 'rgba(255,255,255,0.62)', margin: '0 0 1px' }}>• {t}</p>
             ))}
           </div>
         </div>
@@ -592,14 +592,14 @@ export default function ImageGenerator() {
                 )}
               </div>
               <div style={{ padding: 18 }}>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.80)', margin: '0 0 10px' }}>{expanded.prompt}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.1)', color: 'rgba(139,92,246,0.5)' }}>{expanded.style}</span>
-                  {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>{expanded.time.toFixed(1)}s</span>}
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(139,92,246,0.14)', border: '1px solid rgba(139,92,246,0.22)', color: 'rgba(139,92,246,0.70)' }}>{expanded.style}</span>
+                  {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time.toFixed(1)}s</span>}
                   <div style={{ flex: 1 }} />
                   <button
                     onClick={() => handleKeep(expanded)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: expanded.kept ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${expanded.kept ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.08)'}`, color: expanded.kept ? '#10b981' : 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: expanded.kept ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.06)', border: `1px solid ${expanded.kept ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.14)'}`, color: expanded.kept ? '#10b981' : 'rgba(255,255,255,0.65)', cursor: 'pointer' }}
                   >
                     <Check size={12} />{expanded.kept ? 'Kept' : 'Keep'}
                   </button>
@@ -624,7 +624,7 @@ export default function ImageGenerator() {
                 </div>
               </div>
             </div>
-            <button onClick={() => setExpanded(null)} style={{ position: 'absolute', top: 10, right: 10, padding: 5, borderRadius: 7, background: 'rgba(0,0,0,0.5)', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+            <button onClick={() => setExpanded(null)} style={{ position: 'absolute', top: 10, right: 10, padding: 5, borderRadius: 7, background: 'rgba(0,0,0,0.5)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
           </div>
         </div>
       )}
@@ -638,10 +638,10 @@ export default function ImageGenerator() {
         .prompt-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}
         .prompt-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
         .img-card:hover .img-card-overlay{opacity:1!important;pointer-events:auto!important}
-        textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.16)}
+        textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.48)}
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.15);border-radius:2px}
+        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.30);border-radius:2px}
         *{box-sizing:border-box;margin:0}
       `}</style>
     </div>

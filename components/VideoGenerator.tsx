@@ -11,28 +11,69 @@ import {
   pollVideoJob,
   getVideoResultUrl,
   type VideoJobResponse,
+  type VideoModel,
 } from '@/services/video-generation.service';
 
-/* ─── Duration & resolution presets ─── */
-const durations = [
-  { id: '1.4s', label: 'Short (1.4s)', frames: 33 },
-  { id: '3s', label: 'Medium (3s)', frames: 81 },
-  { id: '5s', label: 'Standard (5s)', frames: 121 },
-  { id: '10s', label: 'Long (10s)', frames: 241 },
-  { id: '15s', label: 'Max (15s)', frames: 361 },
-];
+/* ─── Model definitions ─── */
+type WanMode = 't2v' | 'i2v' | 'smart';
+type LtxMode = 't2v' | 'i2v' | 'v2v';
+type VideoMode = WanMode | LtxMode;
 
-const resolutions = [
-  { id: '480p', label: 'Quick Draft', w: 832, h: 480 },
-  { id: '720p', label: '720p Landscape', w: 1280, h: 704 },
-  { id: 'portrait', label: 'Portrait', w: 704, h: 1280 },
+const MODEL_CONFIG = {
+  wan: {
+    name: 'WAN 2.2',
+    sub: 'Realistic humans · Cinematic · 14B',
+    modes: ['t2v', 'i2v', 'smart'] as WanMode[],
+    defaultSteps: 30,
+    defaultGuidance: 5.0,
+    creditCost: { t2v: 5, i2v: 5, smart: 8 } as Record<string, number>,
+    supportsNegativePrompt: false,
+  },
+  ltx: {
+    name: 'LTX-Video',
+    sub: 'Fast · Up to 1080p · V2V · 13B',
+    modes: ['t2v', 'i2v', 'v2v'] as LtxMode[],
+    defaultSteps: 30,
+    defaultGuidance: 7.5,
+    creditCost: { t2v: 5, i2v: 5, v2v: 6 } as Record<string, number>,
+    supportsNegativePrompt: true,
+  },
+} as const;
+
+/* ─── Duration presets per model ─── */
+const FRAME_PRESETS = {
+  wan: [
+    { id: '1.4s', label: 'Short (1.4s)', frames: 33 },
+    { id: '3.4s', label: 'Medium (3.4s)', frames: 81 },
+    { id: '5s', label: 'Standard (5s)', frames: 121 },
+    { id: '10s', label: 'Long (10s)', frames: 241 },
+    { id: '15s', label: 'Max (15s)', frames: 361 },
+  ],
+  ltx: [
+    { id: '1s', label: 'Quick (1s)', frames: 25 },
+    { id: '2s', label: 'Short (2s)', frames: 49 },
+    { id: '4s', label: 'Medium (4s)', frames: 97 },
+    { id: '5s', label: 'Standard (5s)', frames: 121 },
+    { id: '8s', label: 'Long (8s)', frames: 193 },
+    { id: '10.7s', label: 'Max (10.7s)', frames: 257 },
+  ],
+};
+
+/* ─── Resolution presets (WAN fixed, LTX selectable) ─── */
+const WAN_RESOLUTION = { w: 1280, h: 704 };
+
+const LTX_RESOLUTIONS = [
+  { id: '480p', label: '480p', w: 832, h: 480 },
+  { id: '720p', label: '720p', w: 1280, h: 720 },
+  { id: '1080p', label: '1080p', w: 1920, h: 1088 },
 ];
 
 /* ─── Generated video record ─── */
 interface GeneratedVideo {
   id: string;
   prompt: string;
-  mode: 't2v' | 'i2v' | 'smart';
+  model: VideoModel;
+  mode: string;
   duration: string;
   resolution: string;
   time: string | null;
@@ -53,15 +94,19 @@ const colorPairs = [
 export default function VideoGenerator() {
   const router = useRouter();
   const [prompt, setPrompt] = useState('');
-  const [mode, setMode] = useState<'t2v' | 'i2v' | 'smart'>('t2v');
+  const [model, setModel] = useState<VideoModel>('wan');
+  const [mode, setMode] = useState<VideoMode>('t2v');
   const [duration, setDuration] = useState('1.4s');
   const [resolution, setResolution] = useState('720p');
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [v2vStrength, setV2vStrength] = useState(0.7);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(30);
   const [cfg, setCfg] = useState(5.0);
   const [seed, setSeed] = useState('');
+  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<GeneratedVideo | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +120,31 @@ export default function VideoGenerator() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const coldStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const curDuration = durations.find(d => d.id === duration) || durations[0];
-  const curResolution = resolutions.find(r => r.id === resolution) || resolutions[0];
+  const modelCfg = MODEL_CONFIG[model];
+  const framePresets = FRAME_PRESETS[model];
+  const curDuration = framePresets.find(d => d.id === duration) || framePresets[0];
+  const curLtxRes = LTX_RESOLUTIONS.find(r => r.id === resolution) || LTX_RESOLUTIONS[1];
+  const creditCost = modelCfg.creditCost[mode] ?? 5;
+
+  // Reset mode, duration, and settings when model changes
+  const switchModel = (m: VideoModel) => {
+    setModel(m);
+    setMode('t2v');
+    const presets = FRAME_PRESETS[m];
+    setDuration(presets[0].id);
+    setSteps(MODEL_CONFIG[m].defaultSteps);
+    setCfg(MODEL_CONFIG[m].defaultGuidance);
+    setNegativePrompt('');
+    setUploadedVideo(null);
+    setResolution('720p');
+  };
 
   const generate = useCallback(async () => {
     if (!prompt.trim() || generating) return;
     if (mode === 'i2v' && !uploadedImage) return;
+    if (mode === 'v2v' && !uploadedVideo) return;
 
     const now = Date.now();
     if (now - lastSubmitRef.current < 2000) return;
@@ -97,6 +160,7 @@ export default function VideoGenerator() {
     const newVid: GeneratedVideo = {
       id: tempId,
       prompt: prompt.trim(),
+      model,
       mode,
       duration,
       resolution,
@@ -115,18 +179,26 @@ export default function VideoGenerator() {
       const imageBase64 = mode === 'i2v' && uploadedImage
         ? uploadedImage.replace(/^data:image\/[^;]+;base64,/, '')
         : null;
+      const videoBase64 = mode === 'v2v' && uploadedVideo
+        ? uploadedVideo.replace(/^data:video\/[^;]+;base64,/, '')
+        : null;
 
       const job = await generateVideo({
+        model,
         prompt: prompt.trim(),
         mode,
         image: imageBase64,
-        width: curResolution.w,
-        height: curResolution.h,
+        video: videoBase64,
+        ...(model === 'wan'
+          ? { width: WAN_RESOLUTION.w, height: WAN_RESOLUTION.h }
+          : { resolution }),
         numFrames: curDuration.frames,
         steps,
         guidanceScale: cfg,
         fps: 24,
         seed: Number.isNaN(parsedSeed) ? null : parsedSeed,
+        negativePrompt: model === 'ltx' && negativePrompt ? negativePrompt : null,
+        strength: v2vStrength,
       });
 
       // Cold start detection: if progress stays 10-25% for >30s
@@ -137,7 +209,7 @@ export default function VideoGenerator() {
       /* Poll every 2s */
       pollRef.current = setInterval(async () => {
         try {
-          const status: VideoJobResponse = await pollVideoJob(job.job_id);
+          const status: VideoJobResponse = await pollVideoJob(model, job.job_id);
 
           setProgress(status.progress);
           setProgressMsg(status.message);
@@ -159,7 +231,7 @@ export default function VideoGenerator() {
                       ? `${status.generation_time.toFixed(1)}s`
                       : null,
                     videoUrl: status.status === 'complete' && status.video_url
-                      ? getVideoResultUrl(job.job_id)
+                      ? getVideoResultUrl(model, job.job_id)
                       : null,
                     error: status.error ?? undefined,
                     enhancedPrompt: status.enhanced_prompt ?? undefined,
@@ -205,7 +277,7 @@ export default function VideoGenerator() {
       setProgressMsg('');
       setGenerating(false);
     }
-  }, [prompt, generating, mode, duration, resolution, uploadedImage, steps, cfg, seed, curDuration, curResolution]);
+  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -220,6 +292,21 @@ export default function VideoGenerator() {
   const removeImage = () => {
     setUploadedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setUploadedVideo(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeVideo = () => {
+    setUploadedVideo(null);
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const handleDownload = async (vid: GeneratedVideo, e?: React.MouseEvent) => {
@@ -254,8 +341,9 @@ export default function VideoGenerator() {
     setVideos(prev => prev.filter(v => v.id !== vid.id));
     if (expanded?.id === vid.id) setExpanded(null);
     setPrompt(vid.prompt);
-    // For i2v, fall back to t2v since we can't restore the source image
-    setMode(vid.mode === 'i2v' ? 't2v' : vid.mode === 'smart' ? 't2v' : vid.mode);
+    setModel(vid.model);
+    // For i2v/v2v, fall back to t2v since we can't restore the source
+    setMode(vid.mode === 'i2v' || vid.mode === 'v2v' ? 't2v' : vid.mode === 'smart' ? 't2v' : vid.mode as VideoMode);
     setDuration(vid.duration);
     setTimeout(() => {
       const btn = document.querySelector('[data-generate-btn]') as HTMLButtonElement | null;
@@ -273,22 +361,22 @@ export default function VideoGenerator() {
       </div>
 
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => router.push('/')}
-            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 0 }}
+            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0 }}
           >
             <ArrowLeft size={16} />
           </button>
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
-          <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>/</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Video Generation</span>
+          <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.60)' }}>Video Generation</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.25)' }}>SERVER READY</span>
+          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>SERVER READY</span>
         </div>
       </div>
 
@@ -296,41 +384,70 @@ export default function VideoGenerator() {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px]" style={{ position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 56px)' }}>
 
         {/* ────── LEFT: Prompt + Gallery ────── */}
-        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.03)' }}>
+        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           {/* Title row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,rgba(139,92,246,0.15),rgba(6,182,212,0.15))', border: '1px solid rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.25))', border: '1px solid rgba(139,92,246,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Play size={20} color="#a78bfa" />
             </div>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.03em', margin: 0 }}>Video Generation</h1>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Text-to-Video, Image-to-Video & Smart AI</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', marginTop: 2 }}>{modelCfg.name} · {modelCfg.sub}</div>
             </div>
           </div>
 
-          {/* Mode tabs */}
-          <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)', marginBottom: 20, width: 'fit-content' }}>
-            {([
-              { id: 't2v' as const, label: 'Text to Video', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-              { id: 'i2v' as const, label: 'Image to Video', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-              { id: 'smart' as const, label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-            ]).map(tab => (
+          {/* Model selector */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {(Object.entries(MODEL_CONFIG) as [VideoModel, typeof MODEL_CONFIG[VideoModel]][]).map(([key, m]) => (
               <button
-                key={tab.id}
-                onClick={() => setMode(tab.id)}
+                key={key}
+                onClick={() => switchModel(key)}
                 style={{
-                  padding: '8px 18px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
-                  background: mode === tab.id ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))' : 'transparent',
-                  color: mode === tab.id ? '#c084fc' : 'rgba(255,255,255,0.35)',
-                  ...(mode === tab.id ? { border: '1px solid rgba(139,92,246,0.15)' } : {}),
+                  flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.2s', fontFamily: 'inherit',
+                  border: model === key ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                  background: model === key ? 'rgba(139,92,246,0.14)' : 'rgba(255,255,255,0.04)',
                 }}
               >
-                {tab.icon}
-                {tab.label}
-                {tab.id === 'smart' && <span style={{ fontSize: 9, marginLeft: 4, padding: '1px 5px', borderRadius: 4, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', fontWeight: 600 }}>AI</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: model === key ? '#c084fc' : 'rgba(255,255,255,0.65)' }}>{m.name}</span>
+                  {key === 'wan' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.06em' }}>SMART</span>}
+                  {key === 'ltx' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#22d3ee', fontWeight: 600, letterSpacing: '0.06em' }}>V2V</span>}
+                </div>
+                <div style={{ fontSize: 10, color: model === key ? 'rgba(192,132,252,0.5)' : 'rgba(255,255,255,0.40)' }}>{m.sub}</div>
               </button>
             ))}
+          </div>
+
+          {/* Mode tabs */}
+          <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, width: 'fit-content' }}>
+            {modelCfg.modes.map(tab => {
+              const labels: Record<string, { label: string; icon: React.ReactNode }> = {
+                t2v: { label: 'Text to Video', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                i2v: { label: 'Image to Video', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                smart: { label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                v2v: { label: 'Video to Video', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+              };
+              const info = labels[tab] || { label: tab, icon: null };
+              return (
+              <button
+                key={tab}
+                onClick={() => setMode(tab)}
+                style={{
+                  padding: '8px 18px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
+                  background: mode === tab ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))' : 'transparent',
+                  color: mode === tab ? '#c084fc' : 'rgba(255,255,255,0.55)',
+                  ...(mode === tab ? { border: '1px solid rgba(139,92,246,0.25)' } : {}),
+                }}
+              >
+                {info.icon}
+                {info.label}
+                {tab === 'smart' && <span style={{ fontSize: 9, marginLeft: 4, padding: '1px 5px', borderRadius: 4, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', fontWeight: 600 }}>AI</span>}
+                <span style={{ fontSize: 9, marginLeft: 6, color: 'rgba(255,255,255,0.62)' }}>({modelCfg.creditCost[tab]}cr)</span>
+              </button>
+              );
+            })}
           </div>
 
           {/* Smart mode info banner */}
@@ -344,11 +461,11 @@ export default function VideoGenerator() {
           {mode === 'i2v' && !uploadedImage && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              style={{ border: '1px dashed rgba(139,92,246,0.15)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(139,92,246,0.02)' }}
+              style={{ border: '1px dashed rgba(139,92,246,0.30)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(139,92,246,0.04)' }}
             >
-              <Upload size={28} color="rgba(139,92,246,0.3)" style={{ marginBottom: 8 }} />
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', margin: 0 }}>Upload a source image</p>
-              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)' }}>PNG, JPG up to 10MB · This image will be animated</small>
+              <Upload size={28} color="rgba(139,92,246,0.5)" style={{ marginBottom: 8 }} />
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.68)', margin: 0 }}>Upload a source image</p>
+              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.58)' }}>PNG, JPG up to 10MB · This image will be animated</small>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
@@ -362,6 +479,30 @@ export default function VideoGenerator() {
             </div>
           )}
 
+          {/* Video upload (V2V mode — LTX only) */}
+          {mode === 'v2v' && !uploadedVideo && (
+            <div
+              onClick={() => videoInputRef.current?.click()}
+              style={{ border: '1px dashed rgba(6,182,212,0.35)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(6,182,212,0.04)' }}
+            >
+              <Video size={28} color="rgba(6,182,212,0.5)" style={{ marginBottom: 8 }} />
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.68)', margin: 0 }}>Upload a source video</p>
+              <small style={{ fontSize: 10, color: 'rgba(255,255,255,0.58)' }}>MP4 up to 50MB · This video will be remixed</small>
+            </div>
+          )}
+          <input ref={videoInputRef} type="file" accept="video/mp4,video/webm" onChange={handleVideoUpload} style={{ display: 'none' }} />
+          {mode === 'v2v' && uploadedVideo && (
+            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <video src={uploadedVideo} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} muted playsInline />
+              <button onClick={removeVideo} style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 6, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={14} />
+              </button>
+              <div style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, padding: '3px 8px', borderRadius: 5, background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Strength: {v2vStrength.toFixed(1)}
+              </div>
+            </div>
+          )}
+
           {/* Prompt area */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15),rgba(236,72,153,0.12))' }}>
@@ -370,30 +511,41 @@ export default function VideoGenerator() {
                   <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <div className="video-rainbow-glow" />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)' }}>
-                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : 'DESCRIBE YOUR VIDEO'}
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.75)' }}>
+                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : mode === 'v2v' ? 'DESCRIBE THE REMIX' : 'DESCRIBE YOUR VIDEO'}
                   </span>
                 </div>
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); } }}
-                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
+                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : mode === 'v2v' ? 'Transform the scene into a cyberpunk city at night...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
                   rows={3}
                   style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 1.7, fontFamily: 'inherit', caretColor: '#22d3ee' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                {/* Negative prompt — LTX only */}
+                {model === 'ltx' && (
+                  <textarea
+                    value={negativePrompt}
+                    onChange={e => setNegativePrompt(e.target.value)}
+                    placeholder="Negative prompt — blurry, distorted face, low quality, cartoon..."
+                    rows={2}
+                    style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, fontFamily: 'inherit', caretColor: '#ef4444', marginTop: 8, borderTop: '1px dashed rgba(239,68,68,0.1)', paddingTop: 8 }}
+                  />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.03)' }}>{duration}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.03)' }}>{resolution}</span>
-                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.2)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{modelCfg.name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>
+                    {model === 'ltx' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{resolution}</span>}
+                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.62)' }}>
                       <Settings2 size={14} />
                     </button>
                   </div>
                   <button
                     data-generate-btn
                     onClick={generate}
-                    disabled={!prompt.trim() || generating || (mode === 'i2v' && !uploadedImage)}
+                    disabled={!prompt.trim() || generating || (mode === 'i2v' && !uploadedImage) || (mode === 'v2v' && !uploadedVideo)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none',
                       fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0, fontFamily: 'inherit',
@@ -406,7 +558,7 @@ export default function VideoGenerator() {
                   >
                     {generating
                       ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />Generating...</>
-                      : <><Play size={14} />Generate</>}
+                      : <><Play size={14} />Generate ({creditCost}cr)</>}
                   </button>
                 </div>
               </div>
@@ -415,23 +567,23 @@ export default function VideoGenerator() {
 
           {/* Settings drawer */}
           {settings && (
-            <div style={{ borderRadius: 12, padding: 16, marginBottom: 20, background: 'rgba(10,10,20,0.7)', border: '1px solid rgba(139,92,246,0.08)' }}>
+            <div style={{ borderRadius: 12, padding: 16, marginBottom: 20, background: 'rgba(10,10,20,0.7)', border: '1px solid rgba(139,92,246,0.18)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.25)' }}>ADVANCED SETTINGS</span>
-                <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)' }}><X size={13} /></button>
+                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.72)' }}>ADVANCED SETTINGS</span>
+                <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.62)' }}><X size={13} /></button>
               </div>
               <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>STEPS (10–50)</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>STEPS (10–50)</label>
                   <input
                     type="number" value={steps}
                     onChange={e => setSteps(Math.min(50, Math.max(10, +e.target.value)))}
                     min={10} max={50}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>CFG SCALE ({cfg.toFixed(1)})</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>CFG SCALE ({cfg.toFixed(1)})</label>
                   <input
                     type="range" min={1} max={15} step={0.5}
                     value={cfg}
@@ -440,39 +592,58 @@ export default function VideoGenerator() {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>SEED</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>SEED</label>
                   <input
                     placeholder="Random"
                     value={seed}
                     onChange={e => setSeed(e.target.value.replace(/\D/g, ''))}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
               </div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>RESOLUTION</label>
+                <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>RESOLUTION {model === 'wan' ? '(fixed 1280×704)' : ''}</label>
+                {model === 'ltx' ? (
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {resolutions.map(r => (
+                  {LTX_RESOLUTIONS.map(r => (
                     <button key={r.id} onClick={() => setResolution(r.id)} style={{
                       flex: 1, padding: '8px 0', borderRadius: 8,
-                      border: resolution === r.id ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
-                      background: resolution === r.id ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
-                      color: resolution === r.id ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                      border: resolution === r.id ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                      background: resolution === r.id ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: resolution === r.id ? '#c084fc' : 'rgba(255,255,255,0.50)',
                       fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
                     }}>
                       {r.label}
                     </button>
                   ))}
                 </div>
+                ) : (
+                  <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>
+                    1280 × 704 (landscape)
+                  </div>
+                )}
               </div>
-              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', marginBottom: 6 }}>DURATION</label>
+              {/* V2V strength slider */}
+              {mode === 'v2v' && model === 'ltx' && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>V2V STRENGTH ({v2vStrength.toFixed(1)})</label>
+                  <input
+                    type="range" min={0.1} max={1.0} step={0.05}
+                    value={v2vStrength}
+                    onChange={e => setV2vStrength(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: '#22d3ee', marginTop: 4 }}
+                  />
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', marginTop: 2 }}>Lower = more of original, Higher = more creative</div>
+                </div>
+              )}
+              <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>DURATION</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {durations.map(d => (
+                {framePresets.map(d => (
                   <button key={d.id} onClick={() => setDuration(d.id)} style={{
                     padding: '8px 12px', borderRadius: 8,
-                    border: duration === d.id ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(255,255,255,0.04)',
-                    background: duration === d.id ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
-                    color: duration === d.id ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                    border: duration === d.id ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                    background: duration === d.id ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: duration === d.id ? '#c084fc' : 'rgba(255,255,255,0.50)',
                     fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit', whiteSpace: 'nowrap',
                   }}>
                     {d.label}
@@ -587,11 +758,12 @@ export default function VideoGenerator() {
                     <div style={{ padding: '9px 11px' }}>
                       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+                        <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
                         <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : 'rgba(139,92,246,0.5)' }}>{vid.mode}{vid.mode === 'smart' && ' ✨'}</span>
                         {vid.time != null && (
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{vid.time}</span>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{vid.time}</span>
                         )}
-                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.16)' }}>{vid.duration}</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)' }}>{vid.duration}</span>
                         {vid.status === 'failed' && (
                           <span style={{ fontSize: 9, color: 'rgba(239,68,68,0.5)' }}>Failed</span>
                         )}
@@ -611,17 +783,18 @@ export default function VideoGenerator() {
           <div style={{ marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
               <Video size={14} color="#a78bfa" />
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}>GENERATION STATS</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.75)' }}>GENERATION STATS</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {[
                 { l: 'Videos', v: videos.length },
                 { l: 'Avg time', v: '~2m' },
-                { l: 'Credits', v: mode === 'smart' ? '8' : '5' },
+                { l: 'Credits', v: creditCost },
+                { l: 'Model', v: modelCfg.name },
               ].map(s => (
                 <div key={s.l} style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>{s.v}</div>
-                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.16)', marginTop: 2 }}>{s.l}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{s.v}</div>
+                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.58)', marginTop: 2 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -631,18 +804,18 @@ export default function VideoGenerator() {
           <div style={{ marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
               <Clock size={14} color="#a78bfa" />
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}>QUEUE</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.75)' }}>QUEUE</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)' }}>
               {activeJobs > 0 ? (
                 <>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 4px rgba(167,139,250,0.4)' }} />
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{activeJobs} job{activeJobs > 1 ? 's' : ''} processing</span>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>{activeJobs} job{activeJobs > 1 ? 's' : ''} processing</span>
                 </>
               ) : (
                 <>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 4px rgba(52,211,153,0.4)' }} />
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>No jobs in queue</span>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>No jobs in queue</span>
                 </>
               )}
             </div>
@@ -659,13 +832,19 @@ export default function VideoGenerator() {
           {/* Tips */}
           <div style={{ borderRadius: 10, padding: 14, background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.06)' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(139,92,246,0.4)', marginBottom: 7 }}>VIDEO PROMPT TIPS</div>
-            {[
-              'Describe camera movement: "slow pan", "dolly zoom"',
-              'Add motion cues: "wind blowing", "waves crashing"',
-              'Specify mood: "cinematic", "dreamy", "dramatic"',
-              'For I2V: describe what should move',
+            {(model === 'wan' ? [
+              'Best for realistic human faces & bodies',
+              'Use "cinematic", "shallow depth of field" for film quality',
+              'Smart mode enhances your prompt with AI',
+              'guidance_scale sweet spot: 5.0',
               'Keep prompts under 200 words for best results',
-            ].map((t, i) => (
+            ] : [
+              'Supports up to 1080p resolution',
+              'Use negative prompts to refine output',
+              'V2V mode remixes existing videos',
+              'guidance_scale sweet spot: 7.0–7.5',
+              'Great for landscapes & abstract scenes',
+            ]).map((t, i) => (
               <p key={i} style={{ fontSize: 11, lineHeight: 1.65, color: 'rgba(255,255,255,0.2)', margin: '0 0 1px' }}>• {t}</p>
             ))}
           </div>
@@ -696,9 +875,10 @@ export default function VideoGenerator() {
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : 'rgba(139,92,246,0.5)' }}>{expanded.mode}{expanded.mode === 'smart' && ' ✨'}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)' }}>{expanded.duration}</span>
-                  {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)' }}>{expanded.time}</span>}
+                  {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time}</span>}
                   <div style={{ flex: 1 }} />
                   <button
                     onClick={() => handleKeep(expanded)}
@@ -740,7 +920,7 @@ export default function VideoGenerator() {
         .video-rainbow-glow{position:absolute;inset:-4px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2s ease-in-out infinite}
         .video-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}
         .video-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
-        textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.16)}
+        textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.48)}
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.15);border-radius:2px}

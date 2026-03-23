@@ -716,25 +716,23 @@ export default function HomePage() {
             }}
           >
             <div className="flex gap-5 py-4 px-4" style={{ width: "max-content" }}>
-              {[...[
-                { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
-                { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "/video-gen" },
-                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
-                { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
-                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
-                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor", href: "/advanced-features-demo?tab=sprites" },
-                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms", href: "/chat" },
-              ], ...[
-                { src: "/previews/image-gen.svg", alt: "Image Generation", href: "/image-gen" },
-                { src: "/previews/3d-gen.svg", alt: "3D Model Generator", href: "/3d-generator" },
-                { src: "/previews/video-gen.svg", alt: "Video Generation", href: "/video-gen" },
-                { src: "/previews/ai-chat.svg?v=2", alt: "Agentic AI", href: "/ai-chat" },
-                { src: "/previews/game-builder.svg", alt: "Pluto v.2", href: "/game-builder" },
-                { src: "/previews/snapshot.svg", alt: "Snapshot Analyzer", href: "/image-analysis" },
-                { src: "/previews/sprite-editor.svg", alt: "Sprite Editor", href: "/advanced-features-demo?tab=sprites" },
-                { src: "/previews/chat-rooms.svg", alt: "Chat Rooms", href: "/chat" },
-              ]].map((item, i) => (
+              {[
+                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
+                { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
+                { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
+                { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
+                { src: "/previews/Lizard.mp4", alt: "Lizard", href: "/ai-chat" },
+                { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
+                // duplicate set for seamless scroll loop
+                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
+                { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
+                { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
+                { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
+                { src: "/previews/Lizard.mp4", alt: "Lizard", href: "/ai-chat" },
+                { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
+              ].map((item, i) => (
                 <div
                   key={i}
                   className="flex-shrink-0 rounded-xl overflow-hidden transition-transform duration-300 hover:scale-105"
@@ -743,30 +741,35 @@ export default function HomePage() {
                     const container = e.currentTarget.closest("[data-dragged]");
                     if (container) return;
                     if (item.href === "#") return;
-                    if (item.alt === "Chat Rooms" && !currentUser) { setShowAuthModal(true); return; }
                     router.push(item.href);
                   }}
                 >
-                  {(item.alt === "Agentic AI") ? (
-                    <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #0a0a1a, #111128)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 16, fontWeight: 700, letterSpacing: "0.05em" }}>{item.alt}</span>
-                    </div>
+                  {item.src.endsWith('.mp4') ? (
+                    <video
+                      src={item.src}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                      style={{ position: "relative", zIndex: 0 }}
+                    />
                   ) : (
-                    <img src={item.src} alt={item.alt} className="w-full h-full object-cover" draggable={false} style={{ position: "relative", zIndex: 0 }} />
+                    <img
+                      src={item.src}
+                      alt={item.alt}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                      style={{ position: "relative", zIndex: 0 }}
+                    />
                   )}
-                  {item.alt === "Agentic AI" && (
-                    <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", background: "rgba(0,0,0,0.85)", border: "1.5px solid #f59e0b", color: "#f59e0b", zIndex: 20, whiteSpace: "nowrap" as const }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", animation: "blink 1.4s ease-in-out infinite", boxShadow: "0 0 8px #f59e0b", display: "inline-block" }} />
-                      COMING SOON
-                    </div>
-                  )}
-
                 </div>
               ))}
             </div>
           </div>
           <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-10" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Generate images, 3D models, and videos with open-source AI. Build games, chat in real-time, and explore a creative universe.
+            Generate images, 3D models, and videos with AI. Build games, chat in real-time, and explore a creative universe.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
