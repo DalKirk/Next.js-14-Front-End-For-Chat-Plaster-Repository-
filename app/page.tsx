@@ -598,7 +598,7 @@ export default function HomePage() {
               aria-label={item.label}
               title={item.label}
             >
-              <span className="shrink-0 text-sm transition-colors duration-200" style={{ color: active ? "#22d3ee" : "rgba(255,255,255,0.25)" }}>{item.icon}</span>
+              <span className="shrink-0 text-sm transition-colors duration-200" style={{ color: active ? "#22d3ee" : "rgba(255,255,255,0.45)" }}>{item.icon}</span>
               <span className="text-xs font-medium tracking-wider whitespace-nowrap transition-opacity duration-200" style={{ opacity: active ? 1 : 0, color: "rgba(255,255,255,0.8)" }}>{item.label}</span>
             </button>
           );
@@ -762,7 +762,7 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-24" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-24" style={{ color: "rgba(255,255,255,0.6)" }}>
             Generate images, 3D models, and videos with AI. Build games, chat in real-time, and explore a creative universe.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -779,7 +779,7 @@ export default function HomePage() {
                 else setShowAuthModal(true);
               }}
               className="px-8 py-3.5 rounded-lg text-sm tracking-wider transition-all duration-300 hover:text-white hover:border-[rgba(139,92,246,0.4)] hover:bg-[rgba(139,92,246,0.05)]"
-              style={{ border: "1px solid rgba(139,92,246,0.2)", color: "rgba(255,255,255,0.5)" }}
+              style={{ border: "1px solid rgba(139,92,246,0.2)", color: "rgba(255,255,255,0.7)" }}
             >
               GET STARTED
             </button>
@@ -820,8 +820,8 @@ export default function HomePage() {
                 >
                   <div className="flex items-center justify-between mb-5 gap-2 flex-nowrap">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.15)", transition: "color 0.3s" }}>{f.icon}</span>
-                      <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.2)" }}>{f.tag}</span>
+                      <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.35)", transition: "color 0.3s" }}>{f.icon}</span>
+                      <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{f.tag}</span>
                     </div>
                     {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#34d399" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(52,211,153,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
                   </div>
@@ -831,11 +831,11 @@ export default function HomePage() {
                   >
                     {f.title}
                   </h3>
-                  <p className="text-sm leading-relaxed mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)" }}>
+                  <p className="text-sm leading-relaxed mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)" }}>
                     {f.desc}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] tracking-wide" style={{ color: "rgba(255,255,255,0.12)" }}>{f.stat}</span>
+                    <span className="text-[11px] tracking-wide" style={{ color: "rgba(255,255,255,0.35)" }}>{f.stat}</span>
                     <span className="text-xs tracking-wider flex items-center gap-1 transition-all duration-300" style={{ opacity: hoveredFeature === f.id ? 1 : 0, color: f.accentColor }}>
                       Launch <ChevronRight className="w-3 h-3" />
                     </span>
@@ -893,9 +893,9 @@ export default function HomePage() {
                     transition: `all 0.5s ease ${i * 0.07}s`,
                   }}
                 >
-                  <div className="mb-3 transition-colors duration-300" style={{ color: hoveredSecondary === f.title ? "#22d3ee" : "rgba(255,255,255,0.2)" }}>{f.icon}</div>
+                  <div className="mb-3 transition-colors duration-300" style={{ color: hoveredSecondary === f.title ? "#22d3ee" : "rgba(255,255,255,0.4)" }}>{f.icon}</div>
                   <h4 className="text-sm font-semibold mb-1 transition-colors duration-300" style={{ color: hoveredSecondary === f.title ? "white" : "rgba(255,255,255,0.8)" }}>{f.title}</h4>
-                  <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.25)" }}>{f.desc}</p>
+                  <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{f.desc}</p>
                 </div>
               </GradientBorderSmall>
             ))}
@@ -929,7 +929,7 @@ export default function HomePage() {
 
       {/* ═══ FOOTER ═══ */}
       <footer className="py-8 px-4" style={{ borderTop: "1px solid rgba(139,92,246,0.06)" }}>
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]" style={{ color: "rgba(255,255,255,0.15)" }}>
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
           <span>&copy; 2026 Starcyeed. All rights reserved.</span>
           <div className="flex gap-6">
             <Link href="/terms" className="transition-colors hover:text-white/40">Terms</Link>
