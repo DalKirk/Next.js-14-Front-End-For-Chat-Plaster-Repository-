@@ -27,6 +27,42 @@ import {
   Shield, Camera, Palette, User as UserIcon, LogOut,
 } from "lucide-react";
 
+/* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
+function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isNear, setIsNear] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setIsNear(entry.isIntersecting),
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className={className} style={style}>
+      {isNear ? (
+        <video
+          src={src}
+          autoPlay
+          preload="metadata"
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div className="w-full h-full banner-placeholder" />
+      )}
+    </div>
+  );
+}
+
 /* ─── Types ─── */
 interface ClaudeMessage {
   id: string;
@@ -683,7 +719,7 @@ export default function HomePage() {
             className="w-full relative mb-8 overflow-hidden"
             style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}
           >
-            <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content" }}>
+            <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content", willChange: "transform" }}>
               {[
                 { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
                 { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
@@ -704,17 +740,12 @@ export default function HomePage() {
                 <div
                   key={i}
                   className="flex-shrink-0 rounded-xl overflow-hidden"
-                  style={{ width: 'clamp(260px, 45vw, 280px)', height: 'clamp(182px, 30vw, 220px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative" }}
+                  style={{ width: 'clamp(260px, 45vw, 280px)', height: 'clamp(182px, 30vw, 220px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
                 >
                   {item.src.endsWith('.mp4') ? (
-                    <video
+                    <LazyVideo
                       src={item.src}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
                       className="w-full h-full object-cover"
-                      draggable={false}
                       style={{ position: "relative", zIndex: 0 }}
                     />
                   ) : (
@@ -722,6 +753,7 @@ export default function HomePage() {
                       src={item.src}
                       alt={item.alt}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                       draggable={false}
                       style={{ position: "relative", zIndex: 0 }}
                     />
@@ -1036,6 +1068,11 @@ export default function HomePage() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .banner-scroll-track {
           animation: marquee 40s linear infinite;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+        .banner-placeholder {
+          background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(6,182,212,0.06) 100%);
         }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
         @keyframes rainbowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
