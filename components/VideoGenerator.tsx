@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
   Zap, Layers, Clock, Download, Settings2, RefreshCw, X, Maximize2,
   ArrowLeft, Trash2, Check, RotateCcw, Play, Upload, Film, Video, Copy,
+  Mic, User, Image as ImageIcon, Plus,
 } from 'lucide-react';
 import {
   generateVideo,
+  generateSkyReelVideo,
+  generateAvatarVideo,
   pollVideoJob,
   getVideoResultUrl,
   type VideoJobResponse,
@@ -17,12 +20,14 @@ import {
 /* ─── Model definitions ─── */
 type WanMode = 't2v' | 'i2v' | 'smart';
 type LtxMode = 't2v' | 'i2v' | 'v2v';
-type VideoMode = WanMode | LtxMode;
+type SkyReelMode = 'ref2video';
+type AvatarMode = 'avatar';
+type VideoMode = WanMode | LtxMode | SkyReelMode | AvatarMode;
 
 const MODEL_CONFIG = {
   wan: {
     name: 'WAN 2.2',
-    sub: 'Realistic humans · Cinematic · 14B',
+    sub: 'Realistic humans · Cinematic · 5B',
     modes: ['t2v', 'i2v', 'smart'] as WanMode[],
     defaultSteps: 30,
     defaultGuidance: 5.0,
@@ -38,10 +43,28 @@ const MODEL_CONFIG = {
     creditCost: { t2v: 5, i2v: 5, v2v: 6 } as Record<string, number>,
     supportsNegativePrompt: true,
   },
+  skyreel: {
+    name: 'SkyReels V3',
+    sub: 'Reference-to-Video · Character consistency · 14B',
+    modes: ['ref2video'] as SkyReelMode[],
+    defaultSteps: 8,
+    defaultGuidance: 1.0,
+    creditCost: { ref2video: 8 } as Record<string, number>,
+    supportsNegativePrompt: true,
+  },
+  avatar: {
+    name: 'Talking Avatar',
+    sub: 'Portrait + Audio → Lip-synced video · 19B',
+    modes: ['avatar'] as AvatarMode[],
+    defaultSteps: 40,
+    defaultGuidance: 5.0,
+    creditCost: { avatar: 12 } as Record<string, number>,
+    supportsNegativePrompt: false,
+  },
 } as const;
 
 /* ─── Duration presets per model ─── */
-const FRAME_PRESETS = {
+const FRAME_PRESETS: Record<string, { id: string; label: string; frames: number }[]> = {
   wan: [
     { id: '1.4s', label: 'Short (1.4s)', frames: 33 },
     { id: '3.4s', label: 'Medium (3.4s)', frames: 81 },
@@ -57,15 +80,35 @@ const FRAME_PRESETS = {
     { id: '8s', label: 'Long (8s)', frames: 193 },
     { id: '10.7s', label: 'Max (10.7s)', frames: 257 },
   ],
+  skyreel: [
+    { id: '3s', label: 'Quick (3s)', frames: 3 },
+    { id: '5s', label: 'Standard (5s)', frames: 5 },
+    { id: '7s', label: 'Long (7s)', frames: 7 },
+    { id: '10s', label: 'Max (10s)', frames: 10 },
+  ],
+  avatar: [
+    { id: 'auto', label: 'Match audio length', frames: 0 },
+  ],
 };
 
-/* ─── Resolution presets (WAN fixed, LTX selectable) ─── */
+/* ─── Resolution presets (WAN fixed, LTX selectable, SkyReels/Avatar selectable) ─── */
 const WAN_RESOLUTION = { w: 1280, h: 704 };
 
 const LTX_RESOLUTIONS = [
   { id: '480p', label: '480p', w: 832, h: 480 },
   { id: '720p', label: '720p', w: 1280, h: 720 },
   { id: '1080p', label: '1080p', w: 1920, h: 1088 },
+];
+
+const SKYREEL_RESOLUTIONS = [
+  { id: '480P', label: '480P' },
+  { id: '540P', label: '540P' },
+  { id: '720P', label: '720P' },
+];
+
+const AVATAR_RESOLUTIONS = [
+  { id: '480P', label: '480P' },
+  { id: '720P', label: '720P' },
 ];
 
 /* ─── Generated video record ─── */
@@ -116,14 +159,27 @@ export default function VideoGenerator() {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [coldStart, setColdStart] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [refImages, setRefImages] = useState<string[]>([]);
+  const [portraitImage, setPortraitImage] = useState<string | null>(null);
+  const [audioFile, setAudioFile] = useState<string | null>(null);
+  const [audioFileName, setAudioFileName] = useState<string | null>(null);
+  const [guidanceScaleImg, setGuidanceScaleImg] = useState(1.0);
+  const [avatarResolution, setAvatarResolution] = useState('480P');
+  const [skyreelResolution, setSkyreelResolution] = useState('720P');
+  const [samplingSteps, setSamplingSteps] = useState(40);
+  const [textGuideScale, setTextGuideScale] = useState(5.0);
+  const [audioGuideScale, setAudioGuideScale] = useState(4.0);
   const lastSubmitRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const coldStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const refImageInputRef = useRef<HTMLInputElement>(null);
+  const portraitInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const modelCfg = MODEL_CONFIG[model];
-  const framePresets = FRAME_PRESETS[model];
+  const framePresets = FRAME_PRESETS[model] || FRAME_PRESETS.wan;
   const curDuration = framePresets.find(d => d.id === duration) || framePresets[0];
   const curLtxRes = LTX_RESOLUTIONS.find(r => r.id === resolution) || LTX_RESOLUTIONS[1];
   const creditCost = modelCfg.creditCost[mode] ?? 5;
@@ -131,20 +187,25 @@ export default function VideoGenerator() {
   // Reset mode, duration, and settings when model changes
   const switchModel = (m: VideoModel) => {
     setModel(m);
-    setMode('t2v');
-    const presets = FRAME_PRESETS[m];
+    const cfg = MODEL_CONFIG[m];
+    setMode(cfg.modes[0] as VideoMode);
+    const presets = FRAME_PRESETS[m] || FRAME_PRESETS.wan;
     setDuration(presets[0].id);
-    setSteps(MODEL_CONFIG[m].defaultSteps);
-    setCfg(MODEL_CONFIG[m].defaultGuidance);
+    setSteps(cfg.defaultSteps);
+    setCfg(cfg.defaultGuidance);
     setNegativePrompt('');
     setUploadedVideo(null);
     setResolution('720p');
+    if (m === 'skyreel') setSkyreelResolution('720P');
+    if (m === 'avatar') setAvatarResolution('480P');
   };
 
   const generate = useCallback(async () => {
     if (!prompt.trim() || generating) return;
     if (mode === 'i2v' && !uploadedImage) return;
     if (mode === 'v2v' && !uploadedVideo) return;
+    if (mode === 'ref2video' && refImages.length === 0) return;
+    if (mode === 'avatar' && (!portraitImage || !audioFile)) return;
 
     const now = Date.now();
     if (now - lastSubmitRef.current < 2000) return;
@@ -163,7 +224,7 @@ export default function VideoGenerator() {
       model,
       mode,
       duration,
-      resolution,
+      resolution: model === 'skyreel' ? skyreelResolution : model === 'avatar' ? avatarResolution : resolution,
       time: null,
       videoUrl: null,
       status: 'queued',
@@ -176,30 +237,62 @@ export default function VideoGenerator() {
 
     try {
       const parsedSeed = seed ? parseInt(seed, 10) : null;
-      const imageBase64 = mode === 'i2v' && uploadedImage
-        ? uploadedImage.replace(/^data:image\/[^;]+;base64,/, '')
-        : null;
-      const videoBase64 = mode === 'v2v' && uploadedVideo
-        ? uploadedVideo.replace(/^data:video\/[^;]+;base64,/, '')
-        : null;
+      const safeSeed = Number.isNaN(parsedSeed) ? null : parsedSeed;
 
-      const job = await generateVideo({
-        model,
-        prompt: prompt.trim(),
-        mode,
-        image: imageBase64,
-        video: videoBase64,
-        ...(model === 'wan'
-          ? { width: WAN_RESOLUTION.w, height: WAN_RESOLUTION.h }
-          : { resolution }),
-        numFrames: curDuration.frames,
-        steps,
-        guidanceScale: cfg,
-        fps: 24,
-        seed: Number.isNaN(parsedSeed) ? null : parsedSeed,
-        negativePrompt: model === 'ltx' && negativePrompt ? negativePrompt : null,
-        strength: v2vStrength,
-      });
+      let job: VideoJobResponse;
+
+      if (model === 'skyreel') {
+        const refImagesBase64 = refImages.map(img => img.replace(/^data:image\/[^;]+;base64,/, ''));
+        job = await generateSkyReelVideo({
+          prompt: prompt.trim(),
+          refImages: refImagesBase64,
+          duration: curDuration.frames, // For skyreel, frames field stores duration in seconds
+          resolution: skyreelResolution as '480P' | '540P' | '720P',
+          steps,
+          guidanceScale: cfg,
+          guidanceScaleImg,
+          negativePrompt: negativePrompt || '',
+          seed: safeSeed,
+        });
+      } else if (model === 'avatar') {
+        const portraitBase64 = portraitImage!.replace(/^data:image\/[^;]+;base64,/, '');
+        const audioBase64 = audioFile!.replace(/^data:audio\/[^;]+;base64,/, '');
+        job = await generateAvatarVideo({
+          prompt: prompt.trim(),
+          portraitImage: portraitBase64,
+          audio: audioBase64,
+          resolution: avatarResolution as '480P' | '720P',
+          samplingSteps,
+          textGuideScale,
+          audioGuideScale,
+          seed: safeSeed,
+        });
+      } else {
+        const imageBase64 = mode === 'i2v' && uploadedImage
+          ? uploadedImage.replace(/^data:image\/[^;]+;base64,/, '')
+          : null;
+        const videoBase64 = mode === 'v2v' && uploadedVideo
+          ? uploadedVideo.replace(/^data:video\/[^;]+;base64,/, '')
+          : null;
+
+        job = await generateVideo({
+          model,
+          prompt: prompt.trim(),
+          mode,
+          image: imageBase64,
+          video: videoBase64,
+          ...(model === 'wan'
+            ? { width: WAN_RESOLUTION.w, height: WAN_RESOLUTION.h }
+            : { resolution }),
+          numFrames: curDuration.frames,
+          steps,
+          guidanceScale: cfg,
+          fps: 24,
+          seed: safeSeed,
+          negativePrompt: model === 'ltx' && negativePrompt ? negativePrompt : null,
+          strength: v2vStrength,
+        });
+      }
 
       // Cold start detection: if progress stays 10-25% for >30s
       coldStartTimerRef.current = setTimeout(() => {
@@ -277,7 +370,7 @@ export default function VideoGenerator() {
       setProgressMsg('');
       setGenerating(false);
     }
-  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration]);
+  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration, refImages, portraitImage, audioFile, skyreelResolution, avatarResolution, guidanceScaleImg, samplingSteps, textGuideScale, audioGuideScale]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -307,6 +400,57 @@ export default function VideoGenerator() {
   const removeVideo = () => {
     setUploadedVideo(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
+  };
+
+  const handleRefImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const remaining = 4 - refImages.length;
+    const toRead = Array.from(files).slice(0, remaining);
+    toRead.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setRefImages(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
+      };
+      reader.readAsDataURL(file);
+    });
+    if (refImageInputRef.current) refImageInputRef.current.value = '';
+  };
+
+  const removeRefImage = (idx: number) => {
+    setRefImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handlePortraitUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPortraitImage(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePortrait = () => {
+    setPortraitImage(null);
+    if (portraitInputRef.current) portraitInputRef.current.value = '';
+  };
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAudioFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAudioFile(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAudio = () => {
+    setAudioFile(null);
+    setAudioFileName(null);
+    if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
   const handleDownload = async (vid: GeneratedVideo, e?: React.MouseEvent) => {
@@ -342,8 +486,9 @@ export default function VideoGenerator() {
     if (expanded?.id === vid.id) setExpanded(null);
     setPrompt(vid.prompt);
     setModel(vid.model);
-    // For i2v/v2v, fall back to t2v since we can't restore the source
-    setMode(vid.mode === 'i2v' || vid.mode === 'v2v' ? 't2v' : vid.mode === 'smart' ? 't2v' : vid.mode as VideoMode);
+    // For modes needing file uploads, fall back to t2v since we can't restore the source files
+    const fallbackModes = ['i2v', 'v2v', 'smart', 'ref2video', 'avatar'];
+    setMode(fallbackModes.includes(vid.mode) ? (MODEL_CONFIG[vid.model].modes[0] as VideoMode) : vid.mode as VideoMode);
     setDuration(vid.duration);
     setTimeout(() => {
       const btn = document.querySelector('[data-generate-btn]') as HTMLButtonElement | null;
@@ -414,6 +559,8 @@ export default function VideoGenerator() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: model === key ? '#c084fc' : 'rgba(255,255,255,0.65)' }}>{m.name}</span>
                   {key === 'wan' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.06em' }}>SMART</span>}
                   {key === 'ltx' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#22d3ee', fontWeight: 600, letterSpacing: '0.06em' }}>V2V</span>}
+                  {key === 'skyreel' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', fontWeight: 600, letterSpacing: '0.06em' }}>REF</span>}
+                  {key === 'avatar' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: '#34d399', fontWeight: 600, letterSpacing: '0.06em' }}>TALK</span>}
                 </div>
                 <div style={{ fontSize: 10, color: model === key ? 'rgba(192,132,252,0.7)' : 'rgba(255,255,255,0.6)' }}>{m.sub}</div>
               </button>
@@ -428,6 +575,8 @@ export default function VideoGenerator() {
                 i2v: { label: 'Image to Video', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
                 smart: { label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4, marginBottom: 4, color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.6))' }} /> },
                 v2v: { label: 'Video to Video', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                ref2video: { label: 'Ref to Video', icon: <ImageIcon size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                avatar: { label: 'Talking Avatar', icon: <Mic size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
               };
               const info = labels[tab] || { label: tab, icon: null };
               return (
@@ -453,6 +602,20 @@ export default function VideoGenerator() {
           {mode === 'smart' && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
               ✨ Smart mode: Enhances your prompt, generates a starting frame, then animates it. Best for complex scenes. Uses 8 credits.
+            </div>
+          )}
+
+          {/* SkyReels info banner */}
+          {mode === 'ref2video' && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(236,72,153,0.04)', border: '1px solid rgba(236,72,153,0.1)', fontSize: 11, color: 'rgba(236,72,153,0.7)' }}>
+              🖼️ Upload 1–4 reference images to preserve character identity in the generated video. Uses 8 credits.
+            </div>
+          )}
+
+          {/* Avatar info banner */}
+          {mode === 'avatar' && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)', fontSize: 11, color: 'rgba(16,185,129,0.7)' }}>
+              🎙️ Upload a portrait photo and audio file to generate a lip-synced talking avatar video. Uses 12 credits.
             </div>
           )}
 
@@ -502,6 +665,79 @@ export default function VideoGenerator() {
             </div>
           )}
 
+          {/* Reference images upload (SkyReels) */}
+          <input ref={refImageInputRef} type="file" accept="image/*" multiple onChange={handleRefImageUpload} style={{ display: 'none' }} />
+          {mode === 'ref2video' && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {refImages.map((img, idx) => (
+                  <div key={idx} style={{ position: 'relative', width: 80, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(236,72,153,0.2)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt={`Ref ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => removeRefImage(idx)} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.7)', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+                {refImages.length < 4 && (
+                  <div
+                    onClick={() => refImageInputRef.current?.click()}
+                    style={{ width: 80, height: 80, borderRadius: 8, border: '1px dashed rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                  >
+                    <Plus size={16} color="rgba(236,72,153,0.5)" />
+                    <span style={{ fontSize: 8, color: 'rgba(236,72,153,0.5)' }}>{refImages.length}/4</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Portrait + Audio upload (Avatar) */}
+          <input ref={portraitInputRef} type="file" accept="image/*" onChange={handlePortraitUpload} style={{ display: 'none' }} />
+          <input ref={audioInputRef} type="file" accept="audio/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
+          {mode === 'avatar' && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              {/* Portrait upload */}
+              {!portraitImage ? (
+                <div
+                  onClick={() => portraitInputRef.current?.click()}
+                  style={{ flex: 1, border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                >
+                  <User size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Portrait photo</p>
+                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Face image, max 10MB</small>
+                </div>
+              ) : (
+                <div style={{ flex: 1, position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={portraitImage} alt="Portrait" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                  <button onClick={removePortrait} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              {/* Audio upload */}
+              {!audioFile ? (
+                <div
+                  onClick={() => audioInputRef.current?.click()}
+                  style={{ flex: 1, border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                >
+                  <Mic size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Audio file</p>
+                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>WAV/MP3, max 30MB</small>
+                </div>
+              ) : (
+                <div style={{ flex: 1, position: 'relative', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Mic size={20} color="#34d399" />
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', textAlign: 'center', wordBreak: 'break-all' }}>{audioFileName || 'Audio loaded'}</span>
+                  <button onClick={removeAudio} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Prompt area */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15),rgba(236,72,153,0.12))' }}>
@@ -511,19 +747,19 @@ export default function VideoGenerator() {
                     <div className="video-rainbow-glow" />
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.75)' }}>
-                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : mode === 'v2v' ? 'DESCRIBE THE REMIX' : 'DESCRIBE YOUR VIDEO'}
+                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : mode === 'v2v' ? 'DESCRIBE THE REMIX' : mode === 'ref2video' ? 'DESCRIBE THE SCENE' : mode === 'avatar' ? 'DESCRIBE THE PERSON / SCENE' : 'DESCRIBE YOUR VIDEO'}
                   </span>
                 </div>
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); } }}
-                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : mode === 'v2v' ? 'Transform the scene into a cyberpunk city at night...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
+                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : mode === 'v2v' ? 'Transform the scene into a cyberpunk city at night...' : mode === 'ref2video' ? 'The person walks through a sunlit forest, looking around in wonder...' : mode === 'avatar' ? 'A professional news anchor delivering a report in a studio...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
                   rows={3}
                   style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 1.7, fontFamily: 'inherit', caretColor: '#22d3ee' }}
                 />
-                {/* Negative prompt — LTX only */}
-                {model === 'ltx' && (
+                {/* Negative prompt — LTX & SkyReels */}
+                {(model === 'ltx' || model === 'skyreel') && (
                   <textarea
                     value={negativePrompt}
                     onChange={e => setNegativePrompt(e.target.value)}
@@ -535,8 +771,10 @@ export default function VideoGenerator() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{modelCfg.name}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>
+                    {model !== 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>}
                     {model === 'ltx' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{resolution}</span>}
+                    {model === 'skyreel' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{skyreelResolution}</span>}
+                    {model === 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{avatarResolution}</span>}
                     <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.62)' }}>
                       <Settings2 size={14} />
                     </button>
@@ -544,7 +782,7 @@ export default function VideoGenerator() {
                   <button
                     data-generate-btn
                     onClick={generate}
-                    disabled={!prompt.trim() || generating || (mode === 'i2v' && !uploadedImage) || (mode === 'v2v' && !uploadedVideo)}
+                    disabled={!prompt.trim() || generating || (mode === 'i2v' && !uploadedImage) || (mode === 'v2v' && !uploadedVideo) || (mode === 'ref2video' && refImages.length === 0) || (mode === 'avatar' && (!portraitImage || !audioFile))}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none',
                       fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0, fontFamily: 'inherit',
@@ -616,6 +854,34 @@ export default function VideoGenerator() {
                     </button>
                   ))}
                 </div>
+                ) : model === 'skyreel' ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {SKYREEL_RESOLUTIONS.map(r => (
+                    <button key={r.id} onClick={() => setSkyreelResolution(r.id)} style={{
+                      flex: 1, padding: '8px 0', borderRadius: 8,
+                      border: skyreelResolution === r.id ? '1px solid rgba(236,72,153,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                      background: skyreelResolution === r.id ? 'rgba(236,72,153,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: skyreelResolution === r.id ? '#ec4899' : 'rgba(255,255,255,0.7)',
+                      fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
+                    }}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                ) : model === 'avatar' ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {AVATAR_RESOLUTIONS.map(r => (
+                    <button key={r.id} onClick={() => setAvatarResolution(r.id)} style={{
+                      flex: 1, padding: '8px 0', borderRadius: 8,
+                      border: avatarResolution === r.id ? '1px solid rgba(16,185,129,0.50)' : '1px solid rgba(255,255,255,0.10)',
+                      background: avatarResolution === r.id ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: avatarResolution === r.id ? '#34d399' : 'rgba(255,255,255,0.7)',
+                      fontSize: 11, fontWeight: 600, cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
+                    }}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
                 ) : (
                   <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>
                     1280 × 704 (landscape)
@@ -635,6 +901,58 @@ export default function VideoGenerator() {
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Lower = more of original, Higher = more creative</div>
                 </div>
               )}
+              {/* SkyReels image guidance */}
+              {model === 'skyreel' && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>IMAGE GUIDANCE ({guidanceScaleImg.toFixed(1)})</label>
+                  <input
+                    type="range" min={0} max={10} step={0.5}
+                    value={guidanceScaleImg}
+                    onChange={e => setGuidanceScaleImg(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: '#ec4899', marginTop: 4 }}
+                  />
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Higher = stronger reference image adherence</div>
+                </div>
+              )}
+              {/* Avatar-specific settings */}
+              {model === 'avatar' && (
+                <>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>SAMPLING STEPS ({samplingSteps})</label>
+                      <input
+                        type="range" min={10} max={80} step={5}
+                        value={samplingSteps}
+                        onChange={e => setSamplingSteps(parseInt(e.target.value))}
+                        style={{ width: '100%', accentColor: '#34d399', marginTop: 4 }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>TEXT GUIDE ({textGuideScale.toFixed(1)})</label>
+                      <input
+                        type="range" min={1} max={20} step={0.5}
+                        value={textGuideScale}
+                        onChange={e => setTextGuideScale(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#34d399', marginTop: 4 }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>AUDIO GUIDE ({audioGuideScale.toFixed(1)})</label>
+                      <input
+                        type="range" min={1} max={20} step={0.5}
+                        value={audioGuideScale}
+                        onChange={e => setAudioGuideScale(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#34d399', marginTop: 4 }}
+                      />
+                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>How closely lips follow audio</div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {model !== 'avatar' && (
+                <>
               <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>DURATION</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {framePresets.map(d => (
@@ -649,6 +967,8 @@ export default function VideoGenerator() {
                   </button>
                 ))}
               </div>
+                </>
+              )}
             </div>
           )}
 
@@ -680,8 +1000,8 @@ export default function VideoGenerator() {
               </div>
               {/* Show AI-enhanced prompt in smart mode */}
               {videos[0]?.enhancedPrompt && (
-                <div style={{ position: 'relative', marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.6)' }}>
-                  <button onClick={() => { navigator.clipboard.writeText(videos[0].enhancedPrompt!); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000); }} title="Copy enhanced prompt" style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 5, background: copiedPrompt ? 'rgba(16,185,129,0.12)' : 'rgba(251,191,36,0.08)', border: `1px solid ${copiedPrompt ? 'rgba(16,185,129,0.25)' : 'rgba(251,191,36,0.12)'}`, color: copiedPrompt ? '#10b981' : 'rgba(251,191,36,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.2s' }}>{copiedPrompt ? <><Check size={10} /><span style={{ fontSize: 9, fontWeight: 600 }}>Copied</span></> : <Copy size={11} />}</button>
+                <div style={{ position: 'relative', marginTop: 8, padding: '8px 40px 8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.6)' }}>
+                  <button onClick={() => { navigator.clipboard.writeText(videos[0].enhancedPrompt!); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000); }} title="Copy enhanced prompt" style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 5, background: copiedPrompt ? 'rgba(16,185,129,0.12)' : 'rgba(251,191,36,0.08)', border: `1px solid ${copiedPrompt ? 'rgba(16,185,129,0.25)' : 'rgba(251,191,36,0.12)'}`, color: copiedPrompt ? '#10b981' : 'rgba(251,191,36,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, transition: 'all 0.2s' }}>{copiedPrompt ? <><Check size={10} /><span style={{ fontSize: 9, fontWeight: 600 }}>Copied</span></> : <Copy size={11} />}</button>
                   <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(251,191,36,0.4)', display: 'block', marginBottom: 3 }}>AI-ENHANCED PROMPT</span>
                   {videos[0].enhancedPrompt}
                 </div>
@@ -757,8 +1077,8 @@ export default function VideoGenerator() {
                     <div style={{ padding: '9px 11px' }}>
                       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                        <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : 'rgba(139,92,246,0.5)' }}>{vid.mode}{vid.mode === 'smart' && ' ✨'}</span>
+                        <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : vid.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : vid.model === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : vid.model === 'skyreel' ? '#ec4899' : vid.model === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : vid.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : vid.mode === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : vid.mode === 'ref2video' ? '#ec4899' : vid.mode === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{vid.mode}{vid.mode === 'smart' && ' ✨'}{vid.mode === 'ref2video' && ' 🖼️'}{vid.mode === 'avatar' && ' 🎙️'}</span>
                         {vid.time != null && (
                           <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{vid.time}</span>
                         )}
@@ -837,6 +1157,18 @@ export default function VideoGenerator() {
               'Smart mode enhances your prompt with AI',
               'guidance_scale sweet spot: 5.0',
               'Keep prompts under 200 words for best results',
+            ] : model === 'skyreel' ? [
+              'Upload 1–4 reference images for character consistency',
+              'Flow-matching model — 8 steps is the default',
+              'Best for preserving character identity across scenes',
+              'Supports 3–10 second video durations',
+              'Use guidance_scale_img to control ref adherence',
+            ] : model === 'avatar' ? [
+              'Upload a clear portrait photo (face visible)',
+              'Audio is auto-converted to 16kHz mono WAV',
+              'Single person only — no multi-person scenes',
+              'Output is 25fps for audio synchronization',
+              'Audio max: 200s, min: ~0.4s',
             ] : [
               'Supports up to 1080p resolution',
               'Use negative prompts to refine output',
@@ -867,15 +1199,15 @@ export default function VideoGenerator() {
               <div style={{ padding: 18 }}>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
                 {expanded.enhancedPrompt && (
-                  <div style={{ position: 'relative', marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.55)' }}>
-                    <button onClick={() => { navigator.clipboard.writeText(expanded.enhancedPrompt!); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000); }} title="Copy enhanced prompt" style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 5, background: copiedPrompt ? 'rgba(16,185,129,0.12)' : 'rgba(251,191,36,0.08)', border: `1px solid ${copiedPrompt ? 'rgba(16,185,129,0.25)' : 'rgba(251,191,36,0.12)'}`, color: copiedPrompt ? '#10b981' : 'rgba(251,191,36,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.2s' }}>{copiedPrompt ? <><Check size={10} /><span style={{ fontSize: 9, fontWeight: 600 }}>Copied</span></> : <Copy size={11} />}</button>
+                  <div style={{ position: 'relative', marginBottom: 10, padding: '8px 40px 8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.55)' }}>
+                    <button onClick={() => { navigator.clipboard.writeText(expanded.enhancedPrompt!); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000); }} title="Copy enhanced prompt" style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 5, background: copiedPrompt ? 'rgba(16,185,129,0.12)' : 'rgba(251,191,36,0.08)', border: `1px solid ${copiedPrompt ? 'rgba(16,185,129,0.25)' : 'rgba(251,191,36,0.12)'}`, color: copiedPrompt ? '#10b981' : 'rgba(251,191,36,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, transition: 'all 0.2s' }}>{copiedPrompt ? <><Check size={10} /><span style={{ fontSize: 9, fontWeight: 600 }}>Copied</span></> : <Copy size={11} />}</button>
                     <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(251,191,36,0.4)', display: 'block', marginBottom: 3 }}>AI-ENHANCED PROMPT</span>
                     {expanded.enhancedPrompt}
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : 'rgba(139,92,246,0.5)' }}>{expanded.mode}{expanded.mode === 'smart' && ' ✨'}</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.15)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : expanded.model === 'skyreel' ? '#ec4899' : expanded.model === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : expanded.mode === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.15)' : expanded.mode === 'avatar' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : expanded.mode === 'ref2video' ? '#ec4899' : expanded.mode === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{expanded.mode}{expanded.mode === 'smart' && ' ✨'}{expanded.mode === 'ref2video' && ' 🖼️'}{expanded.mode === 'avatar' && ' 🎙️'}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)' }}>{expanded.duration}</span>
                   {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time}</span>}
                   <div style={{ flex: 1 }} />

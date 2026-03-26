@@ -1,10 +1,12 @@
 const API_BASE = 'https://web-production-3ba7e.up.railway.app';
 
-export type VideoModel = 'wan' | 'ltx';
+export type VideoModel = 'wan' | 'ltx' | 'skyreel' | 'avatar';
 
 const ENDPOINTS: Record<VideoModel, string> = {
   wan: '/video',
   ltx: '/ltx-video',
+  skyreel: '/skyreel',
+  avatar: '/avatar',
 };
 
 export interface VideoJobResponse {
@@ -97,6 +99,101 @@ export async function generateVideo({
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || `Video generation failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ─── SkyReels R2V ─── */
+export async function generateSkyReelVideo({
+  prompt,
+  refImages,
+  duration = 5,
+  resolution = '720P',
+  steps = 8,
+  guidanceScale = 1.0,
+  guidanceScaleImg = 1.0,
+  negativePrompt = '',
+  seed = null,
+}: {
+  prompt: string;
+  refImages: string[];
+  duration?: number;
+  resolution?: '480P' | '540P' | '720P';
+  steps?: number;
+  guidanceScale?: number;
+  guidanceScaleImg?: number;
+  negativePrompt?: string;
+  seed?: number | null;
+}): Promise<VideoJobResponse> {
+  const res = await fetch(`${API_BASE}/skyreel/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      ref_images: refImages,
+      duration,
+      resolution,
+      num_inference_steps: steps,
+      guidance_scale: guidanceScale,
+      guidance_scale_img: guidanceScaleImg,
+      negative_prompt: negativePrompt,
+      seed,
+    }),
+  });
+
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Too many requests. Please wait for your current videos to finish.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `SkyReels generation failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ─── Talking Avatar ─── */
+export async function generateAvatarVideo({
+  prompt,
+  portraitImage,
+  audio,
+  resolution = '480P',
+  samplingSteps = 40,
+  textGuideScale = 5.0,
+  audioGuideScale = 4.0,
+  seed = null,
+}: {
+  prompt: string;
+  portraitImage: string;
+  audio: string;
+  resolution?: '480P' | '720P';
+  samplingSteps?: number;
+  textGuideScale?: number;
+  audioGuideScale?: number;
+  seed?: number | null;
+}): Promise<VideoJobResponse> {
+  const res = await fetch(`${API_BASE}/avatar/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      portrait_image: portraitImage,
+      audio,
+      resolution,
+      sampling_steps: samplingSteps,
+      text_guide_scale: textGuideScale,
+      audio_guide_scale: audioGuideScale,
+      seed,
+    }),
+  });
+
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Too many requests. Please wait for your current videos to finish.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Avatar generation failed: ${res.status}`);
   }
   return res.json();
 }
