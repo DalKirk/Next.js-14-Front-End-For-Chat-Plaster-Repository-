@@ -543,13 +543,13 @@ export default function VideoGenerator() {
           </div>
 
           {/* Model selector */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div className="grid grid-cols-2 gap-2" style={{ marginBottom: 16 }}>
             {(Object.entries(MODEL_CONFIG) as [VideoModel, typeof MODEL_CONFIG[VideoModel]][]).map(([key, m]) => (
               <button
                 key={key}
                 onClick={() => switchModel(key)}
                 style={{
-                  flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   transition: 'all 0.2s', fontFamily: 'inherit',
                   border: model === key ? '1px solid rgba(139,92,246,0.50)' : '1px solid rgba(255,255,255,0.10)',
                   background: model === key ? 'rgba(139,92,246,0.14)' : 'rgba(255,255,255,0.04)',
@@ -568,7 +568,7 @@ export default function VideoGenerator() {
           </div>
 
           {/* Mode tabs */}
-          <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, width: 'fit-content' }}>
+          <div className="video-mode-tabs" style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, overflowX: 'auto', maxWidth: '100%' }}>
             {modelCfg.modes.map(tab => {
               const labels: Record<string, { label: string; icon: React.ReactNode }> = {
                 t2v: { label: 'Text to Video', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
@@ -584,7 +584,7 @@ export default function VideoGenerator() {
                 key={tab}
                 onClick={() => setMode(tab)}
                 style={{
-                  padding: '8px 18px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
+                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                   background: mode === tab ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))' : 'transparent',
                   color: mode === tab ? '#c084fc' : 'rgba(255,255,255,0.75)',
                   ...(mode === tab ? { border: '1px solid rgba(139,92,246,0.25)' } : {}),
@@ -696,19 +696,19 @@ export default function VideoGenerator() {
           <input ref={portraitInputRef} type="file" accept="image/*" onChange={handlePortraitUpload} style={{ display: 'none' }} />
           <input ref={audioInputRef} type="file" accept="audio/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
           {mode === 'avatar' && (
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div className="grid grid-cols-2 gap-2.5" style={{ marginBottom: 16 }}>
               {/* Portrait upload */}
               {!portraitImage ? (
                 <div
                   onClick={() => portraitInputRef.current?.click()}
-                  style={{ flex: 1, border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                  style={{ border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
                 >
                   <User size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Portrait photo</p>
                   <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Face image, max 10MB</small>
                 </div>
               ) : (
-                <div style={{ flex: 1, position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={portraitImage} alt="Portrait" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
                   <button onClick={removePortrait} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -720,14 +720,14 @@ export default function VideoGenerator() {
               {!audioFile ? (
                 <div
                   onClick={() => audioInputRef.current?.click()}
-                  style={{ flex: 1, border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                  style={{ border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
                 >
                   <Mic size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Audio file</p>
                   <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>WAV/MP3, max 30MB</small>
                 </div>
               ) : (
-                <div style={{ flex: 1, position: 'relative', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{ position: 'relative', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <Mic size={20} color="#34d399" />
                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', textAlign: 'center', wordBreak: 'break-all' }}>{audioFileName || 'Audio loaded'}</span>
                   <button onClick={removeAudio} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -768,8 +768,8 @@ export default function VideoGenerator() {
                     style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, fontFamily: 'inherit', caretColor: '#ef4444', marginTop: 8, borderTop: '1px dashed rgba(239,68,68,0.1)', paddingTop: 8 }}
                   />
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{modelCfg.name}</span>
                     {model !== 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>}
                     {model === 'ltx' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{resolution}</span>}
@@ -809,8 +809,8 @@ export default function VideoGenerator() {
                 <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.72)' }}>ADVANCED SETTINGS</span>
                 <button onClick={() => setSettings(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.62)' }}><X size={13} /></button>
               </div>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-                <div style={{ flex: 1 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 14 }}>
+                <div>
                   <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>STEPS (10–50)</label>
                   <input
                     type="number" value={steps}
@@ -819,7 +819,7 @@ export default function VideoGenerator() {
                     style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>CFG SCALE ({cfg.toFixed(1)})</label>
                   <input
                     type="range" min={1} max={15} step={0.5}
@@ -828,7 +828,7 @@ export default function VideoGenerator() {
                     style={{ width: '100%', accentColor: '#7c3aed', marginTop: 8 }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>SEED</label>
                   <input
                     placeholder="Random"
@@ -1184,7 +1184,7 @@ export default function VideoGenerator() {
 
       {/* Expanded modal */}
       {expanded && (
-        <div onClick={() => setExpanded(null)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={() => setExpanded(null)} className="video-expanded-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ padding: 1, borderRadius: 14, background: `linear-gradient(135deg,${expanded.c1}66,${expanded.c2}44)`, maxWidth: 640, width: '100%', position: 'relative' }}>
             <div style={{ borderRadius: 13, background: '#08080f', overflow: 'hidden' }}>
               <div style={{ aspectRatio: '16/9', maxHeight: '45vh', background: `linear-gradient(135deg,${expanded.c1}12,${expanded.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -1196,7 +1196,7 @@ export default function VideoGenerator() {
                   </div>
                 )}
               </div>
-              <div style={{ padding: 18 }}>
+              <div className="video-expanded-content" style={{ padding: 18 }}>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
                 {expanded.enhancedPrompt && (
                   <div style={{ position: 'relative', marginBottom: 10, padding: '8px 40px 8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.55)' }}>
@@ -1248,6 +1248,12 @@ export default function VideoGenerator() {
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes rainbowSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
         @keyframes rainbowPulse{0%,100%{opacity:1;filter:blur(4px) brightness(1.8)}50%{opacity:1;filter:blur(6px) brightness(2.2)}}
+        .video-mode-tabs{-ms-overflow-style:none;scrollbar-width:none}
+        .video-mode-tabs::-webkit-scrollbar{display:none}
+        @media(max-width:480px){
+          .video-expanded-overlay{padding:10px !important}
+          .video-expanded-content{padding:12px !important}
+        }
         .video-rainbow-glow{position:absolute;inset:-4px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2s ease-in-out infinite}
         .video-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}
         .video-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
