@@ -206,7 +206,13 @@ export default function HomePage() {
   const router = useRouter();
 
   /* ── Auth state ── */
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem('chat-user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -777,6 +783,7 @@ export default function HomePage() {
             >
               EXPLORE TOOLS <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
+            {!currentUser && (
             <button
               onClick={() => {
                 if (currentUser) router.push("/chat");
@@ -787,6 +794,7 @@ export default function HomePage() {
             >
               GET STARTED
             </button>
+            )}
           </div>
         </div>
       </section>

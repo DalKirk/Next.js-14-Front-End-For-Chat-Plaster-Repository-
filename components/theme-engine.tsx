@@ -98,11 +98,11 @@ export const defaultTheme: PresetTheme = {
 // ═══════════════════════════════════════════════════════════════════════
 
 export const glassStyles: Record<string, GlassStyleDef> = {
-  ombre: { name: 'Ombre Glass', blur: 12, edges: 'rounded-3xl' },
-  frosted: { name: 'Frosted', blur: 24, edges: 'rounded-2xl' },
+  ombre: { name: 'Ombre Glass', blur: 12, edges: 'rounded-xl' },
+  frosted: { name: 'Frosted', blur: 24, edges: 'rounded-xl' },
   crystal: { name: 'Crystal', blur: 4, edges: 'rounded-lg' },
-  liquid: { name: 'Liquid', blur: 16, edges: 'rounded-[2rem]' },
-  holographic: { name: 'Holographic', blur: 8, edges: 'rounded-2xl' },
+  liquid: { name: 'Liquid', blur: 16, edges: 'rounded-xl' },
+  holographic: { name: 'Holographic', blur: 8, edges: 'rounded-xl' },
   metallic: { name: 'Metallic', blur: 6, edges: 'rounded-xl' },
 };
 

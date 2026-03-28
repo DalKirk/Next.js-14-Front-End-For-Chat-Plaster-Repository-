@@ -1732,7 +1732,7 @@ function ProfilePageContent() {
                 </GlassCard>
 
                 {/* Live Preview — miniature themed profile showing real appearance */}
-                <div className="rounded-2xl overflow-hidden border-2" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
+                <div className="rounded-xl overflow-hidden border-2" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
                   <div className="flex items-center gap-2 px-4 pt-3 pb-2" style={{ color: headingColor, fontFamily: headingFont }}>
                     <Eye className="w-4 h-4" style={{ color: liveTheme.accent }} />
                     <span className="text-sm font-semibold">Live Preview</span>
