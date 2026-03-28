@@ -10,7 +10,6 @@ import { User } from "@/lib/types";
 import toast from "react-hot-toast";
 import {
   UserCircleIcon,
-  SparklesIcon,
   PaperAirplaneIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
@@ -953,7 +952,7 @@ export default function HomePage() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
             <div className="flex items-center gap-2">
-              <SparklesIcon className="w-4 h-4 text-cyan-400" />
+              <Cog6ToothIcon className="w-4 h-4 animate-spin" style={{ color: '#cc00cc', animationDuration: '3s' }} />
               <span className="text-xs font-semibold">AI Assistant</span>
               <div className={`w-1.5 h-1.5 rounded-full ${aiHealth?.ai_enabled ? "bg-green-400" : "bg-red-400"}`} />
             </div>
@@ -1065,7 +1064,7 @@ export default function HomePage() {
         aria-label={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
       >
         <div className="ai-btn-rainbow-border" />
-        <SparklesIcon className="w-5 h-5 text-cyan-400 relative z-10" />
+        <Cog6ToothIcon className="w-5 h-5 animate-spin relative z-10" style={{ color: '#cc00cc', animationDuration: '3s' }} />
       </button>
 
       {/* Shimmer animation */}
