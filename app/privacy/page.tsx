@@ -186,7 +186,11 @@ function PrivacyContent() {
               <h2 className="text-2xl font-bold text-cyan-400 mb-4">11. Contact</h2>
               <p>
                 If you have questions about this Privacy Policy or wish to exercise your data rights,
-                please contact us through the platform or at the contact information provided on our website.
+                please contact us at:
+              </p>
+              <p className="mt-3">
+                <strong className="text-cyan-300">Email:</strong>{' '}
+                <a href="mailto:starcyeed@gmail.com" className="text-cyan-400 hover:text-cyan-300 underline">starcyeed@gmail.com</a>
               </p>
             </section>
           </div>

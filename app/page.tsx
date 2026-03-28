@@ -939,6 +939,7 @@ export default function HomePage() {
           <div className="flex gap-6">
             <Link href="/terms" className="transition-colors hover:text-white/40">Terms</Link>
             <Link href="/privacy" className="transition-colors hover:text-white/40">Privacy</Link>
+            <Link href="/contact" className="transition-colors hover:text-white/40">Contact</Link>
             <Link href="/ai-chat" className="transition-colors hover:text-white/40">AI Chat</Link>
           </div>
         </div>
