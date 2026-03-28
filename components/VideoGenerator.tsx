@@ -458,6 +458,7 @@ export default function VideoGenerator() {
     if (!vid.videoUrl) return;
     try {
       const res = await fetch(vid.videoUrl);
+      if (!res.ok) throw new Error('fetch failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -465,7 +466,15 @@ export default function VideoGenerator() {
       a.download = `starcyeed-${vid.id}.mp4`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+    } catch {
+      // CORS or network error — fall back to direct link open
+      const a = document.createElement('a');
+      a.href = vid.videoUrl;
+      a.download = `starcyeed-${vid.id}.mp4`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.click();
+    }
   };
 
   const handleKeep = (vid: GeneratedVideo, e?: React.MouseEvent) => {
