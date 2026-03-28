@@ -21,12 +21,12 @@ export const metadata = {
     default: 'Starcyeed',
     template: '%s | Starcyeed',
   },
-  description: 'Realtime video chat with rooms, profiles, and avatar support.',
+  description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
   openGraph: {
     type: 'website',
     siteName: 'Starcyeed',
-    title: 'Starcyeed Video Chat',
-    description: 'Realtime video chat with rooms, profiles, and avatar support.',
+    title: 'Starcyeed — Live Video Rooms & AI Creative Tools',
+    description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
     url: '/',
     images: [
       { url: '/og-image.png', width: 1200, height: 630, alt: 'Starcyeed' },
@@ -34,8 +34,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Starcyeed Video Chat',
-    description: 'Realtime video chat with rooms, profiles, and avatar support.',
+    title: 'Starcyeed — Live Video Rooms & AI Creative Tools',
+    description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
     images: ['/og-image.png'],
     site: twitterHandle ? `@${twitterHandle}` : undefined,
     creator: twitterHandle ? `@${twitterHandle}` : undefined,
@@ -79,7 +79,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-                <link rel="canonical" href={(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')} />
                 <script
                   type="application/ld+json"
                   dangerouslySetInnerHTML={{
@@ -87,7 +86,7 @@ export default function RootLayout({
                       '@context': 'https://schema.org',
                       '@type': 'WebSite',
                       url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-                      name: 'Starcyeed Video Chat',
+                      name: 'Starcyeed',
                       potentialAction: {
                         '@type': 'SearchAction',
                         target: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/search?q={query}`,
