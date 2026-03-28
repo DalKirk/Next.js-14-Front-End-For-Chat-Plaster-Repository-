@@ -765,10 +765,10 @@ export default function VideoGenerator() {
                     onChange={e => setNegativePrompt(e.target.value)}
                     placeholder="Negative prompt — blurry, distorted face, low quality, cartoon..."
                     rows={2}
-                    style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, fontFamily: 'inherit', caretColor: '#ef4444', marginTop: 8, borderTop: '1px dashed rgba(239,68,68,0.1)', paddingTop: 8 }}
+                    style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, fontFamily: 'inherit', caretColor: '#ef4444', marginTop: 8, borderTop: '1px dashed rgba(239,68,68,0.35)', paddingTop: 8 }}
                   />
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.15)', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{modelCfg.name}</span>
                     {model !== 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>}
