@@ -2,9 +2,11 @@
 
 import ImageTo3DGenerator from '@/components/3d/ImageTo3DGenerator';
 import Link from 'next/link';
+import { AgeGate } from '@/components/AgeGate';
 
 export default function ThreeDGeneratorPage() {
   return (
+    <AgeGate>
     <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden">
       {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 70%)' }} />
@@ -33,5 +35,6 @@ export default function ThreeDGeneratorPage() {
         <ImageTo3DGenerator />
       </div>
     </div>
+    </AgeGate>
   );
 }

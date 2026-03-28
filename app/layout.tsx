@@ -87,11 +87,6 @@ export default function RootLayout({
                       '@type': 'WebSite',
                       url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
                       name: 'Starcyeed',
-                      potentialAction: {
-                        '@type': 'SearchAction',
-                        target: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/search?q={query}`,
-                        'query-input': 'required name=query',
-                      },
                     }),
                   }}
                 />

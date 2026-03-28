@@ -150,8 +150,11 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.9)] overflow-hidden"
+          className="relative w-full max-w-md"
         >
+          {/* Neon pulsing border */}
+          <div className="auth-neon-border" />
+          <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.9)] overflow-hidden" style={{ zIndex: 1 }}>
           {/* Close button */}
           <button
             onClick={onClose}
@@ -161,7 +164,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
           </button>
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-cyan-400/10 to-blue-500/10 border-b border-slate-700/50 px-6 py-8">
+          <div className="bg-gradient-to-r from-fuchsia-600/10 via-white/5 to-fuchsia-600/10 border-b border-fuchsia-500/15 px-6 py-8">
             {/* Back button for consent step */}
             {mode === 'signup' && signupStep === 'consent' && (
               <button
@@ -175,8 +178,8 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
             )}
             
             <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.35)]">
-                <LockClosedIcon className="w-8 h-8 text-black" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-fuchsia-500 to-fuchsia-700 flex items-center justify-center shadow-[0_0_30px_rgba(204,0,204,0.45)]">
+                <LockClosedIcon className="w-8 h-8 text-white" />
               </div>
             </div>
             <h2 className="text-2xl font-bold text-center text-white mb-2">
@@ -224,7 +227,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="your profile name"
-                  className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                  className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-fuchsia-500 focus:shadow-[0_0_20px_rgba(204,0,204,0.25)]"
                   disabled={isLoading}
                 />
               </div>
@@ -249,7 +252,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                    className="pl-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-fuchsia-500 focus:shadow-[0_0_20px_rgba(204,0,204,0.25)]"
                     disabled={isLoading}
                   />
                 </div>
@@ -276,7 +279,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={mode === 'login' ? 'your password' : 'create a password'}
-                  className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+                  className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-fuchsia-500 focus:shadow-[0_0_20px_rgba(204,0,204,0.25)]"
                   disabled={isLoading}
                 />
                 <button
@@ -315,7 +318,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="confirm your password"
-                    className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(0,212,255,0.25)]"
+                    className="pl-10 pr-10 bg-black/40 border-slate-700/50 text-white placeholder:text-slate-600 focus:border-fuchsia-500 focus:shadow-[0_0_20px_rgba(204,0,204,0.25)]"
                     disabled={isLoading}
                   />
                   <button
@@ -342,7 +345,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-bold py-3 shadow-[0_0_30px_rgba(0,212,255,0.45)] hover:shadow-[0_0_40px_rgba(0,212,255,0.7)] transition-all"
+              className="w-full bg-gradient-to-r from-fuchsia-600 via-fuchsia-500 to-fuchsia-600 hover:from-fuchsia-500 hover:via-fuchsia-400 hover:to-fuchsia-500 text-white font-bold py-3 shadow-[0_0_30px_rgba(204,0,204,0.45)] hover:shadow-[0_0_40px_rgba(204,0,204,0.7)] transition-all"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -370,7 +373,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                   <button
                     type="button"
                     onClick={switchMode}
-                    className="text-cyan-300 hover:text-cyan-200 font-medium transition-colors"
+                    className="text-fuchsia-400 hover:text-fuchsia-300 font-medium transition-colors"
                     disabled={isLoading}
                   >
                     {mode === 'login' ? 'Sign Up' : 'Sign In'}
@@ -379,6 +382,26 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
               </div>
             )}
           </form>
+          </div>
+
+          {/* Neon border animation styles */}
+          <style>{`
+            @keyframes authNeonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            @keyframes authNeonPulse { 0%,100% { opacity: 1; filter: blur(4px) brightness(1.8); } 50% { opacity: 1; filter: blur(7px) brightness(2.4); } }
+            .auth-neon-border {
+              position: absolute; inset: -3px; border-radius: 18px; z-index: 0; overflow: hidden;
+              animation: authNeonPulse 2s ease-in-out infinite;
+            }
+            .auth-neon-border::before {
+              content: ''; position: absolute; inset: -100%; border-radius: 18px;
+              background: conic-gradient(from 0deg, #cc00cc, #ffffff, #cc00cc, #ffffff, #cc00cc, #ffffff, #cc00cc);
+              animation: authNeonSpin 3s linear infinite;
+            }
+            .auth-neon-border::after {
+              content: ''; position: absolute; inset: 2px; border-radius: 16px;
+              background: rgba(8,8,15,0.95);
+            }
+          `}</style>
         </motion.div>
       </div>
     </AnimatePresence>

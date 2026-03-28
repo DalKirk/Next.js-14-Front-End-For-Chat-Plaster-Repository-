@@ -24,7 +24,7 @@ import {
   Copy, Check, ChevronRight, X,
   Image as ImageIcon, Box, Video, Bot,
   MessageSquare, ShoppingCart, Gamepad2,
-  Shield, Camera, Palette, User as UserIcon, LogOut,
+  Camera, Palette, User as UserIcon, LogOut,
 } from "lucide-react";
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
@@ -135,7 +135,6 @@ const secondaryFeatures = [
   { title: "Chat Rooms", desc: "Live video & text rooms", icon: <MessageSquare className="w-5 h-5" />, gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)", href: "/chat", requiresAuth: true },
   { title: "Marketplace", desc: "Buy & sell digital assets", icon: <ShoppingCart className="w-5 h-5" />, gradient: "linear-gradient(135deg, #8b5cf6, #ec4899)", href: "/marketplace", requiresAuth: false },
   { title: "Pluto v.2", desc: "Build 2D games with Pluto", icon: <Gamepad2 className="w-5 h-5" />, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", href: "/game-builder", requiresAuth: false },
-  { title: "Pentest Sim", desc: "Cybersecurity training", icon: <Shield className="w-5 h-5" />, gradient: "linear-gradient(135deg, #10b981, #06b6d4)", href: "/pentest-simulator", requiresAuth: false },
   { title: "Snapshot Analyzer", desc: "AI image analysis", icon: <Camera className="w-5 h-5" />, gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)", href: "/image-analysis", requiresAuth: false },
   { title: "Sprite Editor", desc: "Pixel art creation", icon: <Palette className="w-5 h-5" />, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)", href: "/advanced-features-demo?tab=sprites", requiresAuth: false },
 ];
@@ -537,7 +536,11 @@ export default function HomePage() {
 
   /* ── Navigation helpers ── */
   const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    const el = document.getElementById(id);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const top = rect.top + window.scrollY - 20;
+    window.scrollTo({ top, behavior: "smooth" });
   };
 
   const navigateOrAuth = (href: string, requiresAuth: boolean) => {
@@ -742,7 +745,7 @@ export default function HomePage() {
                 <div
                   key={i}
                   className="flex-shrink-0 rounded-xl overflow-hidden"
-                  style={{ width: 'clamp(300px, 50vw, 340px)', height: 'clamp(280px, 45vw, 380px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
+                  style={{ width: 'clamp(300px, 50vw, 340px)', height: 'clamp(200px, 40vw, 380px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
                 >
                   {item.src.endsWith('.mp4') ? (
                     <LazyVideo
@@ -764,7 +767,7 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-24" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-8 sm:mb-16" style={{ color: "rgba(255,255,255,0.6)" }}>
             Generate images, 3D models, and videos with AI. Build games, chat in real-time, and explore a creative universe.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -790,17 +793,17 @@ export default function HomePage() {
       </section>
 
       {/* ═══ AI FEATURE SHOWCASE ═══ */}
-      <section id="showcase" ref={showcaseRef} className="relative py-28 px-4" style={{ zIndex: 1 }}>
+      <section id="showcase" ref={showcaseRef} className="relative py-10 sm:py-16 px-3 sm:px-4" style={{ zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div
-            className="mb-16 transition-all duration-700"
+            className="mb-8 sm:mb-16 transition-all duration-700"
             style={{ opacity: visibleSections.has("showcase") ? 1 : 0, transform: visibleSections.has("showcase") ? "translateY(0)" : "translateY(20px)" }}
           >
-            <div className="text-[10px] tracking-[0.5em] mb-3" style={{ color: "rgba(139,92,246,0.5)" }}>GENERATION SUITE</div>
-            <h2 className="text-3xl sm:text-5xl font-bold" style={{ letterSpacing: "-0.03em" }}>AI Creation Tools</h2>
+            <div className="text-[10px] tracking-[0.5em] mb-2 sm:mb-3" style={{ color: "rgba(139,92,246,0.5)" }}>GENERATION SUITE</div>
+            <h2 className="text-2xl sm:text-5xl font-bold" style={{ letterSpacing: "-0.03em" }}>AI Creation Tools</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
             {features.map((f, i) => (
               <GradientBorderCard
                 key={f.id}
@@ -813,14 +816,14 @@ export default function HomePage() {
                 className="cursor-pointer"
               >
                 <div
-                  className="p-6 sm:p-8"
+                  className="p-4 sm:p-8"
                   style={{
                     opacity: visibleSections.has("showcase") ? 1 : 0,
                     transform: visibleSections.has("showcase") ? "translateY(0)" : "translateY(40px)",
                     transition: `all 0.6s ease ${i * 0.12}s`,
                   }}
                 >
-                  <div className="flex items-center justify-between mb-5 gap-2 flex-nowrap">
+                  <div className="flex items-center justify-between mb-3 sm:mb-5 gap-2 flex-nowrap">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.35)", transition: "color 0.3s" }}>{f.icon}</span>
                       <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{f.tag}</span>
@@ -828,12 +831,12 @@ export default function HomePage() {
                     {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#34d399" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(52,211,153,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
                   </div>
                   <h3
-                    className="text-xl sm:text-2xl font-bold mb-2.5 transition-colors duration-300"
+                    className="text-lg sm:text-2xl font-bold mb-1.5 sm:mb-2.5 transition-colors duration-300"
                     style={{ color: hoveredFeature === f.id ? "white" : "rgba(255,255,255,0.85)" }}
                   >
                     {f.title}
                   </h3>
-                  <p className="text-sm leading-relaxed mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)" }}>
+                  <p className="text-xs sm:text-sm leading-relaxed mb-4 sm:mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)" }}>
                     {f.desc}
                   </p>
                   <div className="flex items-center justify-between">
@@ -935,7 +938,7 @@ export default function HomePage() {
           <span>&copy; 2026 Starcyeed. All rights reserved.</span>
           <div className="flex gap-6">
             <Link href="/terms" className="transition-colors hover:text-white/40">Terms</Link>
-            <Link href="/terms" className="transition-colors hover:text-white/40">Privacy</Link>
+            <Link href="/privacy" className="transition-colors hover:text-white/40">Privacy</Link>
             <Link href="/ai-chat" className="transition-colors hover:text-white/40">AI Chat</Link>
           </div>
         </div>
