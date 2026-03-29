@@ -206,13 +206,7 @@ export default function HomePage() {
   const router = useRouter();
 
   /* ── Auth state ── */
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const stored = localStorage.getItem('chat-user');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -730,22 +724,22 @@ export default function HomePage() {
             <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content", willChange: "transform" }}>
               {[
                 { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
-                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
+                { src: "/previews/StatueGuy.mp4", alt: "Statue Guy", href: "/image-gen" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
                 { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
-                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
                 // duplicate set for seamless scroll loop
                 { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
-                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
+                { src: "/previews/StatueGuy.mp4", alt: "Statue Guy", href: "/image-gen" },
                 { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
                 { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
                 { src: "/previews/Animgirl.png", alt: "Animgirl", href: "/sprite-editor" },
                 { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
                 { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
-                { src: "/previews/Dancing%20Pineapple.mp4", alt: "Dancing Pineapple", href: "/image-gen" },
+                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
               ].map((item, i) => (
                 <div
                   key={i}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
@@ -51,12 +51,17 @@ interface GeneratedImage {
   kept?: boolean;
 }
 
+const IMAGE_STORAGE_KEY = 'starcyeed-generated-images';
+const IMAGE_STORAGE_NOTICE_KEY = 'starcyeed-image-storage-notice-seen';
+const STORAGE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export default function ImageGenerator() {
   const router = useRouter();
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('none');
   const [ratio, setRatio] = useState('1:1');
   const [images, setImages] = useState<GeneratedImage[]>([]);
+  const [storageNotice, setStorageNotice] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(20);
@@ -240,8 +245,62 @@ export default function ImageGenerator() {
     }, 100);
   };
 
+  // Load from localStorage on mount, filtering out expired items
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(IMAGE_STORAGE_KEY);
+      if (raw) {
+        const parsed: (GeneratedImage & { savedAt?: number })[] = JSON.parse(raw);
+        const now = Date.now();
+        const valid = parsed.filter(v => v.savedAt && (now - v.savedAt) < STORAGE_TTL_MS && v.status === 'complete');
+        if (valid.length > 0) setImages(valid);
+        if (valid.length !== parsed.length) {
+          localStorage.setItem(IMAGE_STORAGE_KEY, JSON.stringify(valid));
+        }
+      }
+    } catch { /* noop */ }
+    if (!localStorage.getItem(IMAGE_STORAGE_NOTICE_KEY)) {
+      setStorageNotice(true);
+    }
+  }, []);
+
+  // Save completed images to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const completedImages = images
+        .filter(v => v.status === 'complete' && v.imageUrl)
+        .map(v => ({ ...v, savedAt: (v as any).savedAt || Date.now() }));
+      localStorage.setItem(IMAGE_STORAGE_KEY, JSON.stringify(completedImages));
+    } catch { /* storage full or unavailable */ }
+  }, [images]);
+
   return (
     <div style={{ minHeight: '100vh', background: '#030308', color: '#e2e2e8', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+
+      {/* 24h Storage Notice Modal */}
+      {storageNotice && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ maxWidth: 420, width: '90%', padding: '28px 24px', borderRadius: 16, background: 'linear-gradient(135deg, rgba(15,15,30,0.98), rgba(10,10,20,0.98))', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 0 40px rgba(139,92,246,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(251,191,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⏳</div>
+              <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.02em', color: '#fbbf24' }}>Storage Notice</span>
+            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.7)', margin: '0 0 8px' }}>
+              Due to storage capacity, generated images are kept in your browser for <strong style={{ color: '#fbbf24' }}>24 hours</strong> only.
+            </p>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.7)', margin: '0 0 20px' }}>
+              Please <strong style={{ color: '#22d3ee' }}>download</strong> any images you want to keep before they expire.
+            </p>
+            <button
+              onClick={() => { setStorageNotice(false); localStorage.setItem(IMAGE_STORAGE_NOTICE_KEY, '1'); }}
+              style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)', background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.1))', color: '#a78bfa', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              GOT IT
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Ambient */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-12%', right: '-8%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.06),transparent 60%)', filter: 'blur(90px)' }} />

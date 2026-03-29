@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Zap, Layers, Clock, Download, Settings2, RefreshCw, X, Maximize2,
@@ -134,6 +134,10 @@ const colorPairs = [
   ['#7c3aed', '#06b6d4'], ['#f59e0b', '#ec4899'], ['#10b981', '#3b82f6'],
 ];
 
+const VIDEO_STORAGE_KEY = 'starcyeed-generated-videos';
+const VIDEO_STORAGE_NOTICE_KEY = 'starcyeed-video-storage-notice-seen';
+const STORAGE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export default function VideoGenerator() {
   const router = useRouter();
   const [prompt, setPrompt] = useState('');
@@ -144,6 +148,7 @@ export default function VideoGenerator() {
   const [negativePrompt, setNegativePrompt] = useState('');
   const [v2vStrength, setV2vStrength] = useState(0.7);
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  const [storageNotice, setStorageNotice] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(30);
@@ -169,6 +174,7 @@ export default function VideoGenerator() {
   const [samplingSteps, setSamplingSteps] = useState(40);
   const [textGuideScale, setTextGuideScale] = useState(5.0);
   const [audioGuideScale, setAudioGuideScale] = useState(4.0);
+  const videoElRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const lastSubmitRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const coldStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -456,25 +462,32 @@ export default function VideoGenerator() {
   const handleDownload = async (vid: GeneratedVideo, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!vid.videoUrl) return;
-    try {
-      const res = await fetch(vid.videoUrl);
-      if (!res.ok) throw new Error('fetch failed');
-      const blob = await res.blob();
+    const filename = `starcyeed-${vid.model}-${vid.mode}-${Date.now()}.mp4`;
+
+    const downloadBlob = (blob: Blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `starcyeed-${vid.id}.mp4`;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // CORS or network error — fall back to direct link open
-      const a = document.createElement('a');
-      a.href = vid.videoUrl;
-      a.download = `starcyeed-${vid.id}.mp4`;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
-    }
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+
+    // Try 1: direct fetch → blob
+    try {
+      const res = await fetch(vid.videoUrl);
+      if (res.ok) { downloadBlob(await res.blob()); return; }
+    } catch { /* CORS or network error — try proxy */ }
+
+    // Try 2: fetch through our server-side proxy → blob
+    try {
+      const proxyUrl = `/api/download-video?url=${encodeURIComponent(vid.videoUrl)}&filename=${encodeURIComponent(filename)}`;
+      const res = await fetch(proxyUrl);
+      if (res.ok) { downloadBlob(await res.blob()); return; }
+    } catch { /* proxy failed */ }
   };
 
   const handleKeep = (vid: GeneratedVideo, e?: React.MouseEvent) => {
@@ -505,8 +518,64 @@ export default function VideoGenerator() {
     }, 100);
   };
 
+  // Load from localStorage on mount, filtering out expired items
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VIDEO_STORAGE_KEY);
+      if (raw) {
+        const parsed: (GeneratedVideo & { savedAt?: number })[] = JSON.parse(raw);
+        const now = Date.now();
+        const valid = parsed.filter(v => v.savedAt && (now - v.savedAt) < STORAGE_TTL_MS && v.status === 'complete');
+        if (valid.length > 0) setVideos(valid);
+        // Clean up expired
+        if (valid.length !== parsed.length) {
+          localStorage.setItem(VIDEO_STORAGE_KEY, JSON.stringify(valid));
+        }
+      }
+    } catch { /* noop */ }
+    // Show storage notice if not seen before
+    if (!localStorage.getItem(VIDEO_STORAGE_NOTICE_KEY)) {
+      setStorageNotice(true);
+    }
+  }, []);
+
+  // Save completed videos to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const completedVideos = videos
+        .filter(v => v.status === 'complete' && v.videoUrl)
+        .map(v => ({ ...v, savedAt: (v as any).savedAt || Date.now() }));
+      localStorage.setItem(VIDEO_STORAGE_KEY, JSON.stringify(completedVideos));
+    } catch { /* storage full or unavailable */ }
+  }, [videos]);
+
   return (
     <div style={{ minHeight: '100vh', background: '#030308', color: '#e2e2e8', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+
+      {/* 24h Storage Notice Modal */}
+      {storageNotice && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ maxWidth: 420, width: '90%', padding: '28px 24px', borderRadius: 16, background: 'linear-gradient(135deg, rgba(15,15,30,0.98), rgba(10,10,20,0.98))', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 0 40px rgba(139,92,246,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(251,191,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⏳</div>
+              <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.02em', color: '#fbbf24' }}>Storage Notice</span>
+            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.7)', margin: '0 0 8px' }}>
+              Due to storage capacity, generated videos are kept in your browser for <strong style={{ color: '#fbbf24' }}>24 hours</strong> only.
+            </p>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.7)', margin: '0 0 20px' }}>
+              Please <strong style={{ color: '#22d3ee' }}>download</strong> any videos you want to keep before they expire.
+            </p>
+            <button
+              onClick={() => { setStorageNotice(false); localStorage.setItem(VIDEO_STORAGE_NOTICE_KEY, '1'); }}
+              style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)', background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(124,58,237,0.1))', color: '#a78bfa', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              GOT IT
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Ambient */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-12%', right: '-8%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.06),transparent 60%)', filter: 'blur(90px)' }} />
@@ -788,17 +857,20 @@ export default function VideoGenerator() {
                       <Settings2 size={14} />
                     </button>
                   </div>
+                  {(() => {
+                    const canGenerate = prompt.trim() && !generating && !(mode === 'i2v' && !uploadedImage) && !(mode === 'v2v' && !uploadedVideo) && !(mode === 'ref2video' && refImages.length === 0) && !(mode === 'avatar' && (!portraitImage || !audioFile));
+                    return (
                   <button
                     data-generate-btn
                     onClick={generate}
-                    disabled={!prompt.trim() || generating || (mode === 'i2v' && !uploadedImage) || (mode === 'v2v' && !uploadedVideo) || (mode === 'ref2video' && refImages.length === 0) || (mode === 'avatar' && (!portraitImage || !audioFile))}
+                    disabled={!canGenerate}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none',
                       fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0, fontFamily: 'inherit',
-                      cursor: prompt.trim() && !generating ? 'pointer' : 'not-allowed',
-                      opacity: !prompt.trim() && !generating ? 0.3 : 1,
+                      cursor: canGenerate ? 'pointer' : 'not-allowed',
+                      opacity: canGenerate || generating ? 1 : 0.3,
                       background: generating ? 'rgba(139,92,246,0.12)' : 'linear-gradient(135deg,#7c3aed,#06b6d4)',
-                      boxShadow: !generating && prompt.trim() ? '0 0 24px rgba(139,92,246,0.2)' : 'none',
+                      boxShadow: canGenerate ? '0 0 24px rgba(139,92,246,0.2)' : 'none',
                       transition: 'all 0.3s',
                     }}
                   >
@@ -806,6 +878,8 @@ export default function VideoGenerator() {
                       ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />Generating...</>
                       : <><Play size={14} />Generate ({creditCost}cr)</>}
                   </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1042,8 +1116,8 @@ export default function VideoGenerator() {
               return (
                 <div
                   key={vid.id}
-                  onMouseEnter={() => setHCard(vid.id)}
-                  onMouseLeave={() => setHCard(null)}
+                  onMouseEnter={() => { setHCard(vid.id); const v = videoElRefs.current[vid.id]; if (v) v.play().catch(() => {}); }}
+                  onMouseLeave={() => { setHCard(null); const v = videoElRefs.current[vid.id]; if (v) { v.pause(); v.currentTime = 0; } }}
                   onClick={() => setExpanded(vid)}
                   style={{
                     padding: 1, borderRadius: 12, cursor: 'pointer', transition: 'all 0.3s',
@@ -1052,9 +1126,9 @@ export default function VideoGenerator() {
                   }}
                 >
                   <div style={{ borderRadius: 11, overflow: 'hidden', background: 'rgba(8,8,15,0.9)' }}>
-                    <div style={{ position: 'relative', aspectRatio: '16/9', background: `linear-gradient(135deg,${vid.c1}12,${vid.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <div style={{ position: 'relative', aspectRatio: vid.model === 'skyreel' || vid.model === 'avatar' ? '1/1' : '16/9', background: `linear-gradient(135deg,${vid.c1}12,${vid.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       {vid.videoUrl ? (
-                        <video src={vid.videoUrl} muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} onMouseEnter={e => (e.target as HTMLVideoElement).play()} onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }} />
+                        <video ref={el => { videoElRefs.current[vid.id] = el; }} src={vid.videoUrl} muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
                       ) : (
                         <>
                           <div style={{ position: 'absolute', inset: 0, opacity: 0.3, background: `radial-gradient(ellipse at 30% 40%,${vid.c1}25,transparent 55%),radial-gradient(ellipse at 70% 60%,${vid.c2}20,transparent 50%)` }} />
@@ -1074,12 +1148,12 @@ export default function VideoGenerator() {
                         </div>
                       )}
                       {hov && vid.status === 'complete' && (
-                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 2 }}>
-                          <button onClick={(e) => handleKeep(vid, e)} title={vid.kept ? 'Unkeep' : 'Keep'} style={{ padding: 7, borderRadius: 7, background: vid.kept ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', border: `1px solid ${vid.kept ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: vid.kept ? '#10b981' : '#fff', cursor: 'pointer', display: 'flex' }}><Check size={14} /></button>
-                          <button onClick={(e) => handleRegenerate(vid, e)} title="Regenerate" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><RotateCcw size={14} /></button>
-                          <button onClick={(e) => handleTrash(vid, e)} title="Trash" style={{ padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><Trash2 size={14} /></button>
-                          <button onClick={(e) => handleDownload(vid, e)} title="Download" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Download size={14} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); setExpanded(vid); }} title="Expand" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Maximize2 size={14} /></button>
+                        <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}>
+                          <button onClick={(e) => { e.stopPropagation(); handleKeep(vid, e); }} title={vid.kept ? 'Unkeep' : 'Keep'} style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: vid.kept ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', border: `1px solid ${vid.kept ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: vid.kept ? '#10b981' : '#fff', cursor: 'pointer', display: 'flex' }}><Check size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleRegenerate(vid, e); }} title="Regenerate" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><RotateCcw size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleTrash(vid, e); }} title="Trash" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><Trash2 size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDownload(vid, e); }} title="Download" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Download size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setExpanded(vid); }} title="Expand" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Maximize2 size={14} /></button>
                         </div>
                       )}
                     </div>
@@ -1221,25 +1295,25 @@ export default function VideoGenerator() {
                   {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time}</span>}
                   <div style={{ flex: 1 }} />
                   <button
-                    onClick={() => handleKeep(expanded)}
+                    onClick={(e) => { e.stopPropagation(); handleKeep(expanded); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: expanded.kept ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${expanded.kept ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.08)'}`, color: expanded.kept ? '#10b981' : 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
                   >
                     <Check size={12} />{expanded.kept ? 'Kept' : 'Keep'}
                   </button>
                   <button
-                    onClick={() => handleRegenerate(expanded)}
+                    onClick={(e) => { e.stopPropagation(); handleRegenerate(expanded); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.12)', color: '#a78bfa', cursor: 'pointer' }}
                   >
                     <RotateCcw size={12} />Regenerate
                   </button>
                   <button
-                    onClick={() => handleTrash(expanded)}
+                    onClick={(e) => { e.stopPropagation(); handleTrash(expanded); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', color: '#ef4444', cursor: 'pointer' }}
                   >
                     <Trash2 size={12} />Trash
                   </button>
                   <button
-                    onClick={() => handleDownload(expanded)}
+                    onClick={(e) => { e.stopPropagation(); handleDownload(expanded); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', color: '#22d3ee', cursor: 'pointer' }}
                   >
                     <Download size={12} />Download
