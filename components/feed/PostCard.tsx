@@ -218,7 +218,7 @@ export function PostCard({
           {originalPost.media_urls?.length > 0 && (
             <div className={`grid gap-1 xs:gap-1.5 mb-2 ${originalPost.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {originalPost.media_urls.map((url, i) => (
-                <img key={i} src={url} alt={`Media ${i + 1}`} className="w-full h-24 xs:h-32 sm:h-48 object-cover rounded-lg" />
+                <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
               ))}
             </div>
           )}
@@ -322,7 +322,7 @@ export function PostCard({
               key={index}
               src={url}
               alt={`Post media ${index + 1}`}
-              className="w-full h-28 xs:h-36 sm:h-64 object-cover rounded-lg"
+              className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
             />
           ))}
         </div>

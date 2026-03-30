@@ -76,6 +76,8 @@ export interface GalleryItem {
   created_at: string;
   // Optional: present when backend includes owner in list responses
   user_id?: string;
+  // 'image' (default) or 'video' — used to render correctly in gallery
+  media_type?: 'image' | 'video';
 }
 
 export interface GalleryListResponse {

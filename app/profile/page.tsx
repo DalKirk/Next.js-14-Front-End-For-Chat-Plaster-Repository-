@@ -2179,15 +2179,26 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
   return (
     <div className="space-y-3">
       {items.length === 0 ? (
-        isViewOnly || !canEdit ? null : (<p className="text-slate-400 text-sm">No photos yet. Upload images to start your gallery.</p>)
+        isViewOnly || !canEdit ? null : (<p className="text-slate-400 text-sm">No media yet. Upload images or save AI generations to start your gallery.</p>)
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {items.map((it, i) => (
+          {items.map((it, i) => {
+            const isVideo = it.media_type === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(it.url);
+            return (
             <div key={it.id} className="relative rounded-lg overflow-hidden border border-slate-700/50">
-              <div className="w-full h-32 relative">
-                <Image src={it.url} alt="Gallery item" fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" priority={false} />
+              <div className="w-full aspect-square relative">
+                {isVideo ? (
+                  <video src={it.url} muted loop playsInline className="w-full h-full object-cover" onMouseEnter={(e) => (e.target as HTMLVideoElement).play().catch(() => {})} onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }} />
+                ) : (
+                  <Image src={it.url} alt="Gallery item" fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain" priority={false} />
+                )}
               </div>
-              {it.caption && (<div className="absolute top-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">{it.caption}</div>)}
+              {isVideo && (
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/60 rounded text-[9px] font-semibold text-cyan-300 flex items-center gap-1">
+                  <Video className="w-3 h-3" /> VIDEO
+                </div>
+              )}
+              {it.caption && (<div className={`absolute ${isVideo ? 'top-7' : 'top-2'} left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded`}>{it.caption}</div>)}
               {canEdit && (<button onClick={() => removeItem(i)} className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">Remove</button>)}
               {editingIndex === i ? (
                 <div className="absolute bottom-2 left-2 right-2 bg-black/60 p-2 rounded flex items-center gap-2">
@@ -2203,7 +2214,8 @@ function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean;
                 )
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

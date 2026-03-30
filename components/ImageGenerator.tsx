@@ -13,6 +13,8 @@ import {
   getImageResultUrl,
   type ImageJobResponse,
 } from '@/services/image-generation.service';
+import { apiClient } from '@/lib/api';
+import { StorageUtils } from '@/lib/storage-utils';
 
 /* ─── Style presets ─── */
 const allStyles = [
@@ -69,6 +71,8 @@ export default function ImageGenerator() {
   const [model, setModel] = useState<'dev' | 'schnell' | 'sd35'>('dev');
   const [seed, setSeed] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
+  const [savingToProfile, setSavingToProfile] = useState<Record<string, boolean>>({});
+  const [savedToProfile, setSavedToProfile] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<GeneratedImage | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
   const [hStyle, setHStyle] = useState<string | null>(null);
@@ -219,6 +223,25 @@ export default function ImageGenerator() {
       const blob = await res.blob();
       await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
     } catch { /* ignore */ }
+  };
+
+  const handleSaveToProfile = async (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!img.imageUrl || savingToProfile[img.id] || savedToProfile[img.id]) return;
+    const raw = StorageUtils.safeGetItem('chat-user');
+    if (!raw) { setError('Please log in to save to your profile'); return; }
+    let user: { id?: string; username?: string };
+    try { user = JSON.parse(raw); } catch { setError('Invalid user session'); return; }
+    if (!user.id || !user.username) { setError('Please log in to save to your profile'); return; }
+    setSavingToProfile(prev => ({ ...prev, [img.id]: true }));
+    try {
+      await apiClient.saveToGallery(user.id, user.username, img.imageUrl, 'image', img.prompt.slice(0, 100));
+      setSavedToProfile(prev => ({ ...prev, [img.id]: true }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save to profile');
+    } finally {
+      setSavingToProfile(prev => ({ ...prev, [img.id]: false }));
+    }
   };
 
   const handleKeep = (img: GeneratedImage, e?: React.MouseEvent) => {
@@ -537,6 +560,7 @@ export default function ImageGenerator() {
                           <button onClick={(e) => handleRegenerate(img, e)} title="Regenerate (trash & redo)" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><RotateCcw size={14} /></button>
                           <button onClick={(e) => handleTrash(img, e)} title="Trash" style={{ padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Trash2 size={14} /></button>
                           <button onClick={(e) => handleDownload(img, e)} title="Download" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Download size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleSaveToProfile(img, e); }} title={savedToProfile[img.id] ? 'Saved to Profile' : 'Save to Profile'} style={{ padding: 7, borderRadius: 7, background: savedToProfile[img.id] ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.08)', border: `1px solid ${savedToProfile[img.id] ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.15)'}`, color: savedToProfile[img.id] ? '#10b981' : '#a78bfa', cursor: savingToProfile[img.id] ? 'wait' : 'pointer', display: 'flex', pointerEvents: 'auto', opacity: savingToProfile[img.id] ? 0.6 : 1 }}>{savedToProfile[img.id] ? <Check size={14} /> : <Layers size={14} />}</button>
                           <button onClick={(e) => { e.stopPropagation(); setExpanded(img); }} title="Expand" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Maximize2 size={14} /></button>
                         </div>
                       )}
@@ -679,6 +703,12 @@ export default function ImageGenerator() {
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', color: '#22d3ee', cursor: 'pointer' }}
                   >
                     <Download size={12} />Download
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveToProfile(expanded); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: savedToProfile[expanded.id] ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)', border: `1px solid ${savedToProfile[expanded.id] ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.12)'}`, color: savedToProfile[expanded.id] ? '#10b981' : '#a78bfa', cursor: savingToProfile[expanded.id] ? 'wait' : 'pointer', opacity: savingToProfile[expanded.id] ? 0.6 : 1 }}
+                  >
+                    {savedToProfile[expanded.id] ? <><Check size={12} />Saved</> : savingToProfile[expanded.id] ? <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />Saving...</> : <><Layers size={12} />Save to Profile</>}
                   </button>
                 </div>
               </div>

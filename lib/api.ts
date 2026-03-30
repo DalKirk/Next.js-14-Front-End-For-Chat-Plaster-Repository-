@@ -1389,6 +1389,29 @@ export const apiClient = {
       return false;
     }
   },
+
+  /**
+   * Save an AI-generated video/image to the user's gallery via the server-side proxy.
+   * The proxy fetches the media from the generation server and uploads it to CDN.
+   */
+  saveToGallery: async (
+    userId: string,
+    username: string,
+    mediaUrl: string,
+    mediaType: 'image' | 'video',
+    caption?: string,
+  ): Promise<GalleryListResponse> => {
+    const res = await fetch('/api/save-to-gallery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: mediaUrl, userId, username, caption, mediaType }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errData.error || `Save failed: ${res.status}`);
+    }
+    return res.json();
+  },
 };
 
 export default apiClient;

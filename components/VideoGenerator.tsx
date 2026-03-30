@@ -16,6 +16,8 @@ import {
   type VideoJobResponse,
   type VideoModel,
 } from '@/services/video-generation.service';
+import { apiClient } from '@/lib/api';
+import { StorageUtils } from '@/lib/storage-utils';
 
 /* ─── Model definitions ─── */
 type WanMode = 't2v' | 'i2v' | 'smart';
@@ -174,6 +176,8 @@ export default function VideoGenerator() {
   const [samplingSteps, setSamplingSteps] = useState(40);
   const [textGuideScale, setTextGuideScale] = useState(5.0);
   const [audioGuideScale, setAudioGuideScale] = useState(4.0);
+  const [savingToProfile, setSavingToProfile] = useState<Record<string, boolean>>({});
+  const [savedToProfile, setSavedToProfile] = useState<Record<string, boolean>>({});
   const videoElRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const lastSubmitRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -488,6 +492,25 @@ export default function VideoGenerator() {
       const res = await fetch(proxyUrl);
       if (res.ok) { downloadBlob(await res.blob()); return; }
     } catch { /* proxy failed */ }
+  };
+
+  const handleSaveToProfile = async (vid: GeneratedVideo, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!vid.videoUrl || savingToProfile[vid.id] || savedToProfile[vid.id]) return;
+    const raw = StorageUtils.safeGetItem('chat-user');
+    if (!raw) { setError('Please log in to save to your profile'); return; }
+    let user: { id?: string; username?: string };
+    try { user = JSON.parse(raw); } catch { setError('Invalid user session'); return; }
+    if (!user.id || !user.username) { setError('Please log in to save to your profile'); return; }
+    setSavingToProfile(prev => ({ ...prev, [vid.id]: true }));
+    try {
+      await apiClient.saveToGallery(user.id, user.username, vid.videoUrl, 'video', vid.prompt.slice(0, 100));
+      setSavedToProfile(prev => ({ ...prev, [vid.id]: true }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save to profile');
+    } finally {
+      setSavingToProfile(prev => ({ ...prev, [vid.id]: false }));
+    }
   };
 
   const handleKeep = (vid: GeneratedVideo, e?: React.MouseEvent) => {
@@ -1153,6 +1176,7 @@ export default function VideoGenerator() {
                           <button onClick={(e) => { e.stopPropagation(); handleRegenerate(vid, e); }} title="Regenerate" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><RotateCcw size={14} /></button>
                           <button onClick={(e) => { e.stopPropagation(); handleTrash(vid, e); }} title="Trash" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><Trash2 size={14} /></button>
                           <button onClick={(e) => { e.stopPropagation(); handleDownload(vid, e); }} title="Download" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Download size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleSaveToProfile(vid, e); }} title={savedToProfile[vid.id] ? 'Saved to Profile' : 'Save to Profile'} style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: savedToProfile[vid.id] ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.08)', border: `1px solid ${savedToProfile[vid.id] ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.15)'}`, color: savedToProfile[vid.id] ? '#10b981' : '#a78bfa', cursor: savingToProfile[vid.id] ? 'wait' : 'pointer', display: 'flex', opacity: savingToProfile[vid.id] ? 0.6 : 1 }}>{savedToProfile[vid.id] ? <Check size={14} /> : <User size={14} />}</button>
                           <button onClick={(e) => { e.stopPropagation(); setExpanded(vid); }} title="Expand" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><Maximize2 size={14} /></button>
                         </div>
                       )}
@@ -1317,6 +1341,12 @@ export default function VideoGenerator() {
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', color: '#22d3ee', cursor: 'pointer' }}
                   >
                     <Download size={12} />Download
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveToProfile(expanded); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: savedToProfile[expanded.id] ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)', border: `1px solid ${savedToProfile[expanded.id] ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.12)'}`, color: savedToProfile[expanded.id] ? '#10b981' : '#a78bfa', cursor: savingToProfile[expanded.id] ? 'wait' : 'pointer', opacity: savingToProfile[expanded.id] ? 0.6 : 1 }}
+                  >
+                    {savedToProfile[expanded.id] ? <><Check size={12} />Saved</> : savingToProfile[expanded.id] ? <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />Saving...</> : <><User size={12} />Save to Profile</>}
                   </button>
                 </div>
               </div>
