@@ -173,11 +173,20 @@ export function PostComposer({
             <div className="grid grid-cols-2 gap-1.5 xs:gap-2">
               {mediaPreviews.map((preview, index) => (
                 <div key={index} className="relative group">
-                  <img
-                    src={preview}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-20 xs:h-28 sm:h-40 object-cover rounded-lg"
-                  />
+                  {mediaFiles[index]?.type.startsWith('video/') ? (
+                    <video
+                      src={preview}
+                      muted
+                      playsInline
+                      className="w-full h-20 xs:h-28 sm:h-40 object-cover rounded-lg bg-black/30"
+                    />
+                  ) : (
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-20 xs:h-28 sm:h-40 object-cover rounded-lg"
+                    />
+                  )}
                   <button
                     onClick={() => removeMedia(index)}
                     className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 sm:p-1.5 bg-black/70 rounded-full hover:bg-black transition-colors"

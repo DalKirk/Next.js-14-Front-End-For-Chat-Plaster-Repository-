@@ -988,6 +988,30 @@ export const apiClient = {
   // ── Feed / Posts ──────────────────────────────────────────────
 
   /**
+   * Upload a profile video to Bunny CDN (max 100 MB)
+   */
+  uploadProfileVideo: async (userId: string, videoFile: File): Promise<{ success: boolean; video_url: string; size_mb: number }> => {
+    const form = new FormData();
+    form.append('video', videoFile);
+
+    const response = await api.post(`/videos/upload/${userId}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data', 'X-User-Id': userId },
+      timeout: 300000, // 5 min for large uploads
+    });
+    return response.data;
+  },
+
+  /**
+   * Delete the profile video from Bunny CDN
+   */
+  deleteProfileVideo: async (userId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/videos/delete/${userId}`, {
+      headers: { 'X-User-Id': userId },
+    });
+    return response.data;
+  },
+
+  /**
    * Get feed posts by type (for you, following, trending)
    * Supports pagination with page & limit params
    */

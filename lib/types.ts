@@ -11,6 +11,7 @@ export interface User {
     medium?: string;
     large?: string;
   };
+  profile_video_url?: string; // Profile video on Bunny CDN
   display_name?: string; // Display name (if different from username)
   created_at?: string; // Make optional since it may not always be present
 }

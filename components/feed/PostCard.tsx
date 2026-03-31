@@ -217,9 +217,14 @@ export function PostCard({
           {/* Original media */}
           {originalPost.media_urls?.length > 0 && (
             <div className={`grid gap-1 xs:gap-1.5 mb-2 ${originalPost.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {originalPost.media_urls.map((url, i) => (
-                <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
-              ))}
+              {originalPost.media_urls.map((url, i) => {
+                const isVideo = /\.(mp4|webm|mov|avi)(\?|$)/i.test(url);
+                return isVideo ? (
+                  <video key={i} src={url} controls playsInline className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
+                ) : (
+                  <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
+                );
+              })}
             </div>
           )}
           {/* Original stats */}
@@ -317,14 +322,25 @@ export function PostCard({
           post.media_urls.length === 3 ? 'grid-cols-2 sm:grid-cols-3' :
           'grid-cols-2'
         }`}>
-          {post.media_urls.map((url, index) => (
-            <img
-              key={index}
-              src={url}
-              alt={`Post media ${index + 1}`}
-              className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
-            />
-          ))}
+          {post.media_urls.map((url, index) => {
+            const isVideo = /\.(mp4|webm|mov|avi)(\?|$)/i.test(url);
+            return isVideo ? (
+              <video
+                key={index}
+                src={url}
+                controls
+                playsInline
+                className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
+              />
+            ) : (
+              <img
+                key={index}
+                src={url}
+                alt={`Post media ${index + 1}`}
+                className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
+              />
+            );
+          })}
         </div>
       )}
         </>

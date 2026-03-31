@@ -17,6 +17,7 @@ export interface BackendUser {
   display_name?: string;
   avatar_url?: string;       // Deprecated - use avatar_urls.medium
   avatar_urls?: AvatarUrls;  // Multi-size avatar support
+  profile_video_url?: string; // Profile video on Bunny CDN
   joined_at: string;         // ISO 8601 timestamp
 }
 

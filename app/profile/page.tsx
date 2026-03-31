@@ -53,6 +53,7 @@ interface UserProfile {
     medium?: string;
     large?: string;
   };
+  profile_video_url?: string;
   joinedDate: string;
   totalRooms?: number;
   totalMessages?: number;
@@ -208,6 +209,10 @@ function ProfilePageContent() {
     thumbnail: '',
   });
   const showThumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile video state
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const profileVideoInputRef = useRef<HTMLInputElement>(null);
 
   // Load scheduled shows from backend API (works for both own profile and viewing others)
   useEffect(() => {
@@ -552,6 +557,7 @@ function ProfilePageContent() {
           bio: backendProfile.bio ?? localProfile.bio,
           avatar: backendProfile.avatar_url || localProfile.avatar || '',
           avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
+          profile_video_url: (backendProfile as any).profile_video_url || localProfile.profile_video_url,
           joinedDate
         };
         console.log('✅ Profile synced from backend');
@@ -825,6 +831,49 @@ function ProfilePageContent() {
     }
   };
 
+  // ─── Profile video upload/delete ─────────────────────────────────
+  const handleProfileVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('Video must be under 100 MB');
+      return;
+    }
+    const allowed = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Accepted formats: MP4, WebM, MOV, AVI');
+      return;
+    }
+    setUploadingVideo(true);
+    try {
+      const result = await apiClient.uploadProfileVideo(profile.id, file);
+      if (result.success && result.video_url) {
+        setProfile(prev => prev ? { ...prev, profile_video_url: result.video_url } : prev);
+        setEditedProfile(prev => ({ ...prev, profile_video_url: result.video_url }));
+        toast.success(`Video uploaded (${result.size_mb.toFixed(1)} MB)`);
+      }
+    } catch (err: any) {
+      console.error('❌ Profile video upload failed:', err);
+      toast.error(err?.message || 'Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleDeleteProfileVideo = async () => {
+    if (!profile) return;
+    try {
+      await apiClient.deleteProfileVideo(profile.id);
+      setProfile(prev => prev ? { ...prev, profile_video_url: undefined } : prev);
+      setEditedProfile(prev => ({ ...prev, profile_video_url: undefined }));
+      toast.success('Profile video removed');
+    } catch (err: any) {
+      console.error('❌ Delete profile video failed:', err);
+      toast.error(err?.message || 'Failed to delete video');
+    }
+  };
+
   // ─── Save profile + theme ──────────────────────────────────────────
   const handleSaveAll = async () => {
     if (!profile || !editedProfile) return;
@@ -1073,6 +1122,55 @@ function ProfilePageContent() {
                           <label htmlFor="show-email" className="text-xs sm:text-sm">Show email on my profile</label>
                         </div>
                         <Textarea label="Bio" value={editedProfile.bio || ''} onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })} maxLength={200} rows={3} className="bg-white/5 text-sm" />
+
+                        {/* Profile Video Upload */}
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: bodyColor }}>Profile Video</label>
+                          {(editedProfile.profile_video_url || profile.profile_video_url) ? (
+                            <div className="space-y-2">
+                              <video
+                                src={editedProfile.profile_video_url || profile.profile_video_url}
+                                controls
+                                playsInline
+                                className="w-full max-h-48 rounded-lg bg-black/30"
+                              />
+                              <button
+                                onClick={handleDeleteProfileVideo}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" /> Remove Video
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <input
+                                ref={profileVideoInputRef}
+                                type="file"
+                                accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                                onChange={handleProfileVideoUpload}
+                                className="hidden"
+                              />
+                              <button
+                                onClick={() => profileVideoInputRef.current?.click()}
+                                disabled={uploadingVideo}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed transition-all text-sm"
+                                style={{ borderColor: 'rgba(255,255,255,0.2)', color: bodyColor, background: 'rgba(255,255,255,0.05)' }}
+                              >
+                                {uploadingVideo ? (
+                                  <>
+                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    Uploading…
+                                  </>
+                                ) : (
+                                  <>
+                                    <Video className="w-4 h-4" /> Upload Profile Video
+                                  </>
+                                )}
+                              </button>
+                              <p className="text-[10px] mt-1 opacity-50" style={{ color: bodyColor }}>MP4, WebM, MOV or AVI — max 100 MB</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1842,6 +1940,18 @@ function ProfilePageContent() {
                       )}
                       {profile.bio && (
                         <p className="mb-4 max-w-2xl" style={{ color: bodyColor, fontFamily: bodyFont }}>{profile.bio}</p>
+                      )}
+                      {/* Profile Video */}
+                      {profile.profile_video_url && (
+                        <div className="mb-4">
+                          <video
+                            src={profile.profile_video_url}
+                            controls
+                            playsInline
+                            className="w-full max-h-80 rounded-xl"
+                            style={{ background: 'rgba(0,0,0,0.3)' }}
+                          />
+                        </div>
                       )}
                       {/* Stats row */}
                       <div className="flex flex-wrap gap-3 mb-4">

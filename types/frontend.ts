@@ -8,6 +8,7 @@ export interface UserProfile {
   username: string;
   avatar?: string;           // Deprecated - use avatar_urls.medium
   avatar_urls?: AvatarUrls;  // Multi-size avatar support
+  profile_video_url?: string; // Profile video on Bunny CDN
   email?: string;
   bio?: string;
   displayName?: string;
