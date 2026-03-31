@@ -527,7 +527,7 @@ function ProfilePageContent() {
       const localProfile: UserProfile = existingProfile
         ? JSON.parse(existingProfile)
         : {
-            id: userData?.id || viewedUserId || 'unknown',
+            id: viewingOtherUser ? (viewedUserId || 'unknown') : (userData?.id || 'unknown'),
             username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
             email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : undefined)),
             bio: undefined,
@@ -579,7 +579,7 @@ function ProfilePageContent() {
         console.warn('⚠️ Could not sync with backend, using local profile');
         const existing = StorageUtils.safeGetItem('userProfile');
         const mockProfile: UserProfile = {
-          id: userData?.id || viewedUserId || 'unknown',
+          id: viewingOtherUser ? (viewedUserId || 'unknown') : (userData?.id || 'unknown'),
           username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
           email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : undefined)),
           bio: undefined, avatar: '',
