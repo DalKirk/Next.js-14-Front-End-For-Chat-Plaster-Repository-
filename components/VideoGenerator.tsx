@@ -917,12 +917,12 @@ export default function VideoGenerator() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>STEPS (10–50)</label>
+                  <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>STEPS ({steps})</label>
                   <input
-                    type="number" value={steps}
-                    onChange={e => setSteps(Math.min(50, Math.max(10, +e.target.value)))}
-                    min={10} max={50}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    type="range" min={10} max={50} step={1}
+                    value={steps}
+                    onChange={e => setSteps(+e.target.value)}
+                    style={{ width: '100%', accentColor: '#7c3aed', marginTop: 8 }}
                   />
                 </div>
                 <div>
@@ -1149,7 +1149,7 @@ export default function VideoGenerator() {
                   }}
                 >
                   <div style={{ borderRadius: 11, overflow: 'hidden', background: 'rgba(8,8,15,0.9)' }}>
-                    <div style={{ position: 'relative', aspectRatio: vid.model === 'skyreel' || vid.model === 'avatar' ? '1/1' : '16/9', background: `linear-gradient(135deg,${vid.c1}12,${vid.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <div style={{ position: 'relative', aspectRatio: '16/9', background: `linear-gradient(135deg,${vid.c1}12,${vid.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       {vid.videoUrl ? (
                         <video ref={el => { videoElRefs.current[vid.id] = el; }} src={vid.videoUrl} muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
                       ) : (
