@@ -32,7 +32,7 @@ const MODEL_CONFIG = {
     sub: 'Realistic humans · Cinematic · 5B',
     modes: ['t2v', 'i2v', 'smart'] as WanMode[],
     defaultSteps: 30,
-    defaultGuidance: 5.0,
+    defaultGuidance: 6.5,
     creditCost: { t2v: 5, i2v: 5, smart: 8 } as Record<string, number>,
     supportsNegativePrompt: false,
   },
@@ -154,7 +154,7 @@ export default function VideoGenerator() {
   const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(30);
-  const [cfg, setCfg] = useState(5.0);
+  const [cfg, setCfg] = useState(6.5);
   const [seed, setSeed] = useState('');
   const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<GeneratedVideo | null>(null);
@@ -1262,7 +1262,7 @@ export default function VideoGenerator() {
               'Best for realistic human faces & bodies',
               'Use "cinematic", "shallow depth of field" for film quality',
               'Smart mode enhances your prompt with AI',
-              'guidance_scale sweet spot: 5.0',
+              'guidance_scale sweet spot: 6.5',
               'Keep prompts under 200 words for best results',
             ] : model === 'skyreel' ? [
               'Upload 1–4 reference images for character consistency',
