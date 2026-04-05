@@ -243,6 +243,27 @@ export default function FeedPage() {
     }
   };
 
+  const handleEdit = async (postId: string, newContent: string) => {
+    // Optimistically update content in cache
+    queryClient.setQueryData(['feed', activeTab, currentUser?.id], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: Post[]) =>
+          page.map((post) => post.id === postId ? { ...post, content: newContent } : post)
+        ),
+      };
+    });
+
+    try {
+      await apiClient.editPost(postId, newContent);
+      toast.success('Post updated');
+    } catch (error) {
+      refetch();
+      toast.error('Failed to edit post');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       <style>{`
@@ -416,6 +437,7 @@ export default function FeedPage() {
                     onComment={handleComment}
                     onShare={handleShare}
                     onDelete={handleDelete}
+                    onEdit={handleEdit}
                   />
                 </motion.div>
               ))}

@@ -1166,6 +1166,19 @@ export const apiClient = {
   },
 
   /**
+   * Edit a post's content
+   */
+  editPost: async (postId: string, content: string): Promise<any> => {
+    try {
+      const response = await api.put(`/posts/${postId}`, { content });
+      return response.data;
+    } catch (e) {
+      handleApiError(e, 'Edit post');
+      throw e;
+    }
+  },
+
+  /**
    * Get posts by a specific user
    */
   getUserPosts: async (userId: string): Promise<any[]> => {

@@ -644,6 +644,19 @@ function ProfilePageContent() {
     } catch { toast.error('Failed to delete post') }
   }, [])
 
+  const handlePostEdit = useCallback(async (postId: string, newContent: string) => {
+    setMyPosts(prev => prev.map(p => p.id === postId ? { ...p, content: newContent } : p))
+    try {
+      await apiClient.editPost(postId, newContent)
+      toast.success('Post updated')
+    } catch {
+      // Revert on failure
+      const posts = await apiClient.getUserPosts(currentUserId || '')
+      setMyPosts(posts)
+      toast.error('Failed to edit post')
+    }
+  }, [currentUserId])
+
   // ─── Banner media upload/delete ─────────────────────────────────────
   const handleBannerMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -2264,6 +2277,7 @@ function ProfilePageContent() {
                             onComment={handlePostComment}
                             onShare={handlePostShare}
                             onDelete={handlePostDelete}
+                            onEdit={handlePostEdit}
                           />
                         </div>
                       ))

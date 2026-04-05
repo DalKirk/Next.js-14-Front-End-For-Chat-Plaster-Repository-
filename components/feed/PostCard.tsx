@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, ChevronDown, ChevronUp, Loader2, Repeat2, Link2, Copy } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, ChevronDown, ChevronUp, Loader2, Repeat2, Link2, Copy, Pencil, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { apiClient } from '@/lib/api';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
@@ -47,6 +47,7 @@ interface PostCardProps {
   onComment: (postId: string, content: string) => void;
   onShare: (postId: string) => void;
   onDelete: (postId: string) => void;
+  onEdit?: (postId: string, newContent: string) => void;
 }
 
 export function PostCard({
@@ -57,7 +58,8 @@ export function PostCard({
   onLike,
   onComment,
   onShare,
-  onDelete
+  onDelete,
+  onEdit
 }: PostCardProps) {
   const router = useRouter();
   const [showComments, setShowComments] = useState(false);
@@ -69,6 +71,9 @@ export function PostCard({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsFetched, setCommentsFetched] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(post.content);
+  const [saving, setSaving] = useState(false);
 
   const isOwnPost = post.user_id === currentUserId;
 
@@ -174,13 +179,24 @@ export function PostCard({
                       </div>
                     </>
                   ) : (
-                    <button
-                      onClick={() => setConfirmDelete(true)}
-                      className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete Repost
-                    </button>
+                    <>
+                      {post.content && (
+                        <button
+                          onClick={() => { setEditing(true); setEditText(post.content); setShowMenu(false); }}
+                          className="w-full px-3 py-2 text-left text-white hover:bg-white/10 rounded flex items-center gap-2 text-sm"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit Repost
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Repost
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -190,8 +206,45 @@ export function PostCard({
       )}
 
       {/* Repost comment (if the user added text when sharing) */}
-      {isRepost && post.content && (
+      {isRepost && post.content && !editing && (
         <p className="text-slate-300 text-sm mb-3 whitespace-pre-wrap">{post.content}</p>
+      )}
+      {isRepost && editing && (
+        <div className="mb-3">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            className="w-full bg-white/5 border border-slate-600/50 rounded-lg p-2 text-slate-200 text-sm resize-none focus:outline-none focus:border-cyan-500/50"
+            rows={2}
+            autoFocus
+          />
+          <div className="flex gap-2 mt-1.5">
+            <button
+              onClick={async () => {
+                if (!onEdit) return;
+                setSaving(true);
+                try {
+                  await onEdit(post.id, editText);
+                  setEditing(false);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              Save
+            </button>
+            <button
+              onClick={() => { setEditing(false); setEditText(post.content); }}
+              className="flex items-center gap-1 px-3 py-1 text-xs text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Original post embed (for reposts) or normal post */}
@@ -303,13 +356,22 @@ export function PostCard({
                     </div>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Post
-                  </button>
+                  <>
+                    <button
+                      onClick={() => { setEditing(true); setEditText(post.content); setShowMenu(false); }}
+                      className="w-full px-3 py-2 text-left text-white hover:bg-white/10 rounded flex items-center gap-2 text-sm"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit Post
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="w-full px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Post
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -318,7 +380,45 @@ export function PostCard({
       </div>
 
       {/* Content */}
-      <p className="text-slate-200 mb-2.5 xs:mb-3 sm:mb-4 whitespace-pre-wrap break-words text-[13px] xs:text-sm sm:text-base">{post.content}</p>
+      {editing ? (
+        <div className="mb-2.5 xs:mb-3 sm:mb-4">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            className="w-full bg-white/5 border border-slate-600/50 rounded-lg p-2 text-slate-200 text-[13px] xs:text-sm sm:text-base resize-none focus:outline-none focus:border-cyan-500/50"
+            rows={3}
+            autoFocus
+          />
+          <div className="flex gap-2 mt-1.5">
+            <button
+              onClick={async () => {
+                if (!onEdit) return;
+                setSaving(true);
+                try {
+                  await onEdit(post.id, editText);
+                  setEditing(false);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              Save
+            </button>
+            <button
+              onClick={() => { setEditing(false); setEditText(post.content); }}
+              className="flex items-center gap-1 px-3 py-1 text-xs text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-slate-200 mb-2.5 xs:mb-3 sm:mb-4 whitespace-pre-wrap break-words text-[13px] xs:text-sm sm:text-base">{post.content}</p>
+      )}
 
       {/* Media */}
       {post.media_urls.length > 0 && (
