@@ -1,2333 +1,2357 @@
-'use client';
+'use client'
 
-import { useState, useEffect, Suspense, useCallback, useRef, createContext, useContext } from 'react';
-import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ColorPicker } from '@/components/ui/ColorPicker';
-import { AvatarUpload } from '@/components/AvatarUpload';
-import { GalleryUpload } from '@/components/GalleryUpload';
-import { PostComposer } from '@/components/feed/PostComposer';
-import { PostCard } from '@/components/feed/PostCard';
-import type { GalleryItem } from '@/types/backend';
-import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
-import { apiClient } from '@/lib/api';
-import { socketManager } from '@/lib/socket';
-import { updateUsernameEverywhere } from '@/lib/message-utils';
-import { StorageUtils } from '@/lib/storage-utils';
-import toast from 'react-hot-toast';
-import { AvatarUrls } from '@/types/backend';
-import type { ThemeConfig } from '@/types/backend';
-import {
-  Camera, Activity, Trash2,
-  User, MessageSquare, Zap, Pencil, X, Palette,
-  Star, Wand2, Type, Layers, Sparkles, Upload, Save, Shield,
-  Heart, Eye, Crown, Users, Newspaper, UserPlus, UserMinus, Mail,
-  Calendar, Clock, Plus, Video, ImageIcon,
-} from 'lucide-react';
-import {
-  fontPresets, presetThemes, glassStyles, ParticleShapes,
-  defaultTheme, resolveTheme, resolveFont, themeAnimationCSS,
-  type PresetTheme, type GlassStyleDef, type EffectsState,
-  type CustomThemeState, type UploadedFont,
-} from '@/components/theme-engine';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
+import { Video, Trash2, ImageIcon, Newspaper, MessageSquare, Music, Lock } from 'lucide-react'
+import { AvatarUpload } from '@/components/AvatarUpload'
+import { PostComposer } from '@/components/feed/PostComposer'
+import { PostCard } from '@/components/feed/PostCard'
+import { ResponsiveAvatar } from '@/components/ResponsiveAvatar'
+import { apiClient } from '@/lib/api'
+import { StorageUtils } from '@/lib/storage-utils'
+import { updateUsernameEverywhere } from '@/lib/message-utils'
+import type { AvatarUrls } from '@/types/backend'
 
-// ═══════════════════════════════════════════════════════════════════════
-// Interfaces
-// ═══════════════════════════════════════════════════════════════════════
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface UserProfile {
-  id: string;
-  username: string;
-  email?: string;
-  bio?: string;
-  avatar?: string;
-  avatar_urls?: {
-    thumbnail?: string;
-    small?: string;
-    medium?: string;
-    large?: string;
-  };
-  profile_video_url?: string;
-  joinedDate: string;
-  totalRooms?: number;
-  totalMessages?: number;
-  favoriteLanguage?: string;
-  theme: 'purple' | 'blue' | 'green';
-  notifications: boolean;
+type GenerationType = 'image' | 'video' | '3d' | 'gif'
+
+interface SocialLink {
+  platform: 'twitter' | 'instagram' | 'website' | 'youtube' | 'github'
+  url: string
+  handle: string
 }
 
-type EditTab = 'profile' | 'appearance' | 'fonts' | 'effects' | 'security' | 'schedule';
-
-// Scheduled show interface
-interface ScheduledShow {
-  id: string;
-  title: string;
-  description?: string;
-  scheduledAt: string; // ISO date string
-  duration?: number; // minutes
-  category?: string;
-  thumbnail?: string;
-  status: 'scheduled' | 'live' | 'completed' | 'cancelled';
+interface GeneratedItem {
+  id: string
+  type: GenerationType
+  url: string
+  thumbnail: string
+  prompt: string
+  createdAt: string
+  credits: number
+  liked: boolean
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Theme Context + Extracted Sub-Components (stable React identity)
-// ═══════════════════════════════════════════════════════════════════════
-
-interface ProfileThemeValues {
-  liveTheme: PresetTheme;
-  liveGlass: GlassStyleDef;
-  liveEffects: EffectsState;
-  selectedGlassStyle: string;
-  createRipple: (e: React.MouseEvent<HTMLDivElement>) => void;
-  ripples: { id: number; x: number; y: number }[];
-  cardRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
-  headingColor: string;
-  bodyColor: string;
-  headingFont: string;
-  bodyFont: string;
-  editTab: EditTab;
-  setEditTab: (tab: EditTab) => void;
+interface UserProfileData {
+  id: string
+  username: string
+  displayName: string
+  bio: string
+  aboutText: string
+  avatarUrl?: string
+  avatar_urls?: AvatarUrls
+  profile_video_url?: string
+  profile_audio_url?: string
+  profileTrackName?: string
+  email?: string
+  accentColor: string
+  bannerColor: string
+  nameFont: string
+  bioFont: string
+  aboutFont: string
+  bannerMediaUrl?: string
+  bannerMediaType?: 'image' | 'video'
+  joinedAt: string
+  location?: string
+  website?: string
+  socials: SocialLink[]
+  stats: {
+    totalGenerations: number
+    imagesCreated: number
+    videosCreated: number
+    creditsUsed: number
+    modelsCreated: number
+    gifCreated: number
+  }
+  gallery: GeneratedItem[]
+  isOwnProfile: boolean
+  plan: 'free' | 'starter' | 'creator' | 'pro' | 'studio'
 }
 
-const ProfileThemeCtx = createContext<ProfileThemeValues | null>(null);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-function GlassCard({ children, className = '', refIndex }: { children: React.ReactNode; className?: string; refIndex?: number }) {
-  const { liveTheme, liveGlass, liveEffects, selectedGlassStyle, createRipple, ripples, cardRefs } = useContext(ProfileThemeCtx)!;
+const FONT_PRESETS: { key: string; name: string; family: string; url: string; style: string }[] = [
+  { key: 'dm-sans', name: 'DM Sans', family: "'DM Sans',sans-serif", url: '', style: 'Default' },
+  { key: 'inter', name: 'Inter', family: 'Inter,system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', style: 'Modern sans-serif' },
+  { key: 'playfair', name: 'Playfair Display', family: "'Playfair Display',serif", url: 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap', style: 'Elegant serif' },
+  { key: 'poppins', name: 'Poppins', family: 'Poppins,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap', style: 'Friendly rounded' },
+  { key: 'montserrat', name: 'Montserrat', family: 'Montserrat,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap', style: 'Geometric' },
+  { key: 'lora', name: 'Lora', family: 'Lora,serif', url: 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap', style: 'Classic serif' },
+  { key: 'dancing', name: 'Dancing Script', family: "'Dancing Script',cursive", url: 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap', style: 'Handwritten' },
+  { key: 'roboto', name: 'Roboto', family: 'Roboto,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap', style: 'Clean readable' },
+  { key: 'bebas', name: 'Bebas Neue', family: "'Bebas Neue',sans-serif", url: 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap', style: 'Bold display' },
+  { key: 'space-mono', name: 'Space Mono', family: "'Space Mono',monospace", url: '', style: 'Monospace' },
+]
+
+const ACCENT_PRESETS = [
+  '#f97316', '#8b5cf6', '#06b6d4', '#10b981',
+  '#f43f5e', '#eab308', '#ec4899', '#3b82f6',
+]
+
+const BANNER_PRESETS = [
+  '#7c3aed', '#0f1a2e', '#0a1a0f', '#1a0a0a',
+  '#0a0f1a', '#1a1a0a', '#0f0a1a', '#1a0f0a',
+]
+
+const TYPE_LABEL: Record<GenerationType, string> = {
+  image: 'IMG', video: 'VID', '3d': '3D', gif: 'GIF',
+}
+
+const TYPE_ICON: Record<GenerationType, string> = {
+  image: '◈', video: '▶', '3d': '◆', gif: '◎',
+}
+
+const SOCIAL_ICONS: Record<string, string> = {
+  twitter: '𝕏', instagram: '◎', website: '↗', youtube: '▶', github: '◈',
+}
+
+const PLAN_LABELS: Record<string, { label: string; color: string }> = {
+  free: { label: 'Free', color: '#888' },
+  starter: { label: 'Starter', color: '#10b981' },
+  creator: { label: 'Creator', color: '#3b82f6' },
+  pro: { label: 'Pro', color: '#8b5cf6' },
+  studio: { label: 'Studio', color: '#f97316' },
+}
+
+// ─── Gallery card ─────────────────────────────────────────────────────────────
+
+function GalleryCard({ item, accent, onLike }: {
+  item: GeneratedItem; accent: string; onLike: (id: string) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <div
-      ref={refIndex !== undefined ? (el: HTMLDivElement | null) => { cardRefs.current[refIndex] = el; } : undefined}
-      onMouseDown={createRipple}
-      className={`relative ${liveGlass.edges} border-2 overflow-hidden transition-all duration-300 ${className}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        background: liveTheme.glassColor,
-        backdropFilter: `blur(${liveGlass.blur}px) saturate(180%)`,
-        WebkitBackdropFilter: `blur(${liveGlass.blur}px) saturate(180%)`,
-        borderColor: 'rgba(255,255,255,0.25)',
-        boxShadow: `0 0 20px ${liveTheme.borderGlow}, 0 8px 32px rgba(0,0,0,0.1)`,
-        transformStyle: liveEffects.depthLayers ? 'preserve-3d' : 'flat',
+        position: 'relative',
+        background: `color-mix(in srgb, ${accent} 10%, #111)`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        aspectRatio: item.type === 'video' ? '16/10' : '1',
+        cursor: 'pointer',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        transform: hovered ? 'scale(1.03)' : 'scale(1)',
+        boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.3)',
+        border: '0.5px solid rgba(255,255,255,0.06)',
       }}
     >
-      {liveEffects.depthLayers && (<>
-        <div className={`absolute inset-3 ${liveGlass.edges} border pointer-events-none`} style={{ borderColor: 'rgba(255,255,255,0.15)', boxShadow: `inset 0 0 20px ${liveTheme.borderGlow}` }} />
-        <div className={`absolute inset-6 ${liveGlass.edges} border pointer-events-none`} style={{ borderColor: 'rgba(255,255,255,0.1)', boxShadow: `inset 0 0 15px ${liveTheme.borderGlow}` }} />
-      </>)}
-      {selectedGlassStyle === 'holographic' && (<div className="absolute inset-0 opacity-40 mix-blend-overlay pointer-events-none" style={{ background: 'linear-gradient(45deg, rgba(255,0,255,0.2), rgba(0,255,255,0.2), rgba(255,255,0,0.2))' }} />)}
-      {selectedGlassStyle === 'metallic' && (<div className="absolute inset-0 opacity-60 mix-blend-overlay pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(200,200,200,0.2) 50%, rgba(255,255,255,0.4) 100%)' }} />)}
-      <div className="absolute top-0 left-0 w-32 h-32 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 50%)', opacity: 0.6 }} />
-      {selectedGlassStyle === 'ombre' && (<div className={`absolute inset-0 ${liveGlass.edges} opacity-60 pointer-events-none`} style={{ padding: '2px', background: `linear-gradient(135deg, ${liveTheme.borderGlow} 0%, transparent 50%, ${liveTheme.borderGlow} 100%)`, WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />)}
-      {ripples.map(r => (<span key={r.id} className="absolute rounded-full pointer-events-none" style={{ left: `${r.x}px`, top: `${r.y}px`, width: '0', height: '0', background: liveTheme.accent, opacity: 0.6, transform: 'translate(-50%,-50%)', animation: 'ripple-expand 1s ease-out forwards' }} />))}
-      <div className="relative z-10">{children}</div>
+      <div style={{
+        position: 'absolute', top: 8, left: 8, zIndex: 2,
+        fontFamily: 'monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.14em',
+        padding: '3px 7px', borderRadius: 4, background: accent, color: '#000',
+      }}>
+        {TYPE_LABEL[item.type]}
+      </div>
+
+      <button
+        onClick={(e) => { e.stopPropagation(); onLike(item.id) }}
+        style={{
+          position: 'absolute', top: 6, right: 6, zIndex: 2,
+          width: 26, height: 26, borderRadius: '50%',
+          background: item.liked ? accent : 'rgba(255,255,255,0.1)',
+          border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, color: item.liked ? '#000' : 'rgba(255,255,255,0.4)',
+          transition: 'all 0.15s',
+          opacity: hovered || item.liked ? 1 : 0,
+        }}
+      >♥</button>
+
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 26,
+        color: `color-mix(in srgb, ${accent} 30%, transparent)`,
+        transition: 'font-size 0.2s',
+        ...(hovered ? { fontSize: '32px' } : {}),
+      }}>
+        {TYPE_ICON[item.type]}
+      </div>
+
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 3,
+        background: `linear-gradient(to top, ${accent}f0 0%, transparent 50%)`,
+        opacity: hovered ? 1 : 0, transition: 'opacity 0.25s',
+        display: 'flex', alignItems: 'flex-end', padding: '10px 12px',
+      }}>
+        <p style={{
+          fontFamily: 'sans-serif', fontSize: 10, color: '#000',
+          lineHeight: 1.4, margin: 0, fontWeight: 700,
+        }}>
+          {item.prompt.slice(0, 52)}{item.prompt.length > 52 ? '…' : ''}
+        </p>
+      </div>
+
+      <div style={{
+        position: 'absolute', bottom: 7, right: 8, zIndex: 2,
+        fontFamily: 'monospace', fontSize: 8,
+        color: 'rgba(255,255,255,0.2)',
+        opacity: hovered ? 0 : 1, transition: 'opacity 0.15s',
+      }}>
+        {item.credits}cr · {item.createdAt}
+      </div>
     </div>
-  );
+  )
 }
 
-function FloatingParticles() {
-  const ctx = useContext(ProfileThemeCtx);
-  if (!ctx) return null;
-  const { liveEffects, liveTheme } = ctx;
-  if (liveEffects.particles === 'none' || !ParticleShapes[liveEffects.particles]) return null;
-  const speeds: Record<string, number> = { slow: 10, medium: 7, fast: 4 };
-  const dur = speeds[liveEffects.particleSpeed] || 7;
+// ─── Profile Audio Player ─────────────────────────────────────────────────────
+
+function ProfileAudioPlayer({
+  audioUrl,
+  trackName,
+  accentColor = '#8b5cf6',
+  audioRef,
+}: {
+  audioUrl: string
+  trackName: string
+  accentColor?: string
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>
+}) {
+  const [playing, setPlaying] = useState(false)
+  const [heights, setHeights] = useState([6, 10, 6, 10, 6])
+  const ivRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const FRAMES = [
+    [8,18,24,18,8],[12,22,16,26,10],[20,10,28,12,22],
+    [6,24,14,20,8],[16,8,22,10,18],[10,26,8,24,14],
+  ]
+  const frameRef = useRef(0)
+
+  const start = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(() => {})
+    }
+    setPlaying(true)
+    ivRef.current = setInterval(() => {
+      const h = FRAMES[frameRef.current++ % FRAMES.length]
+      setHeights(h.map(v => Math.max(4, v + (Math.random() - 0.5) * 4)))
+    }, 120)
+  }
+
+  const stop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+    }
+    setPlaying(false)
+    if (ivRef.current) clearInterval(ivRef.current)
+    setHeights([6, 10, 6, 10, 6])
+  }
+
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    const onEnded = () => stop()
+    el.addEventListener('ended', onEnded)
+    return () => { el.removeEventListener('ended', onEnded); if (ivRef.current) clearInterval(ivRef.current) }
+  }, [audioUrl])
+
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-20">
-      {Array.from({ length: liveEffects.particleCount }).map((_, i) => {
-        const size = 16 + (i % 3) * 8;
-        return (
-          <div key={i} className="absolute" style={{ left: `${(i * 7) % 100}%`, bottom: `-${100 + (i % 3) * 10}px`, width: `${size}px`, height: `${size}px`, opacity: 0.5 + (i % 3) * 0.15, animation: `float-up ${dur + (i % 3)}s linear infinite`, animationDelay: `${(i * 0.5) % dur}s` }}>
-            {ParticleShapes[liveEffects.particles]?.(liveTheme.accent)}
-          </div>
-        );
-      })}
+    <div style={{ marginBottom: 18 }}>
+      <audio ref={audioRef} src={audioUrl} preload="metadata" style={{ display: 'none' }} />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        background: 'transparent',
+        border: 'none',
+        borderRadius: 100, padding: '10px 0',
+        maxWidth: 320,
+      }}>
+        <button onClick={playing ? stop : start} style={{
+          width: 40, height: 40, borderRadius: '50%', border: 'none',
+          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
+          color: '#fff', fontSize: 13, cursor: 'pointer',
+          boxShadow: `0 0 14px ${accentColor}80`,
+          paddingLeft: playing ? 0 : 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {playing ? '⏸' : '▶'}
+        </button>
+
+        <span style={{
+          flex: 1, fontFamily: "'Space Mono',monospace", fontSize: 10,
+          color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {trackName}
+        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 28 }}>
+          {heights.map((h, i) => (
+            <div key={i} style={{
+              width: 3, height: h, borderRadius: 2,
+              background: accentColor,
+              opacity: [0.4, 0.6, 0.85, 0.6, 0.4][i],
+              transition: 'height 0.08s ease',
+              boxShadow: playing ? `0 0 4px ${accentColor}99` : 'none',
+            }} />
+          ))}
+        </div>
+      </div>
     </div>
-  );
+  )
 }
 
-function TabButton({ id, label, icon: Icon }: { id: EditTab; label: string; icon: React.ElementType }) {
-  const { editTab, setEditTab, liveTheme } = useContext(ProfileThemeCtx)!;
-  return (
-    <button
-      onClick={() => setEditTab(id)}
-      className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all hover:scale-105 flex items-center gap-1 sm:gap-2 border-2 text-xs sm:text-sm"
-      style={{
-        background: editTab === id ? liveTheme.accent : 'rgba(255,255,255,0.1)',
-        borderColor: editTab === id ? liveTheme.accent : 'rgba(255,255,255,0.2)',
-        color: editTab === id ? '#ffffff' : liveTheme.text,
-        backdropFilter: 'blur(8px)',
-      }}
-    >
-      <Icon className="w-3 h-3 sm:w-4 sm:h-4" /><span className="hidden xs:inline sm:inline">{label}</span>
-    </button>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Main Page Content
-// ═══════════════════════════════════════════════════════════════════════
+// ─── Profile Content ──────────────────────────────────────────────────────────
 
 function ProfilePageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [showOnboardModal, setShowOnboardModal] = useState(false);
-  const [isViewOnly, setIsViewOnly] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const viewedUserId = (() => {
-    try { return searchParams?.get('userId') || null; } catch { return null; }
-  })();
-  const viewedUsername = (() => {
-    try { return searchParams?.get('username') || null; } catch { return null; }
-  })();
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Profile state
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [editTab, setEditTab] = useState<EditTab>('profile');
+  const viewedUserId = (() => { try { return searchParams?.get('userId') || null } catch { return null } })()
+  const viewedUsername = (() => { try { return searchParams?.get('username') || null } catch { return null } })()
 
-  // Security state
-  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
-  const [passwordSupported, setPasswordSupported] = useState<boolean | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false)
+  const [profile, setProfile] = useState<UserProfileData | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [activeTab, setActiveTab] = useState<'gallery' | 'posts' | 'stats' | 'about'>('posts')
+  const [filterType, setFilterType] = useState<'all' | GenerationType>('all')
+  const bioRef = useRef<HTMLInputElement>(null)
+  const aboutRef = useRef<HTMLTextAreaElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
 
-  // Scheduled shows state
-  const [scheduledShows, setScheduledShows] = useState<ScheduledShow[]>([]);
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [editingShow, setEditingShow] = useState<ScheduledShow | null>(null);
-  const [newShow, setNewShow] = useState<Partial<ScheduledShow>>({
-    title: '',
-    description: '',
-    scheduledAt: '',
-    duration: 60,
-    category: 'Social',
-    thumbnail: '',
-  });
-  const showThumbnailInputRef = useRef<HTMLInputElement>(null);
+  // Upload state
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const profileVideoInputRef = useRef<HTMLInputElement>(null)
 
-  // Profile video state
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const profileVideoInputRef = useRef<HTMLInputElement>(null);
+  // Audio state
+  const [uploadingAudio, setUploadingAudio] = useState(false)
+  const profileAudioInputRef = useRef<HTMLInputElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
-  // Load scheduled shows from backend API (works for both own profile and viewing others)
+  // Banner media state
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const bannerMediaInputRef = useRef<HTMLInputElement>(null)
+
+  // Font upload state
+  const [uploadedFonts, setUploadedFonts] = useState<{name:string;family:string}[]>([])
+  const fontInputRef = useRef<HTMLInputElement>(null)
+  const [fontSection, setFontSection] = useState<'name' | 'bio' | 'about'>('name')
+
+  // Password state
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  // Posts state
+  const [myPosts, setMyPosts] = useState<any[]>([])
+  const [postsLoading, setPostsLoading] = useState(false)
+
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // ─── Load profile from backend ──────────────────────────────────────
   useEffect(() => {
-    const loadScheduledShows = async () => {
-      const targetUserId = isViewOnly ? viewedUserId : profile?.id;
-      if (!targetUserId) {
-        setScheduledShows([]);
-        return;
-      }
-
-      try {
-        // Fetch from backend API
-        const shows = await apiClient.getScheduledShows(targetUserId);
-        
-        // Map backend response to frontend format
-        const mappedShows: ScheduledShow[] = shows.map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          description: s.description,
-          scheduledAt: s.scheduled_at,
-          duration: s.duration,
-          category: s.category,
-          thumbnail: s.thumbnail,
-          status: s.status,
-        }));
-        
-        setScheduledShows(mappedShows);
-        
-        // Cache own shows to localStorage as fallback
-        if (!isViewOnly && profile?.id) {
-          localStorage.setItem(`scheduled-shows-${profile.id}`, JSON.stringify(mappedShows));
-        }
-      } catch (error) {
-        console.error('Failed to fetch scheduled shows from backend:', error);
-        
-        // Fallback to localStorage for own profile only
-        if (!isViewOnly && profile?.id) {
-          try {
-            const saved = localStorage.getItem(`scheduled-shows-${profile.id}`);
-            if (saved) {
-              const shows = JSON.parse(saved) as ScheduledShow[];
-              // Filter out past shows
-              const now = new Date();
-              const updated = shows.map(s => {
-                if (s.status === 'scheduled' && new Date(s.scheduledAt) < now) {
-                  return { ...s, status: 'completed' as const };
-                }
-                return s;
-              });
-              setScheduledShows(updated);
-            } else {
-              setScheduledShows([]);
-            }
-          } catch (e) {
-            setScheduledShows([]);
-          }
-        } else {
-          setScheduledShows([]);
-        }
-      }
-    };
-    
-    loadScheduledShows();
-  }, [profile?.id, isViewOnly, viewedUserId]);
-
-  // ─── Posts state ────────────────────────────────────────────────
-  const [myPosts, setMyPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
-
-  // ─── DM/Messages state ──────────────────────────────────────────
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
-  // Fetch unread count when profile loads
-  useEffect(() => {
-    if (profile?.id && !isViewOnly) {
-      apiClient.getUnreadCount(profile.id)
-        .then((count) => setUnreadMessages(count))
-        .catch(() => setUnreadMessages(0));
-    }
-  }, [profile?.id, isViewOnly]);
-
-  // ─── Follow state ───────────────────────────────────────────────
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  // ─── Theme editor state ─────────────────────────────────────────────
-  const [userTheme, setUserTheme] = useState<ThemeConfig | null>(null);
-  // Live-edit state (only active during editing)
-  const [selectedPreset, setSelectedPreset] = useState('sunset');
-  const [selectedGlassStyle, setSelectedGlassStyle] = useState('ombre');
-  const [customTheme, setCustomTheme] = useState<CustomThemeState>({
-    name: 'My Custom Theme',
-    colors: ['#FF6B6B', '#FFB84D', '#FF6B9D', '#C06C84'],
-    blurStrength: 12,
-    fonts: { heading: 'inter', body: 'inter', headingColor: '#2D1B1B', bodyColor: '#5A3A3A' },
-  });
-  const [themeMode, setThemeMode] = useState<'presets' | 'custom'>('presets');
-  const [effects, setEffects] = useState<EffectsState>({
-    depthLayers: false, tilt3D: false, ripple: true,
-    particles: 'hearts', particleCount: 15, particleSpeed: 'medium',
-  });
-  const [uploadedFonts, setUploadedFonts] = useState<UploadedFont[]>([]);
-  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  // ─── Hydrate theme state from saved config ──────────────────────────
-  const hydrateThemeState = useCallback((config: ThemeConfig | null) => {
-    if (!config) return;
-    setSelectedPreset(config.preset === 'custom' ? 'sunset' : config.preset);
-    setThemeMode(config.preset === 'custom' ? 'custom' : 'presets');
-    setSelectedGlassStyle(config.glassStyle || 'ombre');
-    setCustomTheme({
-      name: 'My Custom Theme',
-      colors: config.colors || ['#FF6B6B', '#FFB84D', '#FF6B9D', '#C06C84'],
-      blurStrength: config.blurStrength ?? 12,
-      fonts: {
-        heading: config.fonts?.heading || 'inter',
-        body: config.fonts?.body || 'inter',
-        headingColor: config.fonts?.headingColor || '#2D1B1B',
-        bodyColor: config.fonts?.bodyColor || '#5A3A3A',
-      },
-    });
-    setEffects({
-      depthLayers: config.effects?.depthLayers ?? false,
-      tilt3D: config.effects?.tilt3D ?? false,
-      ripple: config.effects?.ripple ?? true,
-      particles: config.effects?.particles || 'hearts',
-      particleCount: config.effects?.particleCount ?? 15,
-      particleSpeed: config.effects?.particleSpeed || 'medium',
-    });
-  }, []);
-
-  // ─── Derived theme values ───────────────────────────────────────────
-  const liveTheme: PresetTheme = userTheme && !isEditing
-    ? resolveTheme(userTheme.preset, userTheme.colors, userTheme.preset === 'custom' ? 'custom' : 'presets')
-    : isEditing
-      ? resolveTheme(selectedPreset, customTheme.colors, themeMode)
-      : defaultTheme;
-
-  const liveGlass: GlassStyleDef = isEditing
-    ? (glassStyles[selectedGlassStyle] || glassStyles.ombre)
-    : (userTheme ? (glassStyles[userTheme.glassStyle] || glassStyles.ombre) : glassStyles.ombre);
-
-  const liveEffects: EffectsState = isEditing
-    ? effects
-    : (userTheme?.effects || { depthLayers: false, tilt3D: false, ripple: false, particles: 'none', particleCount: 0, particleSpeed: 'medium' });
-
-  const liveCustomFonts = isEditing ? customTheme.fonts : (userTheme?.fonts || customTheme.fonts);
-
-  const headingFont = resolveFont(liveCustomFonts.heading, uploadedFonts);
-  const bodyFont = resolveFont(liveCustomFonts.body, uploadedFonts);
-  const headingColor = liveCustomFonts.headingColor || liveTheme.text;
-  const bodyColor = liveCustomFonts.bodyColor || liveTheme.text;
-
-  const hasTheme = Boolean(userTheme) || isEditing;
-  const pageGradient = hasTheme ? liveTheme.gradient : defaultTheme.gradient;
-
-  // ─── Google Fonts loader ────────────────────────────────────────────
-  useEffect(() => {
-    const load = (key: string) => {
-      const font = fontPresets[key];
-      if (!font) return;
-      const id = `font-${key}`;
-      if (document.getElementById(id)) return;
-      const link = document.createElement('link');
-      link.id = id; link.rel = 'stylesheet'; link.href = font.url;
-      document.head.appendChild(link);
-    };
-    load(liveCustomFonts.heading);
-    load(liveCustomFonts.body);
-  }, [liveCustomFonts.heading, liveCustomFonts.body]);
-
-  // ─── 3D tilt effect ─────────────────────────────────────────────────
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (liveEffects.tilt3D) {
-        cardRefs.current.forEach(ref => {
-          if (!ref) return;
-          const rect = ref.getBoundingClientRect();
-          const tiltX = ((e.clientY - (rect.top + rect.height / 2)) / rect.height) * 2;
-          const tiltY = (((rect.left + rect.width / 2) - e.clientX) / rect.width) * 2;
-          ref.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-        });
-      } else {
-        cardRefs.current.forEach(ref => { if (ref) ref.style.transform = 'none'; });
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [liveEffects.tilt3D]);
-
-  // ─── Ripple handler ─────────────────────────────────────────────────
-  const createRipple = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!liveEffects.ripple) return;
-    const t = e.target as HTMLElement;
-    if (['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(t.tagName) || t.closest?.('button, a, input, textarea, select')) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const r = { id: Date.now(), x: e.clientX - rect.left, y: e.clientY - rect.top };
-    setRipples(prev => [...prev, r]);
-    setTimeout(() => setRipples(prev => prev.filter(x => x.id !== r.id)), 1000);
-  }, [liveEffects.ripple]);
-
-  // ─── Font upload handler ────────────────────────────────────────────
-  const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'heading' | 'body') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.match(/\.(ttf|otf|woff|woff2)$/i)) {
-      toast.error('Please upload a valid font file (.ttf, .otf, .woff, .woff2)');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const fontName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9-]/g, '-');
-      const fontData = ev.target?.result as string;
-      const styleId = `custom-font-${fontName}`;
-      let el = document.getElementById(styleId) as HTMLStyleElement | null;
-      if (!el) { el = document.createElement('style'); el.id = styleId; document.head.appendChild(el); }
-      el.textContent = `@font-face { font-family: "${fontName}"; src: url("${fontData}"); }`;
-      setUploadedFonts(prev => [...prev.filter(f => f.name !== fontName), { name: fontName, family: `"${fontName}", sans-serif` }]);
-      setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, [type]: fontName } }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ─── Build ThemeConfig from live state ──────────────────────────────
-  const buildThemeConfig = useCallback((): ThemeConfig => ({
-    preset: themeMode === 'custom' ? 'custom' : selectedPreset,
-    glassStyle: selectedGlassStyle,
-    colors: customTheme.colors,
-    blurStrength: customTheme.blurStrength,
-    fonts: { ...customTheme.fonts },
-    effects: { ...effects },
-  }), [themeMode, selectedPreset, selectedGlassStyle, customTheme, effects]);
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Profile logic (preserved from original)
-  // ═══════════════════════════════════════════════════════════════════
-
-  useEffect(() => {
-    if (profile) {
-      console.log('🔍 PROFILE DEBUG - profile state updated:', {
-        profileId: profile.id,
-        username: profile.username,
-        isViewOnly,
-        viewedUserId,
-        viewedUsername
-      });
-    }
-  }, [profile, isViewOnly, viewedUserId, viewedUsername]);
-
-  useEffect(() => {
-    const storedUser = StorageUtils.safeGetItem('chat-user');
-    const userData = storedUser ? JSON.parse(storedUser) : null;
-    const viewingOtherUser = viewedUserId && (!userData || viewedUserId !== userData.id);
-    setIsViewOnly(Boolean(viewingOtherUser));
+    const storedUser = StorageUtils.safeGetItem('chat-user')
+    const userData = storedUser ? JSON.parse(storedUser) : null
+    const viewingOtherUser = viewedUserId && (!userData || viewedUserId !== userData.id)
+    setIsViewOnly(Boolean(viewingOtherUser))
 
     if (!viewingOtherUser && !storedUser) {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
     async function ensureUserExists() {
       try {
-        if (!userData) return false;
-        const backendUser = await apiClient.getProfile(userData.id);
-        console.log('✅ User exists in backend:', backendUser.id);
-        return true;
+        if (!userData) return false
+        await apiClient.getProfile(userData.id)
+        return true
       } catch {
-        console.warn('⚠️ User not found by ID, checking if user exists with this username...');
         try {
-          const newUser = await apiClient.createUser(userData!.username);
-          console.log('✅ User created in backend:', newUser.id);
-          const updatedUserData = { ...userData, id: newUser.id };
-          StorageUtils.safeSetItem('chat-user', JSON.stringify(updatedUserData));
-          return true;
+          const newUser = await apiClient.createUser(userData!.username)
+          const updatedUserData = { ...userData, id: newUser.id }
+          StorageUtils.safeSetItem('chat-user', JSON.stringify(updatedUserData))
+          return true
         } catch (createError: unknown) {
-          console.error('❌ Failed to sync user with backend:', createError);
-          const errorMsg = (createError instanceof Error ? createError.message : String(createError || ''));
+          const errorMsg = (createError instanceof Error ? createError.message : String(createError || ''))
           if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
-            console.error('💥 Username exists but with different ID.');
-            toast.error('Session mismatch. Please log in again.');
-            localStorage.removeItem('chat-user');
-            localStorage.removeItem('auth-token');
-            router.push('/');
-            return false;
+            toast.error('Session mismatch. Please log in again.')
+            localStorage.removeItem('chat-user')
+            localStorage.removeItem('auth-token')
+            router.push('/')
+            return false
           }
-          return false;
+          return false
         }
       }
     }
 
     async function loadProfile() {
-      if (!viewingOtherUser) await ensureUserExists();
+      if (!viewingOtherUser) await ensureUserExists()
 
       // Clean up base64 avatars
-      const storedAvatar = localStorage.getItem('userAvatar');
-      if (storedAvatar && storedAvatar.startsWith('data:')) {
-        localStorage.removeItem('userAvatar');
-      }
-      const existingProfileStr = StorageUtils.safeGetItem('userProfile');
-      if (existingProfileStr) {
-        try {
-          const ep = JSON.parse(existingProfileStr);
-          if (ep.avatar && ep.avatar.startsWith('data:')) { delete ep.avatar; StorageUtils.safeSetItem('userProfile', JSON.stringify(ep)); }
-        } catch {}
-      }
+      const storedAvatar = localStorage.getItem('userAvatar')
+      if (storedAvatar && storedAvatar.startsWith('data:')) localStorage.removeItem('userAvatar')
 
-      const existingProfile = !viewingOtherUser ? StorageUtils.safeGetItem('userProfile') : null;
-      const localProfile: UserProfile = existingProfile
-        ? JSON.parse(existingProfile)
-        : {
-            id: viewingOtherUser ? (viewedUserId || 'unknown') : (userData?.id || 'unknown'),
-            username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
-            email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : undefined)),
-            bio: undefined,
-            avatar: '',
-            joinedDate: new Date().toISOString().split('T')[0],
-            totalRooms: 3,
-            totalMessages: 127,
-            favoriteLanguage: 'JavaScript',
-            theme: 'purple',
-            notifications: true
-          };
-
-      setProfile(localProfile);
-      setEditedProfile(localProfile);
-      setAvatarPreview(localProfile.avatar || null);
+      const targetId = viewingOtherUser ? (viewedUserId as string) : userData!.id
+      const fallbackUsername = viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || 'User')
 
       try {
-        const backendProfile = await apiClient.getProfile(viewingOtherUser ? (viewedUserId as string) : userData!.id);
-        const joinedDate = backendProfile.created_at
-          ? new Date(backendProfile.created_at).toISOString().split('T')[0]
-          : localProfile.joinedDate;
-        const fullProfile: UserProfile = {
-          ...localProfile,
-          id: backendProfile.id,
-          username: backendProfile.display_name || backendProfile.username,
-          email: backendProfile.email ?? localProfile.email,
-          bio: backendProfile.bio ?? localProfile.bio,
-          avatar: backendProfile.avatar_url || localProfile.avatar || '',
-          avatar_urls: backendProfile.avatar_urls || localProfile.avatar_urls,
-          profile_video_url: (backendProfile as any).profile_video_url || localProfile.profile_video_url,
-          joinedDate
-        };
-        console.log('✅ Profile synced from backend');
-        setProfile(fullProfile);
-        setEditedProfile(fullProfile);
-        setAvatarPreview(fullProfile.avatar || null);
+        const bp = await apiClient.getProfile(targetId)
+        const joinedAt = bp.created_at ? new Date(bp.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown'
+
+        // Read saved colors & font from localStorage before building profile
+        let savedAccent = '#f97316'
+        let savedBanner = '#7c3aed'
+        let savedNameFont = 'dm-sans'
+        let savedBioFont = 'dm-sans'
+        let savedAboutFont = 'dm-sans'
+        let savedBio: string | undefined
+        let savedAboutText: string | undefined
+        try {
+          const savedColors = localStorage.getItem(`profileColors:${bp.id}`)
+          if (savedColors) {
+            const parsed = JSON.parse(savedColors)
+            if (parsed.accent) savedAccent = parsed.accent
+            if (parsed.banner) savedBanner = parsed.banner
+            // Migrate old single font to per-section
+            if (parsed.nameFont) savedNameFont = parsed.nameFont
+            else if (parsed.font) savedNameFont = parsed.font
+            if (parsed.bioFont) savedBioFont = parsed.bioFont
+            else if (parsed.font) savedBioFont = parsed.font
+            if (parsed.aboutFont) savedAboutFont = parsed.aboutFont
+            else if (parsed.font) savedAboutFont = parsed.font
+            if (parsed.bio !== undefined) savedBio = parsed.bio
+            if (parsed.aboutText !== undefined) savedAboutText = parsed.aboutText
+          }
+        } catch { /* empty */ }
+
+        // Read saved banner media
+        let savedBannerUrl: string | undefined
+        let savedBannerType: string | undefined
+        try {
+          const saved = localStorage.getItem(`bannerMedia:${bp.id}`)
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (parsed.url) { savedBannerUrl = parsed.url; savedBannerType = parsed.type }
+          }
+        } catch { /* empty */ }
+
+        // Read saved profile audio
+        let savedAudioUrl: string | undefined
+        let savedTrackName: string | undefined
+        try {
+          const saved = localStorage.getItem(`profileAudio:${bp.id}`)
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (parsed.url) { savedAudioUrl = parsed.url; savedTrackName = parsed.trackName }
+          }
+        } catch { /* empty */ }
+
+        const p: UserProfileData = {
+          id: bp.id,
+          username: bp.username,
+          displayName: bp.display_name || bp.username,
+          bio: savedBio ?? bp.bio ?? '',
+          aboutText: savedAboutText ?? '',
+          avatarUrl: bp.avatar_url || '',
+          avatar_urls: bp.avatar_urls,
+          profile_video_url: (bp as any).profile_video_url,
+          profile_audio_url: savedAudioUrl || (bp as any).profile_audio_url,
+          profileTrackName: savedTrackName || (bp as any).profile_track_name,
+          email: (bp as any).email,
+          accentColor: savedAccent,
+          bannerColor: savedBanner,
+          nameFont: savedNameFont,
+          bioFont: savedBioFont,
+          aboutFont: savedAboutFont,
+          bannerMediaUrl: savedBannerUrl,
+          bannerMediaType: savedBannerType as 'image' | 'video' | undefined,
+          joinedAt,
+          isOwnProfile: !viewingOtherUser,
+          plan: 'pro',
+          socials: [],
+          stats: { totalGenerations: 0, imagesCreated: 0, videosCreated: 0, creditsUsed: 0, modelsCreated: 0, gifCreated: 0 },
+          gallery: [],
+        }
+        setProfile(p)
         if (!viewingOtherUser) {
           try {
-            if (fullProfile.avatar) localStorage.setItem('userAvatar', fullProfile.avatar);
-            const chatUserRaw = localStorage.getItem('chat-user');
+            if (p.avatarUrl) localStorage.setItem('userAvatar', p.avatarUrl)
+            const chatUserRaw = localStorage.getItem('chat-user')
             if (chatUserRaw) {
-              const chatUser = JSON.parse(chatUserRaw);
-              localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, username: fullProfile.username, avatar_url: fullProfile.avatar, avatar_urls: fullProfile.avatar_urls }));
+              const chatUser = JSON.parse(chatUserRaw)
+              localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, username: p.displayName, avatar_url: p.avatarUrl, avatar_urls: p.avatar_urls }))
             }
-            StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: fullProfile.id, username: fullProfile.username, bio: fullProfile.bio }));
-          } catch {}
+          } catch { /* empty */ }
         }
       } catch {
-        console.warn('⚠️ Could not sync with backend, using local profile');
-        const existing = StorageUtils.safeGetItem('userProfile');
-        const mockProfile: UserProfile = {
-          id: viewingOtherUser ? (viewedUserId || 'unknown') : (userData?.id || 'unknown'),
-          username: viewingOtherUser ? (viewedUsername || 'User') : (userData?.username || viewedUsername || 'User'),
-          email: viewingOtherUser ? undefined : (userData?.email || (userData?.username ? `${userData.username}@chatplaster.com` : undefined)),
-          bio: undefined, avatar: '',
-          joinedDate: new Date().toISOString().split('T')[0],
-          totalRooms: 3, totalMessages: 127, favoriteLanguage: 'JavaScript', theme: 'purple', notifications: true
-        };
-        if (existing) {
-          const saved = JSON.parse(existing);
-          setProfile({ ...mockProfile, ...saved });
-          setEditedProfile({ ...mockProfile, ...saved });
-          if (saved.avatar) setAvatarPreview(saved.avatar);
-        } else {
-          setProfile(mockProfile);
-          setEditedProfile(mockProfile);
-        }
+        setProfile({
+          id: targetId,
+          username: fallbackUsername,
+          displayName: fallbackUsername,
+          bio: '',
+          aboutText: '',
+          accentColor: '#f97316',
+          bannerColor: '#7c3aed',
+          nameFont: 'dm-sans',
+          bioFont: 'dm-sans',
+          aboutFont: 'dm-sans',
+          bannerMediaUrl: undefined,
+          bannerMediaType: undefined,
+          joinedAt: 'Unknown',
+          isOwnProfile: !viewingOtherUser,
+          plan: 'free',
+          socials: [],
+          stats: { totalGenerations: 0, imagesCreated: 0, videosCreated: 0, creditsUsed: 0, modelsCreated: 0, gifCreated: 0 },
+          gallery: [],
+        })
       }
     }
 
-    loadProfile();
+    loadProfile()
+  }, [router, searchParams, viewedUserId, viewedUsername])
 
-    // Email visibility preference
-    try {
-      const privacyRaw = StorageUtils.safeGetItem('userPrivacy');
-      if (privacyRaw) {
-        const privacy = JSON.parse(privacyRaw);
-        if (typeof privacy?.showEmail === 'boolean') setShowEmail(Boolean(privacy.showEmail));
-      }
-    } catch {}
-
-    // Password support detection
-    (async () => {
-      try {
-        const supported = await apiClient.checkPasswordRouteAvailable();
-        setPasswordSupported(supported);
-      } catch { setPasswordSupported(false); }
-    })();
-
-    // Load saved theme (backend first, localStorage fallback)
-    (async () => {
-      try {
-        const targetId = viewingOtherUser ? viewedUserId : userData?.id;
-        if (targetId) {
-          let theme = await apiClient.getTheme(targetId);
-          // Fallback: load from localStorage if backend returned nothing
-          if (!theme) {
-            try {
-              const raw = StorageUtils.safeGetItem(`userTheme:${targetId}`);
-              if (raw) theme = JSON.parse(raw) as ThemeConfig;
-            } catch {}
-          }
-          if (theme) {
-            setUserTheme(theme);
-            hydrateThemeState(theme);
-          }
-        }
-      } catch { console.log('No custom theme yet'); }
-    })();
-
-    // Auto-open edit mode
-    try {
-      if (!viewingOtherUser && searchParams?.get('edit') === 'true') {
-        setIsEditing(true);
-        try { router.replace('/profile'); } catch {}
-      }
-    } catch {}
-
-    // Onboarding
-    try {
-      if (localStorage.getItem('showProfileOnboard') === 'true') {
-        setIsEditing(true);
-        setShowOnboardModal(true);
-        localStorage.removeItem('showProfileOnboard');
-      }
-    } catch {}
-  }, [router, searchParams, viewedUserId, viewedUsername, hydrateThemeState]);
-
-  // ─── Load user's posts ──────────────────────────────────────────────
-  const loadUserPosts = useCallback(async (userId: string) => {
-    setPostsLoading(true);
-    try {
-      const posts = await apiClient.getUserPosts(userId);
-      setMyPosts(posts);
-    } catch {
-      console.warn('Could not load user posts');
-    } finally {
-      setPostsLoading(false);
-    }
-  }, []);
+  // ─── Follow state loading ──────────────────────────────────────────
+  useEffect(() => {
+    const storedUser = StorageUtils.safeGetItem('chat-user')
+    if (storedUser) setCurrentUserId(JSON.parse(storedUser).id)
+  }, [])
 
   useEffect(() => {
-    if (profile?.id && profile.id !== 'unknown') {
-      loadUserPosts(profile.id);
-    }
-  }, [profile?.id, loadUserPosts]);
-
-  // ─── Load follow status + counts ───────────────────────────────────
-  useEffect(() => {
-    const storedUser = StorageUtils.safeGetItem('chat-user');
-    if (storedUser) {
-      const u = JSON.parse(storedUser);
-      setCurrentUserId(u.id);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!profile?.id || profile.id === 'unknown') return;
-    // Load followers / following counts for the viewed profile
-    (async () => {
+    if (!profile?.id || profile.id === 'unknown') return
+    ;(async () => {
       try {
         const [followers, following] = await Promise.all([
           apiClient.getFollowers(profile.id),
           apiClient.getFollowing(profile.id),
-        ]);
-        setFollowersCount(followers.length);
-        setFollowingCount(following.length);
-      } catch {
-        // silent — counts will stay at 0
-      }
-    })();
-    // Check if current user follows this profile
+        ])
+        setFollowersCount(followers.length)
+        setFollowingCount(following.length)
+      } catch { /* empty */ }
+    })()
     if (isViewOnly && currentUserId) {
-      (async () => {
+      ;(async () => {
         try {
-          const status = await apiClient.checkFollowing(profile.id, currentUserId);
-          setIsFollowing(status.following);
-        } catch {
-          // silent
-        }
-      })();
+          const status = await apiClient.checkFollowing(profile.id, currentUserId)
+          setIsFollowing(status.following)
+        } catch { /* empty */ }
+      })()
     }
-  }, [profile?.id, isViewOnly, currentUserId]);
+  }, [profile?.id, isViewOnly, currentUserId])
 
   const handleToggleFollow = useCallback(async () => {
-    if (!profile?.id || !currentUserId || followLoading) return;
-    setFollowLoading(true);
+    if (!profile?.id || !currentUserId || followLoading) return
+    setFollowLoading(true)
     try {
-      const result = await apiClient.toggleFollow(profile.id, currentUserId);
-      setIsFollowing(result.following);
-      setFollowersCount(result.followers_count);
-      setFollowingCount(result.following_count);
-      toast.success(result.following ? `Following ${profile.username}` : `Unfollowed ${profile.username}`);
-    } catch {
-      toast.error('Failed to update follow status');
-    } finally {
-      setFollowLoading(false);
-    }
-  }, [profile?.id, profile?.username, currentUserId, followLoading]);
+      const result = await apiClient.toggleFollow(profile.id, currentUserId)
+      setIsFollowing(result.following)
+      setFollowersCount(result.followers_count)
+      setFollowingCount(result.following_count)
+      toast.success(result.following ? `Following ${profile.displayName}` : `Unfollowed ${profile.displayName}`)
+    } catch { toast.error('Failed to update follow status') }
+    finally { setFollowLoading(false) }
+  }, [profile?.id, profile?.displayName, currentUserId, followLoading])
 
-  // ─── Post action handlers ──────────────────────────────────────────
+  // ─── Post handlers ──────────────────────────────────────────────────
+  const loadUserPosts = useCallback(async (userId: string) => {
+    setPostsLoading(true)
+    try {
+      const posts = await apiClient.getUserPosts(userId)
+      setMyPosts(posts)
+    } catch {
+      console.warn('Could not load user posts')
+    } finally {
+      setPostsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (profile?.id && profile.id !== 'unknown') {
+      loadUserPosts(profile.id)
+    }
+  }, [profile?.id, loadUserPosts])
+
   const handlePostCreated = useCallback((newPost: any) => {
-    setMyPosts(prev => [newPost, ...prev]);
-    toast.success('Post created!');
-  }, []);
+    setMyPosts(prev => [newPost, ...prev])
+    toast.success('Post created!')
+  }, [])
 
   const handlePostLike = useCallback(async (postId: string) => {
-    if (!profile) return;
+    if (!profile) return
     try {
-      const result = await apiClient.likePost(postId, profile.id);
+      const result = await apiClient.likePost(postId, profile.id)
       setMyPosts(prev => prev.map(p =>
         p.id === postId
           ? { ...p, likes_count: result.liked ? p.likes_count + 1 : p.likes_count - 1, user_liked: result.liked }
           : p
-      ));
-    } catch { toast.error('Failed to like post'); }
-  }, [profile]);
+      ))
+    } catch { toast.error('Failed to like post') }
+  }, [profile])
 
   const handlePostComment = useCallback(async (postId: string, content: string) => {
-    if (!profile) return;
+    if (!profile) return
     try {
-      await apiClient.commentOnPost(postId, profile.id, content);
+      await apiClient.commentOnPost(postId, profile.id, content)
       setMyPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
-      ));
-      toast.success('Comment added!');
-    } catch { toast.error('Failed to add comment'); }
-  }, [profile]);
+      ))
+      toast.success('Comment added!')
+    } catch { toast.error('Failed to add comment') }
+  }, [profile])
 
   const handlePostShare = useCallback(async (postId: string) => {
-    if (!profile) return;
+    if (!profile) return
     try {
-      const result = await apiClient.sharePost(postId, profile.id);
-      // Increment shares count on original
+      await apiClient.sharePost(postId, profile.id)
       setMyPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, shares_count: p.shares_count + 1 } : p
-      ));
-      toast.success('Reposted!');
-    } catch { toast.error('Failed to repost'); }
-  }, [profile]);
+      ))
+      toast.success('Reposted!')
+    } catch { toast.error('Failed to repost') }
+  }, [profile])
 
   const handlePostDelete = useCallback(async (postId: string) => {
     try {
-      await apiClient.deletePost(postId);
-      setMyPosts(prev => prev.filter(p => p.id !== postId));
-      toast.success('Post deleted');
-    } catch { toast.error('Failed to delete post'); }
-  }, []);
+      await apiClient.deletePost(postId)
+      setMyPosts(prev => prev.filter(p => p.id !== postId))
+      toast.success('Post deleted')
+    } catch { toast.error('Failed to delete post') }
+  }, [])
+
+  // ─── Banner media upload/delete ─────────────────────────────────────
+  const handleBannerMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    if (file.size > 50 * 1024 * 1024) { toast.error('Banner media must be under 50 MB'); return }
+
+    const isVideo = file.type.startsWith('video/')
+    const isImage = file.type.startsWith('image/')
+    if (!isVideo && !isImage) { toast.error('Only images and videos are accepted'); return }
+
+    setUploadingBanner(true)
+    try {
+      const formData = new FormData()
+      formData.append('files', file)
+      formData.append('userId', profile.id)
+
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'
+      const uploadResponse = await fetch(`${backendUrl}/posts/upload-media`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!uploadResponse.ok) throw new Error('Upload failed')
+
+      const uploadData = await uploadResponse.json()
+      const url = uploadData.urls?.[0]
+      if (!url) throw new Error('No URL returned')
+
+      const mediaType = isVideo ? 'video' as const : 'image' as const
+      setProfile(p => p ? { ...p, bannerMediaUrl: url, bannerMediaType: mediaType } : p)
+
+      // Persist to localStorage
+      try {
+        localStorage.setItem(`bannerMedia:${profile.id}`, JSON.stringify({ url, type: mediaType }))
+      } catch { /* empty */ }
+
+      toast.success('Banner updated!')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload banner')
+    } finally {
+      setUploadingBanner(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleRemoveBannerMedia = () => {
+    if (!profile) return
+    setProfile(p => p ? { ...p, bannerMediaUrl: undefined, bannerMediaType: undefined } : p)
+    try { localStorage.removeItem(`bannerMedia:${profile.id}`) } catch { /* empty */ }
+    toast.success('Banner media removed')
+  }
+
+  // ─── Font upload handler ────────────────────────────────────────────
+  const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.name.match(/\.(ttf|otf|woff|woff2)$/i)) {
+      toast.error('Upload a .ttf, .otf, .woff, or .woff2 font file')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const fontName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9-]/g, '-')
+      const fontData = ev.target?.result as string
+      const styleId = `custom-font-${fontName}`
+      let el = document.getElementById(styleId) as HTMLStyleElement | null
+      if (!el) { el = document.createElement('style'); el.id = styleId; document.head.appendChild(el) }
+      el.textContent = `@font-face { font-family: "${fontName}"; src: url("${fontData}"); }`
+      setUploadedFonts(prev => [...prev.filter(f => f.name !== fontName), { name: fontName, family: `"${fontName}", sans-serif` }])
+      const fontKey = fontSection === 'name' ? 'nameFont' : fontSection === 'bio' ? 'bioFont' : 'aboutFont'
+      setProfile(p => p ? { ...p, [fontKey]: fontName } : p)
+    }
+    reader.readAsDataURL(file)
+  }
 
   // ─── Avatar handling ────────────────────────────────────────────────
   const handleAvatarChange = async (avatarUrls: AvatarUrls | null) => {
-    if (!profile) return;
-    if (isViewOnly) return;
+    if (!profile || isViewOnly) return
     if (avatarUrls) {
-      setEditedProfile({ ...editedProfile, avatar_urls: avatarUrls, avatar: avatarUrls.medium });
-      setAvatarPreview((avatarUrls.large || avatarUrls.medium || avatarUrls.small) ?? null);
+      setProfile(p => p ? { ...p, avatar_urls: avatarUrls, avatarUrl: avatarUrls.medium || p.avatarUrl } : p)
       if (avatarUrls.medium) {
-        localStorage.setItem('userAvatar', avatarUrls.medium);
+        localStorage.setItem('userAvatar', avatarUrls.medium)
         try {
-          const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
-          const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
-          byId[profile.id] = avatarUrls.medium;
-          byName[profile.username] = avatarUrls.medium;
-          localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
-          localStorage.setItem('userAvatarCache', JSON.stringify(byName));
-        } catch {}
+          const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}')
+          const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}')
+          byId[profile.id] = avatarUrls.medium
+          byName[profile.username] = avatarUrls.medium
+          localStorage.setItem('userAvatarCacheById', JSON.stringify(byId))
+          localStorage.setItem('userAvatarCache', JSON.stringify(byName))
+        } catch { /* empty */ }
       }
       try {
-        const result = await apiClient.updateProfile(profile.id, editedProfile.username, avatarUrls.medium, avatarUrls);
-        toast.success('Avatar uploaded to CDN (4 optimized sizes)!');
+        const result = await apiClient.updateProfile(profile.id, profile.username, avatarUrls.medium, avatarUrls)
+        toast.success('Avatar uploaded!')
         try {
-          const chatUserRaw = localStorage.getItem('chat-user');
+          const chatUserRaw = localStorage.getItem('chat-user')
           if (chatUserRaw) {
-            const chatUser = JSON.parse(chatUserRaw);
-            localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, avatar_url: result.user?.avatar_url || avatarUrls.medium, avatar_urls: result.user?.avatar_urls || avatarUrls }));
+            const chatUser = JSON.parse(chatUserRaw)
+            localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, avatar_url: result.user?.avatar_url || avatarUrls.medium, avatar_urls: result.user?.avatar_urls || avatarUrls }))
           }
-        } catch {}
+        } catch { /* empty */ }
         try {
-          const detail = { userId: profile.id, username: profile.username, avatar: avatarUrls.medium };
-          window.dispatchEvent(new CustomEvent('avatar-updated', { detail }));
-          const bc = new BroadcastChannel('avatar-updates');
-          bc.postMessage(detail);
-          bc.close();
-        } catch {}
-      } catch (error) {
-        console.error('❌ Failed to update profile with new avatar:', error);
-        toast.error('Failed to save avatar to profile');
+          const detail = { userId: profile.id, username: profile.username, avatar: avatarUrls.medium }
+          window.dispatchEvent(new CustomEvent('avatar-updated', { detail }))
+          const bc = new BroadcastChannel('avatar-updates'); bc.postMessage(detail); bc.close()
+        } catch { /* empty */ }
+      } catch {
+        toast.error('Failed to save avatar')
       }
     } else {
-      setEditedProfile({ ...editedProfile, avatar: '', avatar_urls: undefined });
-      setAvatarPreview(null);
-      localStorage.removeItem('userAvatar');
-      try {
-        const byId = JSON.parse(localStorage.getItem('userAvatarCacheById') || '{}');
-        const byName = JSON.parse(localStorage.getItem('userAvatarCache') || '{}');
-        delete byId[profile.id]; delete byName[profile.username];
-        localStorage.setItem('userAvatarCacheById', JSON.stringify(byId));
-        localStorage.setItem('userAvatarCache', JSON.stringify(byName));
-      } catch {}
-      toast.success('Avatar removed');
+      setProfile(p => p ? { ...p, avatarUrl: '', avatar_urls: undefined } : p)
+      localStorage.removeItem('userAvatar')
+      toast.success('Avatar removed')
     }
-  };
-
-  // ─── Profile video upload/delete ─────────────────────────────────
-  const handleProfileVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !profile) return;
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error('Video must be under 100 MB');
-      return;
-    }
-    const allowed = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
-    if (!allowed.includes(file.type)) {
-      toast.error('Accepted formats: MP4, WebM, MOV, AVI');
-      return;
-    }
-    setUploadingVideo(true);
-    try {
-      const result = await apiClient.uploadProfileVideo(profile.id, file);
-      if (result.success && result.video_url) {
-        setProfile(prev => prev ? { ...prev, profile_video_url: result.video_url } : prev);
-        setEditedProfile(prev => ({ ...prev, profile_video_url: result.video_url }));
-        toast.success(`Video uploaded (${result.size_mb.toFixed(1)} MB)`);
-      }
-    } catch (err: any) {
-      console.error('❌ Profile video upload failed:', err);
-      toast.error(err?.message || 'Failed to upload video');
-    } finally {
-      setUploadingVideo(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  const handleDeleteProfileVideo = async () => {
-    if (!profile) return;
-    try {
-      await apiClient.deleteProfileVideo(profile.id);
-      setProfile(prev => prev ? { ...prev, profile_video_url: undefined } : prev);
-      setEditedProfile(prev => ({ ...prev, profile_video_url: undefined }));
-      toast.success('Profile video removed');
-    } catch (err: any) {
-      console.error('❌ Delete profile video failed:', err);
-      toast.error(err?.message || 'Failed to delete video');
-    }
-  };
-
-  // ─── Save profile + theme ──────────────────────────────────────────
-  const handleSaveAll = async () => {
-    if (!profile || !editedProfile) return;
-    try {
-      console.log('💾 Saving profile + theme to backend...');
-      const prevUsername = profile.username;
-
-      // 1. Save profile data
-      const result = await apiClient.updateProfile(
-        profile.id, editedProfile.username, editedProfile.avatar || undefined,
-        editedProfile.avatar_urls, editedProfile.bio, editedProfile.email
-      );
-
-      if (result.success) {
-        const updatedProfile = {
-          ...profile, ...editedProfile,
-          username: result.user.display_name || result.user.username,
-          bio: result.user.bio ?? editedProfile.bio,
-          avatar: result.user.avatar_url || editedProfile.avatar || ''
-        };
-        setProfile(updatedProfile);
-        try { updateUsernameEverywhere(updatedProfile.id, prevUsername, updatedProfile.username!); } catch {}
-        StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: updatedProfile.id, username: updatedProfile.username, bio: updatedProfile.bio }));
-        if (updatedProfile.avatar) localStorage.setItem('userAvatar', updatedProfile.avatar);
-        try {
-          const chatUserRaw = localStorage.getItem('chat-user');
-          if (chatUserRaw) {
-            const chatUser = JSON.parse(chatUserRaw);
-            localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, username: updatedProfile.username, avatar_url: updatedProfile.avatar, avatar_urls: updatedProfile.avatar_urls }));
-          }
-          const detail = { userId: updatedProfile.id, username: updatedProfile.username, prevUsername, email: updatedProfile.email, bio: updatedProfile.bio, avatar: updatedProfile.avatar };
-          window.dispatchEvent(new CustomEvent('profile-updated', { detail }));
-          const bc = new BroadcastChannel('profile-updates'); bc.postMessage(detail); bc.close();
-          try {
-            if (socketManager.isConnected()) {
-              socketManager.sendProfileUpdate({ username: updatedProfile.username, prevUsername, email: updatedProfile.email, bio: updatedProfile.bio, avatar_url: updatedProfile.avatar });
-            }
-          } catch {}
-        } catch {}
-      }
-
-      // 2. Save theme config — always apply locally even if backend fails
-      const themeConfig = buildThemeConfig();
-      setUserTheme(themeConfig);
-      // Persist to localStorage so it survives page reloads even if backend has no theme endpoint
-      try { StorageUtils.safeSetItem(`userTheme:${profile.id}`, JSON.stringify(themeConfig)); } catch {}
-      try {
-        await apiClient.updateTheme(profile.id, themeConfig);
-      } catch (themeErr) {
-        console.warn('Theme save failed (backend may not support it yet), using local storage fallback:', themeErr);
-      }
-
-      setIsEditing(false);
-      toast.success('✅ Profile & theme saved!');
-    } catch (error) {
-      console.error('❌ Failed to save profile:', error);
-      toast.error('Failed to save profile');
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditedProfile(profile || {});
-    hydrateThemeState(userTheme);
-    setEditTab('profile');
-    setIsEditing(false);
-  };
-
-  const handleChangePassword = async () => {
-    if (!profile) return;
-    if (passwordSupported === false) { toast.error('Password updates are not enabled on the backend yet.'); return; }
-    if (!passwordData.current || !passwordData.new || !passwordData.confirm) { toast.error('Please fill in all password fields'); return; }
-    if (passwordData.new !== passwordData.confirm) { toast.error('New passwords do not match'); return; }
-    if (passwordData.new.length < 8) { toast.error('Password must be at least 8 characters'); return; }
-    try {
-      const result = await apiClient.updatePassword(profile.id, passwordData.new);
-      if (result?.notSupported) { toast.error('Password updates are not enabled on the backend yet.'); return; }
-      if (result?.success) { toast.success('Password updated successfully!'); setPasswordData({ current: '', new: '', confirm: '' }); }
-      else { toast.error('Failed to update password'); }
-    } catch (e) { console.error('Failed to update password', e); toast.error('Failed to update password'); }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (confirm('⚠️ Are you absolutely sure? This action cannot be undone.')) {
-      localStorage.removeItem('chat-user');
-      localStorage.removeItem('userProfile');
-      localStorage.removeItem('aiPreferences');
-      toast.success('Account deleted. Goodbye! 👋');
-      setTimeout(() => router.push('/'), 1500);
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date().getTime(); const then = new Date(timestamp).getTime(); const diff = now - then;
-    const minutes = Math.floor(diff / 60000); const hours = Math.floor(diff / 3600000); const days = Math.floor(diff / 86400000);
-    if (minutes < 1) return 'Just now'; if (minutes < 60) return `${minutes}m ago`; if (hours < 24) return `${hours}h ago`; return `${days}d ago`;
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'ai': return <Zap className="w-4 h-4 text-cyan-300" />;
-      case 'video': return <Camera className="w-4 h-4 text-sky-300" />;
-      case 'chat': return <MessageSquare className="w-4 h-4 text-cyan-400" />;
-      case 'room_join': return <User className="w-4 h-4 text-slate-400" />;
-      default: return <Activity className="w-4 h-4 text-slate-300" />;
-    }
-  };
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Loading state
-  // ═══════════════════════════════════════════════════════════════════
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: defaultTheme.gradient }}>
-        <div className="glass-card p-6 text-center border border-slate-700/50">
-          <p className="text-slate-300">Loading profile...</p>
-        </div>
-      </div>
-    );
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // Render
-  // ═══════════════════════════════════════════════════════════════════
+  // ─── Profile video upload/delete ────────────────────────────────────
+  const handleProfileVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    if (file.size > 100 * 1024 * 1024) { toast.error('Video must be under 100 MB'); return }
+    const allowed = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
+    if (!allowed.includes(file.type)) { toast.error('Accepted formats: MP4, WebM, MOV, AVI'); return }
+    setUploadingVideo(true)
+    try {
+      const result = await apiClient.uploadProfileVideo(profile.id, file)
+      if (result.success && result.video_url) {
+        setProfile(p => p ? { ...p, profile_video_url: result.video_url } : p)
+        toast.success(`Video uploaded (${result.size_mb.toFixed(1)} MB)`)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload video')
+    } finally {
+      setUploadingVideo(false)
+      if (e.target) e.target.value = ''
+    }
+  }
 
-  const themeCtxValue: ProfileThemeValues = {
-    liveTheme, liveGlass, liveEffects, selectedGlassStyle,
-    createRipple, ripples, cardRefs,
-    headingColor, bodyColor, headingFont, bodyFont,
-    editTab, setEditTab,
-  };
+  const handleDeleteProfileVideo = async () => {
+    if (!profile) return
+    try {
+      await apiClient.deleteProfileVideo(profile.id)
+      setProfile(p => p ? { ...p, profile_video_url: undefined } : p)
+      toast.success('Profile video removed')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete video')
+    }
+  }
+
+  // ─── Profile audio upload/delete ──────────────────────────────────
+  const handleChangePassword = async () => {
+    if (!profile) return
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const result = await apiClient.updatePassword(profile.id, newPassword)
+      if (result.notSupported) {
+        toast.error('Password change is not supported by the server yet')
+      } else if (result.success) {
+        toast.success('Password updated!')
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to change password')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  const handleProfileAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    if (file.size > 20 * 1024 * 1024) { toast.error('Audio must be under 20 MB'); return }
+    const allowed = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/webm']
+    if (!allowed.includes(file.type)) { toast.error('Accepted formats: MP3, WAV, OGG, M4A, AAC'); return }
+    setUploadingAudio(true)
+    try {
+      const result = await apiClient.uploadProfileAudio(profile.id, file)
+      if (result.success && result.audio_url) {
+        const trackName = file.name.replace(/\.[^/.]+$/, '')
+        setProfile(p => p ? { ...p, profile_audio_url: result.audio_url, profileTrackName: trackName } : p)
+        try { localStorage.setItem(`profileAudio:${profile.id}`, JSON.stringify({ url: result.audio_url, trackName })) } catch { /* empty */ }
+        toast.success(`Audio uploaded (${result.size_mb.toFixed(1)} MB)`)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload audio')
+    } finally {
+      setUploadingAudio(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleDeleteProfileAudio = async () => {
+    if (!profile) return
+    try {
+      await apiClient.deleteProfileAudio(profile.id)
+      setProfile(p => p ? { ...p, profile_audio_url: undefined, profileTrackName: undefined } : p)
+      try { localStorage.removeItem(`profileAudio:${profile.id}`) } catch { /* empty */ }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+      toast.success('Profile audio removed')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete audio')
+    }
+  }
+
+  // ─── Save all edits ────────────────────────────────────────────────
+  const saveEdits = async () => {
+    if (!profile) return
+    const newName = nameRef.current?.value || profile.displayName
+    const newBio = bioRef.current?.value ?? profile.bio
+    const newAbout = aboutRef.current?.value ?? profile.aboutText
+    const newEmail = emailRef.current?.value ?? profile.email
+    const prevUsername = profile.username
+
+    setProfile(p => p ? { ...p, displayName: newName, bio: newBio, aboutText: newAbout, email: newEmail } : p)
+
+    // Persist accent, banner & font to localStorage
+    try {
+      localStorage.setItem(`profileColors:${profile.id}`, JSON.stringify({ accent: profile.accentColor, banner: profile.bannerColor, nameFont: profile.nameFont, bioFont: profile.bioFont, aboutFont: profile.aboutFont, bio: newBio, aboutText: newAbout }))
+    } catch { /* empty */ }
+
+    try {
+      const result = await apiClient.updateProfile(
+        profile.id, newName, profile.avatarUrl || undefined,
+        profile.avatar_urls, newBio, newEmail
+      )
+      if (result.success) {
+        try { updateUsernameEverywhere(profile.id, prevUsername, newName) } catch { /* empty */ }
+        StorageUtils.safeSetItem('userProfile', JSON.stringify({ id: profile.id, username: newName, bio: newBio }))
+        try {
+          const chatUserRaw = localStorage.getItem('chat-user')
+          if (chatUserRaw) {
+            const chatUser = JSON.parse(chatUserRaw)
+            localStorage.setItem('chat-user', JSON.stringify({ ...chatUser, username: newName, avatar_url: profile.avatarUrl, avatar_urls: profile.avatar_urls }))
+          }
+          const detail = { userId: profile.id, username: newName, prevUsername, email: newEmail, bio: newBio, avatar: profile.avatarUrl }
+          window.dispatchEvent(new CustomEvent('profile-updated', { detail }))
+          const bc = new BroadcastChannel('profile-updates'); bc.postMessage(detail); bc.close()
+        } catch { /* empty */ }
+        toast.success('Profile saved!')
+      }
+    } catch {
+      toast.error('Failed to save profile')
+    }
+    setEditMode(false)
+  }
+
+  // ─── Derived values ──────────────────────────────────────────────
+  if (!profile) {
+    return (
+      <div className="lp-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: '0.12em' }}>
+          LOADING...
+        </div>
+      </div>
+    )
+  }
+
+  const accent = profile.accentColor
+  const banner = profile.bannerColor
+  const resolveFont = (key: string) => {
+    const preset = FONT_PRESETS.find(f => f.key === key)
+    const uploaded = uploadedFonts.find(f => f.name === key)
+    return { family: preset?.family || uploaded?.family || "'DM Sans',sans-serif", url: preset?.url || '' }
+  }
+  const nameFont = resolveFont(profile.nameFont || 'dm-sans')
+  const bioFont = resolveFont(profile.bioFont || 'dm-sans')
+  const aboutFont = resolveFont(profile.aboutFont || 'dm-sans')
+  const activeSectionFontKey = fontSection === 'name' ? profile.nameFont : fontSection === 'bio' ? profile.bioFont : profile.aboutFont
+  const fontUrls = Array.from(new Set([nameFont.url, bioFont.url, aboutFont.url].filter(Boolean)))
+  const filtered = filterType === 'all' ? profile.gallery : profile.gallery.filter(i => i.type === filterType)
+  const plan = PLAN_LABELS[profile.plan]
+  const canEdit = profile.isOwnProfile && !isViewOnly
+
+  const toggleLike = (id: string) =>
+    setProfile(p => p ? { ...p, gallery: p.gallery.map(i => i.id === id ? { ...i, liked: !i.liked } : i) } : p)
 
   return (
-    <ProfileThemeCtx.Provider value={themeCtxValue}>
-    <div className="min-h-screen relative overflow-hidden" style={{ fontFamily: bodyFont }}>
-      {/* Gradient background */}
-      <div className="fixed inset-0" style={{ background: pageGradient }} />
-      {/* Grain texture */}
-      <div className="fixed inset-0 opacity-[0.015] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` }} />
-      {/* Floating particles */}
-      <FloatingParticles />
+    <>
+      {fontUrls.map(u => <link key={u} rel="stylesheet" href={u} />)}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
 
-      {/* Top-right navigation buttons */}
-      <div className="fixed top-4 right-2 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
-        <Button onClick={() => router.push('/feed')} variant="glass" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2">
-          <Newspaper className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">Social Feed</span>
-          <span className="sm:hidden">Feed</span>
-        </Button>
-        <Button onClick={() => router.push('/chat')} variant="primary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2">
-          <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">Chat Rooms</span>
-          <span className="sm:hidden">Rooms</span>
-        </Button>
-      </div>
+        *{box-sizing:border-box;margin:0;padding:0;}
 
-      {/* Onboarding modal */}
-      {showOnboardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowOnboardModal(false)} />
-          <div className="relative bg-[#0b1020] p-6 rounded-lg shadow-lg w-full max-w-md z-50">
-            <h3 className="text-lg font-semibold text-white mb-2">Welcome — finish your profile</h3>
-            <p className="text-slate-400 mb-4">Add a profile photo, display name, and short bio so others can recognize you in chats.</p>
-            <ul className="list-disc list-inside text-slate-300 mb-4">
-              <li>Add a photo</li>
-              <li>Choose a display name</li>
-              <li>Write a short bio</li>
-            </ul>
-            <div className="flex justify-end gap-2">
-              <Button variant="glass" onClick={() => setShowOnboardModal(false)}>Skip</Button>
-              <Button variant="primary" onClick={() => setShowOnboardModal(false)}>Got it</Button>
-            </div>
-          </div>
+        .lp-root {
+          font-family:'DM Sans',sans-serif;
+          background:#0a0a0a;
+          min-height:100vh;
+          padding:24px 16px 80px;
+          position:relative;
+        }
+        @media(min-width:768px){ .lp-root { padding:40px 32px 80px; } }
+
+        .lp-root::before {
+          content:'';
+          position:fixed;
+          top:0; left:50%;
+          transform:translateX(-50%);
+          width:900px; height:600px;
+          background:radial-gradient(ellipse at 50% 0%,
+            color-mix(in srgb,var(--accent) 12%,transparent) 0%,
+            transparent 65%);
+          pointer-events:none;
+          z-index:0;
+        }
+
+        .lp-back {
+          position:relative; z-index:2;
+          margin:0 0 20px;
+        }
+
+        .lp-back a {
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          letter-spacing:0.12em;
+          text-transform:uppercase;
+          color:rgba(255,255,255,0.3);
+          text-decoration:none;
+          transition:color 0.15s;
+        }
+        .lp-back a:hover { color:rgba(255,255,255,0.6); }
+
+        .lp-nav-btn {
+          display:flex; align-items:center; gap:6px;
+          padding:6px 12px;
+          font-family:'DM Sans',sans-serif;
+          font-size:13px; font-weight:500;
+          color:rgba(255,255,255,0.7);
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.1);
+          border-radius:8px;
+          cursor:pointer;
+          backdrop-filter:blur(12px);
+          -webkit-backdrop-filter:blur(12px);
+          transition:all 0.15s;
+        }
+        .lp-nav-btn:hover {
+          background:rgba(255,255,255,0.12);
+          color:#fff;
+        }
+        .lp-nav-btn-primary {
+          background:rgba(6,182,212,0.15);
+          border-color:rgba(6,182,212,0.3);
+          color:rgba(6,182,212,0.9);
+        }
+        .lp-nav-btn-primary:hover {
+          background:rgba(6,182,212,0.25);
+          color:#06b6d4;
+        }
+        .lp-nav-label { display:none; }
+        .lp-nav-label-sm { display:inline; }
+        @media(min-width:640px){
+          .lp-nav-btn { padding:8px 16px; font-size:14px; }
+          .lp-nav-label { display:inline; }
+          .lp-nav-label-sm { display:none; }
+        }
+
+        /* Desktop: two-column layout */
+        .lp-layout {
+          position:relative; z-index:1;
+          display:grid;
+          grid-template-columns:1fr;
+          gap:20px;
+        }
+
+        .lp-card {
+          background:transparent;
+          border-radius:0;
+          border:none;
+          overflow:hidden;
+          box-shadow:none;
+        }
+
+        .profile-post-card .glass-card {
+          background:transparent;
+          border:none;
+          box-shadow:none;
+          backdrop-filter:none;
+          -webkit-backdrop-filter:none;
+        }
+
+        /* Shrink avatar in profile posts */
+        .profile-post-card .glass-card > div:first-child .relative.flex-shrink-0.overflow-hidden.rounded-full {
+          width:32px !important;
+          height:32px !important;
+        }
+        @media(min-width:640px){
+          .profile-post-card .glass-card > div:first-child .relative.flex-shrink-0.overflow-hidden.rounded-full {
+            width:36px !important;
+            height:36px !important;
+          }
+        }
+
+        /* Enlarge post media in profile posts */
+        .profile-post-card img,
+        .profile-post-card video {
+          max-height:40rem !important;
+          width:100% !important;
+        }
+        .profile-post-card .grid img,
+        .profile-post-card .grid video {
+          aspect-ratio:auto !important;
+          object-fit:contain !important;
+        }
+
+        .lp-banner {
+          height:220px;
+          position:relative;
+          overflow:hidden;
+        }
+        @media(min-width:768px){ .lp-banner { height:260px; } }
+
+        .lp-banner-orb {
+          position:absolute;
+          border-radius:50%;
+          pointer-events:none;
+        }
+
+        .lp-banner-tag {
+          position:absolute;
+          bottom:14px; left:20px;
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          letter-spacing:0.2em;
+          text-transform:uppercase;
+          color:rgba(255,255,255,0.3);
+        }
+
+        .lp-plan {
+          position:absolute;
+          top:14px; right:14px;
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          font-weight:700;
+          letter-spacing:0.12em;
+          text-transform:uppercase;
+          padding:4px 10px;
+          border-radius:20px;
+          border:1px solid;
+        }
+
+        .lp-banner-edit {
+          position:absolute;
+          top:14px; left:14px;
+          width:30px; height:30px;
+          border-radius:50%;
+          background:rgba(0,0,0,0.4);
+          border:0.5px solid rgba(255,255,255,0.12);
+          color:rgba(255,255,255,0.5);
+          display:flex; align-items:center; justify-content:center;
+          font-size:12px;
+          cursor:pointer;
+          transition:all 0.15s;
+          backdrop-filter:blur(8px);
+        }
+        .lp-banner-edit:hover {
+          background:rgba(0,0,0,0.6);
+          color:rgba(255,255,255,0.9);
+        }
+
+        .lp-body { padding:0 24px 28px; }
+
+        .lp-avatar-row {
+          display:flex;
+          align-items:flex-end;
+          justify-content:space-between;
+          margin-top:-44px;
+          margin-bottom:18px;
+        }
+
+        .lp-avatar {
+          width:88px; height:88px;
+          border-radius:50%;
+          background:linear-gradient(135deg,var(--accent),var(--banner));
+          border:3px solid #111;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-family:'Playfair Display',serif;
+          font-size:34px;
+          font-weight:900;
+          color:#fff;
+          position:relative;
+          overflow:hidden;
+          flex-shrink:0;
+          cursor:pointer;
+        }
+
+        .lp-avatar-hover {
+          position:absolute; inset:0;
+          background:rgba(0,0,0,0.5);
+          display:flex; align-items:center; justify-content:center;
+          font-size:16px; color:#fff;
+          opacity:0; transition:opacity 0.15s;
+        }
+        .lp-avatar:hover .lp-avatar-hover { opacity:1; }
+
+        .lp-action-row { display:flex; gap:8px; }
+
+        .lp-follow-btn {
+          padding:8px 20px;
+          border-radius:20px;
+          border:none;
+          background:var(--accent);
+          color:#000;
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          font-weight:700;
+          letter-spacing:0.08em;
+          cursor:pointer;
+          transition:opacity 0.15s;
+        }
+        .lp-follow-btn:hover { opacity:0.85; }
+
+        .lp-icon-btn {
+          width:34px; height:34px;
+          border-radius:50%;
+          background:rgba(255,255,255,0.06);
+          border:0.5px solid rgba(255,255,255,0.1);
+          color:rgba(255,255,255,0.5);
+          display:flex; align-items:center; justify-content:center;
+          font-size:14px;
+          cursor:pointer;
+          transition:all 0.15s;
+        }
+        .lp-icon-btn:hover {
+          background:rgba(255,255,255,0.1);
+          color:rgba(255,255,255,0.9);
+        }
+
+        .lp-name {
+          font-family:'Playfair Display',serif;
+          font-size:17px;
+          font-weight:900;
+          color:#f0ede8;
+          letter-spacing:-0.02em;
+          line-height:1.0;
+          margin-bottom:4px;
+        }
+        @media(min-width:768px){ .lp-name { font-size:19px; } }
+
+        .lp-handle {
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          color:rgba(240,237,232,0.35);
+          letter-spacing:0.1em;
+          margin-bottom:14px;
+        }
+
+        .lp-bio {
+          font-size:13px;
+          color:rgba(240,237,232,0.5);
+          line-height:1.7;
+          font-weight:300;
+          margin-bottom:18px;
+        }
+
+        .lp-details {
+          display:flex;
+          flex-wrap:wrap;
+          gap:14px;
+          margin-bottom:22px;
+        }
+
+        .lp-detail {
+          display:flex;
+          align-items:center;
+          gap:5px;
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          letter-spacing:0.08em;
+          color:rgba(240,237,232,0.28);
+        }
+
+        .lp-detail-dot {
+          width:4px; height:4px;
+          border-radius:50%;
+          background:var(--accent);
+          opacity:0.6;
+          flex-shrink:0;
+        }
+
+        .lp-stats-strip {
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.06);
+          border-radius:14px;
+          overflow:hidden;
+          margin-bottom:24px;
+        }
+
+        .lp-stat {
+          padding:14px 12px;
+          text-align:center;
+          border-right:0.5px solid rgba(255,255,255,0.05);
+          position:relative;
+          transition:background 0.2s;
+        }
+        .lp-stat:last-child { border-right:none; }
+        .lp-stat:hover { background:rgba(255,255,255,0.03); }
+
+        .lp-stat::before {
+          content:'';
+          position:absolute;
+          top:0; left:0; right:0;
+          height:2px;
+          background:var(--accent);
+          transform:scaleX(0);
+          transform-origin:left;
+          transition:transform 0.35s ease;
+        }
+        .lp-stat:hover::before { transform:scaleX(1); }
+
+        .lp-stat-n {
+          font-family:'Space Mono',monospace;
+          font-size:18px;
+          font-weight:700;
+          color:var(--accent);
+          line-height:1;
+          margin-bottom:4px;
+        }
+
+        .lp-stat-l {
+          font-size:10px;
+          color:rgba(240,237,232,0.25);
+          font-weight:300;
+          line-height:1.2;
+        }
+
+        .lp-socials {
+          display:flex;
+          gap:8px;
+          margin-bottom:24px;
+          flex-wrap:wrap;
+        }
+
+        .lp-soc {
+          display:flex;
+          align-items:center;
+          gap:7px;
+          padding:7px 12px;
+          border-radius:20px;
+          background:rgba(255,255,255,0.04);
+          border:0.5px solid rgba(255,255,255,0.08);
+          text-decoration:none;
+          color:rgba(240,237,232,0.45);
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          letter-spacing:0.08em;
+          transition:all 0.15s;
+        }
+        .lp-soc:hover {
+          background:rgba(255,255,255,0.08);
+          border-color:var(--accent);
+          color:var(--accent);
+        }
+
+        .lp-soc-icon {
+          font-size:11px;
+          color:var(--accent);
+          opacity:0.7;
+        }
+
+        .lp-divider {
+          height:0.5px;
+          background:rgba(255,255,255,0.06);
+          margin:0 -24px 20px;
+        }
+
+
+
+        /* Tab bar */
+        .lp-tabs {
+          display:flex;
+          gap:0;
+          margin-bottom:20px;
+          border-bottom:0.5px solid rgba(255,255,255,0.06);
+        }
+
+        .lp-tab {
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          letter-spacing:0.14em;
+          text-transform:uppercase;
+          padding:10px 16px;
+          border:none;
+          background:none;
+          color:rgba(255,255,255,0.25);
+          cursor:pointer;
+          position:relative;
+          transition:color 0.15s;
+        }
+        .lp-tab.active { color:rgba(240,237,232,0.9); }
+        .lp-tab.active::after {
+          content:'';
+          position:absolute;
+          bottom:-0.5px; left:16px; right:16px;
+          height:2px;
+          background:var(--accent);
+          border-radius:1px;
+        }
+        .lp-tab:hover:not(.active) { color:rgba(255,255,255,0.5); }
+
+        .lp-filters {
+          display:flex;
+          gap:6px;
+          margin-bottom:16px;
+          flex-wrap:wrap;
+        }
+
+        .lp-chip {
+          font-family:'Space Mono',monospace;
+          font-size:8px;
+          letter-spacing:0.12em;
+          text-transform:uppercase;
+          padding:4px 10px;
+          border-radius:20px;
+          border:0.5px solid rgba(255,255,255,0.08);
+          background:transparent;
+          color:rgba(255,255,255,0.25);
+          cursor:pointer;
+          transition:all 0.15s;
+        }
+        .lp-chip.active {
+          border-color:var(--accent);
+          color:var(--accent);
+          background:color-mix(in srgb,var(--accent) 10%,#111);
+        }
+        .lp-chip:hover:not(.active) {
+          border-color:rgba(255,255,255,0.18);
+          color:rgba(255,255,255,0.5);
+        }
+
+        .lp-gallery {
+          display:grid;
+          grid-template-columns:repeat(2,1fr);
+          gap:8px;
+        }
+        @media(min-width:768px){ .lp-gallery { grid-template-columns:repeat(3,1fr); } }
+
+        /* Stats cards */
+        .lp-stats-cards {
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:8px;
+          margin-bottom:20px;
+        }
+
+        .lp-scard {
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.06);
+          border-radius:12px;
+          padding:16px;
+          position:relative;
+          overflow:hidden;
+        }
+        .lp-scard::after {
+          content:'';
+          position:absolute;
+          top:0; left:0;
+          width:100%; height:2px;
+          background:var(--accent);
+          opacity:0.6;
+          border-radius:12px 12px 0 0;
+        }
+
+        .lp-scard-n {
+          font-family:'Playfair Display',serif;
+          font-size:28px;
+          font-weight:900;
+          color:#f0ede8;
+          line-height:1;
+          margin-bottom:4px;
+        }
+
+        .lp-scard-l {
+          font-size:11px;
+          color:rgba(240,237,232,0.28);
+          font-weight:300;
+        }
+
+        .lp-bar { margin-bottom:14px; }
+        .lp-bar-row { display:flex; justify-content:space-between; margin-bottom:5px; }
+        .lp-bar-name { font-size:12px; color:rgba(240,237,232,0.45); font-weight:300; }
+        .lp-bar-val { font-family:'Space Mono',monospace; font-size:10px; color:var(--accent); }
+        .lp-bar-track { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+        .lp-bar-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 1s cubic-bezier(0.34,1.56,0.64,1); }
+
+        .lp-about-bio {
+          font-family:'Playfair Display',serif;
+          font-size:15px;
+          font-weight:700;
+          font-style:italic;
+          color:rgba(240,237,232,0.8);
+          line-height:1.7;
+          margin-bottom:20px;
+        }
+
+        .lp-about-detail {
+          display:flex;
+          align-items:center;
+          gap:10px;
+          margin-bottom:10px;
+          font-size:12px;
+          color:rgba(240,237,232,0.4);
+          font-weight:300;
+        }
+
+        .lp-about-icon {
+          width:26px; height:26px;
+          border-radius:8px;
+          background:color-mix(in srgb,var(--accent) 12%,#111);
+          border:0.5px solid color-mix(in srgb,var(--accent) 25%,transparent);
+          display:flex; align-items:center; justify-content:center;
+          font-size:11px;
+          color:var(--accent);
+          flex-shrink:0;
+        }
+
+        .lp-soc-cards {
+          display:flex;
+          flex-direction:column;
+          gap:8px;
+          margin-top:20px;
+        }
+
+        .lp-soc-card {
+          display:flex;
+          align-items:center;
+          gap:12px;
+          padding:12px 14px;
+          border-radius:12px;
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.06);
+          text-decoration:none;
+          transition:border-color 0.15s, background 0.15s;
+        }
+        .lp-soc-card:hover {
+          background:rgba(255,255,255,0.05);
+          border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+        }
+
+        .lp-soc-card-icon {
+          width:32px; height:32px;
+          border-radius:10px;
+          background:color-mix(in srgb,var(--accent) 12%,#111);
+          border:0.5px solid color-mix(in srgb,var(--accent) 25%,transparent);
+          display:flex; align-items:center; justify-content:center;
+          font-size:13px;
+          color:var(--accent);
+          flex-shrink:0;
+        }
+
+        .lp-soc-card-platform {
+          font-family:'Space Mono',monospace;
+          font-size:8px;
+          letter-spacing:0.14em;
+          text-transform:uppercase;
+          color:rgba(240,237,232,0.2);
+          margin-bottom:2px;
+        }
+
+        .lp-soc-card-handle {
+          font-family:'Space Mono',monospace;
+          font-size:11px;
+          color:rgba(240,237,232,0.55);
+        }
+
+        /* Edit panel */
+        .lp-edit-panel {
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.08);
+          border-radius:14px;
+          padding:20px;
+          margin-bottom:20px;
+          animation:lpIn 0.2s ease both;
+        }
+        @keyframes lpIn {
+          from{opacity:0;transform:translateY(-8px);}
+          to{opacity:1;transform:translateY(0);}
+        }
+
+        .lp-edit-title {
+          font-family:'Space Mono',monospace;
+          font-size:9px;
+          letter-spacing:0.18em;
+          text-transform:uppercase;
+          color:rgba(255,255,255,0.25);
+          margin-bottom:16px;
+        }
+
+        .lp-edit-row { margin-bottom:14px; }
+
+        .lp-edit-label {
+          display:block;
+          font-size:10px;
+          color:rgba(255,255,255,0.3);
+          margin-bottom:6px;
+          font-family:'Space Mono',monospace;
+          letter-spacing:0.08em;
+        }
+
+        .lp-input {
+          width:100%;
+          padding:9px 12px;
+          border:0.5px solid rgba(255,255,255,0.1);
+          border-radius:8px;
+          background:rgba(255,255,255,0.04);
+          color:#f0ede8;
+          font-family:'DM Sans',sans-serif;
+          font-size:14px;
+          outline:none;
+          transition:border-color 0.2s;
+        }
+        .lp-input:focus { border-color:var(--accent); }
+
+        .lp-textarea {
+          width:100%;
+          padding:9px 12px;
+          border:0.5px solid rgba(255,255,255,0.1);
+          border-radius:8px;
+          background:rgba(255,255,255,0.04);
+          color:#f0ede8;
+          font-family:'DM Sans',sans-serif;
+          font-size:14px;
+          font-weight:300;
+          outline:none;
+          resize:vertical;
+          min-height:80px;
+          line-height:1.65;
+          transition:border-color 0.2s;
+        }
+        .lp-textarea:focus { border-color:var(--accent); }
+
+        .lp-color-section { margin-bottom:4px; }
+        .lp-color-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+
+        .lp-dot {
+          width:26px; height:26px;
+          border-radius:50%;
+          cursor:pointer;
+          border:2px solid transparent;
+          transition:transform 0.15s,border-color 0.15s;
+        }
+        .lp-dot.active { border-color:#fff; transform:scale(1.2); }
+
+        .lp-edit-actions { display:flex; gap:8px; margin-top:16px; }
+
+        .lp-save {
+          flex:1;
+          padding:10px;
+          border-radius:10px;
+          border:none;
+          background:var(--accent);
+          color:#000;
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          font-weight:700;
+          letter-spacing:0.1em;
+          text-transform:uppercase;
+          cursor:pointer;
+          transition:opacity 0.15s;
+        }
+        .lp-save:hover { opacity:0.85; }
+
+        .lp-cancel {
+          padding:10px 16px;
+          border-radius:10px;
+          border:0.5px solid rgba(255,255,255,0.1);
+          background:transparent;
+          color:rgba(255,255,255,0.35);
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          letter-spacing:0.1em;
+          text-transform:uppercase;
+          cursor:pointer;
+          transition:all 0.15s;
+        }
+        .lp-cancel:hover {
+          border-color:rgba(255,255,255,0.2);
+          color:rgba(255,255,255,0.6);
+        }
+
+        .lp-empty {
+          grid-column:1/-1;
+          padding:40px 20px;
+          text-align:center;
+          color:rgba(255,255,255,0.15);
+          font-size:12px;
+          font-weight:300;
+          border:0.5px dashed rgba(255,255,255,0.08);
+          border-radius:10px;
+        }
+
+        /* Video upload button */
+        .lp-video-btn {
+          display:flex;
+          align-items:center;
+          gap:8px;
+          padding:10px 16px;
+          border-radius:10px;
+          border:0.5px dashed rgba(255,255,255,0.15);
+          background:rgba(255,255,255,0.03);
+          color:rgba(255,255,255,0.35);
+          font-family:'Space Mono',monospace;
+          font-size:10px;
+          letter-spacing:0.08em;
+          cursor:pointer;
+          transition:all 0.15s;
+        }
+        .lp-video-btn:hover {
+          border-color:rgba(255,255,255,0.25);
+          color:rgba(255,255,255,0.6);
+          background:rgba(255,255,255,0.05);
+        }
+        .lp-video-btn:disabled {
+          opacity:0.5;
+          cursor:not-allowed;
+        }
+
+        .lp-spinner {
+          width:12px; height:12px;
+          border:2px solid currentColor;
+          border-top-color:transparent;
+          border-radius:50%;
+          animation:spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+      `}</style>
+
+      <div
+        className="lp-root"
+        style={{ '--accent': accent, '--banner': banner } as React.CSSProperties}
+      >
+        {/* Back nav */}
+        <div className="lp-back">
+          <Link href="/">← BACK</Link>
         </div>
-      )}
 
-      {/* Main content */}
-      <div className="relative z-10 p-2 sm:p-4 md:p-6 lg:p-8 pt-16 sm:pt-20 max-w-6xl mx-auto space-y-4 sm:space-y-6">
-        {/* Back Button */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <Link href="/">
-            <button className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-sm sm:text-base" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text, backdropFilter: 'blur(8px)' }}>
-              ← Back to Home
-            </button>
-          </Link>
-        </motion.div>
+        {/* Top-right navigation */}
+        <div style={{
+          position: 'fixed', top: 16, right: 16, zIndex: 50,
+          display: 'flex', gap: 8,
+        }}>
+          <button
+            onClick={() => router.push('/feed')}
+            className="lp-nav-btn"
+          >
+            <Newspaper style={{ width: 16, height: 16 }} />
+            <span className="lp-nav-label">Social Feed</span>
+            <span className="lp-nav-label-sm">Feed</span>
+          </button>
+          <button
+            onClick={() => router.push('/chat')}
+            className="lp-nav-btn lp-nav-btn-primary"
+          >
+            <MessageSquare style={{ width: 16, height: 16 }} />
+            <span className="lp-nav-label">Chat Rooms</span>
+            <span className="lp-nav-label-sm">Rooms</span>
+          </button>
+        </div>
 
-        {isEditing && !isViewOnly ? (
-          /* ═══════════════════════════════════════════════════════════
-             EDIT MODE — Tabbed Editor
-             ═══════════════════════════════════════════════════════════ */
-          <>
-            {/* Tab Bar */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-              <GlassCard className="p-2 sm:p-4" refIndex={0}>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                  <div className="flex gap-1 sm:gap-2 flex-wrap justify-center sm:justify-start">
-                    <TabButton id="profile" label="Profile" icon={User} />
-                    <TabButton id="appearance" label="Theme" icon={Palette} />
-                    <TabButton id="fonts" label="Fonts" icon={Type} />
-                    <TabButton id="effects" label="Effects" icon={Sparkles} />
-                    <TabButton id="schedule" label="Schedule" icon={Calendar} />
-                    <TabButton id="security" label="Security" icon={Shield} />
-                  </div>
-                  <div className="flex gap-2 justify-center sm:justify-end">
-                    <button onClick={handleSaveAll} className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-lg sm:rounded-xl font-bold flex items-center gap-1.5 sm:gap-2 border-2 transition-all hover:scale-105 text-xs sm:text-sm" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 20px ${liveTheme.accent}80` }}>
-                      <Save className="w-3 h-3 sm:w-4 sm:h-4" /> Save
-                    </button>
-                    <button onClick={handleCancelEdit} className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-xs sm:text-sm" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
+        <div className="lp-layout">
+          {/* ═══ LEFT: Profile Card ═══ */}
+          <div className="lp-card">
+            {/* Banner */}
+            <div className="lp-banner" style={{
+              background: profile.bannerMediaUrl
+                ? '#000'
+                : `linear-gradient(135deg, color-mix(in srgb,${banner} 90%,#000) 0%, color-mix(in srgb,${accent} 20%,#0a0a12) 100%)`,
+            }}>
+              {profile.bannerMediaUrl ? (
+                profile.bannerMediaType === 'video' ? (
+                  <video
+                    src={profile.bannerMediaUrl}
+                    autoPlay muted loop playsInline
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <img
+                    src={profile.bannerMediaUrl}
+                    alt="Banner"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                )
+              ) : (
+                <>
+                  <div className="lp-banner-orb" style={{
+                    width: 220, height: 220, top: -70, left: -50,
+                    background: `radial-gradient(circle,color-mix(in srgb,${accent} 30%,transparent),transparent 65%)`,
+                  }} />
+                  <div className="lp-banner-orb" style={{
+                    width: 160, height: 160, top: -40, right: -30,
+                    background: `radial-gradient(circle,color-mix(in srgb,${banner} 40%,transparent),transparent 65%)`,
+                  }} />
+                  <div className="lp-banner-orb" style={{
+                    width: 100, height: 100, bottom: -20, right: 60,
+                    background: `radial-gradient(circle,color-mix(in srgb,${accent} 20%,transparent),transparent 65%)`,
+                  }} />
+                </>
+              )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              {/* ─── Left: Tab Content ─────────────────────── */}
-              <div className="lg:col-span-2">
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                  <GlassCard className="p-3 sm:p-6" refIndex={1}>
-                    {/* ══════════ PROFILE TAB ══════════ */}
-                    {editTab === 'profile' && (
-                      <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <User className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Profile Info
-                        </h3>
-                        {/* Avatar Upload */}
-                        <div className="w-full lg:w-auto">
-                          <AvatarUpload
-                            userId={profile.id}
-                            currentAvatar={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
-                            username={editedProfile.username || profile.username}
-                            onAvatarChange={handleAvatarChange}
-                          />
-                        </div>
-                        <Input label="Display Name" value={editedProfile.username || ''} onChange={(e) => setEditedProfile({ ...editedProfile, username: e.target.value })} maxLength={30} className="bg-white/5 text-sm" />
-                        <Input label="Email" type="email" name="email" autoComplete="email" value={editedProfile.email || ''} onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })} className="bg-white/5 text-sm" />
-                        <div className="flex items-center gap-2" style={{ color: bodyColor }}>
-                          <input id="show-email" type="checkbox" checked={showEmail} onChange={(e) => {
-                            const value = e.target.checked; setShowEmail(value);
-                            try { const raw = StorageUtils.safeGetItem('userPrivacy') || '{}'; StorageUtils.safeSetItem('userPrivacy', JSON.stringify({ ...JSON.parse(raw), showEmail: value })); } catch {}
-                          }} className="h-4 w-4" style={{ accentColor: liveTheme.accent }} />
-                          <label htmlFor="show-email" className="text-xs sm:text-sm">Show email on my profile</label>
-                        </div>
-                        <Textarea label="Bio" value={editedProfile.bio || ''} onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })} maxLength={200} rows={3} className="bg-white/5 text-sm" />
+              {canEdit && (
+                <button className="lp-banner-edit" onClick={() => setEditMode(v => !v)}>
+                  {editMode ? '✕' : '✎'}
+                </button>
+              )}
 
-                        {/* Profile Video Upload */}
-                        <div>
-                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: bodyColor }}>Profile Video</label>
-                          {(editedProfile.profile_video_url || profile.profile_video_url) ? (
-                            <div className="space-y-2">
-                              <video
-                                src={editedProfile.profile_video_url || profile.profile_video_url}
-                                controls
-                                playsInline
-                                className="w-full max-h-48 rounded-lg bg-black/30"
-                              />
-                              <button
-                                onClick={handleDeleteProfileVideo}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                              >
-                                <Trash2 className="w-3 h-3" /> Remove Video
-                              </button>
-                            </div>
-                          ) : (
-                            <div>
-                              <input
-                                ref={profileVideoInputRef}
-                                type="file"
-                                accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                                onChange={handleProfileVideoUpload}
-                                className="hidden"
-                              />
-                              <button
-                                onClick={() => profileVideoInputRef.current?.click()}
-                                disabled={uploadingVideo}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed transition-all text-sm"
-                                style={{ borderColor: 'rgba(255,255,255,0.2)', color: bodyColor, background: 'rgba(255,255,255,0.05)' }}
-                              >
-                                {uploadingVideo ? (
-                                  <>
-                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                    Uploading…
-                                  </>
-                                ) : (
-                                  <>
-                                    <Video className="w-4 h-4" /> Upload Profile Video
-                                  </>
-                                )}
-                              </button>
-                              <p className="text-[10px] mt-1 opacity-50" style={{ color: bodyColor }}>MP4, WebM, MOV or AVI — max 100 MB</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══════════ APPEARANCE TAB ══════════ */}
-                    {editTab === 'appearance' && (
-                      <div className="space-y-4 sm:space-y-6">
-                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Palette className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Appearance
-                        </h3>
-                        {/* Preset / Custom toggle */}
-                        <div className="flex gap-2">
-                          <button onClick={() => setThemeMode('presets')} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border-2 font-medium transition-all text-xs sm:text-sm" style={{ background: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'presets' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'presets' ? '#fff' : liveTheme.text }}>
-                            <Star className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" /> Presets
-                          </button>
-                          <button onClick={() => setThemeMode('custom')} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border-2 font-medium transition-all text-xs sm:text-sm" style={{ background: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: themeMode === 'custom' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: themeMode === 'custom' ? '#fff' : liveTheme.text }}>
-                            <Wand2 className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" /> Custom
-                          </button>
-                        </div>
-
-                        {themeMode === 'presets' ? (
-                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                            {Object.entries(presetThemes).map(([key, preset]) => (
-                              <button key={key} onClick={() => setSelectedPreset(key)} className="p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative overflow-hidden" style={{ background: selectedPreset === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedPreset === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
-                                <div className="h-8 sm:h-10 rounded-lg mb-1.5 sm:mb-2" style={{ background: preset.gradient }} />
-                                <div className="text-xs sm:text-sm font-semibold truncate" style={{ color: liveTheme.text }}>{preset.name}</div>
-                                {selectedPreset === key && (<div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="space-y-4 sm:space-y-5">
-                            <div>
-                              <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Gradient Preview</label>
-                              <div className="h-12 sm:h-16 rounded-lg sm:rounded-xl border-2 pointer-events-none" style={{ background: resolveTheme('custom', customTheme.colors, 'custom').gradient, borderColor: 'rgba(255,255,255,0.3)' }} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                              {customTheme.colors.map((color, i) => (
-                                <div key={i}>
-                                  <label className="block text-xs font-medium mb-1" style={{ color: liveTheme.text, opacity: 0.7 }}>Color {i + 1}</label>
-                                  <ColorPicker
-                                    value={color}
-                                    onChange={(hex) => setCustomTheme(prev => { const nc = [...prev.colors]; nc[i] = hex; return { ...prev, colors: nc }; })}
-                                    accentColor={liveTheme.accent}
-                                    textColor={liveTheme.text}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            <div>
-                              <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Blur Strength: {customTheme.blurStrength}px</label>
-                              <input type="range" min="4" max="32" value={customTheme.blurStrength} onChange={(e) => setCustomTheme(prev => ({ ...prev, blurStrength: parseInt(e.target.value) }))} className="w-full h-3 rounded-lg cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Glass Styles */}
-                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <h4 className="text-base sm:text-lg font-bold mb-2 sm:mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                            <Layers className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Glass Style
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                            {Object.entries(glassStyles).map(([key, style]) => (
-                              <button key={key} onClick={() => setSelectedGlassStyle(key)} className="p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all hover:scale-[1.02] text-left relative" style={{ background: selectedGlassStyle === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: selectedGlassStyle === key ? liveTheme.accent : 'rgba(255,255,255,0.2)' }}>
-                                <div className="font-semibold text-xs sm:text-sm mb-0.5 sm:mb-1 truncate" style={{ color: liveTheme.text }}>{style.name}</div>
-                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Blur: {style.blur}px</div>
-                                {selectedGlassStyle === key && (<div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold" style={{ background: liveTheme.accent }}>✓</div>)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══════════ FONTS TAB ══════════ */}
-                    {editTab === 'fonts' && (
-                      <div className="space-y-4 sm:space-y-6">
-                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Type className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Typography
-                        </h3>
-                        {/* Heading Font */}
-                        <div>
-                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Heading Font</label>
-                          <div className="space-y-1.5 sm:space-y-2 max-h-36 sm:max-h-48 overflow-y-auto pr-1 sm:pr-2">
-                            {Object.entries(fontPresets).map(([key, font]) => (
-                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: key } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
-                              </button>
-                            ))}
-                            {uploadedFonts.map(font => (
-                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, heading: font.name } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.heading === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.heading === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
-                            <div className="flex-1 min-w-0">
-                              <label className="block text-[10px] sm:text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Heading Color</label>
-                              <ColorPicker
-                                value={customTheme.fonts.headingColor}
-                                onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, headingColor: hex } }))}
-                                accentColor={liveTheme.accent}
-                                textColor={liveTheme.text}
-                              />
-                            </div>
-                            <label className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all hover:scale-105 w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
-                              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span className="text-xs font-medium">Upload Font</span>
-                              <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFontUpload(e, 'heading')} className="hidden" />
-                            </label>
-                          </div>
-                        </div>
-                        {/* Body Font */}
-                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: liveTheme.text }}>Body Font</label>
-                          <div className="space-y-1.5 sm:space-y-2 max-h-36 sm:max-h-48 overflow-y-auto pr-1 sm:pr-2">
-                            {Object.entries(fontPresets).map(([key, font]) => (
-                              <button key={key} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: key } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === key ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === key ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>{font.style}</div>
-                              </button>
-                            ))}
-                            {uploadedFonts.map(font => (
-                              <button key={font.name} onClick={() => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, body: font.name } }))} className="w-full p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-[1.01] text-left" style={{ background: customTheme.fonts.body === font.name ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', borderColor: customTheme.fonts.body === font.name ? liveTheme.accent : 'rgba(255,255,255,0.2)', fontFamily: font.family }}>
-                                <div className="font-semibold text-sm sm:text-base" style={{ color: liveTheme.text }}>{font.name}</div>
-                                <div className="text-[10px] sm:text-xs" style={{ color: liveTheme.text, opacity: 0.6 }}>Custom Upload</div>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
-                            <div className="flex-1 min-w-0">
-                              <label className="block text-[10px] sm:text-xs font-medium mb-1" style={{ color: liveTheme.text }}>Body Color</label>
-                              <ColorPicker
-                                value={customTheme.fonts.bodyColor}
-                                onChange={(hex) => setCustomTheme(prev => ({ ...prev, fonts: { ...prev.fonts, bodyColor: hex } }))}
-                                accentColor={liveTheme.accent}
-                                textColor={liveTheme.text}
-                              />
-                            </div>
-                            <label className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border-2 cursor-pointer transition-all hover:scale-105 w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}>
-                              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" /><span className="text-xs font-medium">Upload Font</span>
-                              <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(e) => handleFontUpload(e, 'body')} className="hidden" />
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══════════ EFFECTS TAB ══════════ */}
-                    {editTab === 'effects' && (
-                      <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Effects
-                        </h3>
-                        {/* Toggle effects */}
-                        {([
-                          { key: 'depthLayers' as const, label: 'Depth Layers', icon: '🎚️', desc: 'Nested border glow' },
-                          { key: 'tilt3D' as const, label: '3D Tilt', icon: '🎲', desc: 'Cards tilt on hover' },
-                          { key: 'ripple' as const, label: 'Click Ripple', icon: '💧', desc: 'Ripple effect' },
-                        ]).map(effect => (
-                          <label key={effect.key} className="flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl cursor-pointer hover:bg-white/5 border transition-all" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                            <span className="flex items-center gap-2 sm:gap-3" style={{ color: liveTheme.text }}>
-                              <span className="text-base sm:text-xl">{effect.icon}</span>
-                              <span>
-                                <span className="font-medium block text-sm sm:text-base">{effect.label}</span>
-                                <span className="text-[10px] sm:text-xs opacity-60">{effect.desc}</span>
-                              </span>
-                            </span>
-                            <input type="checkbox" checked={effects[effect.key] as boolean} onChange={(e) => setEffects(prev => ({ ...prev, [effect.key]: e.target.checked }))} className="w-4 h-4 sm:w-5 sm:h-5 rounded" style={{ accentColor: liveTheme.accent }} />
-                          </label>
-                        ))}
-                        {/* Floating Particles */}
-                        <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                          <label className="block text-xs sm:text-sm font-medium mb-2 sm:mb-3" style={{ color: liveTheme.text }}>Floating Particles</label>
-                          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                            {Object.keys(ParticleShapes).map(type => (
-                              <button key={type} onClick={() => setEffects(prev => ({ ...prev, particles: type }))} className="px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border-2 capitalize text-[10px] sm:text-xs transition-all hover:scale-105 flex items-center justify-center gap-0.5 sm:gap-1" style={{ background: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === type ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === type ? '#ffffff' : liveTheme.text }}>
-                                <span className="w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center">{ParticleShapes[type](effects.particles === type ? '#fff' : liveTheme.text)}</span>
-                                <span className="hidden sm:inline">{type}</span>
-                              </button>
-                            ))}
-                            <button onClick={() => setEffects(prev => ({ ...prev, particles: 'none' }))} className="px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border-2 capitalize text-[10px] sm:text-xs transition-all hover:scale-105" style={{ background: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particles === 'none' ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particles === 'none' ? '#ffffff' : liveTheme.text }}>
-                              none
-                            </button>
-                          </div>
-                          {effects.particles !== 'none' && (
-                            <div className="space-y-3 sm:space-y-4">
-                              <div>
-                                <label className="block text-xs sm:text-sm mb-1" style={{ color: liveTheme.text }}>Count: <strong>{effects.particleCount}</strong></label>
-                                <input type="range" min="5" max="40" step="5" value={effects.particleCount} onChange={(e) => setEffects(prev => ({ ...prev, particleCount: parseInt(e.target.value) }))} className="w-full h-3 cursor-pointer theme-range" style={{ '--range-accent': liveTheme.accent, touchAction: 'pan-x' } as any} />
-                              </div>
-                              <div>
-                                <label className="block text-xs sm:text-sm mb-2" style={{ color: liveTheme.text }}>Speed</label>
-                                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                                  {['slow', 'medium', 'fast'].map(speed => (
-                                    <button key={speed} onClick={() => setEffects(prev => ({ ...prev, particleSpeed: speed }))} className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg border capitalize text-xs sm:text-sm" style={{ background: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.1)', borderColor: effects.particleSpeed === speed ? liveTheme.accent : 'rgba(255,255,255,0.2)', color: effects.particleSpeed === speed ? '#fff' : liveTheme.text }}>
-                                      {speed}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══════════ SCHEDULE TAB ══════════ */}
-                    {editTab === 'schedule' && (
-                      <div className="space-y-4 sm:space-y-5">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Scheduled Shows
-                          </h3>
-                          {!editingShow && (
-                            <button
-                              onClick={() => {
-                                setShowScheduleForm(!showScheduleForm);
-                                setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
-                              }}
-                              className="px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs sm:text-sm transition-all hover:scale-105"
-                              style={{ background: liveTheme.accent, color: '#fff' }}
-                            >
-                              <Plus className="w-3.5 h-3.5" /> New Show
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Hidden file input for thumbnail */}
-                        <input
-                          type="file"
-                          ref={showThumbnailInputRef}
-                          className="hidden"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              if (file.size > 2 * 1024 * 1024) {
-                                toast.error('Image must be under 2MB');
-                                return;
-                              }
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const dataUrl = ev.target?.result as string;
-                                if (editingShow) {
-                                  setEditingShow({ ...editingShow, thumbnail: dataUrl });
-                                } else {
-                                  setNewShow({ ...newShow, thumbnail: dataUrl });
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                            e.target.value = '';
-                          }}
-                        />
-
-                        {/* New Show / Edit Show Form */}
-                        {(showScheduleForm || editingShow) && (
-                          <div className="p-4 rounded-xl border space-y-3" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                            <h4 className="font-medium text-sm flex items-center gap-2" style={{ color: liveTheme.text }}>
-                              <Video className="w-4 h-4" style={{ color: liveTheme.accent }} /> 
-                              {editingShow ? 'Edit Show' : 'Schedule a New Live'}
-                            </h4>
-                            
-                            {/* Thumbnail Upload */}
-                            <div>
-                              <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Show Thumbnail</label>
-                              <div className="flex items-start gap-3">
-                                <div 
-                                  className="w-32 h-20 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:border-opacity-80 transition-colors overflow-hidden"
-                                  style={{ 
-                                    borderColor: 'rgba(255,255,255,0.2)',
-                                    background: (editingShow?.thumbnail || newShow.thumbnail) ? 'transparent' : 'rgba(255,255,255,0.05)'
-                                  }}
-                                  onClick={() => showThumbnailInputRef.current?.click()}
-                                >
-                                  {(editingShow?.thumbnail || newShow.thumbnail) ? (
-                                    <img 
-                                      src={editingShow?.thumbnail || newShow.thumbnail} 
-                                      alt="Thumbnail preview" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="text-center p-2">
-                                      <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-40" style={{ color: liveTheme.text }} />
-                                      <span className="text-[10px] opacity-40" style={{ color: liveTheme.text }}>Add image</span>
-                                    </div>
-                                  )}
-                                </div>
-                                {(editingShow?.thumbnail || newShow.thumbnail) && (
-                                  <button
-                                    onClick={() => {
-                                      if (editingShow) {
-                                        setEditingShow({ ...editingShow, thumbnail: undefined });
-                                      } else {
-                                        setNewShow({ ...newShow, thumbnail: '' });
-                                      }
-                                    }}
-                                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400 text-xs"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Show Title *</label>
-                                <Input
-                                  placeholder="My Awesome Stream"
-                                  value={editingShow?.title || newShow.title || ''}
-                                  onChange={(e) => {
-                                    if (editingShow) {
-                                      setEditingShow({ ...editingShow, title: e.target.value });
-                                    } else {
-                                      setNewShow({ ...newShow, title: e.target.value });
-                                    }
-                                  }}
-                                  className="bg-white/5 text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Category</label>
-                                <select
-                                  value={editingShow?.category || newShow.category || 'Social'}
-                                  onChange={(e) => {
-                                    if (editingShow) {
-                                      setEditingShow({ ...editingShow, category: e.target.value });
-                                    } else {
-                                      setNewShow({ ...newShow, category: e.target.value });
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
-                                  style={{ color: liveTheme.text }}
-                                >
-                                  {['Gaming', 'Study', 'Social', 'Work', 'Music', 'Art', 'Tech', 'Sports', 'Other'].map(cat => (
-                                    <option key={cat} value={cat} style={{ background: '#1e293b' }}>{cat}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Description</label>
-                              <Textarea
-                                placeholder="What's your show about?"
-                                value={editingShow?.description || newShow.description || ''}
-                                onChange={(e) => {
-                                  if (editingShow) {
-                                    setEditingShow({ ...editingShow, description: e.target.value });
-                                  } else {
-                                    setNewShow({ ...newShow, description: e.target.value });
-                                  }
-                                }}
-                                className="bg-white/5 text-sm min-h-[60px]"
-                                rows={2}
-                              />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Date & Time *</label>
-                                <Input
-                                  type="datetime-local"
-                                  value={editingShow?.scheduledAt || newShow.scheduledAt || ''}
-                                  onChange={(e) => {
-                                    if (editingShow) {
-                                      setEditingShow({ ...editingShow, scheduledAt: e.target.value });
-                                    } else {
-                                      setNewShow({ ...newShow, scheduledAt: e.target.value });
-                                    }
-                                  }}
-                                  className="bg-white/5 text-sm"
-                                  min={new Date().toISOString().slice(0, 16)}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs mb-1.5" style={{ color: liveTheme.text, opacity: 0.7 }}>Duration (minutes)</label>
-                                <Input
-                                  type="number"
-                                  placeholder="60"
-                                  value={editingShow?.duration || newShow.duration || 60}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 60;
-                                    if (editingShow) {
-                                      setEditingShow({ ...editingShow, duration: val });
-                                    } else {
-                                      setNewShow({ ...newShow, duration: val });
-                                    }
-                                  }}
-                                  className="bg-white/5 text-sm"
-                                  min={15}
-                                  max={480}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <button
-                                onClick={async () => {
-                                  if (editingShow) {
-                                    // Update existing show via API
-                                    if (!editingShow.title || !editingShow.scheduledAt) {
-                                      toast.error('Please fill in title and date/time');
-                                      return;
-                                    }
-                                    try {
-                                      await apiClient.updateScheduledShow(profile!.id, editingShow.id, {
-                                        title: editingShow.title,
-                                        description: editingShow.description,
-                                        scheduledAt: editingShow.scheduledAt,
-                                        duration: editingShow.duration,
-                                        category: editingShow.category,
-                                        thumbnail: editingShow.thumbnail,
-                                      });
-                                      const updated = scheduledShows.map(s => 
-                                        s.id === editingShow.id ? editingShow : s
-                                      );
-                                      setScheduledShows(updated);
-                                      localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
-                                      toast.success('Show updated!');
-                                      setEditingShow(null);
-                                    } catch (e) {
-                                      console.error('Failed to update show:', e);
-                                      toast.error('Failed to update show');
-                                    }
-                                  } else {
-                                    // Create new show via API
-                                    if (!newShow.title || !newShow.scheduledAt) {
-                                      toast.error('Please fill in title and date/time');
-                                      return;
-                                    }
-                                    try {
-                                      const created = await apiClient.createScheduledShow(profile!.id, {
-                                        title: newShow.title!,
-                                        description: newShow.description,
-                                        scheduledAt: newShow.scheduledAt!,
-                                        duration: newShow.duration || 60,
-                                        category: newShow.category || 'Social',
-                                        thumbnail: newShow.thumbnail,
-                                      });
-                                      const show: ScheduledShow = {
-                                        id: created.id,
-                                        title: created.title,
-                                        description: created.description,
-                                        scheduledAt: created.scheduled_at,
-                                        duration: created.duration,
-                                        category: created.category,
-                                        thumbnail: created.thumbnail,
-                                        status: created.status,
-                                      };
-                                      const newShows = [...scheduledShows, show];
-                                      setScheduledShows(newShows);
-                                      localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(newShows));
-                                      toast.success('Show scheduled!');
-                                      setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
-                                      setShowScheduleForm(false);
-                                    } catch (e) {
-                                      console.error('Failed to create show:', e);
-                                      toast.error('Failed to schedule show');
-                                    }
-                                  }
-                                }}
-                                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105"
-                                style={{ background: liveTheme.accent, color: '#fff' }}
-                              >
-                                {editingShow ? 'Save Changes' : 'Schedule Show'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowScheduleForm(false);
-                                  setEditingShow(null);
-                                  setNewShow({ title: '', description: '', scheduledAt: '', duration: 60, category: 'Social', thumbnail: '' });
-                                }}
-                                className="px-4 py-2 rounded-lg font-medium text-sm border"
-                                style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Upcoming Shows List */}
-                        {!editingShow && (
-                          <div>
-                            <h4 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: liveTheme.text, opacity: 0.8 }}>
-                              <Clock className="w-3.5 h-3.5" /> Upcoming Shows
-                            </h4>
-                            {scheduledShows.filter(s => s.status === 'scheduled').length === 0 ? (
-                              <div className="text-center py-8 rounded-xl border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                                <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" style={{ color: liveTheme.text }} />
-                                <p className="text-sm" style={{ color: liveTheme.text, opacity: 0.5 }}>No upcoming shows scheduled</p>
-                                <p className="text-xs mt-1" style={{ color: liveTheme.text, opacity: 0.3 }}>Click "New Show" to schedule your first live!</p>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {scheduledShows
-                                  .filter(s => s.status === 'scheduled')
-                                  .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                                  .map(show => (
-                                    <div key={show.id} className="group">
-                                      {/* Title - Above Thumbnail */}
-                                      <div className="flex items-center gap-1.5 mb-1.5">
-                                        <span className="text-xs font-medium truncate flex-1" style={{ color: liveTheme.text }}>
-                                          {show.title}
-                                        </span>
-                                        {show.category && (
-                                          <span className="text-[10px] px-1 py-0.5 rounded flex-shrink-0" style={{ background: `${liveTheme.accent}90`, color: '#fff' }}>
-                                            {show.category}
-                                          </span>
-                                        )}
-                                      </div>
-                                      
-                                      {/* Thumbnail - 5:7 aspect ratio */}
-                                      <div 
-                                        className="w-full aspect-[5/7] relative rounded-lg overflow-hidden border"
-                                        style={{ 
-                                          backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                          backgroundSize: 'cover',
-                                          backgroundPosition: 'center',
-                                          borderColor: 'rgba(255,255,255,0.1)'
-                                        }}
-                                      >
-                                        {/* Gradient overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                                        
-                                        {/* Fallback icon */}
-                                        {!show.thumbnail && (
-                                          <div className="absolute inset-0 flex items-center justify-center">
-                                            <Video className="w-6 h-6 opacity-50" style={{ color: '#fff' }} />
-                                          </div>
-                                        )}
-                                        
-                                        {/* Date/Time - bottom */}
-                                        <div className="absolute bottom-2 left-2 right-2">
-                                          <div className="flex flex-wrap items-center gap-1 text-[9px] sm:text-[10px] text-white/90">
-                                            <span className="flex items-center gap-0.5 bg-black/50 px-1 py-0.5 rounded">
-                                              <Calendar className="w-2.5 h-2.5" />
-                                              {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                            </span>
-                                            <span className="flex items-center gap-0.5 bg-black/50 px-1 py-0.5 rounded">
-                                              <Clock className="w-2.5 h-2.5" />
-                                              {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                            </span>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Actions - top right */}
-                                        <div className="absolute top-1 right-1 flex gap-0.5">
-                                          <button
-                                            onClick={() => {
-                                              setEditingShow(show);
-                                              setShowScheduleForm(false);
-                                            }}
-                                            className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
-                                            style={{ color: liveTheme.accent }}
-                                            title="Edit show"
-                                          >
-                                            <Pencil className="w-3 h-3" />
-                                          </button>
-                                          <button
-                                            onClick={async () => {
-                                              try {
-                                                await apiClient.cancelScheduledShow(profile!.id, show.id);
-                                                const updated = scheduledShows.map(s => 
-                                                  s.id === show.id ? { ...s, status: 'cancelled' as const } : s
-                                                );
-                                                setScheduledShows(updated);
-                                                localStorage.setItem(`scheduled-shows-${profile?.id}`, JSON.stringify(updated));
-                                                toast.success('Show cancelled');
-                                              } catch (e) {
-                                                console.error('Failed to cancel show:', e);
-                                                toast.error('Failed to cancel show');
-                                              }
-                                            }}
-                                            className="p-1 rounded bg-black/60 hover:bg-red-500/60 transition-colors text-red-400"
-                                            title="Cancel show"
-                                          >
-                                            <X className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Description - below thumbnail */}
-                                      {show.description && (
-                                        <p className="text-[10px] mt-1 line-clamp-1" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
-                                      )}
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Info about syncing */}
-                        <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
-                          <p className="text-xs" style={{ color: '#60a5fa' }}>
-                            💡 <strong>Synced:</strong> Your scheduled shows are saved to the server and visible to anyone who visits your profile.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══════════ SECURITY TAB ══════════ */}
-                    {editTab === 'security' && (
-                      <div className="space-y-4 sm:space-y-5">
-                        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                          <Shield className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} /> Security & Privacy
-                        </h3>
-                        {passwordSupported === false ? (
-                          <div className="p-2.5 sm:p-3 border rounded" style={{ borderColor: 'rgba(255,200,0,0.3)', background: 'rgba(255,200,0,0.05)' }}>
-                            <p className="text-xs sm:text-sm" style={{ color: '#fbbf24' }}>Password updates are not enabled on the backend yet.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2.5 sm:space-y-3">
-                            <Input type="password" name="current-password" autoComplete="current-password" placeholder="Current password" value={passwordData.current} onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
-                            <Input type="password" name="new-password" autoComplete="new-password" placeholder="New password" value={passwordData.new} onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
-                            <Input type="password" name="confirm-new-password" autoComplete="new-password" placeholder="Confirm new password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} className="bg-white/5 text-sm" disabled={passwordSupported === null} />
-                            <button onClick={handleChangePassword} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium border-2 transition-all hover:scale-105 text-xs sm:text-sm w-full sm:w-auto" style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: liveTheme.text }} disabled={passwordSupported === null}>
-                              Update Password
-                            </button>
-                          </div>
-                        )}
-                        <div className="mt-3 sm:mt-4 p-3 sm:p-4 border rounded-lg" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
-                          <h4 className="font-medium mb-1.5 sm:mb-2 flex items-center gap-2 text-sm sm:text-base" style={{ color: liveTheme.text }}>
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> Danger Zone
-                          </h4>
-                          <p className="text-xs sm:text-sm mb-2.5 sm:mb-3" style={{ color: liveTheme.text, opacity: 0.6 }}>Permanently delete your account and all associated data.</p>
-                          <button onClick={handleDeleteAccount} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white transition-all w-full sm:w-auto">
-                            Delete Account
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </GlassCard>
-                </motion.div>
-              </div>
-
-              {/* ─── Right: Gallery + Mini Preview ─────────── */}
-              <div className="lg:col-span-1 space-y-6">
-                {/* Gallery */}
-                <GlassCard className="p-5" refIndex={2}>
-                  <h3 className="text-base font-semibold mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                    <Camera className="w-4 h-4" style={{ color: liveTheme.accent }} /> Photo Gallery
-                  </h3>
-                  <div className="mb-3">
-                    <GalleryUpload
-                      userId={profile.id}
-                      username={profile.username}
-                      onItemsAdded={(items: GalleryItem[]) => {
-                        if (items.length > 0) window.dispatchEvent(new CustomEvent('gallery-updated', { detail: { count: items.length, userId: profile.id } }));
-                      }}
-                    />
-                  </div>
-                  <div className="max-h-72 overflow-y-auto pr-1">
-                    <UserGalleryGrid isViewOnly={false} userId={profile.id} canEdit={true} />
-                  </div>
-                </GlassCard>
-
-                {/* Live Preview — miniature themed profile showing real appearance */}
-                <div className="rounded-xl overflow-hidden border-2" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                    <Eye className="w-4 h-4" style={{ color: liveTheme.accent }} />
-                    <span className="text-sm font-semibold">Live Preview</span>
-                  </div>
-
-                  {/* Miniature gradient background */}
-                  <div className="relative px-3 pb-3" style={{ background: liveTheme.gradient, minHeight: '200px' }}>
-                    {/* Mini floating particles indicator */}
-                    {liveEffects.particles !== 'none' && ParticleShapes[liveEffects.particles] && (
-                      <div className="absolute top-2 right-3 flex gap-1 opacity-50">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className="w-3 h-3" style={{ animation: `float-up ${3 + i}s linear infinite`, animationDelay: `${i * 0.5}s` }}>
-                            {ParticleShapes[liveEffects.particles]?.(liveTheme.accent)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Inner glass card */}
-                    <div
-                      className={`${liveGlass.edges} border-2 p-4 mt-2`}
-                      style={{
-                        background: liveTheme.glassColor,
-                        backdropFilter: `blur(${liveGlass.blur}px) saturate(180%)`,
-                        WebkitBackdropFilter: `blur(${liveGlass.blur}px) saturate(180%)`,
-                        borderColor: 'rgba(255,255,255,0.25)',
-                        boxShadow: `0 0 15px ${liveTheme.borderGlow}`,
-                      }}
-                    >
-                      {/* Avatar + Name */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden border-2 flex-shrink-0" style={{ borderColor: liveTheme.accent + '80', boxShadow: `0 0 10px ${liveTheme.borderGlow}` }}>
-                          <ResponsiveAvatar
-                            avatarUrls={(editedProfile.avatar_urls || profile.avatar_urls) ?? (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
-                            username={editedProfile.username || profile.username}
-                            size="small"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold truncate" style={{ color: headingColor, fontFamily: headingFont }}>
-                            {editedProfile.username || profile.username}
-                          </h4>
-                          <p className="text-xs truncate" style={{ color: bodyColor, fontFamily: bodyFont, opacity: 0.8 }}>
-                            {editedProfile.bio || profile.bio || 'No bio yet'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Mini stats */}
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {[
-                          { label: 'Posts', val: '—' },
-                          { label: 'Rooms', val: String(profile.totalRooms || 0) },
-                        ].map((s, i) => (
-                          <div key={i} className="text-center p-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${liveTheme.accent}30` }}>
-                            <div className="text-xs font-bold" style={{ color: headingColor, fontFamily: headingFont }}>{s.val}</div>
-                            <div className="text-[10px]" style={{ color: bodyColor, opacity: 0.6 }}>{s.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Theme info badges */}
-                    <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: liveTheme.accent + '30', color: liveTheme.accent, border: `1px solid ${liveTheme.accent}50` }}>
-                        {presetThemes[selectedPreset]?.name || 'Custom'}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: liveTheme.text, border: '1px solid rgba(255,255,255,0.2)' }}>
-                        {glassStyles[selectedGlassStyle]?.name || 'Glass'}
-                      </span>
-                      {liveEffects.particles !== 'none' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: liveTheme.text, border: '1px solid rgba(255,255,255,0.2)' }}>
-                          {liveEffects.particles} ✨
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-          </>
-        ) : (
-          /* ═══════════════════════════════════════════════════════════
-             VIEW MODE — Themed Profile Display
-             ═══════════════════════════════════════════════════════════ */
-          <>
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-              <GlassCard className="p-6 sm:p-8" refIndex={0}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                  {/* Left: Profile Info */}
-                  <div className="flex flex-col gap-4">
-                    <div className="relative">
-                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4" style={{ borderColor: liveTheme.accent + '60', boxShadow: `0 0 20px ${liveTheme.borderGlow}` }}>
-                        <ResponsiveAvatar
-                          avatarUrls={(profile.avatar_urls && (profile.avatar_urls.thumbnail || profile.avatar_urls.medium || profile.avatar_urls.large)) ? profile.avatar_urls : (profile.avatar ? { thumbnail: profile.avatar, small: profile.avatar, medium: profile.avatar, large: profile.avatar } : undefined)}
-                          username={profile.username}
-                          size="large"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: headingColor, fontFamily: headingFont }}>{profile.username}</h1>
-                      {profile.email && showEmail && (
-                        <p className="mb-3 text-sm" style={{ color: bodyColor, fontFamily: bodyFont, opacity: 0.8 }}>{profile.email}</p>
-                      )}
-                      {profile.bio && (
-                        <p className="mb-4 max-w-2xl" style={{ color: bodyColor, fontFamily: bodyFont }}>{profile.bio}</p>
-                      )}
-                      {/* Profile Video */}
-                      {profile.profile_video_url && (
-                        <div className="mb-4">
-                          <video
-                            src={profile.profile_video_url}
-                            controls
-                            playsInline
-                            className="w-full max-h-80 rounded-xl"
-                            style={{ background: 'rgba(0,0,0,0.3)' }}
-                          />
-                        </div>
-                      )}
-                      {/* Stats row */}
-                      <div className="flex flex-wrap gap-3 mb-4">
-                        {[
-                          { icon: Users, label: 'Followers', val: followersCount },
-                          { icon: Heart, label: 'Following', val: followingCount },
-                          { icon: MessageSquare, label: 'Rooms', val: profile.totalRooms || 0 },
-                        ].map((s, i) => {
-                          const SIcon = s.icon;
-                          return (
-                            <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.15)' }}>
-                              <SIcon className="w-4 h-4" style={{ color: liveTheme.accent }} />
-                              <span className="text-sm font-semibold" style={{ color: headingColor }}>{s.val}</span>
-                              <span className="text-xs" style={{ color: bodyColor, opacity: 0.7 }}>{s.label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Follow button (other users) or Edit button (own profile) */}
-                      <div className="flex items-center gap-3">
-                        {isViewOnly && currentUserId ? (
-                          <div className="flex gap-2 flex-wrap">
-                            <button
-                              onClick={handleToggleFollow}
-                              disabled={followLoading}
-                              className={`px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2 ${
-                                isFollowing
-                                  ? 'bg-white/10 border-slate-500 text-slate-300 hover:bg-red-500/20 hover:border-red-500 hover:text-red-400'
-                                  : ''
-                              }`}
-                              style={isFollowing ? {} : {
-                                background: liveTheme.accent,
-                                borderColor: 'rgba(255,255,255,0.3)',
-                                color: '#ffffff',
-                                boxShadow: `0 0 15px ${liveTheme.accent}60`
-                              }}
-                            >
-                              {followLoading ? (
-                                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                              ) : isFollowing ? (
-                                <UserMinus className="w-4 h-4" />
-                              ) : (
-                                <UserPlus className="w-4 h-4" />
-                              )}
-                              {isFollowing ? 'Unfollow' : 'Follow'}
-                            </button>
-                            <Link 
-                              href={`/messages?userId=${profile.id}&username=${encodeURIComponent(profile.username)}&avatar=${encodeURIComponent(profile.avatar || '')}`}
-                              className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" 
-                              style={{ 
-                                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', 
-                                borderColor: 'rgba(255,255,255,0.3)', 
-                                color: '#ffffff', 
-                                boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)' 
-                              }}
-                            >
-                              <Mail className="w-4 h-4" /> 
-                              Message
-                            </Link>
-                          </div>
-                        ) : !isViewOnly ? (
-                          <div className="flex gap-2 flex-wrap">
-                            <Link 
-                              href="/messages" 
-                              className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" 
-                              style={{ 
-                                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', 
-                                borderColor: 'rgba(255,255,255,0.3)', 
-                                color: '#ffffff', 
-                                boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)' 
-                              }}
-                            >
-                              <Mail className="w-4 h-4" /> 
-                              Messages
-                              {unreadMessages > 0 && (
-                                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-white/20">
-                                  {unreadMessages}
-                                </span>
-                              )}
-                            </Link>
-                            <button onClick={() => { setIsEditing(true); setEditTab('profile'); }} className="px-5 py-2.5 rounded-xl font-medium border-2 transition-all hover:scale-105 flex items-center gap-2" style={{ background: liveTheme.accent, borderColor: 'rgba(255,255,255,0.3)', color: '#ffffff', boxShadow: `0 0 15px ${liveTheme.accent}60` }}>
-                              <Pencil className="w-4 h-4" /> Edit Profile
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Right: Gallery */}
-                  <div>
-                    <h3 className="text-base font-semibold mb-2 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                      <Camera className="w-4 h-4" style={{ color: liveTheme.accent }} /> Photo Gallery
-                    </h3>
-                    <div className="max-h-72 overflow-y-auto pr-2">
-                      <UserGalleryGrid isViewOnly={isViewOnly} userId={profile.id} canEdit={false} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upcoming Shows Section (shows for all users) */}
-                {scheduledShows.filter(s => s.status === 'scheduled').length > 0 && (
-                  <div className="mt-6 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                    <h3 className="text-base font-semibold mb-3 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                      <Calendar className="w-4 h-4" style={{ color: liveTheme.accent }} /> 
-                      {isViewOnly ? 'Upcoming Lives' : 'My Upcoming Shows'}
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {scheduledShows
-                        .filter(s => s.status === 'scheduled')
-                        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                        .slice(0, 6)
-                        .map(show => (
-                          <div key={show.id} className="group">
-                            {/* Title - Above Thumbnail (like host info on rooms) */}
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="text-xs sm:text-sm font-medium truncate flex-1" style={{ color: liveTheme.text }}>
-                                {show.title}
-                              </span>
-                              {/* Category pill */}
-                              {show.category && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: `${liveTheme.accent}90`, color: '#fff' }}>
-                                  {show.category}
-                                </span>
-                              )}
-                            </div>
-                            
-                            {/* Thumbnail - 5:7 aspect ratio like room cards */}
-                            <div 
-                              className="w-full aspect-[5/7] relative rounded-lg overflow-hidden border transition-all duration-200"
-                              style={{ 
-                                backgroundImage: show.thumbnail ? `url(${show.thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                backgroundRepeat: 'no-repeat',
-                                borderColor: 'rgba(255,255,255,0.1)',
-                              }}
-                            >
-                              {/* Gradient overlay */}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                              
-                              {/* Fallback icon when no thumbnail */}
-                              {!show.thumbnail && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <Video className="w-8 h-8 opacity-40" style={{ color: '#fff' }} />
-                                </div>
-                              )}
-                              
-                              {/* Date/Time badge - bottom of thumbnail */}
-                              <div className="absolute bottom-2 left-2 right-2">
-                                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-white/90">
-                                  <span className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(show.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </span>
-                                  <span className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded">
-                                    <Clock className="w-3 h-3" />
-                                    {new Date(show.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Duration badge - top right */}
-                              {show.duration && (
-                                <div className="absolute top-2 right-2 text-[10px] bg-black/60 px-1.5 py-0.5 rounded text-white/80">
-                                  {show.duration}m
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Description - below thumbnail */}
-                            {show.description && (
-                              <p className="text-xs mt-1.5 line-clamp-2" style={{ color: liveTheme.text, opacity: 0.5 }}>{show.description}</p>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </GlassCard>
-            </motion.div>
-
-            {/* ═══════════════════════════════════════════════════════════
-               MY POSTS — Compose + Feed
-               ═══════════════════════════════════════════════════════════ */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <GlassCard className="p-3 sm:p-6 lg:p-8" refIndex={1}>
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ color: headingColor, fontFamily: headingFont }}>
-                  <Newspaper className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: liveTheme.accent }} />
-                  {isViewOnly ? `${profile.username}'s Posts` : 'My Posts'}
-                </h3>
-
-                {/* Post Composer (own profile only) */}
-                {!isViewOnly && (
-                  <div className="mb-4 sm:mb-6">
-                    <PostComposer
-                      userId={profile.id}
-                      username={profile.username}
-                      avatarUrl={profile.avatar}
-                      avatarUrls={profile.avatar_urls}
-                      onPostCreated={handlePostCreated}
+            {/* Body */}
+            <div className="lp-body">
+              {/* Avatar + actions */}
+              <div className="lp-avatar-row">
+                <div className="lp-avatar">
+                  {profile.avatarUrl ? (
+                    <ResponsiveAvatar
+                      avatarUrls={profile.avatar_urls || { medium: profile.avatarUrl }}
+                      username={profile.displayName}
+                      size="large"
+                      className="w-full h-full"
                     />
-                  </div>
-                )}
-
-                {/* Posts list */}
-                <div className="space-y-4">
-                  {postsLoading ? (
-                    <p className="text-center py-6" style={{ color: bodyColor, opacity: 0.6 }}>Loading posts...</p>
-                  ) : myPosts.length === 0 ? (
-                    <p className="text-center py-6" style={{ color: bodyColor, opacity: 0.6 }}>
-                      {isViewOnly ? 'No posts yet.' : 'No posts yet. Share something!'}
-                    </p>
                   ) : (
-                    myPosts.map((post, index) => (
-                      <motion.div
-                        key={post.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.04 }}
-                      >
-                        <PostCard
-                          post={post}
-                          currentUserId={profile.id}
-                          currentUsername={profile.username}
-                          currentAvatarUrls={profile.avatar_urls}
-                          onLike={handlePostLike}
-                          onComment={handlePostComment}
-                          onShare={handlePostShare}
-                          onDelete={handlePostDelete}
-                        />
-                      </motion.div>
-                    ))
+                    profile.displayName[0]
+                  )}
+                  {canEdit && <div className="lp-avatar-hover">📷</div>}
+                </div>
+                <div className="lp-action-row">
+                  {isViewOnly && currentUserId && (
+                    <button
+                      className="lp-follow-btn"
+                      onClick={handleToggleFollow}
+                      disabled={followLoading}
+                      style={{ opacity: followLoading ? 0.5 : 1 }}
+                    >
+                      {isFollowing ? 'Unfollow' : 'Follow'}
+                    </button>
+                  )}
+                  {isViewOnly && currentUserId && (
+                    <Link href={`/messages?userId=${profile.id}&username=${profile.displayName}`}>
+                      <button className="lp-icon-btn" title="Message">✉</button>
+                    </Link>
+                  )}
+                  {canEdit && (
+                    <button className="lp-icon-btn" onClick={() => setEditMode(v => !v)} title="Edit">✎</button>
                   )}
                 </div>
-              </GlassCard>
-            </motion.div>
+              </div>
+
+              {/* Identity */}
+              <div className="lp-name" style={{ fontFamily: nameFont.family }}>{profile.displayName}</div>
+              <div className="lp-handle">@{profile.username}</div>
+              {profile.bio && <div className="lp-bio" style={{ fontFamily: bioFont.family }}>{profile.bio}</div>}
+
+              {/* Profile video */}
+              {profile.profile_video_url && (
+                <div style={{ marginBottom: 18, borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+                  <video src={profile.profile_video_url} controls playsInline
+                    style={{ width: '100%', maxHeight: 200, background: '#000', display: 'block' }} />
+                </div>
+              )}
+
+              {/* Profile audio player */}
+              {profile.profile_audio_url && (
+                <ProfileAudioPlayer
+                  audioUrl={profile.profile_audio_url}
+                  trackName={profile.profileTrackName || 'Profile track'}
+                  accentColor={accent}
+                  audioRef={audioRef}
+                />
+              )}
+
+              {/* Details */}
+              <div className="lp-details">
+                {profile.location && (
+                  <div className="lp-detail">
+                    <div className="lp-detail-dot" />
+                    {profile.location}
+                  </div>
+                )}
+                {profile.website && (
+                  <div className="lp-detail">
+                    <div className="lp-detail-dot" />
+                    <a href={`https://${profile.website}`} target="_blank" rel="noopener noreferrer"
+                      style={{ color: 'inherit', textDecoration: 'none' }}>
+                      {profile.website}
+                    </a>
+                  </div>
+                )}
+                {profile.email && (
+                  <div className="lp-detail">
+                    <div className="lp-detail-dot" />
+                    {profile.email}
+                  </div>
+                )}
+              </div>
+
+              {/* Stats strip */}
+              <div className="lp-stats-strip">
+                {[
+                  { n: followersCount.toLocaleString(), l: 'Followers' },
+                  { n: followingCount.toLocaleString(), l: 'Following' },
+                  { n: profile.stats.totalGenerations.toLocaleString(), l: 'Creations' },
+                ].map(s => (
+                  <div key={s.l} className="lp-stat">
+                    <div className="lp-stat-n">{s.n}</div>
+                    <div className="lp-stat-l">{s.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Socials */}
+              {profile.socials.length > 0 && (
+                <div className="lp-socials">
+                  {profile.socials.map(s => (
+                    <a key={s.platform} href={s.url} className="lp-soc" target="_blank" rel="noopener noreferrer">
+                      <span className="lp-soc-icon">{SOCIAL_ICONS[s.platform]}</span>
+                      {s.handle}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              <div className="lp-divider" />
+
+              {/* Edit panel */}
+              {editMode && canEdit && (
+                <div className="lp-edit-panel">
+                  <div className="lp-edit-title">Edit profile</div>
+
+                  {/* Avatar Upload */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Avatar</label>
+                    <AvatarUpload
+                      userId={profile.id}
+                      currentAvatar={profile.avatar_urls ?? (profile.avatarUrl ? { thumbnail: profile.avatarUrl, small: profile.avatarUrl, medium: profile.avatarUrl, large: profile.avatarUrl } : undefined)}
+                      username={profile.username}
+                      onAvatarChange={handleAvatarChange}
+                    />
+                  </div>
+
+                  {/* Banner Media Upload */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Banner Media</label>
+                    {profile.bannerMediaUrl ? (
+                      <div>
+                        {profile.bannerMediaType === 'video' ? (
+                          <video src={profile.bannerMediaUrl} autoPlay muted loop playsInline
+                            style={{ width: '100%', maxHeight: 120, borderRadius: 8, background: '#000', objectFit: 'cover', marginBottom: 8 }} />
+                        ) : (
+                          <img src={profile.bannerMediaUrl} alt="Banner preview"
+                            style={{ width: '100%', maxHeight: 120, borderRadius: 8, objectFit: 'cover', marginBottom: 8 }} />
+                        )}
+                        <button onClick={handleRemoveBannerMedia} className="lp-video-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' }}>
+                          <Trash2 style={{ width: 12, height: 12 }} /> Remove Banner Media
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          ref={bannerMediaInputRef}
+                          type="file"
+                          accept="image/*,video/mp4,video/webm"
+                          onChange={handleBannerMediaUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          onClick={() => bannerMediaInputRef.current?.click()}
+                          disabled={uploadingBanner}
+                          className="lp-video-btn"
+                        >
+                          {uploadingBanner ? (
+                            <><div className="lp-spinner" /> Uploading…</>
+                          ) : (
+                            <><ImageIcon style={{ width: 14, height: 14 }} /> Upload Banner Image or Video</>
+                          )}
+                        </button>
+                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                          Image or MP4/WebM — max 50 MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Display name</label>
+                    <input ref={nameRef} className="lp-input" defaultValue={profile.displayName} />
+                  </div>
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Email</label>
+                    <input ref={emailRef} className="lp-input" type="email" defaultValue={profile.email || ''} />
+                  </div>
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Something Catchy</label>
+                    <input ref={bioRef} className="lp-input" defaultValue={profile.bio} placeholder="Something Catchy" maxLength={80} />
+                  </div>
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">something catchy</label>
+                    <textarea ref={aboutRef} className="lp-textarea" defaultValue={profile.aboutText} placeholder="Tell people about yourself..." />
+                  </div>
+
+                  {/* Profile Video Upload */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Profile Video</label>
+                    {profile.profile_video_url ? (
+                      <div>
+                        <video src={profile.profile_video_url} controls playsInline
+                          style={{ width: '100%', maxHeight: 160, borderRadius: 8, background: '#000', marginBottom: 8 }} />
+                        <button onClick={handleDeleteProfileVideo} className="lp-video-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' }}>
+                          <Trash2 style={{ width: 12, height: 12 }} /> Remove Video
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          ref={profileVideoInputRef}
+                          type="file"
+                          accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                          onChange={handleProfileVideoUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          onClick={() => profileVideoInputRef.current?.click()}
+                          disabled={uploadingVideo}
+                          className="lp-video-btn"
+                        >
+                          {uploadingVideo ? (
+                            <><div className="lp-spinner" /> Uploading…</>
+                          ) : (
+                            <><Video style={{ width: 14, height: 14 }} /> Upload Profile Video</>
+                          )}
+                        </button>
+                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                          MP4, WebM, MOV or AVI — max 100 MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Profile Audio Upload */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Profile Audio</label>
+                    {profile.profile_audio_url ? (
+                      <div>
+                        <audio controls preload="metadata" src={profile.profile_audio_url}
+                          style={{ width: '100%', marginBottom: 8, borderRadius: 8, height: 36 }} />
+                        <button onClick={handleDeleteProfileAudio} className="lp-video-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' }}>
+                          <Trash2 style={{ width: 12, height: 12 }} /> Remove Audio
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          ref={profileAudioInputRef}
+                          type="file"
+                          accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/webm,.mp3,.wav,.ogg,.m4a,.aac"
+                          onChange={handleProfileAudioUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          onClick={() => profileAudioInputRef.current?.click()}
+                          disabled={uploadingAudio}
+                          className="lp-video-btn"
+                        >
+                          {uploadingAudio ? (
+                            <><div className="lp-spinner" /> Uploading…</>
+                          ) : (
+                            <><Music style={{ width: 14, height: 14 }} /> Upload Profile Audio</>
+                          )}
+                        </button>
+                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                          MP3, WAV, OGG, M4A or AAC — max 20 MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="lp-color-section lp-edit-row">
+                    <label className="lp-edit-label">Accent colour</label>
+                    <div className="lp-color-row">
+                      {ACCENT_PRESETS.map(c => (
+                        <div
+                          key={c}
+                          className={`lp-dot ${profile.accentColor === c ? 'active' : ''}`}
+                          style={{ background: c }}
+                          onClick={() => setProfile(p => p ? { ...p, accentColor: c } : p)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Font selection — per section */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Section Fonts</label>
+                    {/* Section tab selector */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                      {([['name', 'Name'], ['bio', 'Bio'], ['about', 'About']] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setFontSection(key)}
+                          style={{
+                            flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                            fontFamily: "'Space Mono',monospace", letterSpacing: '0.06em',
+                            border: fontSection === key ? `1.5px solid ${accent}` : '1px solid rgba(255,255,255,0.1)',
+                            background: fontSection === key ? `color-mix(in srgb, ${accent} 15%, transparent)` : 'rgba(255,255,255,0.03)',
+                            color: fontSection === key ? accent : 'rgba(255,255,255,0.5)',
+                            cursor: 'pointer', transition: 'all 0.15s',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+                      {FONT_PRESETS.map(f => {
+                        const fontKey = fontSection === 'name' ? 'nameFont' : fontSection === 'bio' ? 'bioFont' : 'aboutFont'
+                        return (
+                          <button
+                            key={f.key}
+                            onClick={() => setProfile(p => p ? { ...p, [fontKey]: f.key } : p)}
+                            style={{
+                              width: '100%', textAlign: 'left', padding: '8px 12px',
+                              borderRadius: 8,
+                              border: activeSectionFontKey === f.key ? `1.5px solid ${accent}` : '1px solid rgba(255,255,255,0.1)',
+                              background: activeSectionFontKey === f.key ? `color-mix(in srgb, ${accent} 12%, transparent)` : 'rgba(255,255,255,0.03)',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                          >
+                            <div style={{ fontFamily: f.family, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{f.name}</div>
+                            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>{f.style}</div>
+                          </button>
+                        )
+                      })}
+                      {uploadedFonts.map(f => {
+                        const fontKey = fontSection === 'name' ? 'nameFont' : fontSection === 'bio' ? 'bioFont' : 'aboutFont'
+                        return (
+                          <button
+                            key={f.name}
+                            onClick={() => setProfile(p => p ? { ...p, [fontKey]: f.name } : p)}
+                            style={{
+                              width: '100%', textAlign: 'left', padding: '8px 12px',
+                              borderRadius: 8,
+                              border: activeSectionFontKey === f.name ? `1.5px solid ${accent}` : '1px solid rgba(255,255,255,0.1)',
+                              background: activeSectionFontKey === f.name ? `color-mix(in srgb, ${accent} 12%, transparent)` : 'rgba(255,255,255,0.03)',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                          >
+                            <div style={{ fontFamily: f.family, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{f.name}</div>
+                            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>Custom Upload</div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        ref={fontInputRef}
+                        type="file"
+                        accept=".ttf,.otf,.woff,.woff2"
+                        onChange={handleFontUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        onClick={() => fontInputRef.current?.click()}
+                        className="lp-video-btn"
+                      >
+                        ↑ Upload Custom Font
+                      </button>
+                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                        TTF, OTF, WOFF or WOFF2
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="lp-color-section lp-edit-row">
+                    <label className="lp-edit-label">Banner colour</label>
+                    <div className="lp-color-row">
+                      {BANNER_PRESETS.map(c => (
+                        <div
+                          key={c}
+                          className={`lp-dot ${profile.bannerColor === c ? 'active' : ''}`}
+                          style={{ background: c, border: c === '#0a0f1a' ? '0.5px solid rgba(255,255,255,0.2)' : undefined }}
+                          onClick={() => setProfile(p => p ? { ...p, bannerColor: c } : p)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Change Password */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Lock style={{ width: 12, height: 12 }} /> Change Password
+                    </label>
+                    <input
+                      type="password"
+                      className="lp-input"
+                      placeholder="New password (min 8 chars)"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    <input
+                      type="password"
+                      className="lp-input"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      style={{ marginTop: 6 }}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={changingPassword || !newPassword || !confirmPassword}
+                      className="lp-video-btn"
+                      style={{ marginTop: 8 }}
+                    >
+                      {changingPassword ? (
+                        <><div className="lp-spinner" /> Updating…</>
+                      ) : (
+                        <><Lock style={{ width: 14, height: 14 }} /> Update Password</>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="lp-edit-actions">
+                    <button className="lp-save" onClick={saveEdits}>Save changes</button>
+                    <button className="lp-cancel" onClick={() => setEditMode(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabs */}
+              <div className="lp-tabs">
+                {(['gallery', 'posts', 'stats', 'about'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    className={`lp-tab ${activeTab === tab ? 'active' : ''}`}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Gallery tab – mock items */}
+              {activeTab === 'gallery' && (
+                <>
+                  <div className="lp-filters">
+                    {(['all', 'image', 'video', '3d', 'gif'] as const).map(f => (
+                      <button
+                        key={f}
+                        className={`lp-chip ${filterType === f ? 'active' : ''}`}
+                        onClick={() => setFilterType(f)}
+                      >
+                        {f === 'all' ? 'All' : TYPE_LABEL[f as GenerationType] ?? f.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="lp-gallery">
+                    {filtered.length === 0
+                      ? <div className="lp-empty">No {filterType} generations yet</div>
+                      : filtered.map((item, i) => (
+                        <div
+                          key={item.id}
+                          style={item.type === 'video' && i % 3 === 1 ? { gridColumn: 'span 2' } : {}}
+                        >
+                          <GalleryCard item={item} accent={accent} onLike={toggleLike} />
+                        </div>
+                      ))
+                    }
+                  </div>
+                </>
+              )}
+
+              {/* Posts tab */}
+              {activeTab === 'posts' && (
+                <>
+                  {/* Post Composer (own profile only) */}
+                  {canEdit && (
+                    <div style={{ marginBottom: 20 }}>
+                      <PostComposer
+                        userId={profile.id}
+                        username={profile.username}
+                        avatarUrl={profile.avatarUrl}
+                        avatarUrls={profile.avatar_urls}
+                        onPostCreated={handlePostCreated}
+                      />
+                    </div>
+                  )}
+
+                  {/* Posts list */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {postsLoading ? (
+                      <div style={{
+                        textAlign: 'center', padding: '32px 0',
+                        color: 'rgba(255,255,255,0.25)', fontSize: 12,
+                        fontFamily: "'Space Mono',monospace", letterSpacing: '0.1em',
+                      }}>
+                        LOADING POSTS...
+                      </div>
+                    ) : myPosts.length === 0 ? (
+                      <div style={{
+                        textAlign: 'center', padding: '32px 0',
+                        color: 'rgba(255,255,255,0.2)', fontSize: 12, fontWeight: 300,
+                      }}>
+                        {isViewOnly ? 'No posts yet.' : 'No posts yet. Share something!'}
+                      </div>
+                    ) : (
+                      myPosts.map(post => (
+                        <div key={post.id} className="profile-post-card">
+                          <PostCard
+                            post={post}
+                            currentUserId={currentUserId || ''}
+                            currentUsername={profile.username}
+                            currentAvatarUrls={profile.avatar_urls}
+                            onLike={handlePostLike}
+                            onComment={handlePostComment}
+                            onShare={handlePostShare}
+                            onDelete={handlePostDelete}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Stats tab */}
+              {activeTab === 'stats' && (
+                <>
+                  <div className="lp-stats-cards">
+                    {[
+                      { n: profile.stats.imagesCreated.toLocaleString(), l: 'Images' },
+                      { n: profile.stats.videosCreated.toLocaleString(), l: 'Videos' },
+                      { n: profile.stats.modelsCreated.toLocaleString(), l: '3D models' },
+                      { n: profile.stats.gifCreated.toLocaleString(), l: 'GIFs' },
+                    ].map(s => (
+                      <div key={s.l} className="lp-scard">
+                        <div className="lp-scard-n">{s.n}</div>
+                        <div className="lp-scard-l">{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {profile.stats.totalGenerations > 0 && [
+                    { name: 'Images', val: profile.stats.imagesCreated },
+                    { name: 'Videos', val: profile.stats.videosCreated },
+                    { name: '3D models', val: profile.stats.modelsCreated },
+                    { name: 'GIFs', val: profile.stats.gifCreated },
+                  ].map(b => (
+                    <div key={b.name} className="lp-bar">
+                      <div className="lp-bar-row">
+                        <span className="lp-bar-name">{b.name}</span>
+                        <span className="lp-bar-val">
+                          {Math.round((b.val / profile.stats.totalGenerations) * 100)}%
+                        </span>
+                      </div>
+                      <div className="lp-bar-track">
+                        <div className="lp-bar-fill" style={{ width: `${Math.round((b.val / profile.stats.totalGenerations) * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* About tab */}
+              {activeTab === 'about' && (
+                <>
+                  {profile.aboutText && <div className="lp-about-bio" style={{ fontFamily: aboutFont.family }}>&ldquo;{profile.aboutText}&rdquo;</div>}
+                  {profile.location && (
+                    <div className="lp-about-detail">
+                      <div className="lp-about-icon">📍</div>
+                      {profile.location}
+                    </div>
+                  )}
+                  {profile.website && (
+                    <div className="lp-about-detail">
+                      <div className="lp-about-icon">↗</div>
+                      <a href={`https://${profile.website}`} target="_blank" rel="noopener noreferrer"
+                        style={{ color: accent, textDecoration: 'none' }}>
+                        {profile.website}
+                      </a>
+                    </div>
+                  )}
+                  {profile.email && (
+                    <div className="lp-about-detail">
+                      <div className="lp-about-icon">✉</div>
+                      {profile.email}
+                    </div>
+                  )}
+                  {profile.socials.length > 0 && (
+                    <div className="lp-soc-cards">
+                      {profile.socials.map(s => (
+                        <a key={s.platform} href={s.url} className="lp-soc-card" target="_blank" rel="noopener noreferrer">
+                          <div className="lp-soc-card-icon">{SOCIAL_ICONS[s.platform]}</div>
+                          <div>
+                            <div className="lp-soc-card-platform">{s.platform}</div>
+                            <div className="lp-soc-card-handle">{s.handle}</div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
 
 
-          </>
-        )}
+        </div>
       </div>
-
-      {/* Animation keyframes */}
-      <style>{themeAnimationCSS}</style>
-    </div>
-    </ProfileThemeCtx.Provider>
-  );
+    </>
+  )
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Page export with Suspense
-// ═══════════════════════════════════════════════════════════════════════
+// ─── Page Export ───────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center"><div className="text-cyan-300">Loading...</div></div>}>
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: '0.12em' }}>
+          LOADING...
+        </div>
+      </div>
+    }>
       <ProfilePageContent />
     </Suspense>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Gallery Grid (preserved from original)
-// ═══════════════════════════════════════════════════════════════════════
-
-function UserGalleryGrid({ isViewOnly, userId, canEdit }: { isViewOnly: boolean; userId: string; canEdit: boolean }) {
-  const [items, setItems] = useState<GalleryItem[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingTitle, setEditingTitle] = useState<string>('');
-
-  const refresh = useCallback(async () => {
-    if (!userId || userId === 'unknown') { setItems([]); return; }
-    try {
-      const list = await apiClient.listGallery(userId);
-      setItems(list);
-    } catch {
-      if (!isViewOnly) {
-        try {
-          const key = `userGallery:${userId}`;
-          const raw = StorageUtils.safeGetItem(key) || '[]';
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) {
-            setItems(arr.filter((u: unknown) => typeof u === 'string').map((u: string, idx: number) => ({ id: `local-${idx}`, url: u, caption: undefined, created_at: new Date().toISOString() })));
-          }
-        } catch {}
-      } else { setItems([]); }
-    }
-  }, [userId, isViewOnly]);
-
-  useEffect(() => {
-    refresh();
-    const onUpdate: EventListener = (ev) => {
-      try {
-        const ce = ev as unknown as CustomEvent<{ userId?: string }>;
-        const targetId = ce?.detail?.userId;
-        if (targetId && targetId !== userId) return;
-      } catch {}
-      refresh();
-    };
-    try { window.addEventListener('gallery-updated', onUpdate); } catch {}
-    return () => { try { window.removeEventListener('gallery-updated', onUpdate); } catch {} };
-  }, [userId, refresh]);
-
-  const removeItem = async (i: number) => {
-    if (!canEdit) return;
-    const item = items[i]; if (!item) return;
-    const prev = items;
-    setItems(items.filter((_, idx) => idx !== i));
-    try {
-      await apiClient.deleteGalleryItem(userId, item.id);
-      try { window.localStorage.removeItem(`userGallery:${userId}`); } catch {}
-      refresh();
-    } catch (err) {
-      console.error('Delete failed:', err);
-      setItems(prev);
-      refresh();
-    }
-  };
-
-  const beginEdit = (i: number) => { if (!canEdit) return; setEditingIndex(i); setEditingTitle(''); };
-
-  const saveTitle = async (i: number) => {
-    if (!canEdit) return; setEditingIndex(null);
-    try {
-      const item = items[i];
-      if (item) {
-        await apiClient.updateGalleryItem(userId, item.id, { caption: editingTitle });
-        const next = items.slice(); next[i] = { ...item, caption: editingTitle }; setItems(next);
-      }
-    } catch {}
-    setEditingTitle('');
-  };
-
-  return (
-    <div className="space-y-3">
-      {items.length === 0 ? (
-        isViewOnly || !canEdit ? null : (<p className="text-slate-400 text-sm">No media yet. Upload images or save AI generations to start your gallery.</p>)
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {items.map((it, i) => {
-            const isVideo = it.media_type === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(it.url);
-            return (
-            <div key={it.id} className="relative rounded-lg overflow-hidden border border-slate-700/50">
-              <div className="w-full aspect-square relative">
-                {isVideo ? (
-                  <video src={it.url} muted loop playsInline className="w-full h-full object-cover" onMouseEnter={(e) => (e.target as HTMLVideoElement).play().catch(() => {})} onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }} />
-                ) : (
-                  <Image src={it.url} alt="Gallery item" fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain" priority={false} />
-                )}
-              </div>
-              {isVideo && (
-                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/60 rounded text-[9px] font-semibold text-cyan-300 flex items-center gap-1">
-                  <Video className="w-3 h-3" /> VIDEO
-                </div>
-              )}
-              {it.caption && (<div className={`absolute ${isVideo ? 'top-7' : 'top-2'} left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded`}>{it.caption}</div>)}
-              {canEdit && (<button onClick={() => removeItem(i)} className="absolute top-2 right-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded">Remove</button>)}
-              {editingIndex === i ? (
-                <div className="absolute bottom-2 left-2 right-2 bg-black/60 p-2 rounded flex items-center gap-2">
-                  <input value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)} placeholder="Title" className="flex-1 bg-transparent text-slate-200 text-xs border-b border-slate-500/50 focus:outline-none" />
-                  {canEdit && (<button onClick={() => saveTitle(i)} className="text-xs px-2 py-1 bg-cyan-500/30 text-cyan-200 rounded">Save</button>)}
-                  <button onClick={() => setEditingIndex(null)} className="text-xs px-2 py-1 bg-slate-700/50 text-slate-200 rounded"><X className="w-3 h-3" /></button>
-                </div>
-              ) : (
-                canEdit && (
-                  <button onClick={() => beginEdit(i)} className="absolute bottom-2 left-2 text-xs px-2 py-1 bg-black/60 text-slate-200 rounded flex items-center gap-1">
-                    <Pencil className="w-3 h-3" /> Edit Title
-                  </button>
-                )
-              )}
-            </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  )
 }

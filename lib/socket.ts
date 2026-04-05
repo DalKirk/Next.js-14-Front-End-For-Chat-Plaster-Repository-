@@ -41,11 +41,11 @@ class SocketManager {
       const name = (this.username || userId || 'User').toString();
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
     })();
-    const isSafeAvatarUrl = typeof finalAvatarUrl === 'string' && /^https?:\/\//.test(finalAvatarUrl) && finalAvatarUrl.length < 500;
+    const isSafeAvatarUrl = typeof finalAvatarUrl === 'string' && /^https?:\/\//.test(finalAvatarUrl) && finalAvatarUrl.length < 300;
     if (isSafeAvatarUrl) {
       qp.push(`avatar_url=${encodeURIComponent(finalAvatarUrl)}`);
     } else {
-      console.log('⚠️ Skipping avatar_url in WS query (unsafe or too long).');
+      console.log('⚠️ Skipping avatar_url in WS query (unsafe or too long, length:', finalAvatarUrl?.length, ')');
     }
     const query = qp.length ? `?${qp.join('&')}` : '';
     const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}${query}`;

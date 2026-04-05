@@ -1,30 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Allow up to 50MB uploads (4 files × 10MB max each, with overhead)
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the raw body as ArrayBuffer and forward it with original headers
+    const userId = request.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing user ID' }, { status: 400 });
+    }
+
     const contentType = request.headers.get('content-type') || '';
     const body = await request.arrayBuffer();
 
-    const backendResponse = await fetch(`${BACKEND_URL}/posts/upload-media`, {
+    const backendResponse = await fetch(`${BACKEND_URL}/videos/upload/${encodeURIComponent(userId)}`, {
       method: 'POST',
       headers: {
         'content-type': contentType,
+        'x-user-id': userId,
       },
       body: body,
     });
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend media upload failed:', errorText);
+      console.error('Backend profile video upload failed:', errorText);
       return NextResponse.json(
-        { error: 'Media upload failed' },
+        { error: 'Profile video upload failed', detail: errorText },
         { status: backendResponse.status }
       );
     }
@@ -32,9 +36,9 @@ export async function POST(request: NextRequest) {
     const data = await backendResponse.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Upload post media error:', error);
+    console.error('Upload profile video error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload media' },
+      { error: 'Failed to upload profile video' },
       { status: 500 }
     );
   }

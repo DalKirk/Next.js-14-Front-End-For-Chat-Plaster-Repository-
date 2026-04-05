@@ -58,6 +58,19 @@ export default function FeedPage() {
     setCurrentUser(JSON.parse(userData));
   }, [router]);
 
+  // Re-read currentUser when profile is updated (e.g. username change)
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      const userData = StorageUtils.safeGetItem('chat-user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+        queryClient.invalidateQueries({ queryKey: ['feed'] });
+      }
+    };
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('profile-updated', handleProfileUpdate);
+  }, [queryClient]);
+
   // React Query infinite scroll
   const {
     data,
@@ -232,6 +245,40 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
+      <style>{`
+        /* Remove card backgrounds on feed posts */
+        .feed-post-card .glass-card {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
+
+        /* Shrink avatar in feed posts */
+        .feed-post-card .glass-card > div:first-child .relative.flex-shrink-0.overflow-hidden.rounded-full {
+          width: 32px !important;
+          height: 32px !important;
+        }
+        @media(min-width:640px){
+          .feed-post-card .glass-card > div:first-child .relative.flex-shrink-0.overflow-hidden.rounded-full {
+            width: 36px !important;
+            height: 36px !important;
+          }
+        }
+
+        /* Enlarge post media */
+        .feed-post-card img,
+        .feed-post-card video {
+          max-height: 44rem !important;
+          width: 100% !important;
+        }
+        .feed-post-card .grid img,
+        .feed-post-card .grid video {
+          aspect-ratio: auto !important;
+          object-fit: contain !important;
+        }
+      `}</style>
       {/* Navigation Header */}
       <div className="sticky top-0 z-40 backdrop-blur-md sm:backdrop-blur-xl bg-black/70 sm:bg-black/50 border-b border-slate-800">
         <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-3">
@@ -358,6 +405,7 @@ export default function FeedPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.05, 0.5) }}
+                  className="feed-post-card"
                 >
                   <PostCard
                     post={post}

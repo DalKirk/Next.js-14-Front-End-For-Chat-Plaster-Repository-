@@ -77,7 +77,16 @@ class DMSocketManager {
       };
 
       this.socket.onclose = (event) => {
-        console.log('[DM Socket] ❌ Disconnected:', event.code, event.reason);
+        const codeDescriptions: Record<number, string> = {
+          1000: 'Normal closure',
+          1001: 'Going away',
+          1006: 'Abnormal closure (no close frame — server may be down or unreachable)',
+          1008: 'Policy violation',
+          1011: 'Server error',
+          1015: 'TLS handshake failure',
+        };
+        const desc = codeDescriptions[event.code] || 'Unknown';
+        console.log(`[DM Socket] ❌ Disconnected: code=${event.code} (${desc})`, event.reason || '');
         this.isConnecting = false;
         this.stopKeepAlive();
         this.callbacks.get('connect')?.(false);
@@ -91,8 +100,10 @@ class DMSocketManager {
         }
       };
 
-      this.socket.onerror = (error) => {
-        console.error('[DM Socket] ❌ Error:', error);
+      this.socket.onerror = () => {
+        // Browser strips error details from WebSocket onerror for security.
+        // The real info comes from the onclose event that follows.
+        console.warn('[DM Socket] ❌ Connection error (see close event for details)');
         this.isConnecting = false;
         this.callbacks.get('error')?.(new Error('DM WebSocket error'));
       };

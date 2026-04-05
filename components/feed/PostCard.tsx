@@ -7,6 +7,7 @@ import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, ChevronDown, ChevronUp, Loader2, Repeat2, Link2, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { apiClient } from '@/lib/api';
+import { AudioVisualizer } from '@/components/AudioVisualizer';
 import toast from 'react-hot-toast';
 
 interface SharedPost {
@@ -219,7 +220,12 @@ export function PostCard({
             <div className={`grid gap-1 xs:gap-1.5 mb-2 ${originalPost.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {originalPost.media_urls.map((url, i) => {
                 const isVideo = /\.(mp4|webm|mov|avi)(\?|$)/i.test(url);
-                return isVideo ? (
+                const isAudio = /\.(mp3|wav|ogg|m4a|aac|weba)(\?|$)/i.test(url);
+                return isAudio ? (
+                  <div key={i} className="col-span-full">
+                    <AudioVisualizer audioUrl={url} />
+                  </div>
+                ) : isVideo ? (
                   <video key={i} src={url} controls playsInline className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
                 ) : (
                   <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
@@ -324,7 +330,12 @@ export function PostCard({
         }`}>
           {post.media_urls.map((url, index) => {
             const isVideo = /\.(mp4|webm|mov|avi)(\?|$)/i.test(url);
-            return isVideo ? (
+            const isAudio = /\.(mp3|wav|ogg|m4a|aac|weba)(\?|$)/i.test(url);
+            return isAudio ? (
+              <div key={index} className="col-span-full">
+                <AudioVisualizer audioUrl={url} />
+              </div>
+            ) : isVideo ? (
               <video
                 key={index}
                 src={url}

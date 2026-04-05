@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
-import { ImageIcon, Smile, X } from 'lucide-react';
+import { ImageIcon, Smile, X, Music } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -28,6 +28,7 @@ export function PostComposer({
   const [posting, setPosting] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const EMOJI_LIST = [
@@ -73,11 +74,16 @@ export function PostComposer({
     });
 
     validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setMediaPreviews(prev => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('audio/')) {
+        // For audio files, use the filename as the preview placeholder
+        setMediaPreviews(prev => [...prev, `audio:${file.name}`]);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setMediaPreviews(prev => [...prev, e.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
+      }
     });
 
     setMediaFiles(prev => [...prev, ...validFiles]);
@@ -99,12 +105,15 @@ export function PostComposer({
     try {
       let mediaUrls: string[] = [];
 
-      if (mediaFiles.length > 0) {
+      // Separate audio files from image/video files
+      const imageVideoFiles = mediaFiles.filter(f => !f.type.startsWith('audio/'));
+      const audioFiles = mediaFiles.filter(f => f.type.startsWith('audio/'));
+
+      if (imageVideoFiles.length > 0) {
         const formData = new FormData();
-        mediaFiles.forEach(file => formData.append('files', file));
+        imageVideoFiles.forEach(file => formData.append('files', file));
         formData.append('userId', userId);
 
-        // Upload directly to backend (bypasses Next.js body size limit)
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
         const uploadResponse = await fetch(`${backendUrl}/posts/upload-media`, {
           method: 'POST',
@@ -117,6 +126,27 @@ export function PostComposer({
 
         const uploadData = await uploadResponse.json();
         mediaUrls = uploadData.urls;
+      }
+
+      // Upload audio files via the audio endpoint
+      for (const audioFile of audioFiles) {
+        const formData = new FormData();
+        formData.append('audio', audioFile);
+        formData.append('userId', userId);
+
+        const uploadResponse = await fetch('/api/upload-profile-audio', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Audio upload failed');
+        }
+
+        const uploadData = await uploadResponse.json();
+        if (uploadData.audio_url) {
+          mediaUrls.push(uploadData.audio_url);
+        }
       }
 
       const newPost = await apiClient.createPost({
@@ -156,7 +186,7 @@ export function PostComposer({
             size="medium"
             className="flex-shrink-0 hidden sm:block"
           />
-          <span className="text-sm font-medium text-white sm:hidden">{username}</span>
+
         </div>
 
         <div className="flex-1 space-y-2.5 xs:space-y-3 sm:space-y-4">
@@ -173,7 +203,14 @@ export function PostComposer({
             <div className="grid grid-cols-2 gap-1.5 xs:gap-2">
               {mediaPreviews.map((preview, index) => (
                 <div key={index} className="relative group">
-                  {mediaFiles[index]?.type.startsWith('video/') ? (
+                  {preview.startsWith('audio:') ? (
+                    <div className="w-full h-20 xs:h-28 sm:h-40 rounded-lg bg-black/30 flex flex-col items-center justify-center gap-2">
+                      <Music className="w-6 h-6 text-slate-400" />
+                      <span className="text-[10px] xs:text-xs text-slate-400 px-2 text-center truncate max-w-full">
+                        {preview.replace('audio:', '')}
+                      </span>
+                    </div>
+                  ) : mediaFiles[index]?.type.startsWith('video/') ? (
                     <video
                       src={preview}
                       muted
@@ -189,9 +226,9 @@ export function PostComposer({
                   )}
                   <button
                     onClick={() => removeMedia(index)}
-                    className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 sm:p-1.5 bg-black/70 rounded-full hover:bg-black transition-colors"
+                    className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center bg-black/70 rounded-full hover:bg-black transition-colors"
                   >
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-3.5 h-3.5 text-white" />
                   </button>
                 </div>
               ))}
@@ -208,6 +245,14 @@ export function PostComposer({
                 onChange={handleMediaSelect}
                 className="hidden"
               />
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/webm,.mp3,.wav,.ogg,.m4a,.aac"
+                multiple
+                onChange={handleMediaSelect}
+                className="hidden"
+              />
 
               <Button
                 onClick={() => fileInputRef.current?.click()}
@@ -218,6 +263,17 @@ export function PostComposer({
               >
                 <ImageIcon className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Photo/Video</span>
+              </Button>
+
+              <Button
+                onClick={() => audioInputRef.current?.click()}
+                variant="glass"
+                size="sm"
+                disabled={mediaFiles.length >= 4}
+                className="px-2 sm:px-3"
+              >
+                <Music className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Audio</span>
               </Button>
 
               <div className="relative">
