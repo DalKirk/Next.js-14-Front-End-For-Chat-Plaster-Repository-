@@ -1025,7 +1025,7 @@ export const apiClient = {
     form.append('video', videoFile);
 
     const response = await axios.post(`${API_BASE_URL}/videos/upload/${encodeURIComponent(userId)}`, form, {
-      headers: { 'Content-Type': 'multipart/form-data', 'X-User-Id': userId },
+      headers: { 'X-User-Id': userId },
       timeout: 300000, // 5 min for large uploads
     });
     return response.data;
@@ -1049,7 +1049,7 @@ export const apiClient = {
     form.append('audio', audioFile);
 
     const response = await axios.post(`${API_BASE_URL}/audio/upload/${encodeURIComponent(userId)}`, form, {
-      headers: { 'Content-Type': 'multipart/form-data', 'X-User-Id': userId },
+      headers: { 'X-User-Id': userId },
       timeout: 120000,
     });
     return response.data;
