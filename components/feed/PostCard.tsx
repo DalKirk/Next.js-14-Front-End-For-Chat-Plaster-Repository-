@@ -226,7 +226,7 @@ export function PostCard({
                     <AudioVisualizer audioUrl={url} />
                   </div>
                 ) : isVideo ? (
-                  <video key={i} src={url} controls playsInline className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
+                  <video key={i} src={`${url}#t=0.001`} controls playsInline preload="metadata" className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
                 ) : (
                   <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
                 );
@@ -338,9 +338,10 @@ export function PostCard({
             ) : isVideo ? (
               <video
                 key={index}
-                src={url}
+                src={`${url}#t=0.001`}
                 controls
                 playsInline
+                preload="metadata"
                 className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
               />
             ) : (

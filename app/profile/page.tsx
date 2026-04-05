@@ -659,14 +659,13 @@ function ProfilePageContent() {
     setUploadingBanner(true)
     try {
       const formData = new FormData()
-      formData.append('files', file)
+      formData.append('file', file)
       formData.append('userId', profile.id)
 
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000) // 5 min timeout
 
-      const uploadResponse = await fetch(`${backendUrl}/posts/upload-media`, {
+      const uploadResponse = await fetch('/api/upload-banner-media', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
