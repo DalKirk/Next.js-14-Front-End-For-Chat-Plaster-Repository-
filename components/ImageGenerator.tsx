@@ -210,9 +210,18 @@ export default function ImageGenerator() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `starcyeed-${img.id}.png`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+      document.body.removeChild(a);
+      // iOS Safari doesn't support <a download> for blobs — fallback to open in new tab
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) window.open(url, '_blank');
+      else setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      // Fallback: open directly
+      if (img.imageUrl) window.open(img.imageUrl, '_blank');
+    }
   };
 
   const handleCopy = async (img: GeneratedImage, e?: React.MouseEvent) => {
@@ -524,7 +533,8 @@ export default function ImageGenerator() {
                   className="img-card"
                   onMouseEnter={() => setHCard(img.id)}
                   onMouseLeave={() => setHCard(null)}
-                  onClick={() => setExpanded(img)}
+                  onTouchStart={(e) => { if (img.imageUrl) { e.stopPropagation(); setHCard(prev => prev === img.id ? null : img.id); } }}
+                  onClick={() => { if (hCard !== img.id && img.imageUrl) return; setExpanded(img); }}
                   style={{
                     padding: 1, borderRadius: 12, cursor: 'pointer', transition: 'all 0.3s',
                     background: hov ? `linear-gradient(135deg,${img.c1}55,${img.c2}44)` : 'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))',
@@ -554,8 +564,8 @@ export default function ImageGenerator() {
                           <span style={{ fontSize: 9, fontWeight: 600, color: '#10b981' }}>KEPT</span>
                         </div>
                       )}
-                      {img.imageUrl && (
-                        <div className="img-card-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 3, opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none' }}>
+                      {img.imageUrl && (hCard === img.id) && (
+                        <div className="img-card-overlay" onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 6, padding: 8, zIndex: 3 }}>
                           <button onClick={(e) => handleKeep(img, e)} title={img.kept ? 'Unkeep' : 'Keep'} style={{ padding: 7, borderRadius: 7, background: img.kept ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', border: `1px solid ${img.kept ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: img.kept ? '#10b981' : '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Check size={14} /></button>
                           <button onClick={(e) => handleRegenerate(img, e)} title="Regenerate (trash & redo)" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><RotateCcw size={14} /></button>
                           <button onClick={(e) => handleTrash(img, e)} title="Trash" style={{ padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Trash2 size={14} /></button>
@@ -726,7 +736,7 @@ export default function ImageGenerator() {
         .prompt-rainbow-glow{position:absolute;inset:-4px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2s ease-in-out infinite}
         .prompt-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}
         .prompt-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
-        .img-card:hover .img-card-overlay{opacity:1!important;pointer-events:auto!important}
+        .img-card:hover .img-card-overlay,.img-card.touched .img-card-overlay{opacity:1!important;pointer-events:auto!important}
         textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.48)}
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}

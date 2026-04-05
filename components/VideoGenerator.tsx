@@ -467,9 +467,15 @@ export default function VideoGenerator() {
     e?.stopPropagation();
     if (!vid.videoUrl) return;
     const filename = `starcyeed-${vid.model}-${vid.mode}-${Date.now()}.mp4`;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     const downloadBlob = (blob: Blob) => {
       const url = URL.createObjectURL(blob);
+      if (isIOS) {
+        // iOS Safari doesn't support <a download> for blobs — open in new tab
+        window.open(url, '_blank');
+        return;
+      }
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -484,14 +490,10 @@ export default function VideoGenerator() {
     try {
       const res = await fetch(vid.videoUrl);
       if (res.ok) { downloadBlob(await res.blob()); return; }
-    } catch { /* CORS or network error — try proxy */ }
+    } catch { /* CORS or network error */ }
 
-    // Try 2: fetch through our server-side proxy → blob
-    try {
-      const proxyUrl = `/api/download-video?url=${encodeURIComponent(vid.videoUrl)}&filename=${encodeURIComponent(filename)}`;
-      const res = await fetch(proxyUrl);
-      if (res.ok) { downloadBlob(await res.blob()); return; }
-    } catch { /* proxy failed */ }
+    // Fallback: open URL directly
+    window.open(vid.videoUrl, '_blank');
   };
 
   const handleSaveToProfile = async (vid: GeneratedVideo, e?: React.MouseEvent) => {
@@ -1141,7 +1143,8 @@ export default function VideoGenerator() {
                   key={vid.id}
                   onMouseEnter={() => { setHCard(vid.id); const v = videoElRefs.current[vid.id]; if (v) v.play().catch(() => {}); }}
                   onMouseLeave={() => { setHCard(null); const v = videoElRefs.current[vid.id]; if (v) { v.pause(); v.currentTime = 0; } }}
-                  onClick={() => setExpanded(vid)}
+                  onTouchStart={(e) => { if (vid.status === 'complete') { e.stopPropagation(); setHCard(prev => prev === vid.id ? null : vid.id); } }}
+                  onClick={() => { if (hCard !== vid.id && vid.status === 'complete') return; setExpanded(vid); }}
                   style={{
                     padding: 1, borderRadius: 12, cursor: 'pointer', transition: 'all 0.3s',
                     background: hov ? `linear-gradient(135deg,${vid.c1}55,${vid.c2}44)` : 'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))',
@@ -1171,7 +1174,7 @@ export default function VideoGenerator() {
                         </div>
                       )}
                       {hov && vid.status === 'complete' && (
-                        <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}>
+                        <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 6, padding: 8, zIndex: 10 }}>
                           <button onClick={(e) => { e.stopPropagation(); handleKeep(vid, e); }} title={vid.kept ? 'Unkeep' : 'Keep'} style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: vid.kept ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', border: `1px solid ${vid.kept ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: vid.kept ? '#10b981' : '#fff', cursor: 'pointer', display: 'flex' }}><Check size={14} /></button>
                           <button onClick={(e) => { e.stopPropagation(); handleRegenerate(vid, e); }} title="Regenerate" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex' }}><RotateCcw size={14} /></button>
                           <button onClick={(e) => { e.stopPropagation(); handleTrash(vid, e); }} title="Trash" style={{ position: 'relative', zIndex: 11, padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><Trash2 size={14} /></button>
