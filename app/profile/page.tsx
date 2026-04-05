@@ -652,7 +652,9 @@ function ProfilePageContent() {
 
     const isVideo = file.type.startsWith('video/')
     const isImage = file.type.startsWith('image/')
-    if (!isVideo && !isImage) { toast.error('Only images and videos are accepted'); return }
+    if (!isVideo && !isImage) { toast.error(`Unsupported file type: ${file.type || 'unknown'}`); return }
+
+    console.log(`📤 Banner upload: ${file.name}, type: ${file.type}, size: ${(file.size / 1024 / 1024).toFixed(1)} MB`)
 
     setUploadingBanner(true)
     try {
@@ -661,12 +663,21 @@ function ProfilePageContent() {
       formData.append('userId', profile.id)
 
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000) // 5 min timeout
+
       const uploadResponse = await fetch(`${backendUrl}/posts/upload-media`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
 
-      if (!uploadResponse.ok) throw new Error('Upload failed')
+      if (!uploadResponse.ok) {
+        const errText = await uploadResponse.text().catch(() => '')
+        console.error('❌ Banner upload failed:', uploadResponse.status, errText)
+        throw new Error(`Upload failed (${uploadResponse.status})`)
+      }
 
       const uploadData = await uploadResponse.json()
       const url = uploadData.urls?.[0]
@@ -685,7 +696,8 @@ function ProfilePageContent() {
 
       toast.success('Banner updated!')
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to upload banner')
+      const msg = err?.name === 'AbortError' ? 'Upload timed out — try a shorter video or lower resolution' : (err?.message || 'Failed to upload banner')
+      toast.error(msg)
     } finally {
       setUploadingBanner(false)
       if (e.target) e.target.value = ''
