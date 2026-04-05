@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const userId = formData.get('userId') as string | null;
+    const contentType = request.headers.get('content-type') || '';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
-    if (!userId) {
-      return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
-    }
-
-    // Forward to backend as multipart
-    const backendForm = new FormData();
-    backendForm.append('files', file);
-    backendForm.append('userId', userId);
-
+    // Stream the body directly to the backend without buffering
     const backendResponse = await fetch(`${BACKEND_URL}/posts/upload-media`, {
       method: 'POST',
-      body: backendForm,
+      headers: {
+        'content-type': contentType,
+      },
+      body: request.body,
+      // @ts-ignore - duplex is needed for streaming request bodies
+      duplex: 'half',
     });
 
     if (!backendResponse.ok) {

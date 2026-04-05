@@ -1,28 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Allow up to 50MB uploads (4 files × 10MB max each, with overhead)
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the raw body as ArrayBuffer and forward it with original headers
     const contentType = request.headers.get('content-type') || '';
-    const body = await request.arrayBuffer();
 
+    // Stream the body directly to the backend without buffering
     const backendResponse = await fetch(`${BACKEND_URL}/posts/upload-media`, {
       method: 'POST',
       headers: {
         'content-type': contentType,
       },
-      body: body,
+      body: request.body,
+      // @ts-ignore - duplex is needed for streaming request bodies
+      duplex: 'half',
     });
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend media upload failed:', errorText);
+      console.error('Backend media upload failed:', backendResponse.status, errorText);
       return NextResponse.json(
         { error: 'Media upload failed' },
         { status: backendResponse.status }

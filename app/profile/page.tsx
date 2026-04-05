@@ -659,7 +659,7 @@ function ProfilePageContent() {
     setUploadingBanner(true)
     try {
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('files', file)
       formData.append('userId', profile.id)
 
       const controller = new AbortController()

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
@@ -13,20 +13,22 @@ export async function POST(request: NextRequest) {
     }
 
     const contentType = request.headers.get('content-type') || '';
-    const body = await request.arrayBuffer();
 
+    // Stream the body directly to the backend without buffering
     const backendResponse = await fetch(`${BACKEND_URL}/videos/upload/${encodeURIComponent(userId)}`, {
       method: 'POST',
       headers: {
         'content-type': contentType,
         'x-user-id': userId,
       },
-      body: body,
+      body: request.body,
+      // @ts-ignore - duplex is needed for streaming request bodies
+      duplex: 'half',
     });
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend profile video upload failed:', errorText);
+      console.error('Backend profile video upload failed:', backendResponse.status, errorText);
       return NextResponse.json(
         { error: 'Profile video upload failed', detail: errorText },
         { status: backendResponse.status }
