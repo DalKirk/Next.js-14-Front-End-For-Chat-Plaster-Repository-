@@ -66,8 +66,11 @@ export function PostComposer({
     }
 
     const validFiles = files.filter(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 10MB)`);
+      const isVideo = file.type.startsWith('video/');
+      const maxSize = isVideo ? 2 * 1024 * 1024 * 1024 : 20 * 1024 * 1024; // 2 GB video, 20 MB image/audio
+      const label = isVideo ? '2 GB' : '20 MB';
+      if (file.size > maxSize) {
+        toast.error(`${file.name} is too large (max ${label})`);
         return false;
       }
       return true;

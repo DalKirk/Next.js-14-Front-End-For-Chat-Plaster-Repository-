@@ -653,19 +653,7 @@ function ProfilePageContent() {
     const isImage = file.type.startsWith('image/')
     if (!isVideo && !isImage) { toast.error(`Unsupported file type: ${file.type || 'unknown'}`); return }
 
-    // For videos, enforce 10-second max duration
-    if (isVideo) {
-      const duration = await new Promise<number>((resolve, reject) => {
-        const video = document.createElement('video')
-        video.preload = 'metadata'
-        video.onloadedmetadata = () => { URL.revokeObjectURL(video.src); resolve(video.duration) }
-        video.onerror = () => { URL.revokeObjectURL(video.src); reject(new Error('Cannot read video')) }
-        video.src = URL.createObjectURL(file)
-      }).catch(() => Infinity)
-      if (duration > 10) { toast.error('Video must be 10 seconds or shorter'); return }
-    }
-
-    // Images: 20 MB size limit
+    if (isVideo && file.size > 2 * 1024 * 1024 * 1024) { toast.error('Video must be under 2 GB'); return }
     if (isImage && file.size > 20 * 1024 * 1024) { toast.error('Image must be under 20 MB'); return }
 
     console.log(`📤 Banner upload: ${file.name}, type: ${file.type}, size: ${(file.size / 1024 / 1024).toFixed(1)} MB`)
@@ -797,17 +785,7 @@ function ProfilePageContent() {
     if (!file || !profile) return
     const allowed = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
     if (!allowed.includes(file.type)) { toast.error('Accepted formats: MP4, WebM, MOV, AVI'); return }
-
-    // Enforce 10-second max duration
-    const duration = await new Promise<number>((resolve, reject) => {
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      video.onloadedmetadata = () => { URL.revokeObjectURL(video.src); resolve(video.duration) }
-      video.onerror = () => { URL.revokeObjectURL(video.src); reject(new Error('Cannot read video')) }
-      video.src = URL.createObjectURL(file)
-    }).catch(() => Infinity)
-    if (duration > 10) { toast.error('Video must be 10 seconds or shorter'); return }
-
+    if (file.size > 2 * 1024 * 1024 * 1024) { toast.error('Video must be under 2 GB'); return }
     setUploadingVideo(true)
     try {
       const result = await apiClient.uploadProfileVideo(profile.id, file)
@@ -1986,7 +1964,7 @@ function ProfilePageContent() {
                           )}
                         </button>
                         <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
-                          Image or MP4/WebM — videos max 10 seconds
+                          Image or MP4/WebM/MOV — videos up to 2 GB
                         </p>
                       </div>
                     )}
