@@ -10,6 +10,15 @@ type ProfileUpdatePayload = {
   avatar_urls?: AvatarUrls;
   bio?: string;
   email?: string;
+  profile_video_url?: string;
+  profile_audio_url?: string;
+  accent_color?: string;
+  banner_color?: string;
+  name_font?: string;
+  bio_font?: string;
+  about_font?: string;
+  banner_media_url?: string;
+  banner_media_type?: string;
 };
 
 export type GPUGenerationJob = {
@@ -309,6 +318,15 @@ export const apiClient = {
     avatarUrls?: AvatarUrls,
     bio?: string,
     email?: string,
+    profileVideoUrl?: string,
+    profileAudioUrl?: string,
+    accentColor?: string,
+    bannerColor?: string,
+    nameFont?: string,
+    bioFont?: string,
+    aboutFont?: string,
+    bannerMediaUrl?: string,
+    bannerMediaType?: string,
   ): Promise<{ success: boolean; user: User }> => {
     try {
       // Backend ONLY accepts URLs, not base64 data
@@ -334,6 +352,15 @@ export const apiClient = {
       if (avatarUrls) payload.avatar_urls = avatarUrls;
       if (bio !== undefined) payload.bio = bio;
       if (email !== undefined) payload.email = email;
+      if (profileVideoUrl !== undefined) payload.profile_video_url = profileVideoUrl;
+      if (profileAudioUrl !== undefined) payload.profile_audio_url = profileAudioUrl;
+      if (accentColor !== undefined) payload.accent_color = accentColor;
+      if (bannerColor !== undefined) payload.banner_color = bannerColor;
+      if (nameFont !== undefined) payload.name_font = nameFont;
+      if (bioFont !== undefined) payload.bio_font = bioFont;
+      if (aboutFont !== undefined) payload.about_font = aboutFont;
+      if (bannerMediaUrl !== undefined) payload.banner_media_url = bannerMediaUrl;
+      if (bannerMediaType !== undefined) payload.banner_media_type = bannerMediaType;
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);

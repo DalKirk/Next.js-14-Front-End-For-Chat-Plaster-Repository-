@@ -401,39 +401,45 @@ function ProfilePageContent() {
         const joinedAt = bp.created_at ? new Date(bp.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown'
 
         // Read saved colors & font from localStorage before building profile
-        let savedAccent = '#f97316'
-        let savedBanner = '#7c3aed'
-        let savedNameFont = 'dm-sans'
-        let savedBioFont = 'dm-sans'
-        let savedAboutFont = 'dm-sans'
+        let savedAccent = (bp as any).accent_color || '#f97316'
+        let savedBanner = (bp as any).banner_color || '#7c3aed'
+        let savedNameFont = (bp as any).name_font || 'dm-sans'
+        let savedBioFont = (bp as any).bio_font || 'dm-sans'
+        let savedAboutFont = (bp as any).about_font || 'dm-sans'
         let savedBio: string | undefined
         let savedAboutText: string | undefined
         try {
           const savedColors = localStorage.getItem(`profileColors:${bp.id}`)
           if (savedColors) {
             const parsed = JSON.parse(savedColors)
-            if (parsed.accent) savedAccent = parsed.accent
-            if (parsed.banner) savedBanner = parsed.banner
+            if (!((bp as any).accent_color) && parsed.accent) savedAccent = parsed.accent
+            if (!((bp as any).banner_color) && parsed.banner) savedBanner = parsed.banner
             // Migrate old single font to per-section
-            if (parsed.nameFont) savedNameFont = parsed.nameFont
-            else if (parsed.font) savedNameFont = parsed.font
-            if (parsed.bioFont) savedBioFont = parsed.bioFont
-            else if (parsed.font) savedBioFont = parsed.font
-            if (parsed.aboutFont) savedAboutFont = parsed.aboutFont
-            else if (parsed.font) savedAboutFont = parsed.font
+            if (!((bp as any).name_font)) {
+              if (parsed.nameFont) savedNameFont = parsed.nameFont
+              else if (parsed.font) savedNameFont = parsed.font
+            }
+            if (!((bp as any).bio_font)) {
+              if (parsed.bioFont) savedBioFont = parsed.bioFont
+              else if (parsed.font) savedBioFont = parsed.font
+            }
+            if (!((bp as any).about_font)) {
+              if (parsed.aboutFont) savedAboutFont = parsed.aboutFont
+              else if (parsed.font) savedAboutFont = parsed.font
+            }
             if (parsed.bio !== undefined) savedBio = parsed.bio
             if (parsed.aboutText !== undefined) savedAboutText = parsed.aboutText
           }
         } catch { /* empty */ }
 
         // Read saved banner media
-        let savedBannerUrl: string | undefined
-        let savedBannerType: string | undefined
+        let savedBannerUrl: string | undefined = (bp as any).banner_media_url || undefined
+        let savedBannerType: string | undefined = (bp as any).banner_media_type || undefined
         try {
           const saved = localStorage.getItem(`bannerMedia:${bp.id}`)
           if (saved) {
             const parsed = JSON.parse(saved)
-            if (parsed.url) { savedBannerUrl = parsed.url; savedBannerType = parsed.type }
+            if (!savedBannerUrl && parsed.url) { savedBannerUrl = parsed.url; savedBannerType = parsed.type }
           }
         } catch { /* empty */ }
 
@@ -633,7 +639,7 @@ function ProfilePageContent() {
   const handleBannerMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !profile) return
-    if (file.size > 50 * 1024 * 1024) { toast.error('Banner media must be under 50 MB'); return }
+    if (file.size > 100 * 1024 * 1024) { toast.error('Banner media must be under 100 MB'); return }
 
     const isVideo = file.type.startsWith('video/')
     const isImage = file.type.startsWith('image/')
@@ -665,6 +671,9 @@ function ProfilePageContent() {
         localStorage.setItem(`bannerMedia:${profile.id}`, JSON.stringify({ url, type: mediaType }))
       } catch { /* empty */ }
 
+      // Persist to backend
+      try { await apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, url, mediaType) } catch { /* empty */ }
+
       toast.success('Banner updated!')
     } catch (err: any) {
       toast.error(err?.message || 'Failed to upload banner')
@@ -678,6 +687,8 @@ function ProfilePageContent() {
     if (!profile) return
     setProfile(p => p ? { ...p, bannerMediaUrl: undefined, bannerMediaType: undefined } : p)
     try { localStorage.removeItem(`bannerMedia:${profile.id}`) } catch { /* empty */ }
+    // Clear from backend
+    try { apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, '', '') } catch { /* empty */ }
     toast.success('Banner media removed')
   }
 
@@ -758,6 +769,8 @@ function ProfilePageContent() {
       if (result.success && result.video_url) {
         setProfile(p => p ? { ...p, profile_video_url: result.video_url } : p)
         try { localStorage.setItem(`profileVideo:${profile.id}`, JSON.stringify({ url: result.video_url })) } catch { /* empty */ }
+        // Persist to backend so other users can see it
+        try { await apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, result.video_url) } catch { /* empty */ }
         toast.success(`Video uploaded (${result.size_mb.toFixed(1)} MB)`)
       }
     } catch (err: any) {
@@ -774,6 +787,8 @@ function ProfilePageContent() {
       await apiClient.deleteProfileVideo(profile.id)
       setProfile(p => p ? { ...p, profile_video_url: undefined } : p)
       try { localStorage.removeItem(`profileVideo:${profile.id}`) } catch { /* empty */ }
+      // Clear on backend so other users don't see stale video
+      try { await apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, '') } catch { /* empty */ }
       toast.success('Profile video removed')
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete video')
@@ -821,6 +836,8 @@ function ProfilePageContent() {
         const trackName = file.name.replace(/\.[^/.]+$/, '')
         setProfile(p => p ? { ...p, profile_audio_url: result.audio_url, profileTrackName: trackName } : p)
         try { localStorage.setItem(`profileAudio:${profile.id}`, JSON.stringify({ url: result.audio_url, trackName })) } catch { /* empty */ }
+        // Persist to backend so other users can see it
+        try { await apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, undefined, result.audio_url) } catch { /* empty */ }
         toast.success(`Audio uploaded (${result.size_mb.toFixed(1)} MB)`)
       }
     } catch (err: any) {
@@ -837,6 +854,8 @@ function ProfilePageContent() {
       await apiClient.deleteProfileAudio(profile.id)
       setProfile(p => p ? { ...p, profile_audio_url: undefined, profileTrackName: undefined } : p)
       try { localStorage.removeItem(`profileAudio:${profile.id}`) } catch { /* empty */ }
+      // Clear on backend
+      try { await apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, undefined, '') } catch { /* empty */ }
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
       toast.success('Profile audio removed')
     } catch (err: any) {
@@ -863,7 +882,11 @@ function ProfilePageContent() {
     try {
       const result = await apiClient.updateProfile(
         profile.id, newName, profile.avatarUrl || undefined,
-        profile.avatar_urls, newBio, newEmail
+        profile.avatar_urls, newBio, newEmail,
+        undefined, undefined,
+        profile.accentColor, profile.bannerColor,
+        profile.nameFont, profile.bioFont, profile.aboutFont,
+        profile.bannerMediaUrl, profile.bannerMediaType
       )
       if (result.success) {
         try { updateUsernameEverywhere(profile.id, prevUsername, newName) } catch { /* empty */ }
@@ -1901,7 +1924,7 @@ function ProfilePageContent() {
                         <input
                           ref={bannerMediaInputRef}
                           type="file"
-                          accept="image/*,video/mp4,video/webm"
+                          accept="image/*,video/mp4,video/webm,video/quicktime"
                           onChange={handleBannerMediaUpload}
                           style={{ display: 'none' }}
                         />
@@ -1917,7 +1940,7 @@ function ProfilePageContent() {
                           )}
                         </button>
                         <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
-                          Image or MP4/WebM — max 50 MB
+                          Image or MP4/WebM — max 100 MB
                         </p>
                       </div>
                     )}
@@ -1938,44 +1961,6 @@ function ProfilePageContent() {
                   <div className="lp-edit-row">
                     <label className="lp-edit-label">something catchy</label>
                     <textarea ref={aboutRef} className="lp-textarea" defaultValue={profile.aboutText} placeholder="Tell people about yourself..." />
-                  </div>
-
-                  {/* Profile Video Upload */}
-                  <div className="lp-edit-row">
-                    <label className="lp-edit-label">Profile Video</label>
-                    {profile.profile_video_url ? (
-                      <div>
-                        <video src={profile.profile_video_url} controls playsInline
-                          style={{ width: '100%', maxHeight: 160, borderRadius: 8, background: '#000', marginBottom: 8 }} />
-                        <button onClick={handleDeleteProfileVideo} className="lp-video-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' }}>
-                          <Trash2 style={{ width: 12, height: 12 }} /> Remove Video
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <input
-                          ref={profileVideoInputRef}
-                          type="file"
-                          accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                          onChange={handleProfileVideoUpload}
-                          style={{ display: 'none' }}
-                        />
-                        <button
-                          onClick={() => profileVideoInputRef.current?.click()}
-                          disabled={uploadingVideo}
-                          className="lp-video-btn"
-                        >
-                          {uploadingVideo ? (
-                            <><div className="lp-spinner" /> Uploading…</>
-                          ) : (
-                            <><Video style={{ width: 14, height: 14 }} /> Upload Profile Video</>
-                          )}
-                        </button>
-                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
-                          MP4, WebM, MOV or AVI — max 100 MB
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Profile Audio Upload */}
