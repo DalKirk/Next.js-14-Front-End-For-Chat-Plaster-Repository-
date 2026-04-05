@@ -1024,7 +1024,7 @@ export const apiClient = {
     const form = new FormData();
     form.append('video', videoFile);
 
-    const response = await axios.post('/api/upload-profile-video', form, {
+    const response = await axios.post(`${API_BASE_URL}/videos/upload/${encodeURIComponent(userId)}`, form, {
       headers: { 'Content-Type': 'multipart/form-data', 'X-User-Id': userId },
       timeout: 300000, // 5 min for large uploads
     });
@@ -1035,9 +1035,7 @@ export const apiClient = {
    * Delete the profile video from Bunny CDN
    */
   deleteProfileVideo: async (userId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await axios.delete('/api/delete-profile-video', {
-      headers: { 'X-User-Id': userId },
-    });
+    const response = await axios.delete(`${API_BASE_URL}/videos/delete/${encodeURIComponent(userId)}`);
     return response.data;
   },
 
@@ -1049,7 +1047,7 @@ export const apiClient = {
     form.append('audio', audioFile);
     form.append('userId', userId);
 
-    const response = await axios.post('/api/upload-profile-audio', form, {
+    const response = await axios.post(`${API_BASE_URL}/audio/upload`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 120000,
     });
@@ -1060,7 +1058,7 @@ export const apiClient = {
    * Delete the profile audio from Bunny CDN
    */
   deleteProfileAudio: async (userId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await axios.delete('/api/delete-profile-audio', {
+    const response = await axios.delete(`${API_BASE_URL}/audio/delete`, {
       data: { userId },
     });
     return response.data;
