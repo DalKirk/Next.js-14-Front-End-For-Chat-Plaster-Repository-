@@ -135,7 +135,7 @@ export function PostComposer({
         formData.append('userId', userId);
 
         const backendAudioUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
-        const uploadResponse = await fetch(`${backendAudioUrl}/audio/upload`, {
+        const uploadResponse = await fetch(`${backendAudioUrl}/audio/upload/${encodeURIComponent(userId)}`, {
           method: 'POST',
           body: formData
         });
