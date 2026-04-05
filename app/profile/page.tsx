@@ -1708,7 +1708,7 @@ function ProfilePageContent() {
           <div className="lp-card">
             {/* Banner */}
             <div className="lp-banner" style={{
-              background: profile.bannerMediaUrl
+              background: profile.bannerMediaUrl || profile.profile_video_url
                 ? '#000'
                 : `linear-gradient(135deg, color-mix(in srgb,${banner} 90%,#000) 0%, color-mix(in srgb,${accent} 20%,#0a0a12) 100%)`,
             }}>
@@ -1726,6 +1726,12 @@ function ProfilePageContent() {
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 )
+              ) : profile.profile_video_url ? (
+                <video
+                  src={profile.profile_video_url}
+                  autoPlay muted loop playsInline
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
                 <>
                   <div className="lp-banner-orb" style={{
@@ -1794,14 +1800,6 @@ function ProfilePageContent() {
               <div className="lp-name" style={{ fontFamily: nameFont.family }}>{profile.displayName}</div>
               <div className="lp-handle">@{profile.username}</div>
               {profile.bio && <div className="lp-bio" style={{ fontFamily: bioFont.family }}>{profile.bio}</div>}
-
-              {/* Profile video */}
-              {profile.profile_video_url && (
-                <div style={{ marginBottom: 18, marginLeft: -24, marginRight: -24, overflow: 'hidden' }}>
-                  <video src={profile.profile_video_url} controls playsInline
-                    style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block', objectFit: 'contain' }} />
-                </div>
-              )}
 
               {/* Profile audio player */}
               {profile.profile_audio_url && (
