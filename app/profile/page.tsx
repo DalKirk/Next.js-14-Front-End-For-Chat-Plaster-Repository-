@@ -400,82 +400,91 @@ function ProfilePageContent() {
         const bp = await apiClient.getProfile(targetId)
         const joinedAt = bp.created_at ? new Date(bp.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown'
 
-        // Read saved colors & font from localStorage before building profile
-        let savedAccent = (bp as any).accent_color || '#f97316'
-        let savedBanner = (bp as any).banner_color || '#7c3aed'
-        let savedNameFont = (bp as any).name_font || 'dm-sans'
-        let savedBioFont = (bp as any).bio_font || 'dm-sans'
-        let savedAboutFont = (bp as any).about_font || 'dm-sans'
-        let savedBio: string | undefined
-        let savedAboutText: string | undefined
-        try {
-          const savedColors = localStorage.getItem(`profileColors:${bp.id}`)
-          if (savedColors) {
-            const parsed = JSON.parse(savedColors)
-            if (!((bp as any).accent_color) && parsed.accent) savedAccent = parsed.accent
-            if (!((bp as any).banner_color) && parsed.banner) savedBanner = parsed.banner
-            // Migrate old single font to per-section
-            if (!((bp as any).name_font)) {
-              if (parsed.nameFont) savedNameFont = parsed.nameFont
-              else if (parsed.font) savedNameFont = parsed.font
-            }
-            if (!((bp as any).bio_font)) {
-              if (parsed.bioFont) savedBioFont = parsed.bioFont
-              else if (parsed.font) savedBioFont = parsed.font
-            }
-            if (!((bp as any).about_font)) {
-              if (parsed.aboutFont) savedAboutFont = parsed.aboutFont
-              else if (parsed.font) savedAboutFont = parsed.font
-            }
-            if (parsed.bio !== undefined) savedBio = parsed.bio
-            if (parsed.aboutText !== undefined) savedAboutText = parsed.aboutText
-          }
-        } catch { /* empty */ }
+        // Read profile customization — prefer backend values, fallback to localStorage for own profile only
+        let savedAccent = bp.accent_color || '#f97316'
+        let savedBanner = bp.banner_color || '#7c3aed'
+        let savedNameFont = bp.name_font || 'dm-sans'
+        let savedBioFont = bp.bio_font || 'dm-sans'
+        let savedAboutFont = bp.about_font || 'dm-sans'
+        let savedBio: string | undefined = undefined
+        let savedAboutText: string | undefined = bp.about_text || undefined
 
-        // Read saved banner media
-        let savedBannerUrl: string | undefined = (bp as any).banner_media_url || undefined
-        let savedBannerType: string | undefined = (bp as any).banner_media_type || undefined
-        try {
-          const saved = localStorage.getItem(`bannerMedia:${bp.id}`)
-          if (saved) {
-            const parsed = JSON.parse(saved)
-            if (!savedBannerUrl && parsed.url) { savedBannerUrl = parsed.url; savedBannerType = parsed.type }
-          }
-        } catch { /* empty */ }
+        // Only read localStorage for own profile (migration path)
+        if (!viewingOtherUser) {
+          try {
+            const savedColors = localStorage.getItem(`profileColors:${bp.id}`)
+            if (savedColors) {
+              const parsed = JSON.parse(savedColors)
+              if (!(bp.accent_color) && parsed.accent) savedAccent = parsed.accent
+              if (!(bp.banner_color) && parsed.banner) savedBanner = parsed.banner
+              if (!(bp.name_font)) {
+                if (parsed.nameFont) savedNameFont = parsed.nameFont
+                else if (parsed.font) savedNameFont = parsed.font
+              }
+              if (!(bp.bio_font)) {
+                if (parsed.bioFont) savedBioFont = parsed.bioFont
+                else if (parsed.font) savedBioFont = parsed.font
+              }
+              if (!(bp.about_font)) {
+                if (parsed.aboutFont) savedAboutFont = parsed.aboutFont
+                else if (parsed.font) savedAboutFont = parsed.font
+              }
+              if (parsed.bio !== undefined) savedBio = parsed.bio
+              if (!(bp.about_text) && parsed.aboutText !== undefined) savedAboutText = parsed.aboutText
+            }
+          } catch { /* empty */ }
+        }
 
-        // Read saved profile video
-        let savedVideoUrl: string | undefined
-        try {
-          const saved = localStorage.getItem(`profileVideo:${bp.id}`)
-          if (saved) {
-            const parsed = JSON.parse(saved)
-            if (parsed.url) { savedVideoUrl = parsed.url }
-          }
-        } catch { /* empty */ }
+        // Read banner media — prefer backend
+        let savedBannerUrl: string | undefined = bp.banner_media_url || undefined
+        let savedBannerType: string | undefined = bp.banner_media_type || undefined
+        if (!viewingOtherUser) {
+          try {
+            const saved = localStorage.getItem(`bannerMedia:${bp.id}`)
+            if (saved) {
+              const parsed = JSON.parse(saved)
+              if (!savedBannerUrl && parsed.url) { savedBannerUrl = parsed.url; savedBannerType = parsed.type }
+            }
+          } catch { /* empty */ }
+        }
 
-        // Read saved profile audio
-        let savedAudioUrl: string | undefined
-        let savedTrackName: string | undefined
-        try {
-          const saved = localStorage.getItem(`profileAudio:${bp.id}`)
-          if (saved) {
-            const parsed = JSON.parse(saved)
-            if (parsed.url) { savedAudioUrl = parsed.url; savedTrackName = parsed.trackName }
-          }
-        } catch { /* empty */ }
+        // Read profile video — prefer backend
+        let savedVideoUrl: string | undefined = bp.profile_video_url || undefined
+        if (!viewingOtherUser) {
+          try {
+            const saved = localStorage.getItem(`profileVideo:${bp.id}`)
+            if (saved) {
+              const parsed = JSON.parse(saved)
+              if (!savedVideoUrl && parsed.url) { savedVideoUrl = parsed.url }
+            }
+          } catch { /* empty */ }
+        }
+
+        // Read profile audio — prefer backend
+        let savedAudioUrl: string | undefined = bp.profile_audio_url || undefined
+        let savedTrackName: string | undefined = bp.profile_track_name || undefined
+        if (!viewingOtherUser) {
+          try {
+            const saved = localStorage.getItem(`profileAudio:${bp.id}`)
+            if (saved) {
+              const parsed = JSON.parse(saved)
+              if (!savedAudioUrl && parsed.url) { savedAudioUrl = parsed.url; savedTrackName = parsed.trackName }
+            }
+          } catch { /* empty */ }
+        }
 
         const p: UserProfileData = {
           id: bp.id,
           username: bp.username,
           displayName: bp.display_name || bp.username,
           bio: savedBio ?? bp.bio ?? '',
-          aboutText: savedAboutText ?? '',
+          aboutText: savedAboutText ?? bp.about_text ?? '',
           avatarUrl: bp.avatar_url || '',
           avatar_urls: bp.avatar_urls,
-          profile_video_url: savedVideoUrl || (bp as any).profile_video_url,
-          profile_audio_url: savedAudioUrl || (bp as any).profile_audio_url,
-          profileTrackName: savedTrackName || (bp as any).profile_track_name,
-          email: (bp as any).email,
+          profile_video_url: savedVideoUrl || bp.profile_video_url,
+          profile_audio_url: savedAudioUrl || bp.profile_audio_url,
+          profileTrackName: savedTrackName || bp.profile_track_name,
+          email: bp.email,
           accentColor: savedAccent,
           bannerColor: savedBanner,
           nameFont: savedNameFont,
@@ -886,7 +895,8 @@ function ProfilePageContent() {
         undefined, undefined,
         profile.accentColor, profile.bannerColor,
         profile.nameFont, profile.bioFont, profile.aboutFont,
-        profile.bannerMediaUrl, profile.bannerMediaType
+        profile.bannerMediaUrl, profile.bannerMediaType,
+        newAbout
       )
       if (result.success) {
         try { updateUsernameEverywhere(profile.id, prevUsername, newName) } catch { /* empty */ }

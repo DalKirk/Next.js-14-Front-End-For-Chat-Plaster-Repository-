@@ -13,6 +13,7 @@ The frontend now sends additional profile customization fields via `PUT /users/{
 | `about_font` | `VARCHAR(50)` | `'dm-sans'` | Font key for about section |
 | `banner_media_url` | `TEXT` | `NULL` | URL to banner image/video (Bunny CDN) |
 | `banner_media_type` | `VARCHAR(10)` | `NULL` | `'image'` or `'video'` |
+| `about_text` | `TEXT` | `NULL` | Extended about/description text |
 
 ## PUT /users/{userId}/profile
 
@@ -26,7 +27,8 @@ The existing endpoint should accept & persist these new optional fields in the r
   "bio_font": "playfair",
   "about_font": "space-mono",
   "banner_media_url": "https://cdn.example.com/banner.mp4",
-  "banner_media_type": "video"
+  "banner_media_type": "video",
+  "about_text": "Tell people about yourself..."
 }
 ```
 
@@ -44,7 +46,8 @@ The response should include these fields so other users can see them:
   "bio_font": "dm-sans",
   "about_font": "dm-sans",
   "banner_media_url": "https://cdn.example.com/banner.mp4",
-  "banner_media_type": "video"
+  "banner_media_type": "video",
+  "about_text": "Tell people about yourself..."
 }
 ```
 

@@ -19,6 +19,7 @@ type ProfileUpdatePayload = {
   about_font?: string;
   banner_media_url?: string;
   banner_media_type?: string;
+  about_text?: string;
 };
 
 export type GPUGenerationJob = {
@@ -327,6 +328,7 @@ export const apiClient = {
     aboutFont?: string,
     bannerMediaUrl?: string,
     bannerMediaType?: string,
+    aboutText?: string,
   ): Promise<{ success: boolean; user: User }> => {
     try {
       // Backend ONLY accepts URLs, not base64 data
@@ -361,6 +363,7 @@ export const apiClient = {
       if (aboutFont !== undefined) payload.about_font = aboutFont;
       if (bannerMediaUrl !== undefined) payload.banner_media_url = bannerMediaUrl;
       if (bannerMediaType !== undefined) payload.banner_media_type = bannerMediaType;
+      if (aboutText !== undefined) payload.about_text = aboutText;
 
       console.log('📤 Updating profile on backend:', { ...payload, avatar_url: payload.avatar_url ? `${payload.avatar_url.substring(0, 50)}...` : undefined });
       const r = await api.put(`/users/${userId}/profile`, payload);

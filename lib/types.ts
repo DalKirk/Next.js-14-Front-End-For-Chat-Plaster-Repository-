@@ -12,8 +12,18 @@ export interface User {
     large?: string;
   };
   profile_video_url?: string; // Profile video on Bunny CDN
+  profile_audio_url?: string;
+  profile_track_name?: string;
   display_name?: string; // Display name (if different from username)
   created_at?: string; // Make optional since it may not always be present
+  accent_color?: string;
+  banner_color?: string;
+  name_font?: string;
+  bio_font?: string;
+  about_font?: string;
+  banner_media_url?: string;
+  banner_media_type?: string;
+  about_text?: string;
 }
 
 export interface Room {
