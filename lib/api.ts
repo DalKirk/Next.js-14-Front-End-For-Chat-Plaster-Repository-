@@ -1170,7 +1170,7 @@ export const apiClient = {
    */
   editPost: async (postId: string, content: string): Promise<any> => {
     try {
-      const response = await api.put(`/posts/${postId}`, { content });
+      const response = await api.patch(`/posts/${postId}`, { content });
       return response.data;
     } catch (e) {
       handleApiError(e, 'Edit post');
