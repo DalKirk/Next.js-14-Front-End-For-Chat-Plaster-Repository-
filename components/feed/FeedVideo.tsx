@@ -1,24 +1,24 @@
 'use client'
 
-import { useEffect, useRef, useState, useId } from 'react'
+import { useEffect, useRef, useState, useId, useCallback } from 'react'
 import { useMediaPlayback } from '@/contexts/MediaPlaybackContext'
 import { Volume2, VolumeX } from 'lucide-react'
 
 interface FeedVideoProps {
   src: string
   className?: string
-  /** Intersection threshold to trigger auto-play (0-1). Default 0.5 */
-  threshold?: number
 }
 
-export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
+export function FeedVideo({ src, className }: FeedVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const uniqueId = useId()
   const { registerPlaying, unregister } = useMediaPlayback()
   const [muted, setMuted] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
-  const [userPaused, setUserPaused] = useState(false)
+  // Track whether auto-pause (from scrolling) vs user-initiated pause
+  const autoPausedRef = useRef(false)
+  const userPausedRef = useRef(false)
 
   // IntersectionObserver: auto-play muted when in view, pause when out
   useEffect(() => {
@@ -32,16 +32,24 @@ export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
         const video = videoRef.current
         if (!video) return
 
-        if (visible && !userPaused) {
-          video.muted = true
-          setMuted(true)
-          video.play().catch(() => {})
+        if (visible) {
+          // Scrolled back into view — auto-play unless user explicitly paused
+          if (!userPausedRef.current) {
+            autoPausedRef.current = false
+            video.muted = true
+            setMuted(true)
+            video.play().catch(() => {})
+          }
         } else {
-          video.pause()
+          // Scrolled out of view — auto-pause
+          if (!video.paused) {
+            autoPausedRef.current = true
+            video.pause()
+          }
           unregister(uniqueId)
         }
       },
-      { threshold }
+      { threshold: 0.25 }
     )
 
     observer.observe(el)
@@ -49,19 +57,30 @@ export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
       observer.disconnect()
       unregister(uniqueId)
     }
-  }, [threshold, uniqueId, unregister, userPaused])
+  }, [uniqueId, unregister])
 
   // Handle unmute/mute toggle
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const video = videoRef.current
     if (!video) return
 
+    // If video is paused, start playing unmuted
+    if (video.paused) {
+      userPausedRef.current = false
+      video.muted = false
+      setMuted(false)
+      video.play().catch(() => {})
+      registerPlaying(uniqueId, () => {
+        video.muted = true
+        setMuted(true)
+      })
+      return
+    }
+
     if (muted) {
-      // Unmuting — register as the active audio source
       video.muted = false
       setMuted(false)
       registerPlaying(uniqueId, () => {
-        // Called when another media takes over
         video.muted = true
         setMuted(true)
       })
@@ -70,19 +89,20 @@ export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
       setMuted(true)
       unregister(uniqueId)
     }
-  }
+  }, [muted, uniqueId, registerPlaying, unregister])
 
-  // When user manually pauses/plays via native controls
-  const handlePause = () => {
-    // Only mark as user-paused if the video is visible (not an auto-pause from scroll)
-    if (isVisible) {
-      setUserPaused(true)
+  // When user manually pauses via native controls
+  const handlePause = useCallback(() => {
+    // Only treat as user-pause if NOT triggered by our auto-pause
+    if (!autoPausedRef.current) {
+      userPausedRef.current = true
     }
     unregister(uniqueId)
-  }
+  }, [uniqueId, unregister])
 
-  const handlePlay = () => {
-    setUserPaused(false)
+  const handlePlay = useCallback(() => {
+    userPausedRef.current = false
+    autoPausedRef.current = false
     const video = videoRef.current
     if (video && !video.muted) {
       registerPlaying(uniqueId, () => {
@@ -90,11 +110,7 @@ export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
         setMuted(true)
       })
     }
-  }
-
-  const handleEnded = () => {
-    unregister(uniqueId)
-  }
+  }, [uniqueId, registerPlaying])
 
   return (
     <div ref={containerRef} className="relative group">
@@ -109,29 +125,17 @@ export function FeedVideo({ src, className, threshold = 0.5 }: FeedVideoProps) {
         className={className}
         onPause={handlePause}
         onPlay={handlePlay}
-        onEnded={handleEnded}
       />
 
-      {/* Mute/unmute overlay button */}
+      {/* Mute/unmute overlay button — always visible on mobile, hover on desktop */}
       <button
         onClick={toggleMute}
-        className="absolute bottom-3 right-3 p-2 rounded-full bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/80 z-10"
+        className="absolute bottom-3 right-3 p-2 rounded-full bg-black/60 backdrop-blur-sm text-white opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 hover:bg-black/80 z-10"
         style={{ WebkitTapHighlightColor: 'transparent' }}
         aria-label={muted ? 'Unmute' : 'Mute'}
       >
         {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </button>
-
-      {/* Persistent small muted indicator (always visible when muted & playing) */}
-      {muted && isVisible && !userPaused && (
-        <button
-          onClick={toggleMute}
-          className="absolute bottom-3 right-3 p-2 rounded-full bg-black/60 backdrop-blur-sm text-white group-hover:opacity-0 transition-opacity duration-200 z-[9]"
-          aria-label="Tap to unmute"
-        >
-          <VolumeX className="w-4 h-4" />
-        </button>
-      )}
     </div>
   )
 }
