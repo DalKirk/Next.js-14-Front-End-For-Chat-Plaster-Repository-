@@ -437,6 +437,16 @@ function ProfilePageContent() {
           }
         } catch { /* empty */ }
 
+        // Read saved profile video
+        let savedVideoUrl: string | undefined
+        try {
+          const saved = localStorage.getItem(`profileVideo:${bp.id}`)
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (parsed.url) { savedVideoUrl = parsed.url }
+          }
+        } catch { /* empty */ }
+
         // Read saved profile audio
         let savedAudioUrl: string | undefined
         let savedTrackName: string | undefined
@@ -456,7 +466,7 @@ function ProfilePageContent() {
           aboutText: savedAboutText ?? '',
           avatarUrl: bp.avatar_url || '',
           avatar_urls: bp.avatar_urls,
-          profile_video_url: (bp as any).profile_video_url,
+          profile_video_url: savedVideoUrl || (bp as any).profile_video_url,
           profile_audio_url: savedAudioUrl || (bp as any).profile_audio_url,
           profileTrackName: savedTrackName || (bp as any).profile_track_name,
           email: (bp as any).email,
@@ -747,6 +757,7 @@ function ProfilePageContent() {
       const result = await apiClient.uploadProfileVideo(profile.id, file)
       if (result.success && result.video_url) {
         setProfile(p => p ? { ...p, profile_video_url: result.video_url } : p)
+        try { localStorage.setItem(`profileVideo:${profile.id}`, JSON.stringify({ url: result.video_url })) } catch { /* empty */ }
         toast.success(`Video uploaded (${result.size_mb.toFixed(1)} MB)`)
       }
     } catch (err: any) {
@@ -762,6 +773,7 @@ function ProfilePageContent() {
     try {
       await apiClient.deleteProfileVideo(profile.id)
       setProfile(p => p ? { ...p, profile_video_url: undefined } : p)
+      try { localStorage.removeItem(`profileVideo:${profile.id}`) } catch { /* empty */ }
       toast.success('Profile video removed')
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete video')
@@ -1785,9 +1797,9 @@ function ProfilePageContent() {
 
               {/* Profile video */}
               {profile.profile_video_url && (
-                <div style={{ marginBottom: 18, borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ marginBottom: 18, marginLeft: -24, marginRight: -24, overflow: 'hidden' }}>
                   <video src={profile.profile_video_url} controls playsInline
-                    style={{ width: '100%', maxHeight: 200, background: '#000', display: 'block' }} />
+                    style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block', objectFit: 'contain' }} />
                 </div>
               )}
 
