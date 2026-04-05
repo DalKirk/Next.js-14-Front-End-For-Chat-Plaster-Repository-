@@ -8,6 +8,7 @@ import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, ChevronDown, Chev
 import { formatDistanceToNow } from 'date-fns';
 import { apiClient } from '@/lib/api';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
+import { FeedVideo } from '@/components/feed/FeedVideo';
 import toast from 'react-hot-toast';
 
 interface SharedPost {
@@ -279,7 +280,7 @@ export function PostCard({
                     <AudioVisualizer audioUrl={url} />
                   </div>
                 ) : isVideo ? (
-                  <video key={i} src={url} controls playsInline webkit-playsinline="true" preload="metadata" className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
+                  <FeedVideo key={i} src={url} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
                 ) : (
                   <img key={i} src={url} alt={`Media ${i + 1}`} className={originalPost.media_urls.length === 1 ? 'w-full max-h-96 object-contain rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'} />
                 );
@@ -436,13 +437,9 @@ export function PostCard({
                 <AudioVisualizer audioUrl={url} />
               </div>
             ) : isVideo ? (
-              <video
+              <FeedVideo
                 key={index}
                 src={url}
-                controls
-                playsInline
-                webkit-playsinline="true"
-                preload="metadata"
                 className={post.media_urls.length === 1 ? 'w-full max-h-[32rem] rounded-lg bg-black/20' : 'w-full aspect-square object-cover rounded-lg'}
               />
             ) : (

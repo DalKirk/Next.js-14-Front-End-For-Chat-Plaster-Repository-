@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId, useCallback } from 'react'
+import { useMediaPlayback } from '@/contexts/MediaPlaybackContext'
 
 const FRAMES = [
   [8, 18, 24, 18, 8], [12, 22, 16, 26, 10], [20, 10, 28, 12, 22],
@@ -17,26 +18,33 @@ export function AudioVisualizer({
   accentColor?: string
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
   const [heights, setHeights] = useState([6, 10, 6, 10, 6])
   const ivRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const frameRef = useRef(0)
+  const uniqueId = useId()
+  const { registerPlaying, unregister } = useMediaPlayback()
 
-  const start = () => {
+  const stop = useCallback(() => {
+    audioRef.current?.pause()
+    setPlaying(false)
+    if (ivRef.current) clearInterval(ivRef.current)
+    ivRef.current = null
+    setHeights([6, 10, 6, 10, 6])
+    unregister(uniqueId)
+  }, [uniqueId, unregister])
+
+  const start = useCallback(() => {
+    // Register with playback manager — this pauses any other active media
+    registerPlaying(uniqueId, () => stop())
     audioRef.current?.play().catch(() => {})
     setPlaying(true)
     ivRef.current = setInterval(() => {
       const h = FRAMES[frameRef.current++ % FRAMES.length]
       setHeights(h.map(v => Math.max(4, v + (Math.random() - 0.5) * 4)))
     }, 120)
-  }
-
-  const stop = () => {
-    audioRef.current?.pause()
-    setPlaying(false)
-    if (ivRef.current) clearInterval(ivRef.current)
-    setHeights([6, 10, 6, 10, 6])
-  }
+  }, [uniqueId, registerPlaying, stop])
 
   useEffect(() => {
     const el = audioRef.current
@@ -47,12 +55,35 @@ export function AudioVisualizer({
       el.removeEventListener('ended', onEnded)
       if (ivRef.current) clearInterval(ivRef.current)
     }
-  }, [audioUrl])
+  }, [audioUrl, stop])
+
+  // IntersectionObserver: pause audio when scrolled out of view
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting && playing) {
+          stop()
+        }
+      },
+      { threshold: 0.3 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [playing, stop])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => unregister(uniqueId)
+  }, [uniqueId, unregister])
 
   const label = trackName || audioUrl.split('/').pop()?.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Audio'
 
   return (
-    <div>
+    <div ref={containerRef}>
       <audio ref={audioRef} src={audioUrl} preload="metadata" style={{ display: 'none' }} />
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14,

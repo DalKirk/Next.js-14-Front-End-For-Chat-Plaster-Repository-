@@ -10,6 +10,7 @@ import { PostComposer } from '@/components/feed/PostComposer'
 import { PostCard } from '@/components/feed/PostCard'
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar'
 import { apiClient } from '@/lib/api'
+import { MediaPlaybackProvider } from '@/contexts/MediaPlaybackContext'
 import { StorageUtils } from '@/lib/storage-utils'
 import { updateUsernameEverywhere } from '@/lib/message-utils'
 import type { AvatarUrls } from '@/types/backend'
@@ -2377,6 +2378,7 @@ function ProfilePageContent() {
 
 export default function ProfilePage() {
   return (
+    <MediaPlaybackProvider>
     <Suspense fallback={
       <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: '0.12em' }}>
@@ -2386,5 +2388,6 @@ export default function ProfilePage() {
     }>
       <ProfilePageContent />
     </Suspense>
+    </MediaPlaybackProvider>
   )
 }

@@ -10,6 +10,7 @@ import { PostCard } from '@/components/feed/PostCard';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
 import { Home, TrendingUp, Users, Bell, User, Loader2 } from 'lucide-react';
+import { MediaPlaybackProvider } from '@/contexts/MediaPlaybackContext';
 import toast from 'react-hot-toast';
 
 interface Post {
@@ -265,6 +266,7 @@ export default function FeedPage() {
   };
 
   return (
+    <MediaPlaybackProvider>
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       <style>{`
         /* Remove card backgrounds on feed posts */
@@ -460,5 +462,6 @@ export default function FeedPage() {
         </div>
       </div>
     </div>
+    </MediaPlaybackProvider>
   );
 }
