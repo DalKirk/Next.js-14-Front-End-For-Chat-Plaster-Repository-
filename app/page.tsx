@@ -89,7 +89,7 @@ const features = [
   {
     id: "ideogram-gen",
     tag: "AI DESIGN",
-    title: "Ideogram",
+    title: "Logex",
     desc: "Logos, typography & text-in-image. The best AI for graphic design and readable text.",
     borderGradient: "linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)",
     glowColor: "rgba(236,72,153,0.2)",
