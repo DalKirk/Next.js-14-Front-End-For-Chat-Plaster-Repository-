@@ -23,7 +23,7 @@ import {
   Copy, Check, ChevronRight, X,
   Image as ImageIcon, Box, Video, Bot,
   MessageSquare, ShoppingCart, Gamepad2,
-  Camera, Palette, User as UserIcon, LogOut,
+  Camera, Palette, User as UserIcon, LogOut, Type,
 } from "lucide-react";
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
@@ -85,6 +85,20 @@ const features = [
     badge: "ONLINE" as string | null,
     badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
     href: "/image-gen",
+  },
+  {
+    id: "ideogram-gen",
+    tag: "AI DESIGN",
+    title: "Ideogram",
+    desc: "Logos, typography & text-in-image. The best AI for graphic design and readable text.",
+    borderGradient: "linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)",
+    glowColor: "rgba(236,72,153,0.2)",
+    accentColor: "#f472b6",
+    icon: <Type className="w-5 h-5" />,
+    stat: "",
+    badge: "ONLINE" as string | null,
+    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
+    href: "/ideogram-gen",
   },
   {
     id: "3d-gen",
