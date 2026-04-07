@@ -19,9 +19,9 @@ import {
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
 
-/* ─── Ideogram style types ─── */
+/* ─── Logex style types ─── */
 const ideogramStyles: { id: IdeogramStyle | 'none'; name: string; desc: string; emoji: string; bg: string }[] = [
-  { id: 'none', name: 'Auto', desc: 'Let Ideogram decide', emoji: '✨', bg: 'rgba(255,255,255,0.06)' },
+  { id: 'none', name: 'Auto', desc: 'Let Logex decide', emoji: '✨', bg: 'rgba(255,255,255,0.06)' },
   { id: 'GENERAL', name: 'General', desc: 'Versatile all-purpose', emoji: '🎨', bg: 'rgba(139,92,246,0.12)' },
   { id: 'REALISTIC', name: 'Realistic', desc: 'Photographic quality', emoji: '📷', bg: 'rgba(6,182,212,0.12)' },
   { id: 'DESIGN', name: 'Design', desc: 'Logos, typography, graphics', emoji: '✏️', bg: 'rgba(236,72,153,0.12)' },
@@ -316,12 +316,12 @@ export default function IdeogramGenerator() {
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
           <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Type size={12} /> Ideogram
+            <Type size={12} /> Logex
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>IDEOGRAM</span>
+          <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>LOGEX</span>
         </div>
       </div>
 
@@ -348,7 +348,7 @@ export default function IdeogramGenerator() {
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); } }}
-                  placeholder="Describe the image you want to create... Ideogram excels at text, logos & typography"
+                  placeholder="Describe the image you want to create... Logex excels at text, logos & typography"
                   rows={3}
                   maxLength={2000}
                   style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 1.7, fontFamily: 'inherit', caretColor: '#ec4899' }}
@@ -486,7 +486,7 @@ export default function IdeogramGenerator() {
           {/* Cold-start banner */}
           {generating && images[0]?.status === 'queued' && (
             <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.12)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
-              ⏳ Ideogram generation may take 10-15 seconds. Hang tight!
+              ⏳ Logex generation may take 10-15 seconds. Hang tight!
             </div>
           )}
 
@@ -627,9 +627,9 @@ export default function IdeogramGenerator() {
 
           {/* Tips */}
           <div style={{ borderRadius: 10, padding: 14, background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.14)' }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(236,72,153,0.65)', marginBottom: 7 }}>IDEOGRAM TIPS</div>
+            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(236,72,153,0.65)', marginBottom: 7 }}>LOGEX TIPS</div>
             {[
-              'Ideogram excels at text rendering in images',
+              'Logex excels at text rendering in images',
               'Use quotes for text: \'logo saying "HELLO"\'',
               'Great for logos, posters, typography art',
               'Magic Prompt enhances your prompt automatically',

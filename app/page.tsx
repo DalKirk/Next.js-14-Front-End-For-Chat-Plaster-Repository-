@@ -1030,9 +1030,9 @@ export default function HomePage() {
               <div className="flex justify-start">
                 <div>
                   <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "300ms" }} />
                   </div>
                 </div>
               </div>
