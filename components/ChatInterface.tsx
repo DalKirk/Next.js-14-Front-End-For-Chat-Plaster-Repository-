@@ -17,12 +17,44 @@ interface Message {
 interface ChatInterfaceProps {
   apiEndpoint?: string;
   className?: string;
+  fullscreen?: boolean;
 }
 
 // ? Generate unique conversation ID
 const generateConversationId = () => {
   return `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
+
+// Typing animation — reveals streamed content character-by-character
+const AnimatedContent = memo(({ content, isStreaming }: { content: string; isStreaming?: boolean }) => {
+  const [displayed, setDisplayed] = useState('');
+
+  useEffect(() => {
+    if (!isStreaming) {
+      setDisplayed(content);
+      return;
+    }
+    // Only animate NEW content since last render — word by word
+    const newText = content.slice(displayed.length);
+    if (!newText) return;
+
+    // Split new text into words only (filter out standalone whitespace)
+    const words = newText.match(/\S+/g) || [];
+    let i = 0;
+    const interval = setInterval(() => {
+      // Grab 4 words at a time
+      const batch = words.slice(i, i + 4).join(' ') + ' ';
+      setDisplayed(prev => prev + batch);
+      i += 4;
+      if (i >= words.length) clearInterval(interval);
+    }, 250); // 250ms per batch of 4 words
+
+    return () => clearInterval(interval);
+  }, [content, isStreaming]);
+
+  return <MarkdownRenderer content={displayed} />;
+});
+AnimatedContent.displayName = 'AnimatedContent';
 
 // Memoized message component to prevent re-renders during multi-user typing
 const MessageBubble = memo(({ message, index }: { message: Message; index: number }) => {
@@ -35,25 +67,22 @@ const MessageBubble = memo(({ message, index }: { message: Message; index: numbe
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`chat-message-container max-w-[80%] rounded-lg p-4 ${
-          message.role === 'user'
-            ? 'bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]'
-            : 'bg-[oklch(25%_0.05_260)] text-[oklch(90%_0.05_260)] border border-[oklch(35%_0.08_260)]'
-        } break-words overflow-hidden word-break-break-word`}
+        className={`chat-message-container max-w-[80%] ${message.role === 'user' ? 'rounded-lg p-4 bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]' : 'text-[oklch(90%_0.05_260)]'} break-words overflow-hidden word-break-break-word`}
         style={{ 
           wordWrap: 'break-word', 
           wordBreak: 'break-word', 
           overflowWrap: 'break-word',
-          maxWidth: '100%'
+          maxWidth: '100%',
+          ...(message.role === 'assistant' ? { background: 'transparent', border: 'none', boxShadow: 'none' } : {})
         }}
       >
         {message.role === 'assistant' ? (
-          <MarkdownRenderer content={message.content} />
+          <AnimatedContent content={message.content} isStreaming={message.isStreaming} />
         ) : (
           <p className="whitespace-pre-wrap break-words overflow-wrap-break-word" style={{ wordWrap: 'break-word', wordBreak: 'break-word' }}>{message.content}</p>
         )}
         {message.isStreaming && (
-          <span className="inline-block ml-2 animate-pulse">?</span>
+          <span className="inline-block ml-2 animate-pulse">▊</span>
         )}
       </div>
     </motion.div>
@@ -68,7 +97,8 @@ MessageBubble.displayName = 'MessageBubble';
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   apiEndpoint = '/api/ai-stream',
-  className = ''
+  className = '',
+  fullscreen = false
 }) => {
   const AI_SYSTEM_PROMPT = `You are the Starcyeed AI assistant. Do not self-identify as "Claude" or mention model/provider names unless explicitly asked. Avoid greetings like "Hi" or "I'm ...". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.`;
 
@@ -272,7 +302,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [sendMessage]);
 
   return (
-    <div className={`flex flex-col h-full bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}>
+    <div
+      className={`flex flex-col bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}
+      style={fullscreen ? {
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: 9999,
+      } : { width: '100%', height: '100%' }}
+    >
       {/* Header with Clear Button */}
       <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
         <h2 className="text-xl font-bold flex items-center gap-2.5">
@@ -290,7 +329,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         <AnimatePresence>
           {messages.map((message, index) => (
             <MessageBubble key={`msg-${index}`} message={message} index={index} />
@@ -303,7 +342,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             animate={{ opacity: 1 }}
             className="flex justify-start"
           >
-            <div className="chat-message-container bg-[oklch(25%_0.05_260)] rounded-lg p-4 border border-[oklch(35%_0.08_260)]">
+            <div className="chat-message-container p-2" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
               <div className="flex space-x-2">
                 <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                 <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>

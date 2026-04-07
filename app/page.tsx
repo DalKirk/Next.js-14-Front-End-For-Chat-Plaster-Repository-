@@ -963,9 +963,9 @@ export default function HomePage() {
 
       {/* ═══ AI CHAT WIDGET (full streaming) ═══ */}
       {isChatOpen && (
-        <div className="fixed" style={{ bottom: 80, right: 16, left: "auto", zIndex: 2000, width: "min(360px, calc(100vw - 32px))", maxHeight: "65vh" }}>
-          <div className="ai-chat-rainbow-border" />
-          <div className="flex flex-col rounded-xl overflow-hidden shadow-2xl relative" style={{ width: "100%", maxHeight: "65vh", background: "rgba(8,8,15,0.95)", backdropFilter: "blur(20px)", zIndex: 1 }}>
+        <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8 }}>
+          <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
+          <div className="flex flex-col overflow-hidden relative" style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
             <div className="flex items-center gap-2">
@@ -973,13 +973,13 @@ export default function HomePage() {
               <span className="text-xs font-semibold">AI Assistant</span>
               <div className={`w-1.5 h-1.5 rounded-full ${aiHealth?.ai_enabled ? "bg-green-400" : "bg-red-400"}`} />
             </div>
-            <button onClick={() => setIsChatOpen(false)} className="text-white/30 hover:text-white/60 transition-colors" aria-label="Close AI Chat">
-              <X className="w-4 h-4" />
+            <button onClick={() => setIsChatOpen(false)} className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:scale-110" style={{ background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)' }} aria-label="Close AI Chat">
+              <X className="w-5 h-5" style={{ color: '#ff4444', filter: 'drop-shadow(0 0 4px rgba(255,68,68,0.5))' }} />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: 200, maxHeight: "calc(65vh - 110px)" }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
             {claudeMessages.length === 0 && (
               <div className="text-center text-xs py-8" style={{ color: "rgba(255,255,255,0.2)" }}>
                 Ask me anything about the platform, coding, or AI generation.
@@ -987,7 +987,7 @@ export default function HomePage() {
             )}
             {claudeMessages.map((message) => (
               <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-lg p-3 overflow-hidden ${message.role === "user" ? "bg-cyan-600 text-white" : "bg-slate-700/80 text-slate-100"}`}>
+                <div className={`max-w-[85%] overflow-hidden ${message.role === "user" ? "rounded-lg p-3 bg-cyan-600 text-white" : "text-slate-100"}`}>
                   {message.role === "assistant" ? (
                     <div className="prose prose-sm prose-invert max-w-none break-words">
                       <ReactMarkdown
@@ -1028,7 +1028,7 @@ export default function HomePage() {
             ))}
             {isClaudeTyping && (
               <div className="flex justify-start">
-                <div className="bg-slate-700/80 rounded-lg p-3">
+                <div>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                     <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -1113,8 +1113,9 @@ export default function HomePage() {
           background: rgba(8,8,15,0.85);
         }
         .ai-chat-rainbow-border {
-          position: absolute; inset: -3px; border-radius: 14px; z-index: 0; overflow: hidden;
+          position: absolute; inset: -6px; border-radius: 14px; z-index: 0; overflow: hidden;
           animation: rainbowPulse 2s ease-in-out infinite;
+          box-shadow: 0 0 25px rgba(139,92,246,0.5), 0 0 50px rgba(139,92,246,0.25), 0 0 80px rgba(139,92,246,0.1);
         }
         .ai-chat-rainbow-border::before {
           content: ''; position: absolute; inset: -100%; border-radius: 14px;
@@ -1122,8 +1123,8 @@ export default function HomePage() {
           animation: rainbowSpin 2.5s linear infinite;
         }
         .ai-chat-rainbow-border::after {
-          content: ''; position: absolute; inset: 2px; border-radius: 12px;
-          background: rgba(8,8,15,0.95);
+          content: ''; position: absolute; inset: 5px; border-radius: 8px;
+          background: rgba(8,8,15,0.98);
         }
       `}</style>
     </div>
