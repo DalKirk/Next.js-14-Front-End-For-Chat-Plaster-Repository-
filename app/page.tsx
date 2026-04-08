@@ -370,6 +370,12 @@ export default function HomePage() {
     checkAIHealth();
   }, []);
 
+  /* ── Lock body scroll when chat is open ── */
+  useEffect(() => {
+    document.body.style.overflow = isChatOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [isChatOpen]);
+
   /* ── Auto-scroll chat ── */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -963,7 +969,7 @@ export default function HomePage() {
 
       {/* ═══ AI CHAT WIDGET (full streaming) ═══ */}
       {isChatOpen && (
-        <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8 }}>
+        <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8, overflow: "hidden" }}>
           <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
           <div className="flex flex-col overflow-hidden relative" style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}>
           {/* Header */}
