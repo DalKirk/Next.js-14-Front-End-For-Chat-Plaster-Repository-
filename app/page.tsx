@@ -24,7 +24,9 @@ import {
   Image as ImageIcon, Box, Video, Bot,
   MessageSquare, ShoppingCart, Gamepad2,
   Camera, Palette, User as UserIcon, LogOut, Type,
+  Sparkles,
 } from "lucide-react";
+import AgentPanel from "@/components/AgentPanel";
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
 function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
@@ -232,6 +234,9 @@ export default function HomePage() {
   const [activeSideItem, setActiveSideItem] = useState<string | null>(null);
   const [visibleSections, setVisibleSections] = useState(new Set<string>());
   const [heroVisible, setHeroVisible] = useState(false);
+
+  /* ── Agent state ── */
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
 
   /* ── AI Chat state ── */
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -1088,6 +1093,37 @@ export default function HomePage() {
       >
         <div className="ai-btn-rainbow-border" />
         <Cog6ToothIcon className="w-5 h-5 animate-spin relative z-10" style={{ color: '#cc00cc', animationDuration: '3s' }} />
+      </button>
+
+      {/* ═══ AGENT PANEL ═══ */}
+      <AgentPanel
+        isOpen={isAgentOpen}
+        onClose={() => setIsAgentOpen(false)}
+      />
+
+      {/* Agent toggle button — sits left of chat button */}
+      <button
+        onClick={() => setIsAgentOpen(!isAgentOpen)}
+        className="fixed rounded-full transition-all duration-300"
+        style={{
+          bottom:        24,
+          right:         72,
+          zIndex:        40,
+          padding:       13,
+          background:    "rgba(8,8,15,0.85)",
+          border:        "none",
+          backdropFilter:"blur(8px)",
+          boxShadow:     "0 0 12px rgba(139,92,246,0.2)",
+          position:      "fixed",
+        }}
+        title="Creative Agent"
+        aria-label="Open Creative Agent"
+      >
+        <div className="ai-btn-rainbow-border" />
+        <Sparkles
+          className="w-5 h-5 relative z-10"
+          style={{ color: "#c084fc" }}
+        />
       </button>
 
       {/* Shimmer animation */}
