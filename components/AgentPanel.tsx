@@ -72,7 +72,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function EventRow({ event }: { event: AgentEvent }) {
+function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
   const meta = event.tool ? TOOL_META[event.tool] : null;
 
   if (event.type === "status" || event.type === "plan") {
@@ -150,7 +150,7 @@ function EventRow({ event }: { event: AgentEvent }) {
         </div>
 
         {/* Inline image preview */}
-        {urls.length > 0 && (
+        {urls.length > 0 ? (
           <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
             {urls.map((url, i) => (
               <a
@@ -173,12 +173,12 @@ function EventRow({ event }: { event: AgentEvent }) {
               </a>
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Web search results */}
-        {event.tool === "web_search" && result?.results && Array.isArray(result.results) && (
+        {event.tool === "web_search" && Array.isArray(result?.results) ? (
           <div className="space-y-1.5">
-            {(result.results as Array<{ title: string; url: string; snippet: string }>)
+            {(result!.results as Array<{ title: string; url: string; snippet: string }>)
               .slice(0, 3)
               .map((r, i) => (
                 <a
@@ -204,7 +204,7 @@ function EventRow({ event }: { event: AgentEvent }) {
                 </a>
               ))}
           </div>
-        )}
+        ) : null}
       </div>
     );
   }
