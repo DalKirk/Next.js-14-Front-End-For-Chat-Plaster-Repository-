@@ -343,11 +343,23 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
               continue;
             }
 
-            if (data.type === "tool_done" && data.cost) {
-              setTotalCost(prev => prev + (data.cost ?? 0));
+            if (data.type === "tool_done") {
+              if (data.cost) setTotalCost(prev => prev + (data.cost ?? 0));
+              // Replace the matching tool_start with this tool_done
+              setEvents(prev => {
+                const idx = [...prev].reverse().findIndex(
+                  e => e.type === "tool_start" && e.tool === data.tool
+                );
+                if (idx === -1) return [...prev, { ...data, id: uid() }];
+                const realIdx = prev.length - 1 - idx;
+                const next = [...prev];
+                next[realIdx] = { ...data, id: prev[realIdx].id };
+                return next;
+              });
+              continue;
             }
 
-            // Add event to feed
+            // Add all other events to feed
             setEvents(prev => [...prev, { ...data, id: uid() }]);
 
           } catch {
