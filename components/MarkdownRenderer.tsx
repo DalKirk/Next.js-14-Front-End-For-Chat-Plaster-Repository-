@@ -97,6 +97,27 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         continue;
       }
 
+      // HTML <video> tags
+      const videoMatch = trimmed.match(/^<video[^>]*\ssrc=["']([^"']+)["'][^>]*>/i);
+      if (videoMatch) {
+        const videoUrl = videoMatch[1];
+        elements.push(
+          <div key={i} className="my-2 rounded-lg overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.15)' }}>
+            <video
+              src={videoUrl}
+              controls
+              preload="metadata"
+              className="w-full rounded-lg"
+              style={{ maxHeight: 400 }}
+            />
+          </div>
+        );
+        // Skip closing </video> if on next line
+        i++;
+        if (i < lines.length && lines[i].trim() === '</video>') i++;
+        continue;
+      }
+
       // Regular paragraph
       elements.push(
         <p key={i} className="md-p">
@@ -115,6 +136,37 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     let i = 0;
 
     while (i < text.length) {
+      // Images / Videos: ![alt](url)
+      if (text[i] === '!' && text[i + 1] === '[') {
+        const closeBracket = text.indexOf(']', i + 2);
+        if (closeBracket !== -1 && text[closeBracket + 1] === '(') {
+          const closeParen = text.indexOf(')', closeBracket + 2);
+          if (closeParen !== -1) {
+            if (current) { parts.push(current); current = ''; }
+            const alt = text.slice(i + 2, closeBracket);
+            const mediaUrl = text.slice(closeBracket + 2, closeParen);
+            const isVideoUrl = /\.(mp4|webm|mov|ogg)(\?|$)/i.test(mediaUrl)
+              || /\b(video|ltx-video|skyreel)\b/i.test(mediaUrl);
+            if (isVideoUrl) {
+              parts.push(
+                <span key={i} className="block my-2 rounded-lg overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.15)' }}>
+                  <video src={mediaUrl} controls preload="metadata" className="w-full rounded-lg" style={{ maxHeight: 400 }} />
+                </span>
+              );
+            } else {
+              parts.push(
+                <a key={i} href={mediaUrl} target="_blank" rel="noopener noreferrer" className="block my-1">
+                  <img src={mediaUrl} alt={alt} className="rounded-lg max-w-full" style={{ maxHeight: 300, border: '1px solid rgba(139,92,246,0.12)' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </a>
+              );
+            }
+            i = closeParen + 1;
+            continue;
+          }
+        }
+      }
+
       // Links: [text](url)
       if (text[i] === '[') {
         const closeBracket = text.indexOf(']', i + 1);

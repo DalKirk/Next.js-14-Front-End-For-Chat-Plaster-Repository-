@@ -11,7 +11,10 @@ import {
   Type,
   Loader2,
   RotateCcw,
+  Download,
+  Maximize2,
 } from "lucide-react";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,6 +64,23 @@ const TOOL_META: Record<string, { label: string; icon: React.ReactNode; color: s
   generate_3d:        { label: "Generating 3D model",  icon: <Box className="w-3.5 h-3.5" />,       color: "#67e8f9" },
   web_search:         { label: "Searching the web",    icon: <Search className="w-3.5 h-3.5" />,    color: "#34d399" },
 };
+
+// ─── Download helper (cross-origin safe) ──────────────────────────────────────
+function downloadAsset(url: string) {
+  fetch(url)
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      const ext = url.split(".").pop()?.split("?")[0] ?? "png";
+      a.download = `asset_${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(() => window.open(url, "_blank"));
+}
 
 const EXAMPLE_PROMPTS = [
   "Create a logo for a streetwear brand called VOID, dark neon aesthetic",
@@ -118,9 +138,18 @@ function EventRow({ event }: { event: AgentEvent }) {
   if (event.type === "tool_done") {
     const result  = event.result as Record<string, unknown> | undefined;
     const urls: string[] = [];
-    if (result?.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
-    if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
-      urls.push(result.url as string);
+    // Collect URLs from all common result fields
+    for (const key of ["urls", "url", "video_url", "output_url", "model_url"]) {
+      const val = result?.[key];
+      if (Array.isArray(val)) {
+        for (const v of val) if (typeof v === "string" && !urls.includes(v)) urls.push(v);
+      } else if (typeof val === "string" && !urls.includes(val)) {
+        urls.push(val);
+      }
+    }
+
+    const isVideo = event.tool === "generate_video" || event.tool === "generate_skyreel";
+    const is3D    = event.tool === "generate_3d";
 
     return (
       <div className="space-y-2">
@@ -139,29 +168,6 @@ function EventRow({ event }: { event: AgentEvent }) {
             </span>
           ) : null}
         </div>
-
-        {urls.length > 0 && (
-          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-            {urls.map((url, i) => (
-              <a
-                key={i}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
-                style={{ border: "1px solid rgba(139,92,246,0.15)" }}
-              >
-                <img
-                  src={url}
-                  alt={`Generated ${event.tool} ${i + 1}`}
-                  className="w-full object-cover"
-                  style={{ maxHeight: 200 }}
-                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              </a>
-            ))}
-          </div>
-        )}
 
         {event.tool === "web_search" && Array.isArray((result as any)?.results) && (
           <div className="space-y-1.5">
@@ -265,39 +271,14 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
 
   const feedEndRef  = useRef<HTMLDivElement>(null);
   const feedRef     = useRef<HTMLDivElement>(null);
-  const trackRef    = useRef<HTMLDivElement>(null);
   const abortRef    = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replyRef    = useRef<HTMLInputElement>(null);
-  const [scrollPct, setScrollPct] = useState(0);
-  const [showDot,   setShowDot]   = useState(false);
-  const dragging    = useRef(false);
 
   // Auto-scroll
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events, content, turns]);
-
-  // Track scroll position for custom dot indicator
-  const updateScrollPct = useCallback(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    const scrollable = el.scrollHeight - el.clientHeight;
-    setShowDot(scrollable > 10);
-    setScrollPct(scrollable > 0 ? el.scrollTop / scrollable : 0);
-  }, []);
-
-  useEffect(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", updateScrollPct, { passive: true });
-    const ro = new ResizeObserver(updateScrollPct);
-    ro.observe(el);
-    return () => { el.removeEventListener("scroll", updateScrollPct); ro.disconnect(); };
-  }, [updateScrollPct, isOpen]);
-
-  // Also recompute after content changes
-  useEffect(() => { updateScrollPct(); }, [events, content, turns, summary, updateScrollPct]);
 
   // Lock body scroll while panel is open
   useEffect(() => {
@@ -360,14 +341,17 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
         signal:  abortRef.current.signal,
         body:    JSON.stringify({
           prompt:               promptText.trim(),
-          conversation_history: historyRef.current,  // ← send full history
+          conversation_history: historyRef.current.slice(-20),  // ← cap at last 10 exchanges
           conversation_id:      agentConvId,          // ← isolated from chat
           enable_search:        true,
           max_steps:            8,
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error(`Agent request failed: ${res.status}`);
+      if (!res.ok || !res.body) {
+        const errBody = await res.text().catch(() => "");
+        throw new Error(`Agent request failed (${res.status}): ${errBody.slice(0, 200)}`);
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -604,46 +588,8 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
         )}
 
         {/* ── Activity feed ── */}
-        <div className="flex-1 min-h-0 relative">
-
-          {/* Neon pink scroll dot — desktop only */}
-          {showDot && (
-            <div
-              ref={trackRef}
-              className="hidden md:block absolute right-1 z-10"
-              style={{ top: 8, bottom: 8, width: 20, cursor: "pointer" }}
-              onPointerDown={e => {
-                e.preventDefault();
-                dragging.current = true;
-                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                const track = trackRef.current!.getBoundingClientRect();
-                const pct = Math.max(0, Math.min(1, (e.clientY - track.top) / track.height));
-                feedRef.current!.scrollTop = pct * (feedRef.current!.scrollHeight - feedRef.current!.clientHeight);
-              }}
-              onPointerMove={e => {
-                if (!dragging.current || !trackRef.current || !feedRef.current) return;
-                const track = trackRef.current.getBoundingClientRect();
-                const pct = Math.max(0, Math.min(1, (e.clientY - track.top) / track.height));
-                feedRef.current.scrollTop = pct * (feedRef.current.scrollHeight - feedRef.current.clientHeight);
-              }}
-              onPointerUp={() => { dragging.current = false; }}
-            >
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  width: 16,
-                  height: 16,
-                  top: `calc(${scrollPct * 100}% - 8px)`,
-                  background: "#ff2d8a",
-                  boxShadow: "0 0 10px 3px rgba(255,45,138,0.6), 0 0 24px 6px rgba(255,45,138,0.25)",
-                  cursor: "grab",
-                  pointerEvents: "none",
-                }}
-              />
-            </div>
-          )}
-
-          <div ref={feedRef} className="h-full overflow-y-auto scrollbar-hide px-4 py-3 space-y-2">
+        <div className="flex-1 min-h-0">
+          <div ref={feedRef} className="h-full overflow-y-auto agent-scrollbar px-4 py-3 space-y-2">
 
           {/* Empty state */}
           {!hasActivity && !running && (
@@ -703,36 +649,73 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             <EventRow key={event.id} event={event} />
           ))}
 
-          {/* Streaming final answer */}
-          {content && (
-            <div
-              className="py-3 px-3 rounded-xl text-xs leading-relaxed"
-              style={{
-                background: "rgba(139,92,246,0.04)",
-                border:     "1px solid rgba(139,92,246,0.08)",
-                color:      "rgba(255,255,255,0.75)",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {content}
-              {running && (
-                <span
-                  style={{
-                    display:       "inline-block",
-                    width:         2,
-                    height:        "1em",
-                    background:    "rgba(192,132,252,0.8)",
-                    animation:     "blink 0.8s step-end infinite",
-                    verticalAlign: "text-bottom",
-                    marginLeft:    2,
-                  }}
-                />
-              )}
-            </div>
-          )}
+          {/* Streaming final answer — strip image/video markdown, show text only */}
+          {content && (() => {
+            const textOnly = content
+              .replace(/!\[[^\]]*\]\([^)]+\)/g, "")          // ![alt](url)
+              .replace(/\[([^\]]*)\]\(https?:\/\/[^)]+\)/g, "$1") // keep link text, drop URL if image-like
+              .replace(/https?:\/\/\S+\.(png|jpg|jpeg|gif|webp|mp4|webm|mov|glb)(\?\S*)?\s*/gi, "") // bare media URLs
+              .replace(/\n{3,}/g, "\n\n")                     // collapse blank lines
+              .trim();
+            return textOnly ? (
+              <div
+                className="py-3 px-3 rounded-xl text-xs leading-relaxed"
+                style={{
+                  background: "rgba(139,92,246,0.04)",
+                  border:     "1px solid rgba(139,92,246,0.08)",
+                  color:      "rgba(255,255,255,0.75)",
+                }}
+              >
+                <MarkdownRenderer content={textOnly} />
+                {running && (
+                  <span
+                    style={{
+                      display:       "inline-block",
+                      width:         2,
+                      height:        "1em",
+                      background:    "rgba(192,132,252,0.8)",
+                      animation:     "blink 0.8s step-end infinite",
+                      verticalAlign: "text-bottom",
+                      marginLeft:    2,
+                    }}
+                  />
+                )}
+              </div>
+            ) : running ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: "rgba(139,92,246,0.6)" }} />
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Generating…</span>
+              </div>
+            ) : null;
+          })()}
 
-          {/* Summary asset grid */}
-          {summary && summary.assets.length > 0 && (
+          {/* Summary asset grid — from summary event, or fallback from tool_done results */}
+          {(() => {
+            // Use summary assets if available, otherwise extract from tool_done events
+            let assets: Asset[] = [];
+            if (summary && summary.assets.length > 0) {
+              assets = summary.assets;
+            } else if (!running) {
+              const seen = new Set<string>();
+              for (const ev of events) {
+                if (ev.type !== "tool_done" || !ev.result) continue;
+                const r = ev.result as Record<string, unknown>;
+                for (const key of ["urls", "url", "video_url", "output_url", "model_url"]) {
+                  const val = r[key];
+                  const list = Array.isArray(val) ? val : val ? [val] : [];
+                  for (const u of list) {
+                    if (typeof u === "string" && !seen.has(u)) {
+                      seen.add(u);
+                      const isVid = ev.tool === "generate_video" || ev.tool === "generate_skyreel";
+                      const is3d  = ev.tool === "generate_3d";
+                      assets.push({ type: isVid ? "video" : is3d ? "3d" : "image", url: u, tool: ev.tool ?? "" });
+                    }
+                  }
+                }
+              }
+            }
+            if (assets.length === 0) return null;
+            return (
             <div
               className="rounded-xl p-3"
               style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}
@@ -741,33 +724,124 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
                 className="text-[10px] mb-2 flex items-center justify-between"
                 style={{ color: "rgba(52,211,153,0.7)" }}
               >
-                <span>✓ {summary.assets.length} asset{summary.assets.length !== 1 ? "s" : ""} created</span>
-                <span>{summary.total_cost} credits used</span>
+                <span>✓ {assets.length} asset{assets.length !== 1 ? "s" : ""} created</span>
+                {summary ? <span>{summary.total_cost} credits used</span> : null}
               </div>
-              <div className={`grid gap-2 ${summary.assets.length > 2 ? "grid-cols-3" : summary.assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                {summary.assets.map((asset, i) =>
-                  asset.url ? (
-                    <a
+              <div className={`grid gap-3 ${assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {assets.map((asset, i) => {
+                  if (!asset.url) return null;
+                  const isAssetVideo = asset.type === "video";
+                  const isAsset3D = asset.type === "3d";
+                  const toolMeta = asset.tool ? TOOL_META[asset.tool] : null;
+                  return (
+                    <div
                       key={i}
-                      href={asset.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
-                      style={{ border: "1px solid rgba(139,92,246,0.15)" }}
+                      className="agent-asset-card"
+                      style={{
+                        padding: 1,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        transition: "all 0.3s",
+                        background: "linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))",
+                      }}
                     >
-                      <img
-                        src={asset.url}
-                        alt={`Asset ${i + 1}`}
-                        className="w-full object-cover"
-                        style={{ maxHeight: 120 }}
-                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    </a>
-                  ) : null
-                )}
+                      <div style={{ borderRadius: 7, overflow: "hidden", background: "rgba(8,8,15,0.9)" }}>
+                        <div
+                          style={{
+                            position: "relative",
+                            aspectRatio: isAssetVideo ? "4/3" : isAsset3D ? undefined : "1/1",
+                            background: `linear-gradient(135deg,${(toolMeta?.color ?? "#c084fc")}15,${(toolMeta?.color ?? "#c084fc")}10)`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {isAssetVideo ? (
+                            <video
+                              src={asset.url}
+                              controls
+                              preload="metadata"
+                              muted
+                              loop
+                              playsInline
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : isAsset3D ? (
+                            <div className="flex flex-col items-center gap-1 py-4">
+                              <Box className="w-6 h-6" style={{ color: "#67e8f9" }} />
+                              <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.5)" }}>3D Model</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={asset.url}
+                              alt={`Asset ${i + 1}`}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          )}
+                          <div
+                            className="agent-asset-overlay"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => downloadAsset(asset.url)}
+                              title="Download"
+                              style={{
+                                padding: 8,
+                                borderRadius: 6,
+                                background: "rgba(255,255,255,0.12)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                color: "#fff",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Download size={14} />
+                            </button>
+                            <a
+                              href={asset.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Open full size"
+                              style={{
+                                padding: 8,
+                                borderRadius: 6,
+                                background: "rgba(255,255,255,0.12)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                color: "#fff",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Maximize2 size={14} />
+                            </a>
+                          </div>
+                        </div>
+                        <div style={{ padding: "6px 8px" }}>
+                          <p style={{
+                            fontSize: 9,
+                            color: "rgba(255,255,255,0.7)",
+                            margin: 0,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}>
+                            {toolMeta?.label?.replace("Generating ", "") ?? asset.type}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+          );
+          })()}
 
           <div ref={feedEndRef} />
           </div>

@@ -887,6 +887,16 @@
 .chat-message-container {
   word-wrap: break-word !important;
   word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.chat-message-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
 
 /* ── Agent Chat Styles ─────────────────────────────────────────────────────── */
 
@@ -915,15 +925,57 @@
 .tool-activity {
   font-size: 0.6875rem;
 }
-  overflow-wrap: break-word !important;
-  hyphens: auto !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
+
+/* Dark scrollbar for agent panel */
+.agent-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #00ff66 #000000;
+}
+.agent-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.agent-scrollbar::-webkit-scrollbar-track {
+  background: #000000;
+}
+.agent-scrollbar::-webkit-scrollbar-thumb {
+  background: #00ff66;
+  border-radius: 3px;
+}
+.agent-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #33ff88;
 }
 
-.chat-message-container * {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+/* Agent asset cards — hover overlay + glow */
+.agent-asset-card:hover {
+  background: linear-gradient(135deg, rgba(192,132,252,0.33), rgba(139,92,246,0.22)) !important;
+  box-shadow: 0 0 28px rgba(192,132,252,0.13);
+}
+.agent-asset-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(3,3,8,0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.agent-asset-card:hover .agent-asset-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mobile: show overlay on tap via :active */
+@media (hover: none) {
+  .agent-asset-card:active .agent-asset-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* ========================================
