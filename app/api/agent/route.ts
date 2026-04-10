@@ -45,10 +45,11 @@ export async function POST(request: NextRequest) {
       method:  "POST",
       headers: forwardHeaders,
       body:    JSON.stringify({
-        prompt:          body.prompt.trim(),
-        enable_search:   body.enable_search ?? true,
-        max_steps:       body.max_steps     ?? 8,
-        conversation_id: body.conversation_id,
+        prompt:               body.prompt.trim(),
+        conversation_history: body.conversation_history ?? [],
+        enable_search:        body.enable_search ?? true,
+        max_steps:            body.max_steps     ?? 8,
+        conversation_id:      body.conversation_id,
       }),
     });
 

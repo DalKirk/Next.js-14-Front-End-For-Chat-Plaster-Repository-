@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -10,7 +10,6 @@ import {
   Search,
   Type,
   Loader2,
-  ChevronRight,
   RotateCcw,
 } from "lucide-react";
 
@@ -28,15 +27,15 @@ type EventType =
   | "error";
 
 interface AgentEvent {
-  id:      string;
-  type:    EventType;
-  text?:   string;
-  tool?:   string;
-  input?:  Record<string, unknown>;
-  result?: Record<string, unknown>;
-  error?:  string;
-  cost?:   number;
-  assets?: Asset[];
+  id:         string;
+  type:       EventType;
+  text?:      string;
+  tool?:      string;
+  input?:     Record<string, unknown>;
+  result?:    Record<string, unknown>;
+  error?:     string;
+  cost?:      number;
+  assets?:    Asset[];
   total_cost?: number;
 }
 
@@ -44,6 +43,11 @@ interface Asset {
   type: "image" | "logo" | "video" | "3d";
   url:  string;
   tool: string;
+}
+
+interface HistoryEntry {
+  role:    "user" | "assistant";
+  content: string;
 }
 
 // ─── Tool metadata ────────────────────────────────────────────────────────────
@@ -60,19 +64,16 @@ const TOOL_META: Record<string, { label: string; icon: React.ReactNode; color: s
 
 const EXAMPLE_PROMPTS = [
   "Create a logo for a streetwear brand called VOID, dark neon aesthetic",
-  "Generate a mood board for a sci-fi film concept — deep space, abandoned station",
-  "Design a YouTube thumbnail for a video about AI art with bold text",
+  "Generate a mood board for a sci-fi film — deep space, abandoned station",
+  "Design a YouTube thumbnail for an AI art video with bold text",
   "Create brand assets for a luxury coffee brand called ONYX",
-  "Search for trending AI art styles and create 2 images in that style",
 ];
-
-// ─── Utility ──────────────────────────────────────────────────────────────────
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── EventRow ─────────────────────────────────────────────────────────────────
 
-function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
+function EventRow({ event }: { event: AgentEvent }) {
   const meta = event.tool ? TOOL_META[event.tool] : null;
 
   if (event.type === "status" || event.type === "plan") {
@@ -82,10 +83,7 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
           className="w-3 h-3 animate-spin shrink-0"
           style={{ color: "rgba(139,92,246,0.6)" }}
         />
-        <span
-          className="text-xs leading-relaxed"
-          style={{ color: "rgba(255,255,255,0.45)" }}
-        >
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
           {event.text}
         </span>
       </div>
@@ -109,10 +107,7 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
           {meta?.label ?? event.tool}
         </span>
         {event.cost ? (
-          <span
-            className="ml-auto text-[10px] shrink-0"
-            style={{ color: "rgba(255,255,255,0.25)" }}
-          >
+          <span className="ml-auto text-[10px] shrink-0" style={{ color: "rgba(255,255,255,0.25)" }}>
             {event.cost} cr
           </span>
         ) : null}
@@ -121,10 +116,11 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
   }
 
   if (event.type === "tool_done") {
-    const result = event.result as Record<string, unknown> | undefined;
+    const result  = event.result as Record<string, unknown> | undefined;
     const urls: string[] = [];
-    if (result?.urls && Array.isArray(result.urls)) urls.push(...result.urls as string[]);
-    if (result?.url && typeof result.url === "string" && !urls.includes(result.url)) urls.push(result.url);
+    if (result?.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
+    if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
+      urls.push(result.url as string);
 
     return (
       <div className="space-y-2">
@@ -133,24 +129,18 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
           style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}
         >
           <span className="text-xs shrink-0" style={{ color: "#34d399" }}>✓</span>
-          <span className="shrink-0" style={{ color: meta?.color ?? "#34d399" }}>
-            {meta?.icon}
-          </span>
+          <span className="shrink-0" style={{ color: meta?.color ?? "#34d399" }}>{meta?.icon}</span>
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
             {meta?.label ?? event.tool} complete
           </span>
           {event.cost ? (
-            <span
-              className="ml-auto text-[10px] shrink-0"
-              style={{ color: "rgba(52,211,153,0.5)" }}
-            >
+            <span className="ml-auto text-[10px] shrink-0" style={{ color: "rgba(52,211,153,0.5)" }}>
               -{event.cost} cr
             </span>
           ) : null}
         </div>
 
-        {/* Inline image preview */}
-        {urls.length > 0 ? (
+        {urls.length > 0 && (
           <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
             {urls.map((url, i) => (
               <a
@@ -166,19 +156,16 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
                   alt={`Generated ${event.tool} ${i + 1}`}
                   className="w-full object-cover"
                   style={{ maxHeight: 200 }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </a>
             ))}
           </div>
-        ) : null}
+        )}
 
-        {/* Web search results */}
-        {event.tool === "web_search" && Array.isArray(result?.results) ? (
+        {event.tool === "web_search" && Array.isArray((result as any)?.results) && (
           <div className="space-y-1.5">
-            {(result!.results as Array<{ title: string; url: string; snippet: string }>)
+            {((result as any).results as Array<{ title: string; url: string; snippet: string }>)
               .slice(0, 3)
               .map((r, i) => (
                 <a
@@ -189,22 +176,16 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
                   className="block p-2.5 rounded-lg transition-colors hover:bg-white/5"
                   style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
                 >
-                  <div
-                    className="text-xs font-medium mb-0.5 truncate"
-                    style={{ color: "#67e8f9" }}
-                  >
+                  <div className="text-xs font-medium mb-0.5 truncate" style={{ color: "#67e8f9" }}>
                     {r.title}
                   </div>
-                  <div
-                    className="text-[10px] leading-relaxed line-clamp-2"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
-                  >
+                  <div className="text-[10px] leading-relaxed line-clamp-2" style={{ color: "rgba(255,255,255,0.4)" }}>
                     {r.snippet}
                   </div>
                 </a>
               ))}
           </div>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -237,41 +218,83 @@ function EventRow({ event }: { event: AgentEvent }): React.ReactNode {
   return null;
 }
 
+// ─── History turn — shows a past exchange in the feed ─────────────────────────
+
+function HistoryTurn({ entry, index }: { entry: HistoryEntry; index: number }) {
+  if (entry.role === "user") {
+    return (
+      <div
+        className="flex justify-end"
+        style={{ borderTop: index > 0 ? "1px solid rgba(255,255,255,0.04)" : "none", paddingTop: index > 0 ? 12 : 0 }}
+      >
+        <div
+          className="max-w-[80%] px-3 py-2 rounded-xl text-xs"
+          style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.15)", color: "rgba(255,255,255,0.75)" }}
+        >
+          {entry.content}
+        </div>
+      </div>
+    );
+  }
+  return null; // assistant summaries show as content blocks inline
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface AgentPanelProps {
-  isOpen:   boolean;
-  onClose:  () => void;
+  isOpen:  boolean;
+  onClose: () => void;
 }
 
 export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
   const [prompt,    setPrompt]    = useState("");
+  const [replyText, setReplyText] = useState("");
   const [events,    setEvents]    = useState<AgentEvent[]>([]);
   const [content,   setContent]   = useState("");
   const [running,   setRunning]   = useState(false);
   const [summary,   setSummary]   = useState<{ assets: Asset[]; total_cost: number } | null>(null);
   const [totalCost, setTotalCost] = useState(0);
 
+  // Conversation history — persists across multiple runs in this session
+  const historyRef      = useRef<HistoryEntry[]>([]);
+  const historyDisplay  = useRef<HistoryEntry[]>([]);
+  const [turns, setTurns] = useState<HistoryEntry[]>([]);
+
+  // Stable agent conversation ID — isolated from the chat widget
+  const agentConvId = useRef(`agent_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`).current;
+
   const feedEndRef  = useRef<HTMLDivElement>(null);
   const abortRef    = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const replyRef    = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll feed
+  // Auto-scroll
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [events, content]);
+  }, [events, content, turns]);
 
-  // Focus textarea when opened
+  // Focus on open
   useEffect(() => {
     if (isOpen) setTimeout(() => textareaRef.current?.focus(), 100);
   }, [isOpen]);
 
-  const reset = useCallback(() => {
+  // Focus reply input after run completes
+  useEffect(() => {
+    if (!running && content) {
+      setTimeout(() => replyRef.current?.focus(), 100);
+    }
+  }, [running, content]);
+
+  const resetAll = useCallback(() => {
     setEvents([]);
     setContent("");
     setSummary(null);
     setTotalCost(0);
     setPrompt("");
+    setReplyText("");
+    setTurns([]);
+    historyRef.current     = [];
+    historyDisplay.current = [];
   }, []);
 
   const stop = useCallback(() => {
@@ -279,12 +302,22 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     setRunning(false);
   }, []);
 
-  const run = useCallback(async () => {
-    if (!prompt.trim() || running) return;
+  // Core run — accepts the prompt text directly so reply bar can call it too
+  const runWithPrompt = useCallback(async (promptText: string) => {
+    if (!promptText.trim() || running) return;
 
-    reset();
+    // Clear current run events but keep history display
+    setEvents([]);
+    setContent("");
+    setSummary(null);
     setRunning(true);
     abortRef.current = new AbortController();
+
+    // Add user message to display turns immediately
+    const userTurn: HistoryEntry = { role: "user", content: promptText.trim() };
+    setTurns(prev => [...prev, userTurn]);
+
+    let fullContent = "";
 
     try {
       const res = await fetch("/api/agent", {
@@ -292,20 +325,19 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
         headers: { "Content-Type": "application/json" },
         signal:  abortRef.current.signal,
         body:    JSON.stringify({
-          prompt:        prompt.trim(),
-          enable_search: true,
-          max_steps:     8,
+          prompt:               promptText.trim(),
+          conversation_history: historyRef.current,  // ← send full history
+          conversation_id:      agentConvId,          // ← isolated from chat
+          enable_search:        true,
+          max_steps:            8,
         }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error(`Agent request failed: ${res.status}`);
-      }
+      if (!res.ok || !res.body) throw new Error(`Agent request failed: ${res.status}`);
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let   buffer  = "";
-      let   fullContent = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -325,6 +357,14 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
 
             if (data.type === "done") {
               setRunning(false);
+
+              // Save this exchange to history for next run
+              historyRef.current = [
+                ...historyRef.current,
+                { role: "user",      content: promptText.trim() },
+                { role: "assistant", content: fullContent },
+              ];
+
               return;
             }
 
@@ -336,30 +376,30 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
 
             if (data.type === "summary") {
               setSummary({
-                assets:     (data as any).assets ?? [],
+                assets:     (data as any).assets     ?? [],
                 total_cost: (data as any).total_cost ?? 0,
               });
               setTotalCost((data as any).total_cost ?? 0);
               continue;
             }
 
+            // ── tool_done: replace matching tool_start in place ──────────────
             if (data.type === "tool_done") {
               if (data.cost) setTotalCost(prev => prev + (data.cost ?? 0));
-              // Replace the matching tool_start with this tool_done
               setEvents(prev => {
                 const idx = [...prev].reverse().findIndex(
                   e => e.type === "tool_start" && e.tool === data.tool
                 );
                 if (idx === -1) return [...prev, { ...data, id: uid() }];
                 const realIdx = prev.length - 1 - idx;
-                const next = [...prev];
+                const next    = [...prev];
                 next[realIdx] = { ...data, id: prev[realIdx].id };
                 return next;
               });
               continue;
             }
 
-            // Add all other events to feed
+            // All other events appended normally
             setEvents(prev => [...prev, { ...data, id: uid() }]);
 
           } catch {
@@ -369,45 +409,49 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
       }
     } catch (err: any) {
       if (err.name === "AbortError") return;
-      setEvents(prev => [...prev, {
-        id:    uid(),
-        type:  "error",
-        error: err.message ?? "Something went wrong",
-      }]);
+      setEvents(prev => [...prev, { id: uid(), type: "error", error: err.message ?? "Something went wrong" }]);
     } finally {
       setRunning(false);
     }
-  }, [prompt, running, reset]);
+  }, [running, agentConvId]);
+
+  // Initial prompt submit
+  const run = useCallback(() => {
+    runWithPrompt(prompt);
+    setPrompt("");
+  }, [prompt, runWithPrompt]);
+
+  // Reply bar submit
+  const submitReply = useCallback(() => {
+    if (!replyText.trim()) return;
+    const text = replyText.trim();
+    setReplyText("");
+    runWithPrompt(text);
+  }, [replyText, runWithPrompt]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.metaKey) {
-      e.preventDefault();
-      run();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); run(); }
+  };
+
+  const handleReplyKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); submitReply(); }
   };
 
   if (!isOpen) return null;
 
-  const hasActivity = events.length > 0 || content || summary;
+  const hasActivity = events.length > 0 || content || summary || turns.length > 0;
+  const showReplyBar = !running && content; // show reply bar after agent finishes
 
   return (
     <div
       className="fixed"
       style={{ inset: 0, zIndex: 2001, width: "100vw", height: "100dvh", padding: 8, overflow: "hidden" }}
     >
-      {/* Rainbow border — matches your existing ai-chat-rainbow-border */}
       <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
 
       <div
         className="flex flex-col overflow-hidden relative"
-        style={{
-          width:             "100%",
-          height:            "100%",
-          borderRadius:      6,
-          background:        "rgba(8,8,15,0.98)",
-          backdropFilter:    "blur(20px)",
-          zIndex:            1,
-        }}
+        style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}
       >
 
         {/* ── Header ── */}
@@ -426,11 +470,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             {running && (
               <span
                 className="text-[10px] px-2 py-0.5 rounded-full"
-                style={{
-                  background: "rgba(139,92,246,0.1)",
-                  border:     "1px solid rgba(139,92,246,0.2)",
-                  color:      "rgba(192,132,252,0.8)",
-                }}
+                style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", color: "rgba(192,132,252,0.8)" }}
               >
                 running
               </span>
@@ -438,13 +478,17 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             {totalCost > 0 && !running && (
               <span
                 className="text-[10px] px-2 py-0.5 rounded-full"
-                style={{
-                  background: "rgba(52,211,153,0.06)",
-                  border:     "1px solid rgba(52,211,153,0.12)",
-                  color:      "rgba(52,211,153,0.7)",
-                }}
+                style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.7)" }}
               >
                 {totalCost} cr used
+              </span>
+            )}
+            {historyRef.current.length > 0 && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)" }}
+              >
+                {historyRef.current.length / 2} turn{historyRef.current.length / 2 !== 1 ? "s" : ""}
               </span>
             )}
           </div>
@@ -452,7 +496,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
           <div className="flex items-center gap-2">
             {hasActivity && !running && (
               <button
-                onClick={reset}
+                onClick={resetAll}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] transition-all hover:bg-white/5"
                 style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
@@ -470,73 +514,60 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
           </div>
         </div>
 
-        {/* ── Prompt input ── */}
-        <div
-          className="px-4 py-3 shrink-0"
-          style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}
-        >
+        {/* ── Initial prompt input — only show when no activity yet ── */}
+        {!hasActivity && (
           <div
-            className="flex gap-2 rounded-xl p-2 transition-all"
-            style={{
-              background:  "rgba(139,92,246,0.04)",
-              border:      `1px solid ${running ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.1)"}`,
-            }}
+            className="px-4 py-3 shrink-0"
+            style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}
           >
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Describe what you want to create…"
-              disabled={running}
-              rows={2}
-              className="flex-1 resize-none text-xs outline-none disabled:opacity-50"
+            <div
+              className="flex gap-2 rounded-xl p-2 transition-all"
               style={{
-                background:  "transparent",
-                color:       "rgba(255,255,255,0.85)",
-                lineHeight:  1.6,
-                paddingLeft: 4,
-              }}
-            />
-            <button
-              onClick={running ? stop : run}
-              disabled={!prompt.trim() && !running}
-              className="self-end px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-              style={{
-                background: running
-                  ? "rgba(239,68,68,0.12)"
-                  : "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
-                border: running
-                  ? "1px solid rgba(239,68,68,0.2)"
-                  : "1px solid rgba(139,92,246,0.3)",
-                color: running ? "#f87171" : "#f0e6ff",
-                boxShadow: running ? "none" : "0 0 16px rgba(139,92,246,0.2)",
+                background: "rgba(139,92,246,0.04)",
+                border:     `1px solid ${running ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.1)"}`,
               }}
             >
-              {running ? "Stop" : "Create →"}
-            </button>
-          </div>
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Describe what you want to create…"
+                disabled={running}
+                rows={2}
+                className="flex-1 resize-none text-xs outline-none disabled:opacity-50"
+                style={{ background: "transparent", color: "rgba(255,255,255,0.85)", lineHeight: 1.6, paddingLeft: 4 }}
+              />
+              <button
+                onClick={running ? stop : run}
+                disabled={!prompt.trim() && !running}
+                className="self-end px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                style={{
+                  background: running ? "rgba(239,68,68,0.12)" : "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
+                  border:     running ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(139,92,246,0.3)",
+                  color:      running ? "#f87171" : "#f0e6ff",
+                  boxShadow:  running ? "none" : "0 0 16px rgba(139,92,246,0.2)",
+                }}
+              >
+                {running ? "Stop" : "Create →"}
+              </button>
+            </div>
 
-          {/* Example prompts — only show when idle and empty */}
-          {!hasActivity && !running && (
+            {/* Example prompts */}
             <div className="flex flex-wrap gap-1.5 mt-2.5">
               {EXAMPLE_PROMPTS.slice(0, 3).map((p, i) => (
                 <button
                   key={i}
                   onClick={() => setPrompt(p)}
                   className="text-[10px] px-2.5 py-1 rounded-full transition-all hover:border-[rgba(139,92,246,0.3)] hover:text-white/60"
-                  style={{
-                    background: "rgba(139,92,246,0.04)",
-                    border:     "1px solid rgba(139,92,246,0.1)",
-                    color:      "rgba(255,255,255,0.35)",
-                  }}
+                  style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.1)", color: "rgba(255,255,255,0.35)" }}
                 >
-                  {p.slice(0, 40)}…
+                  {p.slice(0, 42)}…
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── Activity feed ── */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
@@ -558,18 +589,12 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
                   Describe what you want — logos, images, videos, mood boards. The agent picks the right tools automatically.
                 </p>
               </div>
-
-              {/* Tool chips */}
               <div className="flex flex-wrap justify-center gap-1.5 max-w-[280px]">
                 {Object.entries(TOOL_META).map(([key, meta]) => (
                   <div
                     key={key}
                     className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px]"
-                    style={{
-                      background: "rgba(255,255,255,0.03)",
-                      border:     "1px solid rgba(255,255,255,0.06)",
-                      color:      meta.color,
-                    }}
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: meta.color }}
                   >
                     {meta.icon}
                     <span style={{ color: "rgba(255,255,255,0.35)" }}>
@@ -581,7 +606,26 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             </div>
           )}
 
-          {/* Events */}
+          {/* Past conversation turns — user messages above current events */}
+          {turns.map((turn, i) => (
+            i < turns.length - 1 ? (
+              <HistoryTurn key={i} entry={turn} index={i} />
+            ) : null
+          ))}
+
+          {/* Current user prompt shown as a bubble */}
+          {turns.length > 0 && (
+            <div className="flex justify-end mb-1">
+              <div
+                className="max-w-[80%] px-3 py-2 rounded-xl text-xs"
+                style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.15)", color: "rgba(255,255,255,0.75)" }}
+              >
+                {turns[turns.length - 1].content}
+              </div>
+            </div>
+          )}
+
+          {/* Current run events */}
           {events.map(event => (
             <EventRow key={event.id} event={event} />
           ))}
@@ -600,21 +644,21 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
               {content}
               {running && (
                 <span
-                  className="inline-block ml-0.5 align-middle"
                   style={{
-                    width:      2,
-                    height:     "1em",
-                    background: "rgba(192,132,252,0.8)",
-                    animation:  "blink 0.8s step-end infinite",
+                    display:       "inline-block",
+                    width:         2,
+                    height:        "1em",
+                    background:    "rgba(192,132,252,0.8)",
+                    animation:     "blink 0.8s step-end infinite",
                     verticalAlign: "text-bottom",
-                    display:    "inline-block",
+                    marginLeft:    2,
                   }}
                 />
               )}
             </div>
           )}
 
-          {/* Summary */}
+          {/* Summary asset grid */}
           {summary && summary.assets.length > 0 && (
             <div
               className="rounded-xl p-3"
@@ -628,7 +672,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
                 <span>{summary.total_cost} credits used</span>
               </div>
               <div className={`grid gap-2 ${summary.assets.length > 2 ? "grid-cols-3" : summary.assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                {summary.assets.map((asset, i) => (
+                {summary.assets.map((asset, i) =>
                   asset.url ? (
                     <a
                       key={i}
@@ -643,17 +687,60 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
                         alt={`Asset ${i + 1}`}
                         className="w-full object-cover"
                         style={{ maxHeight: 120 }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     </a>
                   ) : null
-                ))}
+                )}
               </div>
             </div>
           )}
 
           <div ref={feedEndRef} />
         </div>
+
+        {/* ── Reply bar — appears after agent finishes, stays until new session ── */}
+        {showReplyBar && (
+          <div
+            className="px-4 py-3 shrink-0"
+            style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}
+          >
+            <div
+              className="flex gap-2 items-center rounded-xl px-3 py-2"
+              style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)" }}
+            >
+              <input
+                ref={replyRef}
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                onKeyDown={handleReplyKey}
+                placeholder="Refine or continue… e.g. 'Make it more minimal' or 'Add a tagline'"
+                className="flex-1 text-xs outline-none bg-transparent"
+                style={{ color: "rgba(255,255,255,0.8)" }}
+              />
+              <button
+                onClick={submitReply}
+                disabled={!replyText.trim()}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                style={{
+                  background: "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
+                  border:     "1px solid rgba(139,92,246,0.3)",
+                  color:      "#f0e6ff",
+                  boxShadow:  "0 0 12px rgba(139,92,246,0.2)",
+                }}
+              >
+                Run →
+              </button>
+            </div>
+            <p
+              className="text-[10px] mt-1.5 px-1"
+              style={{ color: "rgba(255,255,255,0.2)" }}
+            >
+              Agent remembers this session · {historyRef.current.length / 2 + 1} turn{historyRef.current.length / 2 + 1 !== 1 ? "s" : ""} · <button onClick={resetAll} className="underline" style={{ color: "rgba(255,255,255,0.3)" }}>Start new session</button>
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   );
