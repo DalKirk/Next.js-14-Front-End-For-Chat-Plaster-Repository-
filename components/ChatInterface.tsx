@@ -1,17 +1,23 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Settings } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
+import { sendAgentMessage } from '@/services/agent-api';
+import type { AgentAsset } from '@/services/agent-api';
+import { ToolActivity, AssetsGrid, extractAssetsFromResult } from './chat/MessageDisplay';
+import type { ToolStep } from './chat/MessageDisplay';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   format_type?: string;
   isStreaming?: boolean;
+  assets?: AgentAsset[];
+  toolSteps?: ToolStep[];
 }
 
 interface ChatInterfaceProps {
@@ -20,12 +26,12 @@ interface ChatInterfaceProps {
   fullscreen?: boolean;
 }
 
-// ? Generate unique conversation ID
-const generateConversationId = () => {
-  return `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-};
+const generateConversationId = () =>
+  `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-// Typing animation — reveals streamed content character-by-character
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+// Typing animation — reveals streamed content word-by-word
 const AnimatedContent = memo(({ content, isStreaming }: { content: string; isStreaming?: boolean }) => {
   const [displayed, setDisplayed] = useState('');
 
@@ -34,20 +40,17 @@ const AnimatedContent = memo(({ content, isStreaming }: { content: string; isStr
       setDisplayed(content);
       return;
     }
-    // Only animate NEW content since last render — word by word
     const newText = content.slice(displayed.length);
     if (!newText) return;
 
-    // Split new text into words only (filter out standalone whitespace)
     const words = newText.match(/\S+/g) || [];
     let i = 0;
     const interval = setInterval(() => {
-      // Grab 4 words at a time
       const batch = words.slice(i, i + 4).join(' ') + ' ';
       setDisplayed(prev => prev + batch);
       i += 4;
       if (i >= words.length) clearInterval(interval);
-    }, 250); // 250ms per batch of 4 words
+    }, 250);
 
     return () => clearInterval(interval);
   }, [content, isStreaming]);
@@ -56,7 +59,7 @@ const AnimatedContent = memo(({ content, isStreaming }: { content: string; isStr
 });
 AnimatedContent.displayName = 'AnimatedContent';
 
-// Memoized message component to prevent re-renders during multi-user typing
+// Message bubble with optional assets and tool activity
 const MessageBubble = memo(({ message, index }: { message: Message; index: number }) => {
   return (
     <motion.div
@@ -67,19 +70,33 @@ const MessageBubble = memo(({ message, index }: { message: Message; index: numbe
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`chat-message-container max-w-[80%] ${message.role === 'user' ? 'rounded-lg p-4 bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]' : 'text-[oklch(90%_0.05_260)]'} break-words overflow-hidden word-break-break-word`}
-        style={{ 
-          wordWrap: 'break-word', 
-          wordBreak: 'break-word', 
+        className={`chat-message-container max-w-[80%] ${message.role === 'user' ? 'rounded-lg p-4 bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]' : 'text-[oklch(90%_0.05_260)]'} break-words overflow-hidden`}
+        style={{
+          wordWrap: 'break-word',
+          wordBreak: 'break-word',
           overflowWrap: 'break-word',
           maxWidth: '100%',
-          ...(message.role === 'assistant' ? { background: 'transparent', border: 'none', boxShadow: 'none' } : {})
+          ...(message.role === 'assistant' ? { background: 'transparent', border: 'none', boxShadow: 'none' } : {}),
         }}
       >
         {message.role === 'assistant' ? (
-          <AnimatedContent content={message.content} isStreaming={message.isStreaming} />
+          <>
+            <AnimatedContent content={message.content} isStreaming={message.isStreaming} />
+            {message.toolSteps && message.toolSteps.length > 0 && (
+              <div className="mt-2">
+                <ToolActivity steps={message.toolSteps} />
+              </div>
+            )}
+            {message.assets && message.assets.length > 0 && (
+              <div className="mt-3">
+                <AssetsGrid assets={message.assets} />
+              </div>
+            )}
+          </>
         ) : (
-          <p className="whitespace-pre-wrap break-words overflow-wrap-break-word" style={{ wordWrap: 'break-word', wordBreak: 'break-word' }}>{message.content}</p>
+          <p className="whitespace-pre-wrap break-words" style={{ wordWrap: 'break-word', wordBreak: 'break-word' }}>
+            {message.content}
+          </p>
         )}
         {message.isStreaming && (
           <span className="inline-block ml-2 animate-pulse">▊</span>
@@ -88,38 +105,35 @@ const MessageBubble = memo(({ message, index }: { message: Message; index: numbe
     </motion.div>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if message content/streaming state changes
-  return prevProps.message.content === nextProps.message.content &&
-         prevProps.message.isStreaming === nextProps.message.isStreaming;
+  return (
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.isStreaming === nextProps.message.isStreaming &&
+    prevProps.message.assets?.length === nextProps.message.assets?.length &&
+    prevProps.message.toolSteps?.length === nextProps.message.toolSteps?.length
+  );
 });
-
 MessageBubble.displayName = 'MessageBubble';
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  apiEndpoint = '/api/ai-stream',
+const ChatInterface: React.FC<ChatInterfaceProps> = ({
   className = '',
-  fullscreen = false
+  fullscreen = false,
 }) => {
-  const AI_SYSTEM_PROMPT = `You are the Starcyeed AI assistant. Do not self-identify as "Claude" or mention model/provider names unless explicitly asked. Avoid greetings like "Hi" or "I'm ...". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.`;
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(() => generateConversationId()); // ? Track conversation ID
+  const [statusText, setStatusText] = useState('');
+  const [conversationId] = useState(() => generateConversationId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null); // Uncontrolled input
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const scrollToBottom = () => {
+  // Accumulated per-run state (reset each send)
+  const toolStepsRef = useRef<ToolStep[]>([]);
+  const assetsRef = useRef<AgentAsset[]>([]);
+  const contentRef = useRef('');
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // ? Log conversation ID on mount
-  useEffect(() => {
-    console.log('?? Conversation ID initialized:', conversationId);
-  }, [conversationId]);
+  }, [messages, statusText]);
 
   const stripSelfIdentificationIntro = (text: string): string => {
     const lines = text.split('\n');
@@ -128,170 +142,156 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const isSelfIntro = (s: string) => /\b(i\s*'?m|i\s*am|my\s*name\s*is)\b/i.test(s);
     const mentionsClaude = (s: string) => /\bclaude\b/i.test(s);
     const mentionsAssistant = (s: string) => /\ban\s+ai\s+assistant\b/i.test(s);
-    // Consider first few lines: greeting and self-intro
     for (let i = 0; i < Math.min(3, lines.length); i++) {
       const s = lines[i].trim();
-      if (i === 0 && isGreeting(s)) {
-        removeCount++;
-        continue;
-      }
-      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) {
-        removeCount++;
-        continue;
-      }
+      if (i === 0 && isGreeting(s)) { removeCount++; continue; }
+      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) { removeCount++; continue; }
       break;
     }
     let result = removeCount > 0 ? lines.slice(removeCount).join('\n').trimStart() : text;
-    // Secondary cleanup: remove residual "Claude" mentions at start
     result = result.replace(/^\s*claude[:,]?\s*/i, '');
     return result;
   };
 
-  const sendMessage = useCallback(async () => {
+  /** Helper: update the last assistant message in place */
+  const updateAssistant = useCallback(() => {
+    setMessages(prev => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.role === 'assistant') {
+        copy[copy.length - 1] = {
+          ...last,
+          content: contentRef.current,
+          isStreaming: true,
+          toolSteps: [...toolStepsRef.current],
+          assets: [...assetsRef.current],
+        };
+      } else {
+        copy.push({
+          role: 'assistant',
+          content: contentRef.current,
+          isStreaming: true,
+          toolSteps: [...toolStepsRef.current],
+          assets: [...assetsRef.current],
+        });
+      }
+      return copy;
+    });
+  }, []);
+
+  const sendMessage = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    
+
     const trimmedInput = textarea.value.trim();
-    if (!trimmedInput || loading) {
-      console.log('Cannot send: empty input or loading');
-      return;
-    }
+    if (!trimmedInput || loading) return;
 
     const userMsg: Message = { role: 'user', content: trimmedInput };
     setMessages(prev => [...prev, userMsg]);
-    const currentInput = trimmedInput;
-    textarea.value = ''; // Clear textarea
+    textarea.value = '';
     setLoading(true);
-    
-    console.log('?? Sending message:', currentInput);
-    console.log('?? Using conversation ID:', conversationId); // ? Log conversation ID
+    setStatusText('');
 
-    try {
-      const requestPayload = {
-        message: currentInput,
-        conversation_history: messages.filter(m => m.role && m.content),
-        conversation_id: conversationId, // ? Add conversation_id
-        enable_search: true,
-        system_prompt: AI_SYSTEM_PROMPT
-      };
-      
-      console.log('?? Request payload:', requestPayload);
-      
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    // Reset per-run accumulators
+    toolStepsRef.current = [];
+    assetsRef.current = [];
+    contentRef.current = '';
+
+    const history = messages
+      .filter(m => m.role && m.content)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    abortRef.current = sendAgentMessage(
+      trimmedInput,
+      history,
+      {
+        onContent: (text) => {
+          if (!contentRef.current) {
+            text = stripSelfIdentificationIntro(text);
+          }
+          contentRef.current += text;
+          updateAssistant();
         },
-        body: JSON.stringify(requestPayload),
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+        onPlan: (text) => {
+          setStatusText(text);
+        },
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantMessage = '';
-      let hasError = false;
+        onStatus: (text) => {
+          setStatusText(text);
+        },
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        onToolStart: ({ tool, cost }) => {
+          toolStepsRef.current.push({ id: uid(), tool, state: 'running', cost });
+          setStatusText(`Running ${tool.replace('generate_', '')}…`);
+          updateAssistant();
+        },
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+        onToolDone: ({ tool, result, cost }) => {
+          // Mark the matching running step as done
+          const idx = toolStepsRef.current.findIndex(s => s.tool === tool && s.state === 'running');
+          if (idx !== -1) {
+            toolStepsRef.current[idx] = { ...toolStepsRef.current[idx], state: 'done', result, cost };
+          }
+          // Extract assets
+          const newAssets = extractAssetsFromResult(tool, result);
+          assetsRef.current.push(...newAssets);
+          setStatusText('');
+          updateAssistant();
+        },
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                console.log('📍 Received [DONE] signal');
-                continue;
-              }
-              
-              try {
-                const parsed = JSON.parse(data);
-                console.log('📍 Frontend parsed:', parsed);
-                
-                // Handle error responses from backend
-                if (parsed.error) {
-                  console.error('❌ Backend error:', parsed.error);
-                  assistantMessage = `⚠️ AI Error: ${parsed.error}\n\nPlease try again or contact support if the issue persists.`;
-                  hasError = true;
-                  setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: assistantMessage,
-                  }]);
-                  console.log('📍 Error message set, breaking loop');
-                  break; // Exit the line processing loop
-                }
-                
-                if (parsed.content) {
-                  console.log('Raw chunk:', JSON.stringify(parsed.content));
-                  let chunkText = parsed.content;
-                  if (!assistantMessage) {
-                    chunkText = stripSelfIdentificationIntro(chunkText);
-                  }
-                  assistantMessage += chunkText;
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMsg = newMessages[newMessages.length - 1];
-                    if (lastMsg && lastMsg.role === 'assistant') {
-                      lastMsg.content = assistantMessage;
-                      lastMsg.isStreaming = true;
-                    } else {
-                      newMessages.push({
-                        role: 'assistant',
-                        content: assistantMessage,
-                        format_type: parsed.format_type,
-                        isStreaming: true
-                      });
-                    }
-                    return newMessages;
-                  });
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
+        onToolError: (err) => {
+          const running = toolStepsRef.current.find(s => s.state === 'running');
+          if (running) running.state = 'error';
+          setStatusText('');
+          updateAssistant();
+        },
+
+        onSummary: ({ assets, totalCost }) => {
+          // Merge any summary assets that aren't already collected
+          for (const a of assets) {
+            if (!assetsRef.current.some(e => e.url === a.url)) {
+              assetsRef.current.push(a);
             }
           }
-          
-          // If error encountered, break the read loop
-          if (hasError) break;
-        }
-        
-        // Mark streaming as complete (unless it was an error)
-        if (!hasError) {
-          setMessages(prev => {
-            const newMessages = [...prev];
-            const lastMsg = newMessages[newMessages.length - 1];
-            if (lastMsg && lastMsg.role === 'assistant') {
-              lastMsg.isStreaming = false;
-            }
-            return newMessages;
-          });
-        }
-        
-        console.log('? Message complete (conversation_id:', conversationId, ')'); // ? Log completion
-      }
-    } catch (error) {
-      console.error('? Error:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '? Sorry, there was an error processing your message. Please try again.',
-      }]);
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, messages, conversationId, apiEndpoint]);
+          updateAssistant();
+        },
 
-  // ? Clear chat and reset conversation
+        onDone: () => {
+          setLoading(false);
+          setStatusText('');
+          // Mark streaming complete
+          setMessages(prev => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant') {
+              copy[copy.length - 1] = { ...last, isStreaming: false };
+            }
+            return copy;
+          });
+        },
+
+        onError: (err) => {
+          setLoading(false);
+          setStatusText('');
+          setMessages(prev => [
+            ...prev,
+            { role: 'assistant', content: `⚠️ ${err}` },
+          ]);
+        },
+      },
+      { enableSearch: true, maxSteps: 8 },
+    );
+  }, [loading, messages, updateAssistant]);
+
   const clearChat = () => {
+    if (abortRef.current) abortRef.current.abort();
     setMessages([]);
-    const newConversationId = generateConversationId();
-    setConversationId(newConversationId);
-    console.log('?? Chat cleared, new conversation ID:', newConversationId);
+    setStatusText('');
+    setLoading(false);
+    toolStepsRef.current = [];
+    assetsRef.current = [];
+    contentRef.current = '';
   };
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -304,31 +304,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div
       className={`flex flex-col bg-gradient-to-br from-[oklch(10%_0.02_280)] via-[oklch(15%_0.03_260)] to-[oklch(12%_0.02_240)] ${className}`}
-      style={fullscreen ? {
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100dvh',
-        zIndex: 9999,
-      } : { width: '100%', height: '100%' }}
+      style={fullscreen ? { position: 'fixed', inset: 0, width: '100vw', height: '100dvh', zIndex: 9999 } : { width: '100%', height: '100%' }}
     >
-      {/* Header with Clear Button */}
+      {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-[oklch(30%_0.05_260)]">
         <h2 className="text-xl font-bold flex items-center gap-2.5">
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', animation: 'agenticBlink 1.4s ease-in-out infinite', boxShadow: '0 0 8px #f59e0b', display: 'inline-block' }} />
         </h2>
-        <Button
-          onClick={clearChat}
-          disabled={messages.length === 0}
-          variant="ghost"
-          size="sm"
-          className="text-sm"
-        >
+        <Button onClick={clearChat} disabled={messages.length === 0} variant="ghost" size="sm" className="text-sm">
           Clear Chat
         </Button>
       </div>
 
-      {/* Messages Container */}
+      {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         <AnimatePresence>
           {messages.map((message, index) => (
@@ -336,17 +324,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           ))}
         </AnimatePresence>
 
-        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
-            <div className="chat-message-container p-2" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+        {/* Status bar — replaces bounce dots when agent is running */}
+        {loading && statusText && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+            <div className="agent-status-bar flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.1)' }}>
+              <span className="agent-status-dot" />
+              <span style={{ color: 'rgba(255,255,255,0.5)' }}>{statusText}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Fallback bounce dots — only when no status text yet */}
+        {loading && !statusText && messages[messages.length - 1]?.role !== 'assistant' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+            <div className="p-2" style={{ background: 'transparent' }}>
               <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-[oklch(60%_0.15_260)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </motion.div>
@@ -355,8 +350,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <style>{`@keyframes agenticBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } } @keyframes neonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      {/* Input */}
+      <style>{`
+        @keyframes agenticBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+        @keyframes neonSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes statusPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .agent-status-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: #8b5cf6;
+          animation: statusPulse 1.5s ease-in-out infinite;
+          box-shadow: 0 0 6px rgba(139,92,246,0.5);
+        }
+      `}</style>
       <div className="p-3 border-t border-[oklch(25%_0.03_260)]">
         <div className="flex items-end gap-2 bg-[oklch(14%_0.02_260)] border border-[oklch(25%_0.04_260)] rounded-xl p-2 focus-within:border-[oklch(45%_0.12_260)] transition-all">
           <div className="flex items-center self-center pl-1" style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 4px #f59e0b)', animation: 'neonSpin 2.5s linear infinite' }}>

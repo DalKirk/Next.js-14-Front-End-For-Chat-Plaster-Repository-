@@ -887,6 +887,34 @@
 .chat-message-container {
   word-wrap: break-word !important;
   word-break: break-word !important;
+
+/* ── Agent Chat Styles ─────────────────────────────────────────────────────── */
+
+/* Status bar — pulsing dot + status text */
+.agent-status-bar {
+  animation: agentStatusFadeIn 0.2s ease-out;
+}
+@keyframes agentStatusFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive asset grid */
+.assets-grid {
+  margin-top: 0.5rem;
+}
+.assets-grid .asset-card {
+  min-width: 0;
+}
+.assets-grid .asset-image img,
+.assets-grid .asset-video video {
+  border-radius: 0.5rem;
+}
+
+/* Tool activity panel */
+.tool-activity {
+  font-size: 0.6875rem;
+}
   overflow-wrap: break-word !important;
   hyphens: auto !important;
   max-width: 100% !important;
