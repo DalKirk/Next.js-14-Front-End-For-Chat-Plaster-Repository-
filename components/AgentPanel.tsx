@@ -264,14 +264,48 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
   const agentConvId = useRef(`agent_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`).current;
 
   const feedEndRef  = useRef<HTMLDivElement>(null);
+  const feedRef     = useRef<HTMLDivElement>(null);
+  const trackRef    = useRef<HTMLDivElement>(null);
   const abortRef    = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replyRef    = useRef<HTMLInputElement>(null);
+  const [scrollPct, setScrollPct] = useState(0);
+  const [showDot,   setShowDot]   = useState(false);
+  const dragging    = useRef(false);
 
   // Auto-scroll
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events, content, turns]);
+
+  // Track scroll position for custom dot indicator
+  const updateScrollPct = useCallback(() => {
+    const el = feedRef.current;
+    if (!el) return;
+    const scrollable = el.scrollHeight - el.clientHeight;
+    setShowDot(scrollable > 10);
+    setScrollPct(scrollable > 0 ? el.scrollTop / scrollable : 0);
+  }, []);
+
+  useEffect(() => {
+    const el = feedRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollPct, { passive: true });
+    const ro = new ResizeObserver(updateScrollPct);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", updateScrollPct); ro.disconnect(); };
+  }, [updateScrollPct, isOpen]);
+
+  // Also recompute after content changes
+  useEffect(() => { updateScrollPct(); }, [events, content, turns, summary, updateScrollPct]);
+
+  // Lock body scroll while panel is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isOpen]);
 
   // Focus on open
   useEffect(() => {
@@ -570,7 +604,46 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
         )}
 
         {/* ── Activity feed ── */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
+        <div className="flex-1 min-h-0 relative">
+
+          {/* Neon pink scroll dot — desktop only */}
+          {showDot && (
+            <div
+              ref={trackRef}
+              className="hidden md:block absolute right-1 z-10"
+              style={{ top: 8, bottom: 8, width: 20, cursor: "pointer" }}
+              onPointerDown={e => {
+                e.preventDefault();
+                dragging.current = true;
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                const track = trackRef.current!.getBoundingClientRect();
+                const pct = Math.max(0, Math.min(1, (e.clientY - track.top) / track.height));
+                feedRef.current!.scrollTop = pct * (feedRef.current!.scrollHeight - feedRef.current!.clientHeight);
+              }}
+              onPointerMove={e => {
+                if (!dragging.current || !trackRef.current || !feedRef.current) return;
+                const track = trackRef.current.getBoundingClientRect();
+                const pct = Math.max(0, Math.min(1, (e.clientY - track.top) / track.height));
+                feedRef.current.scrollTop = pct * (feedRef.current.scrollHeight - feedRef.current.clientHeight);
+              }}
+              onPointerUp={() => { dragging.current = false; }}
+            >
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  width: 16,
+                  height: 16,
+                  top: `calc(${scrollPct * 100}% - 8px)`,
+                  background: "#ff2d8a",
+                  boxShadow: "0 0 10px 3px rgba(255,45,138,0.6), 0 0 24px 6px rgba(255,45,138,0.25)",
+                  cursor: "grab",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+          )}
+
+          <div ref={feedRef} className="h-full overflow-y-auto scrollbar-hide px-4 py-3 space-y-2">
 
           {/* Empty state */}
           {!hasActivity && !running && (
@@ -697,6 +770,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
           )}
 
           <div ref={feedEndRef} />
+          </div>
         </div>
 
         {/* ── Reply bar — appears after agent finishes, stays until new session ── */}
