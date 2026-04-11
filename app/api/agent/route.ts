@@ -41,16 +41,22 @@ export async function POST(request: NextRequest) {
     };
     if (authHeader) forwardHeaders["Authorization"] = authHeader;
 
+    const payload: Record<string, unknown> = {
+      prompt:               body.prompt.trim(),
+      conversation_history: body.conversation_history ?? [],
+      enable_search:        body.enable_search ?? true,
+      max_steps:            body.max_steps     ?? 8,
+      conversation_id:      body.conversation_id,
+    };
+    if (body.image_data) {
+      payload.image_data       = body.image_data;
+      payload.image_media_type = body.image_media_type || "image/png";
+    }
+
     const backendRes = await fetch(`${BACKEND_URL}/ai/agent/run`, {
       method:  "POST",
       headers: forwardHeaders,
-      body:    JSON.stringify({
-        prompt:               body.prompt.trim(),
-        conversation_history: body.conversation_history ?? [],
-        enable_search:        body.enable_search ?? true,
-        max_steps:            body.max_steps     ?? 8,
-        conversation_id:      body.conversation_id,
-      }),
+      body:    JSON.stringify(payload),
     });
 
     if (!backendRes.ok || !backendRes.body) {

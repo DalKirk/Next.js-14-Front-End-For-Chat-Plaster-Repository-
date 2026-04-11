@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Download,
   Maximize2,
+  Paperclip,
 } from "lucide-react";
 import MarkdownRenderer from "./MarkdownRenderer";
 
@@ -261,6 +262,12 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
   const [summary,   setSummary]   = useState<{ assets: Asset[]; total_cost: number } | null>(null);
   const [totalCost, setTotalCost] = useState(0);
 
+  // Image attachment state
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [imagePreview,  setImagePreview]  = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
+
   // Conversation history — persists across multiple runs in this session
   const historyRef      = useRef<HistoryEntry[]>([]);
   const historyDisplay  = useRef<HistoryEntry[]>([]);
@@ -300,6 +307,23 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     }
   }, [running, content]);
 
+  const handleImageAttach = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) return;
+    setAttachedImage(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }, []);
+
+  const handleRemoveImage = useCallback(() => {
+    setAttachedImage(null);
+    setImagePreview(null);
+  }, []);
+
   const resetAll = useCallback(() => {
     setEvents([]);
     setContent("");
@@ -308,6 +332,8 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     setPrompt("");
     setReplyText("");
     setTurns([]);
+    setAttachedImage(null);
+    setImagePreview(null);
     historyRef.current     = [];
     historyDisplay.current = [];
   }, []);
@@ -332,6 +358,11 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     const userTurn: HistoryEntry = { role: "user", content: promptText.trim() };
     setTurns(prev => [...prev, userTurn]);
 
+    // Capture image data before clearing state (avoids stale closure)
+    const capturedImage = imagePreview;
+    setAttachedImage(null);
+    setImagePreview(null);
+
     let fullContent = "";
 
     try {
@@ -341,10 +372,14 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
         signal:  abortRef.current.signal,
         body:    JSON.stringify({
           prompt:               promptText.trim(),
-          conversation_history: historyRef.current.slice(-20),  // ← cap at last 10 exchanges
-          conversation_id:      agentConvId,          // ← isolated from chat
+          conversation_history: historyRef.current.slice(-20),
+          conversation_id:      agentConvId,
           enable_search:        true,
           max_steps:            8,
+          ...(capturedImage ? {
+            image_data:       capturedImage.replace(/^data:[^;]+;base64,/, ""),
+            image_media_type: capturedImage.match(/^data:([^;]+);/)?.[1] || "image/png",
+          } : {}),
         }),
       });
 
@@ -431,7 +466,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     } finally {
       setRunning(false);
     }
-  }, [running, agentConvId]);
+  }, [running, agentConvId, imagePreview]);
 
   // Initial prompt submit
   const run = useCallback(() => {
@@ -538,37 +573,45 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             className="px-4 py-3 shrink-0"
             style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}
           >
-            <div
-              className="flex gap-2 rounded-xl p-2 transition-all"
-              style={{
-                background: "rgba(139,92,246,0.04)",
-                border:     `1px solid ${running ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.1)"}`,
-              }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder="Describe what you want to create…"
-                disabled={running}
-                rows={2}
-                className="flex-1 resize-none text-xs outline-none disabled:opacity-50"
-                style={{ background: "transparent", color: "rgba(255,255,255,0.85)", lineHeight: 1.6, paddingLeft: 4 }}
-              />
-              <button
-                onClick={running ? stop : run}
-                disabled={!prompt.trim() && !running}
-                className="self-end px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-                style={{
-                  background: running ? "rgba(239,68,68,0.12)" : "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
-                  border:     running ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(139,92,246,0.3)",
-                  color:      running ? "#f87171" : "#f0e6ff",
-                  boxShadow:  running ? "none" : "0 0 16px rgba(139,92,246,0.2)",
-                }}
-              >
-                {running ? "Stop" : "Create →"}
-              </button>
+            <div className="rounded-xl p-2 transition-all" style={{ background: "rgba(139,92,246,0.04)", border: `1px solid ${running ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.1)"}` }}>
+              {/* Image preview */}
+              {imagePreview && (
+                <div className="agent-image-preview">
+                  <img src={imagePreview} alt="Attached" />
+                  <button className="agent-btn-remove-image" onClick={handleRemoveImage}>✕</button>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Reference image attached</span>
+                </div>
+              )}
+              <div className="flex gap-2 items-center">
+                <label className="agent-btn-attach self-center" title="Attach reference image for video generation">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageAttach} style={{ display: "none" }} disabled={running} />
+                  <Paperclip size={16} />
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder={attachedImage ? "Describe the video you want from this image…" : "Describe what you want to create…"}
+                  disabled={running}
+                  rows={2}
+                  className="flex-1 resize-none text-xs outline-none disabled:opacity-50"
+                  style={{ background: "transparent", color: "rgba(255,255,255,0.85)", lineHeight: 1.6, paddingLeft: 4 }}
+                />
+                <button
+                  onClick={running ? stop : run}
+                  disabled={!prompt.trim() && !running}
+                  className="self-center px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                  style={{
+                    background: running ? "rgba(239,68,68,0.12)" : "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
+                    border:     running ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(139,92,246,0.3)",
+                    color:      running ? "#f87171" : "#f0e6ff",
+                    boxShadow:  running ? "none" : "0 0 16px rgba(139,92,246,0.2)",
+                  }}
+                >
+                  {running ? "Stop" : "Create →"}
+                </button>
+              </div>
             </div>
 
             {/* Example prompts */}
@@ -727,7 +770,7 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
                 <span>✓ {assets.length} asset{assets.length !== 1 ? "s" : ""} created</span>
                 {summary ? <span>{summary.total_cost} credits used</span> : null}
               </div>
-              <div className={`grid gap-3 ${assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className="grid gap-3 grid-cols-2">
                 {assets.map((asset, i) => {
                   if (!asset.url) return null;
                   const isAssetVideo = asset.type === "video";
@@ -853,32 +896,43 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
             className="px-4 py-3 shrink-0"
             style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}
           >
-            <div
-              className="flex gap-2 items-center rounded-xl px-3 py-2"
-              style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)" }}
-            >
-              <input
-                ref={replyRef}
-                value={replyText}
-                onChange={e => setReplyText(e.target.value)}
-                onKeyDown={handleReplyKey}
-                placeholder="Refine or continue… e.g. 'Make it more minimal' or 'Add a tagline'"
-                className="flex-1 text-xs outline-none bg-transparent"
-                style={{ color: "rgba(255,255,255,0.8)" }}
-              />
-              <button
-                onClick={submitReply}
-                disabled={!replyText.trim()}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
-                  border:     "1px solid rgba(139,92,246,0.3)",
-                  color:      "#f0e6ff",
-                  boxShadow:  "0 0 12px rgba(139,92,246,0.2)",
-                }}
-              >
-                Run →
-              </button>
+            <div className="rounded-xl px-3 py-2" style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)" }}>
+              {/* Image preview in reply bar */}
+              {imagePreview && (
+                <div className="agent-image-preview" style={{ marginBottom: 6 }}>
+                  <img src={imagePreview} alt="Attached" />
+                  <button className="agent-btn-remove-image" onClick={handleRemoveImage}>✕</button>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Reference image</span>
+                </div>
+              )}
+              <div className="flex gap-2 items-center">
+                <label className="agent-btn-attach" title="Attach reference image" style={{ width: 28, height: 28, minWidth: 28 }}>
+                  <input ref={replyFileInputRef} type="file" accept="image/*" onChange={handleImageAttach} style={{ display: "none" }} disabled={running} />
+                  <Paperclip size={14} />
+                </label>
+                <input
+                  ref={replyRef}
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  onKeyDown={handleReplyKey}
+                  placeholder={attachedImage ? "Describe the video from this image…" : "Refine or continue… e.g. 'Make it more minimal'"}
+                  className="flex-1 text-xs outline-none bg-transparent"
+                  style={{ color: "rgba(255,255,255,0.8)" }}
+                />
+                <button
+                  onClick={submitReply}
+                  disabled={!replyText.trim()}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))",
+                    border:     "1px solid rgba(139,92,246,0.3)",
+                    color:      "#f0e6ff",
+                    boxShadow:  "0 0 12px rgba(139,92,246,0.2)",
+                  }}
+                >
+                  Run →
+                </button>
+              </div>
             </div>
             <p
               className="text-[10px] mt-1.5 px-1"
