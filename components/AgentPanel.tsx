@@ -313,9 +313,27 @@ export default function AgentPanel({ isOpen, onClose }: AgentPanelProps) {
     if (!file.type.startsWith("image/")) return;
     if (file.size > 10 * 1024 * 1024) return;
     setAttachedImage(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+
+    // Resize to max 1024px and compress as JPEG to keep base64 small
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1024;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        const scale = MAX / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      setImagePreview(dataUrl);
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
     e.target.value = "";
   }, []);
 

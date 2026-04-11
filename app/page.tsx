@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { ResponsiveAvatar } from "@/components/ResponsiveAvatar";
@@ -26,7 +27,7 @@ import {
   Camera, Palette, User as UserIcon, LogOut, Type,
   Sparkles,
 } from "lucide-react";
-import AgentPanel from "@/components/AgentPanel";
+const AgentPanel = dynamic(() => import("@/components/AgentPanel"), { ssr: false });
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
 function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
@@ -157,6 +158,7 @@ const secondaryFeatures = [
 const sideMenuItems = [
   { id: "showcase", label: "Create", icon: "✦" },
   { id: "explore", label: "Explore", icon: "◈" },
+  { id: "agent",   label: "Agent",  icon: "✧", action: "openAgent" },
   { id: "community", label: "Community", icon: "◉", href: "/chat", requiresAuth: true },
   { id: "profile", label: "Profile", icon: "◎", href: "/profile", requiresAuth: true },
   { id: "terms", label: "Terms", icon: "◇", href: "/terms", requiresAuth: false },
@@ -608,7 +610,9 @@ export default function HomePage() {
               onMouseEnter={() => setActiveSideItem(item.id)}
               onMouseLeave={() => setActiveSideItem(null)}
               onClick={() => {
-                if (item.href) {
+                if ((item as any).action === "openAgent") {
+                  setIsAgentOpen(true);
+                } else if (item.href) {
                   navigateOrAuth(item.href, !!item.requiresAuth);
                 } else {
                   scrollToSection(item.id);
@@ -1095,13 +1099,7 @@ export default function HomePage() {
         <Cog6ToothIcon className="w-5 h-5 animate-spin relative z-10" style={{ color: '#cc00cc', animationDuration: '3s' }} />
       </button>
 
-      {/* ═══ AGENT PANEL ═══ */}
-      <AgentPanel
-        isOpen={isAgentOpen}
-        onClose={() => setIsAgentOpen(false)}
-      />
-
-      {/* Agent toggle button — sits left of chat button */}
+      {/* Agent toggle button — sits left of chat button (rendered before panel so it always appears) */}
       <button
         onClick={() => setIsAgentOpen(!isAgentOpen)}
         className="fixed rounded-full transition-all duration-300"
@@ -1125,6 +1123,12 @@ export default function HomePage() {
           style={{ color: "#c084fc" }}
         />
       </button>
+
+      {/* ═══ AGENT PANEL ═══ */}
+      <AgentPanel
+        isOpen={isAgentOpen}
+        onClose={() => setIsAgentOpen(false)}
+      />
 
       {/* Shimmer animation */}
       <style>{`
