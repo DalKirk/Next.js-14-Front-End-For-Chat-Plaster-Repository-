@@ -1162,6 +1162,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
             sharedTurns={Math.floor(sharedHistory.current.length / 2)}
             useAgentMode={voiceAgentMode}
             onToggleMode={() => setVoiceAgentMode(v => !v)}
+            onSwitchTab={(tab) => setActiveTab(tab)}
             onSpeakingChange={setStarSpeaking}
           />
         )}
