@@ -343,6 +343,9 @@ export default function HomePage() {
 
   /* ── "Hey Star" wake word listener (page-level, runs when panel is closed) ── */
   useEffect(() => {
+    // Skip on mobile — voice is desktop-only
+    if (/Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator?.userAgent || "")) return;
+
     const SR = typeof window !== "undefined"
       ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       : null;

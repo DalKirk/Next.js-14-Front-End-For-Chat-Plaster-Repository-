@@ -1,70 +1,135 @@
-﻿"use client"
+"use client"
 
-import React, { useState, useEffect, useRef } from "react"
-import {
-  Mic, MicOff, Volume2, Loader2, Radio,
-  Wand2, MessageSquare, Monitor,
-} from "lucide-react"
+/**
+ * VoiceTab.tsx
+ * Voice interface — desktop Chrome only.
+ * Mobile users see a friendly message directing them to Chat or Create.
+ *
+ * Structure:
+ *   VoiceTab (wrapper) → getIsMobile() check (pure function, no hooks)
+ *     → mobile  → MobileVoiceMessage (useVoice never imported/runs)
+ *     → desktop → DesktopVoiceTab    (useVoice runs here only)
+ */
+
+import React, { useEffect, useRef, useCallback, useState } from "react"
+import { Mic, Volume2, VolumeX, RotateCcw, Sparkles, Zap, Monitor } from "lucide-react"
 import { useVoice } from "@/hooks/useVoice"
 
-/* ── helpers ────────────────────────────────────────────────────────────── */
-
-function getIsMobile(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent)
+interface VoiceEntry {
+  id:      string
+  role:    "user" | "assistant"
+  content: string
 }
 
-/* ── types ──────────────────────────────────────────────────────────────── */
-
 interface VoiceTabProps {
-  onUserSpeech:    (text: string) => void
-  responseText:    string
-  isProcessing:    boolean
-  sharedTurns:     number
-  useAgentMode:    boolean
-  onToggleMode:    () => void
-  onSwitchTab:     (tab: "chat" | "create") => void
+  onUserSpeech:  (text: string) => void
+  responseText:  string
+  isProcessing:  boolean
+  sharedTurns:   number
+  useAgentMode:  boolean
+  onToggleMode:  () => void
+  onSwitchTab:   (tab: "chat" | "create") => void
   onSpeakingChange?: (speaking: boolean) => void
 }
 
-interface Turn { role: "user" | "assistant"; text: string }
+const uid = () => Math.random().toString(36).slice(2, 8)
 
-/* ── mobile fallback ──────────────────────────────────────────────────── */
+// ─── Mobile detection ─────────────────────────────────────────────────────────
 
-function MobileVoiceMessage({ onSwitchTab }: { onSwitchTab: (tab: "chat" | "create") => void }) {
+function getIsMobile(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent
+  )
+}
+
+// ─── Mobile message component ─────────────────────────────────────────────────
+
+function MobileVoiceMessage({
+  onSwitchTab,
+}: {
+  onSwitchTab: (tab: "chat" | "create") => void
+}) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-5 px-6 text-center">
-      <Monitor className="w-10 h-10 text-white/30" />
-      <p className="text-[15px] font-semibold text-white/80">
-        Voice works on desktop
-      </p>
-      <ul className="text-[12px] text-white/40 space-y-1 list-none">
-        <li>Chrome &middot; continuous speech recognition</li>
-        <li>Wake-word &ldquo;Hey Star&rdquo; &middot; ElevenLabs TTS</li>
-      </ul>
-      <div className="flex gap-3 mt-2">
+    <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8 text-center">
+      {/* Icon */}
+      <div
+        className="w-20 h-20 rounded-full flex items-center justify-center"
+        style={{
+          background: "rgba(139,92,246,0.06)",
+          border:     "1px solid rgba(139,92,246,0.12)",
+        }}
+      >
+        <Monitor className="w-8 h-8" style={{ color: "rgba(192,132,252,0.4)" }} />
+      </div>
+
+      {/* Message */}
+      <div>
+        <p
+          className="text-sm font-semibold mb-2"
+          style={{ color: "rgba(255,255,255,0.6)" }}
+        >
+          Voice works on desktop
+        </p>
+        <p
+          className="text-xs leading-relaxed max-w-[240px]"
+          style={{ color: "rgba(255,255,255,0.25)" }}
+        >
+          Open Starcyeed in Chrome on a desktop or laptop to use voice mode with
+          Hey Star wake word and ElevenLabs audio.
+        </p>
+      </div>
+
+      {/* Feature list */}
+      <div
+        className="flex flex-col gap-2 text-[11px] text-left"
+        style={{ color: "rgba(255,255,255,0.2)" }}
+      >
+        {[
+          "Hey Star wake word detection",
+          "ElevenLabs voice responses",
+          "Voice-activated image & video generation",
+          "Shared context with Chat and Create",
+        ].map((f, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span style={{ color: "rgba(139,92,246,0.35)" }}>◈</span>
+            {f}
+          </div>
+        ))}
+      </div>
+
+      {/* Switch tab buttons */}
+      <div className="flex gap-3 mt-1">
         <button
           onClick={() => onSwitchTab("chat")}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium"
-          style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+          className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
+          style={{
+            background: "rgba(6,182,212,0.08)",
+            border:     "1px solid rgba(6,182,212,0.2)",
+            color:      "rgba(6,182,212,0.8)",
+          }}
         >
-          <MessageSquare className="w-3.5 h-3.5" /> Open Chat
+          Open Chat
         </button>
         <button
           onClick={() => onSwitchTab("create")}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium"
-          style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+          className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
+          style={{
+            background: "rgba(139,92,246,0.08)",
+            border:     "1px solid rgba(139,92,246,0.2)",
+            color:      "rgba(192,132,252,0.8)",
+          }}
         >
-          <Wand2 className="w-3.5 h-3.5" /> Open Create
+          Open Create
         </button>
       </div>
     </div>
   )
 }
 
-/* ═══════════════════════════════════════════════════════════════════════ */
+// ─── Desktop voice component — useVoice only runs here ───────────────────────
 
-export default function VoiceTab({
+function DesktopVoiceTab({
   onUserSpeech,
   responseText,
   isProcessing,
@@ -74,232 +139,328 @@ export default function VoiceTab({
   onSwitchTab,
   onSpeakingChange,
 }: VoiceTabProps) {
+  const [entries,   setEntries]   = useState<VoiceEntry[]>([])
+  const [autoPlay,  setAutoPlay]  = useState(true)
+  const [activated, setActivated] = useState(false)
 
-  /* ── mobile gate ─────────────────────────────────────────────────── */
-  const [mobile] = useState(getIsMobile)
-  if (mobile) return <MobileVoiceMessage onSwitchTab={onSwitchTab} />
-
-  /* ── local state ─────────────────────────────────────────────────── */
-  const [activated, setActivated]     = useState(false)
-  const [localTurns, setLocalTurns]   = useState<Turn[]>([])
-  const feedRef                       = useRef<HTMLDivElement>(null)
-  const prevResponseRef               = useRef("")
+  const lastSpokenRef = useRef("")
+  const feedEndRef    = useRef<HTMLDivElement>(null)
 
   const voice = useVoice({
     wakeWord:     "hey star",
     voiceId:      "Tzd7T62CaEjAmITJt8xL",
-    onTranscript: (t) => {
-      setLocalTurns(p => [...p, { role: "user", text: t }])
-      onUserSpeech(t)
+    onTranscript: (text) => {
+      setEntries(prev => [...prev, { id: uid(), role: "user", content: text }])
+      onUserSpeech(text)
     },
-    onWakeWord: () => {},
+    onWakeWord: () => {
+      console.log("[VoiceTab] Wake word detected")
+    },
   })
 
-  // Bubble speaking state up to parent
+  // ── Bubble speaking state up to parent ────────────────────────────────────────
   useEffect(() => {
     onSpeakingChange?.(voice.isSpeaking)
   }, [voice.isSpeaking, onSpeakingChange])
 
-  /* ── Cleanup on unmount only ──────────────────────────────────────── */
+  // ── Cleanup on unmount ────────────────────────────────────────────────────────
   useEffect(() => {
-    return () => {
-      if (activated) voice.deactivate()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { voice.deactivate() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /* ── Speak new assistant response ─────────────────────────────────── */
+  // ── Auto-scroll ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (
-      responseText &&
-      responseText !== prevResponseRef.current
-    ) {
-      prevResponseRef.current = responseText
-      setLocalTurns(p => [...p, { role: "assistant", text: responseText }])
-      if (activated) voice.speak(responseText)
-    }
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [entries])
+
+  // ── Speak new responses ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!responseText)                          return
+    if (responseText === lastSpokenRef.current) return
+    if (isProcessing)                           return
+
+    lastSpokenRef.current = responseText
+    setEntries(prev => [...prev, { id: uid(), role: "assistant", content: responseText }])
+    if (autoPlay && activated) voice.speak(responseText)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responseText])
+  }, [responseText, isProcessing])
 
-  /* ── Auto-scroll ──────────────────────────────────────────────────── */
-  useEffect(() => {
-    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: "smooth" })
-  }, [localTurns])
+  // ── Orb tap ───────────────────────────────────────────────────────────────────
+  const handleOrbTap = useCallback(() => {
+    if (voice.isSpeaking) {
+      voice.stopSpeaking()
+      return
+    }
 
-  /* ── Unsupported browser fallback ─────────────────────────────────── */
+    if (!activated) {
+      setActivated(true)
+      voice.activate()
+      return
+    }
+
+    if (!voice.isWakeListening && !voice.isListening) {
+      voice.activate()
+    }
+  }, [activated, voice])
+
+  const clearHistory = useCallback(() => {
+    setEntries([])
+    lastSpokenRef.current = ""
+  }, [])
+
+  // ── Orb visual config ─────────────────────────────────────────────────────────
+  const ORB: Record<string, {
+    glow: string; color: string; ring: string; pulse: boolean; label: string
+  }> = {
+    idle:          { glow: "rgba(139,92,246,0.15)", color: "rgba(139,92,246,0.25)", ring: "rgba(139,92,246,0.08)", pulse: false, label: activated ? 'Say "Hey Star" or tap orb' : "Tap orb to activate" },
+    wake_listening:{ glow: "rgba(52,211,153,0.25)",  color: "rgba(52,211,153,0.5)",  ring: "rgba(52,211,153,0.18)", pulse: true,  label: 'Listening for "Hey Star"\u2026' },
+    listening:     { glow: "rgba(6,182,212,0.4)",    color: "rgba(6,182,212,0.8)",   ring: "rgba(6,182,212,0.22)", pulse: true,  label: "Listening\u2026" },
+    processing:    { glow: "rgba(251,191,36,0.3)",   color: "rgba(251,191,36,0.6)",  ring: "rgba(251,191,36,0.15)",pulse: true,  label: "Thinking\u2026" },
+    speaking:      { glow: "rgba(192,132,252,0.45)", color: "rgba(192,132,252,0.85)",ring: "rgba(192,132,252,0.22)",pulse: true,  label: "Speaking\u2026" },
+    error:         { glow: "rgba(239,68,68,0.2)",    color: "rgba(239,68,68,0.5)",   ring: "rgba(239,68,68,0.15)", pulse: false, label: "Mic error \u2014 check permissions" },
+  }
+
+  const orb   = ORB[voice.status] ?? ORB.idle
+  const label = isProcessing ? "Thinking\u2026" : orb.label
+
+  // ── Not supported in this browser ────────────────────────────────────────────
   if (!voice.isSupported) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <MicOff className="w-8 h-8 text-white/20" />
-        <p className="text-sm text-white/50">
-          Voice requires <strong className="text-white/70">Chrome desktop</strong> with
-          the Web Speech API.
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8 text-center">
+        <Mic className="w-10 h-10" style={{ color: "rgba(239,68,68,0.4)" }} />
+        <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
+          Voice not supported in this browser
         </p>
-        <div className="flex gap-3 mt-1">
-          <button
-            onClick={() => onSwitchTab("chat")}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium"
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
-          >
-            <MessageSquare className="w-3.5 h-3.5" /> Open Chat
+        <p className="text-xs leading-relaxed max-w-[220px]" style={{ color: "rgba(255,255,255,0.2)" }}>
+          Please open Starcyeed in Chrome on desktop for voice support.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={() => onSwitchTab("chat")}
+            className="px-4 py-2 rounded-xl text-xs"
+            style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "rgba(6,182,212,0.8)" }}>
+            Open Chat
           </button>
-          <button
-            onClick={() => onSwitchTab("create")}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium"
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
-          >
-            <Wand2 className="w-3.5 h-3.5" /> Open Create
+          <button onClick={() => onSwitchTab("create")}
+            className="px-4 py-2 rounded-xl text-xs"
+            style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "rgba(192,132,252,0.8)" }}>
+            Open Create
           </button>
         </div>
       </div>
     )
   }
 
-  /* ── Orb colours ──────────────────────────────────────────────────── */
-  const orbColor =
-    voice.isSpeaking  ? "rgba(168,85,247,0.35)"  :
-    isProcessing      ? "rgba(234,179,8,0.3)"     :
-    voice.isListening ? "rgba(239,68,68,0.5)"     :
-    activated         ? "rgba(34,197,94,0.25)"     :
-                        "rgba(255,255,255,0.06)"
-
-  const orbBorder =
-    voice.isSpeaking  ? "rgba(168,85,247,0.5)"   :
-    isProcessing      ? "rgba(234,179,8,0.4)"    :
-    voice.isListening ? "rgba(239,68,68,0.6)"    :
-    activated         ? "rgba(34,197,94,0.4)"     :
-                        "rgba(255,255,255,0.08)"
-
-  const statusLabel =
-    voice.isSpeaking  ? "Star is speaking…"       :
-    isProcessing      ? "Thinking…"               :
-    voice.isListening ? "Listening…"              :
-    activated         ? `Say "${voice.status === "wake_listening" ? "Hey Star" : "..."}"` :
-                        "Tap to start"
-
-  /* ── Toggle handler ───────────────────────────────────────────────── */
-  const handleToggle = () => {
-    if (activated) {
-      voice.deactivate()
-      setActivated(false)
-    } else {
-      voice.activate()
-      setActivated(true)
-    }
-  }
-
-  /* ── Status icon ──────────────────────────────────────────────────── */
-  const StatusIcon = voice.isSpeaking
-    ? Volume2
-    : isProcessing
-      ? Loader2
-      : voice.isListening
-        ? Radio
-        : activated
-          ? Mic
-          : MicOff
-
-  /* ═══════════════════════════════  JSX  ═══════════════════════════════ */
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex-1 flex flex-col min-h-0">
 
-      {/* -- Mode toggle + turn count -- */}
-      <div className="flex items-center justify-between px-3 pt-2 pb-1">
-        <button
-          onClick={onToggleMode}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors"
-          style={{
-            background: useAgentMode ? "rgba(168,85,247,0.15)" : "rgba(59,130,246,0.15)",
-            color:      useAgentMode ? "rgba(168,85,247,0.8)"  : "rgba(96,165,250,0.8)",
-          }}
-        >
-          {useAgentMode ? <><Wand2 className="w-3 h-3" /> Create</> : <><MessageSquare className="w-3 h-3" /> Chat</>}
-        </button>
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between px-4 py-2 shrink-0"
+        style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}>
 
-        {sharedTurns > 0 && (
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>
-            {sharedTurns} turn{sharedTurns !== 1 ? "s" : ""}
-          </span>
-        )}
+        {/* Chat / Create toggle */}
+        <div className="flex items-center gap-1 rounded-lg p-0.5"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <button onClick={() => { if (useAgentMode) onToggleMode() }}
+            className="px-2.5 py-1 rounded-md text-[10px] transition-all"
+            style={{
+              background: !useAgentMode ? "rgba(6,182,212,0.12)"  : "transparent",
+              color:      !useAgentMode ? "rgba(6,182,212,0.9)"   : "rgba(255,255,255,0.3)",
+              border:     !useAgentMode ? "1px solid rgba(6,182,212,0.2)" : "1px solid transparent",
+            }}>
+            Chat
+          </button>
+          <button onClick={() => { if (!useAgentMode) onToggleMode() }}
+            className="px-2.5 py-1 rounded-md text-[10px] transition-all"
+            style={{
+              background: useAgentMode ? "rgba(139,92,246,0.12)"  : "transparent",
+              color:      useAgentMode ? "rgba(192,132,252,0.9)"  : "rgba(255,255,255,0.3)",
+              border:     useAgentMode ? "1px solid rgba(139,92,246,0.2)" : "1px solid transparent",
+            }}>
+            Create
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {sharedTurns > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.6)" }}>
+              {sharedTurns} shared
+            </span>
+          )}
+
+          <button
+            onClick={() => { setAutoPlay(v => !v); if (voice.isSpeaking) voice.stopSpeaking() }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] transition-all"
+            style={{
+              background: autoPlay ? "rgba(192,132,252,0.08)" : "rgba(255,255,255,0.03)",
+              border:     autoPlay ? "1px solid rgba(192,132,252,0.2)" : "1px solid rgba(255,255,255,0.06)",
+              color:      autoPlay ? "rgba(192,132,252,0.8)" : "rgba(255,255,255,0.3)",
+            }}>
+            {autoPlay ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
+            {autoPlay ? "Audio on" : "Muted"}
+          </button>
+
+          {entries.length > 0 && (
+            <button onClick={clearHistory}
+              className="p-1.5 rounded-lg transition-all hover:bg-white/5"
+              style={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* -- Scrollable feed -- */}
-      <div
-        ref={feedRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-2 agent-scrollbar"
-      >
-        {localTurns.map((t, i) => (
-          <div
-            key={i}
-            className={`text-xs leading-relaxed px-2.5 py-1.5 rounded-lg max-w-[85%] whitespace-pre-wrap ${
-              t.role === "user" ? "ml-auto" : ""
-            }`}
-            style={{
-              background: t.role === "user"
-                ? "rgba(59,130,246,0.12)"
-                : "rgba(255,255,255,0.04)",
-              color: t.role === "user"
-                ? "rgba(147,197,253,0.9)"
-                : "rgba(255,255,255,0.7)",
-            }}
-          >
-            {t.text}
+      {/* ── Transcript feed ── */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
+
+        {entries.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+            {!activated ? (
+              <>
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs"
+                  style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.12)", color: "rgba(192,132,252,0.7)" }}>
+                  <Zap className="w-3.5 h-3.5 shrink-0" />
+                  Tap the orb to activate voice
+                </div>
+                <p className="text-[11px] leading-relaxed max-w-[200px]"
+                  style={{ color: "rgba(255,255,255,0.18)" }}>
+                  Then say{" "}
+                  <span style={{ color: "rgba(52,211,153,0.6)" }}>&quot;Hey Star&quot;</span>
+                  {" "}followed by your request
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-center leading-relaxed max-w-[200px]"
+                style={{ color: "rgba(255,255,255,0.2)" }}>
+                Say{" "}
+                <span style={{ color: "rgba(52,211,153,0.6)" }}>&quot;Hey Star&quot;</span>
+                {" "}then speak your request
+              </p>
+            )}
+          </div>
+        )}
+
+        {entries.map(entry => (
+          <div key={entry.id} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className="max-w-[82%] px-3 py-2 rounded-xl text-xs leading-relaxed"
+              style={entry.role === "user" ? {
+                background: "rgba(6,182,212,0.1)",
+                border:     "1px solid rgba(6,182,212,0.15)",
+                color:      "rgba(255,255,255,0.75)",
+              } : {
+                background: "rgba(139,92,246,0.06)",
+                border:     "1px solid rgba(139,92,246,0.12)",
+                color:      "rgba(255,255,255,0.7)",
+              }}>
+              {entry.content}
+            </div>
           </div>
         ))}
 
-        {/* live transcript */}
-        {voice.transcript && (
-          <div
-            className="text-xs leading-relaxed px-2.5 py-1.5 rounded-lg max-w-[85%] ml-auto italic"
-            style={{ background: "rgba(59,130,246,0.08)", color: "rgba(147,197,253,0.6)" }}
-          >
-            {voice.transcript}
+        {voice.isListening && voice.transcript && (
+          <div className="flex justify-end">
+            <div className="max-w-[82%] px-3 py-2 rounded-xl text-xs italic"
+              style={{ background: "rgba(6,182,212,0.04)", border: "1px dashed rgba(6,182,212,0.12)", color: "rgba(255,255,255,0.35)" }}>
+              {voice.transcript}…
+            </div>
           </div>
         )}
+
+        <div ref={feedEndRef} />
       </div>
 
-      {/* -- Orb + status -- */}
-      <div className="flex flex-col items-center gap-2 py-4">
+      {/* ── Orb + controls ── */}
+      <div className="flex flex-col items-center gap-4 pt-4 pb-6 px-4 shrink-0"
+        style={{ borderTop: "1px solid rgba(139,92,246,0.06)" }}>
 
-        <button
-          onClick={handleToggle}
-          className="relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300"
-          style={{
-            background: orbColor,
-            border: `1.5px solid ${orbBorder}`,
-            boxShadow: activated
-              ? `0 0 20px ${orbColor}, 0 0 40px ${orbColor}`
-              : "none",
-          }}
-        >
-          {/* ripple when listening */}
-          {voice.isListening && (
-            <span
-              className="absolute inset-0 rounded-full animate-ping"
-              style={{ background: "rgba(239,68,68,0.15)" }}
-            />
+        <p className="text-[10px] tracking-widest text-center uppercase transition-all duration-300"
+          style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "0.14em" }}>
+          {label}
+        </p>
+
+        {/* Orb */}
+        <div className="relative flex items-center justify-center cursor-pointer select-none"
+          onClick={handleOrbTap}
+          style={{ width: 88, height: 88 }}
+          title={activated ? "Tap to speak" : "Tap to activate"}>
+
+          {orb.pulse && (
+            <>
+              <div className="absolute inset-0 rounded-full"
+                style={{ border: `1.5px solid ${orb.ring}`, animation: "vPulse 1.6s ease-in-out infinite" }} />
+              <div className="absolute rounded-full"
+                style={{ inset: -10, border: `1px solid ${orb.ring}`, animation: "vPulse 1.6s ease-in-out 0.45s infinite", opacity: 0.45 }} />
+            </>
           )}
-          <StatusIcon
-            className={`w-7 h-7 ${isProcessing ? "animate-spin" : ""}`}
-            style={{ color: "rgba(255,255,255,0.8)" }}
-          />
-        </button>
 
-        <span
-          className="text-[11px] font-medium"
-          style={{ color: "rgba(255,255,255,0.45)" }}
-        >
-          {statusLabel}
-        </span>
+          {!activated && !orb.pulse && (
+            <div className="absolute inset-0 rounded-full"
+              style={{ border: "1.5px solid rgba(139,92,246,0.2)", animation: "vBreath 2.5s ease-in-out infinite" }} />
+          )}
+
+          <div className="relative rounded-full flex items-center justify-center transition-all duration-300"
+            style={{
+              width:      76,
+              height:     76,
+              background: `radial-gradient(circle at 35% 35%, ${orb.color}, rgba(0,0,0,0.55))`,
+              boxShadow:  `0 0 28px ${orb.glow}, 0 0 56px ${orb.glow.replace(/[\d.]+\)$/, "0.06)")}`,
+            }}>
+            {voice.isListening ? (
+              <Mic className="w-7 h-7" style={{ color: "rgba(255,255,255,0.95)" }} />
+            ) : voice.isSpeaking ? (
+              <Volume2 className="w-7 h-7" style={{ color: "rgba(255,255,255,0.95)" }} />
+            ) : isProcessing ? (
+              <Sparkles className="w-6 h-6" style={{ color: "rgba(255,255,255,0.7)", animation: "vSpin 1.5s linear infinite" }} />
+            ) : !activated ? (
+              <Zap className="w-6 h-6" style={{ color: "rgba(255,255,255,0.5)" }} />
+            ) : (
+              <Mic className="w-7 h-7" style={{ color: "rgba(255,255,255,0.45)" }} />
+            )}
+          </div>
+        </div>
+
+        {voice.isSpeaking && (
+          <button onClick={voice.stopSpeaking}
+            className="px-3 py-1.5 rounded-lg text-[10px] transition-all"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "rgba(248,113,113,0.8)" }}>
+            Stop audio
+          </button>
+        )}
+
+        <p className="text-[9px] text-center" style={{ color: "rgba(255,255,255,0.12)", letterSpacing: "0.08em" }}>
+          {activated ? "Tap orb to speak manually" : "One tap required"} · Chrome · ElevenLabs
+        </p>
       </div>
 
-      {/* -- tiny footer -- */}
-      <p
-        className="text-[9px] text-center pb-2"
-        style={{ color: "rgba(255,255,255,0.12)", letterSpacing: "0.08em" }}
-      >
-        {activated ? "Tap orb to speak manually" : "One tap required"} &middot; Chrome &middot; ElevenLabs
-      </p>
+      <style>{`
+        @keyframes vPulse {
+          0%,100% { transform: scale(1);    opacity: 1;   }
+          50%      { transform: scale(1.15); opacity: 0.3; }
+        }
+        @keyframes vBreath {
+          0%,100% { opacity: 0.4; transform: scale(1);    }
+          50%      { opacity: 0.8; transform: scale(1.04); }
+        }
+        @keyframes vSpin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
+}
+
+// ─── Public wrapper — checks mobile BEFORE mounting DesktopVoiceTab ──────────
+// This ensures useVoice hook NEVER runs on mobile devices.
+// Mobile check happens here, outside any hook, so React rules are satisfied.
+
+export default function VoiceTab(props: VoiceTabProps) {
+  const isMobile = getIsMobile()
+
+  if (isMobile) {
+    return <MobileVoiceMessage onSwitchTab={props.onSwitchTab} />
+  }
+
+  // Only renders on desktop — useVoice only runs on desktop
+  return <DesktopVoiceTab {...props} />
 }

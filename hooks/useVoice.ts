@@ -113,16 +113,12 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     setStatus(s)
   }, [])
 
-  // -- Support check -- desktop only --
+  // -- Support check --
   useEffect(() => {
-    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
-      typeof navigator !== "undefined" ? navigator.userAgent : ""
-    )
     const hasSpeechAPI =
       typeof window !== "undefined" &&
       ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-
-    setIsSupported(hasSpeechAPI && !isMobile)
+    setIsSupported(hasSpeechAPI)
   }, [])
 
   // -- Timer helpers --
