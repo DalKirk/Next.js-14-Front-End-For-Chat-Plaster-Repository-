@@ -7,10 +7,10 @@ import { NextRequest } from "next/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function POST(req: NextRequest) {
-  const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY
-  const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
+const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY
+const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
 
+export async function POST(req: NextRequest) {
   try {
     const { text, voice_id } = await req.json()
 

@@ -1,14 +1,15 @@
-﻿"use client"
+"use client"
 
 /**
  * useVoice.ts
  *
  * Single continuous recognition session — one tap, runs forever.
- * Desktop Chrome only. Mobile handled separately via MobileVoiceMessage.
  *
- * Changes in this version:
- * - Safety timeout (30s) prevents stuck "speaking" state if audio fails
- * - Safety timeout cleared on normal completion or error
+ * Fixes in this version:
+ * - FLUSH_DELAY increased to 2800ms (was 1800ms) — longer pause before sending
+ * - Interim results also reset the flush timer — user pausing mid-sentence no longer cuts off
+ * - Minimum word count check before flushing — avoids sending 1-word partial captures
+ * - Cleaner accumulation across multiple Chrome result events
  */
 
 import { useState, useRef, useCallback, useEffect } from "react"
@@ -41,21 +42,22 @@ export interface UseVoiceReturn {
   speak:           (text: string) => Promise<void>
   stopSpeaking:    () => void
   reset:           () => void
+  // Legacy compat
   startWakeListening: () => void
   stopWakeListening:  () => void
 }
 
-// --- Markdown stripper ---
+// ─── Markdown stripper ────────────────────────────────────────────────────────
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(new RegExp("\\*\\*([\\s\\S]*?)\\*\\*", "g"), "$1")
-    .replace(new RegExp("__([\\s\\S]*?)__", "g"), "$1")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
     .replace(/\*([^*\n]+?)\*/g, "$1")
     .replace(/_([^_\n]+?)_/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
-    .replace(new RegExp("\\x60{3}[\\s\\S]*?\\x60{3}", "g"), "")
-    .replace(new RegExp("\\x60([^\\x60]+)\\x60", "g"), "$1")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/^[\s]*[-*+]\s+/gm, "")
@@ -68,18 +70,17 @@ function stripMarkdown(text: string): string {
     .trim()
 }
 
-// --- Internal mode ---
+// ─── Internal mode ────────────────────────────────────────────────────────────
 
 type InternalMode = "waiting" | "capturing" | "blocked"
 
-// 2.8s silence before flushing captured text to Claude
+// FIX 1: Increased from 1800ms to 2800ms
+// Gives user more time to finish speaking without being cut off mid-sentence
 const FLUSH_DELAY = 2800
 
-// Minimum words to flush
+// FIX 4: Minimum words before flushing to Claude
+// Avoids sending partial 1-word captures from false triggers
 const MIN_WORDS = 2
-
-// Safety timeout -- if audio never ends, resume after this many ms
-const AUDIO_SAFETY_TIMEOUT = 30000
 
 export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const {
@@ -94,34 +95,33 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const [lastResponse, setLastResponse] = useState("")
   const [isSupported,  setIsSupported]  = useState(false)
 
-  // -- Refs --
-  const rRef            = useRef<SpeechRecognition | null>(null)
-  const audioRef        = useRef<HTMLAudioElement | null>(null)
-  const safetyTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const statusRef       = useRef<VoiceStatus>("idle")
-  const activeRef       = useRef(false)
-  const modeRef         = useRef<InternalMode>("waiting")
-  const captureRef      = useRef("")
-  const flushTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const wakeRef         = useRef(wakeWord.toLowerCase().trim())
+  // ── Refs ──────────────────────────────────────────────────────────────────────
+  const rRef          = useRef<SpeechRecognition | null>(null)
+  const audioRef      = useRef<HTMLAudioElement | null>(null)
+  const statusRef     = useRef<VoiceStatus>("idle")
+  const activeRef     = useRef(false)
+  const modeRef       = useRef<InternalMode>("waiting")
+  const captureRef    = useRef("")
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wakeRef       = useRef(wakeWord.toLowerCase().trim())
 
   useEffect(() => { wakeRef.current = wakeWord.toLowerCase().trim() }, [wakeWord])
 
-  // -- updateStatus --
+  // ── updateStatus ──────────────────────────────────────────────────────────────
   const updateStatus = useCallback((s: VoiceStatus) => {
     statusRef.current = s
     setStatus(s)
   }, [])
 
-  // -- Support check --
+  // ── Support check ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    const hasSpeechAPI =
+    setIsSupported(
       typeof window !== "undefined" &&
       ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    setIsSupported(hasSpeechAPI)
+    )
   }, [])
 
-  // -- Timer helpers --
+  // ── Timer helpers ─────────────────────────────────────────────────────────────
   const clearFlush = useCallback(() => {
     if (flushTimerRef.current) {
       clearTimeout(flushTimerRef.current)
@@ -129,29 +129,25 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
   }, [])
 
-  const clearSafety = useCallback(() => {
-    if (safetyTimerRef.current) {
-      clearTimeout(safetyTimerRef.current)
-      safetyTimerRef.current = null
-    }
-  }, [])
-
-  // -- Flush captured text -> send to Claude --
+  // ── Flush captured text → send to Claude ──────────────────────────────────────
   const flush = useCallback(() => {
     clearFlush()
+
     const raw = captureRef.current.trim()
     captureRef.current = ""
     modeRef.current    = "waiting"
     setTranscript("")
 
+    // FIX 4: Minimum word count — don't send partial captures
     const wordCount = raw.split(/\s+/).filter(Boolean).length
     if (wordCount < MIN_WORDS) {
       updateStatus("wake_listening")
       return
     }
 
+    // Strip wake word prefix if it snuck in
     const text = raw
-      .replace(new RegExp("^" + wakeRef.current + "[\\s,.:!]*", "i"), "")
+      .replace(new RegExp(`^${wakeRef.current}[\\s,.:!]*`, "i"), "")
       .trim()
 
     if (text) {
@@ -162,13 +158,13 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
   }, [clearFlush, updateStatus, onTranscript])
 
-  // -- Reset flush timer --
+  // ── Start/reset silence timer ─────────────────────────────────────────────────
   const resetFlushTimer = useCallback(() => {
     clearFlush()
     flushTimerRef.current = setTimeout(flush, FLUSH_DELAY)
   }, [clearFlush, flush])
 
-  // -- Build single continuous recognition session --
+  // ── Build the single continuous recognition session ───────────────────────────
   const buildSession = useCallback((): SpeechRecognition | null => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) return null
@@ -180,8 +176,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     r.maxAlternatives = 1
 
     r.onresult = (e: SpeechRecognitionEvent) => {
+      // Ignore mic while speaking or processing
       if (modeRef.current === "blocked") return
 
+      // FIX 3: Process from resultIndex forward — accumulate properly
       let finalText   = ""
       let interimText = ""
 
@@ -194,14 +192,16 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       const heard = (finalText || interimText).toLowerCase().trim()
 
       if (modeRef.current === "waiting") {
+        // ── Waiting for wake word ───────────────────────────────────────────
         if (heard.includes(wakeRef.current)) {
           modeRef.current    = "capturing"
           captureRef.current = ""
           updateStatus("listening")
           onWakeWord?.()
 
+          // Grab anything said immediately after the wake word
           const afterWake = (finalText || interimText)
-            .replace(new RegExp(".*?" + wakeRef.current + "[\\s,.:!]*", "i"), "")
+            .replace(new RegExp(`.*?${wakeRef.current}[\\s,.:!]*`, "i"), "")
             .trim()
 
           if (afterWake) {
@@ -210,32 +210,50 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             resetFlushTimer()
           }
         }
+
       } else if (modeRef.current === "capturing") {
+        // ── Accumulating user prompt ────────────────────────────────────────
         if (finalText) {
+          // Commit final text and reset timer
           captureRef.current = (captureRef.current + " " + finalText).trim()
           setTranscript(captureRef.current)
-          resetFlushTimer()
+          resetFlushTimer()   // FIX 2: always reset on final
+
         } else if (interimText) {
+          // Show preview — FIX 2: also reset timer on interim
+          // This prevents cutting off when user pauses mid-sentence
           setTranscript((captureRef.current + " " + interimText).trim())
-          resetFlushTimer()
+          resetFlushTimer()   // FIX 2: reset on interim too
         }
       }
     }
 
     r.onerror = (e: SpeechRecognitionErrorEvent) => {
+      // no-speech and aborted are completely normal — ignore them
       if (e.error === "no-speech" || e.error === "aborted") return
       console.error("[useVoice] recognition error:", e.error)
     }
 
     r.onend = () => {
+      // Chrome stops continuous sessions after ~60s of silence.
+      // Restart from onend — Chrome allows this.
       if (!activeRef.current) return
       if (modeRef.current === "blocked") return
 
       setTimeout(() => {
         if (!activeRef.current || modeRef.current === "blocked") return
+
+        // Try restarting existing session first
         if (rRef.current) {
-          try { rRef.current.start(); return } catch { /* stale -- rebuild */ }
+          try {
+            rRef.current.start()
+            return
+          } catch {
+            // Session object is stale — rebuild below
+          }
         }
+
+        // Rebuild and start fresh session
         const fresh = buildSession()
         if (fresh) {
           rRef.current = fresh
@@ -250,36 +268,44 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flush, updateStatus, onWakeWord, resetFlushTimer])
 
-  // -- Resume session after speaking/processing --
+  // ── Resume recognition after speaking/processing ──────────────────────────────
   const resumeSession = useCallback(() => {
-    clearSafety()
     if (!activeRef.current) return
     modeRef.current = "waiting"
     updateStatus("wake_listening")
 
+    // Try restarting existing session
     if (rRef.current) {
-      try { rRef.current.start(); return } catch { /* stale -- rebuild */ }
+      try {
+        rRef.current.start()
+        return
+      } catch {
+        // Stale — rebuild
+      }
     }
 
+    // Rebuild fresh session
     const r = buildSession()
     if (!r) return
     rRef.current = r
-    try { r.start() } catch (err) {
+    try {
+      r.start()
+    } catch (err) {
       console.error("[useVoice] resumeSession failed:", err)
     }
-  }, [buildSession, updateStatus, clearSafety])
+  }, [buildSession, updateStatus])
 
-  // -- TTS via ElevenLabs --
+  // ── TTS via ElevenLabs ────────────────────────────────────────────────────────
   const speak = useCallback(async (text: string): Promise<void> => {
-    console.log("[useVoice] speak() called with:", text.slice(0, 50))
     if (!text.trim()) return
     const clean = stripMarkdown(text)
-    console.log("[useVoice] clean text:", clean.slice(0, 50))
     if (!clean) return
 
+    // Block mic while speaking — stops feedback loop
     modeRef.current = "blocked"
     clearFlush()
 
+    // Pause recognition during playback
     if (rRef.current) {
       try { rRef.current.stop() } catch { /* ignore */ }
     }
@@ -293,17 +319,6 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     updateStatus("speaking")
     setLastResponse(text)
 
-    // Safety timeout -- if audio never plays or ends, resume after 30s
-    clearSafety()
-    safetyTimerRef.current = setTimeout(() => {
-      console.warn("[useVoice] audio safety timeout -- forcing resume")
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
-      resumeSession()
-    }, AUDIO_SAFETY_TIMEOUT)
-
     try {
       const res = await fetch("/api/tts", {
         method:  "POST",
@@ -311,7 +326,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         body:    JSON.stringify({ text: clean, voice_id: voiceId }),
       })
 
-      if (!res.ok) throw new Error("TTS " + res.status)
+      if (!res.ok) throw new Error(`TTS ${res.status}`)
 
       const blob  = await res.blob()
       const url   = URL.createObjectURL(blob)
@@ -319,9 +334,9 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       audioRef.current = audio
 
       const done = () => {
-        clearSafety()
         URL.revokeObjectURL(url)
         audioRef.current = null
+        // Resume wake word listening after speaking
         resumeSession()
       }
 
@@ -330,23 +345,21 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       await audio.play()
 
     } catch (err) {
-      clearSafety()
       console.error("[useVoice] TTS error:", err)
       resumeSession()
     }
-  }, [voiceId, updateStatus, resumeSession, clearFlush, clearSafety])
+  }, [voiceId, updateStatus, resumeSession, clearFlush])
 
   const stopSpeaking = useCallback(() => {
-    clearSafety()
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.src = ""
       audioRef.current = null
     }
     resumeSession()
-  }, [resumeSession, clearSafety])
+  }, [resumeSession])
 
-  // -- Activate -- MUST be called from a user tap --
+  // ── Activate — MUST be called from a user tap ─────────────────────────────────
   const activate = useCallback(() => {
     if (!isSupported)      return
     if (activeRef.current) return
@@ -369,13 +382,12 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
   }, [isSupported, buildSession, updateStatus])
 
-  // -- Deactivate --
+  // ── Deactivate ────────────────────────────────────────────────────────────────
   const deactivate = useCallback(() => {
     activeRef.current  = false
     modeRef.current    = "waiting"
     captureRef.current = ""
     clearFlush()
-    clearSafety()
 
     if (rRef.current) {
       try { rRef.current.stop() } catch { /* ignore */ }
@@ -387,9 +399,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
     updateStatus("idle")
     setTranscript("")
-  }, [clearFlush, clearSafety, updateStatus])
+  }, [clearFlush, updateStatus])
 
-  // -- Resume after processing completes --
+  // ── Resume after processing completes ─────────────────────────────────────────
+  // When status transitions from processing → wake_listening, restart mic
   const prevStatusRef = useRef<VoiceStatus>("idle")
   useEffect(() => {
     if (
@@ -402,18 +415,17 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     prevStatusRef.current = status
   }, [status, resumeSession])
 
-  // -- Reset --
+  // ── Reset ─────────────────────────────────────────────────────────────────────
   const reset = useCallback(() => {
     deactivate()
     setLastResponse("")
   }, [deactivate])
 
-  // -- Cleanup on unmount --
+  // ── Cleanup on unmount ────────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       activeRef.current = false
       clearFlush()
-      clearSafety()
       try { rRef.current?.stop() } catch { /* ignore */ }
       if (audioRef.current) {
         audioRef.current.pause()
@@ -436,6 +448,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     speak,
     stopSpeaking,
     reset,
+    // Legacy compat
     startWakeListening: activate,
     stopWakeListening:  deactivate,
   }
