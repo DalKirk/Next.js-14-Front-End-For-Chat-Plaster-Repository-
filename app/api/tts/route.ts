@@ -8,6 +8,12 @@ import { NextRequest } from "next/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Temporary diagnostic — DELETE after verifying env vars
+export async function GET() {
+  const keys = Object.keys(process.env).filter(k => /eleven/i.test(k))
+  return new Response(JSON.stringify({ matched_keys: keys, has_key: !!process.env.ELEVENLABS_API_KEY }), { headers: { "Content-Type": "application/json" } })
+}
+
 export async function POST(req: NextRequest) {
   const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY
   const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
