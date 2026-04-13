@@ -1,6 +1,7 @@
 // app/api/tts/route.ts
 // Proxies text → ElevenLabs TTS → returns MP3 audio stream.
 // Keeps the API key server-side.
+// v2 — env vars read inside handler
 
 import { NextRequest } from "next/server"
 
