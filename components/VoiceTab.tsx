@@ -176,10 +176,13 @@ function DesktopVoiceTab({
 
   // ── Speak new responses ───────────────────────────────────────────────────────
   useEffect(() => {
+    console.log("[VoiceTab] responseText changed:", responseText?.slice(0, 50))
+    console.log("[VoiceTab] isProcessing:", isProcessing)
+    console.log("[VoiceTab] lastSpoken:", lastSpokenRef.current?.slice(0, 50))
     if (!responseText)                          return
     if (responseText === lastSpokenRef.current) return
     if (isProcessing)                           return
-
+    console.log("[VoiceTab] calling voice.speak()")
     lastSpokenRef.current = responseText
     setEntries(prev => [...prev, { id: uid(), role: "assistant", content: responseText }])
     if (autoPlay) voice.speak(responseText)

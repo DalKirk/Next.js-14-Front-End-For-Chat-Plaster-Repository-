@@ -700,6 +700,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
     if (agentRunning) return;
     if (!agentContent) return;
     if (agentContent === lastVoiceContentRef.current) return;
+    console.log("[voice] setting voiceResponse from agent:", agentContent.slice(0, 50));
     lastVoiceContentRef.current = agentContent;
     setVoiceResponse(agentContent);
   }, [agentRunning, agentContent, activeTab]);
@@ -712,6 +713,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
     const last = chatMessages[chatMessages.length - 1];
     if (last.role !== "assistant" || !last.content) return;
     if (last.content === lastVoiceContentRef.current) return;
+    console.log("[voice] setting voiceResponse from chat:", last.content.slice(0, 50));
     lastVoiceContentRef.current = last.content;
     setVoiceResponse(last.content);
   }, [chatStreaming, chatMessages, activeTab]);

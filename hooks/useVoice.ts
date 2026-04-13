@@ -271,8 +271,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
   // -- TTS via ElevenLabs --
   const speak = useCallback(async (text: string): Promise<void> => {
+    console.log("[useVoice] speak() called with:", text.slice(0, 50))
     if (!text.trim()) return
     const clean = stripMarkdown(text)
+    console.log("[useVoice] clean text:", clean.slice(0, 50))
     if (!clean) return
 
     modeRef.current = "blocked"
