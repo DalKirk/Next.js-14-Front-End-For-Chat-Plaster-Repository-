@@ -335,9 +335,8 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   const chatAbortRef  = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
 
-  // ── Voice initiated ref — only true when voice tab triggered the request ──────
-  const voiceInitiatedRef   = useRef(false);
-  const agentWasRunningRef  = useRef(false);
+  // ── Tracks the last content delivered to VoiceTab to prevent double-speak ────
+  const lastVoiceContentRef = useRef("");
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
@@ -609,7 +608,6 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   // ── Voice speech handler — routes to chat or agent ─────────────────────────
   const handleVoiceSpeech = useCallback(async (text: string) => {
     setVoiceProcessing(true);
-    voiceInitiatedRef.current = true;
     setAgentOwnerTab("voice");
     try {
       if (voiceAgentMode) {
@@ -683,38 +681,40 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
           { role: "assistant", content: fullContent,  source: "chat" },
         ];
 
-        // Set voice response ONCE for chat — only if voice initiated
-        if (voiceInitiatedRef.current) {
-          voiceInitiatedRef.current = false;
+        // Voice tab always gets the response (VoiceTab gates on autoPlay)
+        if (activeTab === "voice" && fullContent && fullContent !== lastVoiceContentRef.current) {
+          lastVoiceContentRef.current = fullContent;
           setVoiceResponse(fullContent);
         }
       }
     } catch (err) {
       console.error("[voice] handleVoiceSpeech error:", err);
-      voiceInitiatedRef.current = false;
     } finally {
       setVoiceProcessing(false);
     }
   }, [voiceAgentMode, runAgent, chatConvId]);
 
-  // ── Voice response from agent — fires ONCE when agent finishes ───────────────
-  // Only triggers when voice tab initiated the request AND agent just finished
+  // ── Voice response from agent — fires when agent finishes while Voice tab open ─
   useEffect(() => {
-    if (!voiceInitiatedRef.current) return;
-    if (agentRunning) {
-      agentWasRunningRef.current = true;
-      return;
-    }
-    // Agent just finished (was running, now stopped)
-    if (agentWasRunningRef.current && agentContent) {
-      agentWasRunningRef.current = false;
-      voiceInitiatedRef.current  = false;
-      // Only speak if still on voice tab
-      if (activeTab === "voice") {
-        setVoiceResponse(agentContent);
-      }
-    }
+    if (activeTab !== "voice") return;
+    if (agentRunning) return;
+    if (!agentContent) return;
+    if (agentContent === lastVoiceContentRef.current) return;
+    lastVoiceContentRef.current = agentContent;
+    setVoiceResponse(agentContent);
   }, [agentRunning, agentContent, activeTab]);
+
+  // ── Voice response from chat — fires when chat finishes while Voice tab open ──
+  useEffect(() => {
+    if (activeTab !== "voice") return;
+    if (chatStreaming) return;
+    if (chatMessages.length === 0) return;
+    const last = chatMessages[chatMessages.length - 1];
+    if (last.role !== "assistant" || !last.content) return;
+    if (last.content === lastVoiceContentRef.current) return;
+    lastVoiceContentRef.current = last.content;
+    setVoiceResponse(last.content);
+  }, [chatStreaming, chatMessages, activeTab]);
 
   if (!isOpen) return null;
 

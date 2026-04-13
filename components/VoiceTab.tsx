@@ -182,7 +182,7 @@ function DesktopVoiceTab({
 
     lastSpokenRef.current = responseText
     setEntries(prev => [...prev, { id: uid(), role: "assistant", content: responseText }])
-    if (autoPlay && activated) voice.speak(responseText)
+    if (autoPlay) voice.speak(responseText)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseText, isProcessing])
 
