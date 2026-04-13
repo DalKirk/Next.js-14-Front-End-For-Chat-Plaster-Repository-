@@ -11,23 +11,17 @@ import { User } from "@/lib/types";
 import toast from "react-hot-toast";
 import {
   UserCircleIcon,
-  PaperAirplaneIcon,
-  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { apiClient } from "@/lib/api";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus, oneDark, tomorrow, dracula } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
-  Copy, Check, ChevronRight, X,
+  ChevronRight,
   Image as ImageIcon, Box, Video, Bot,
   MessageSquare, ShoppingCart, Gamepad2,
   Camera, Palette, User as UserIcon, LogOut, Type,
   Sparkles,
 } from "lucide-react";
-const AgentPanel = dynamic(() => import("@/components/AgentPanel"), { ssr: false });
+const UnifiedAIPanel = dynamic(() => import("@/components/UnifiedAIPanel"), { ssr: false });
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
 function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
@@ -63,14 +57,6 @@ function LazyVideo({ src, className, style }: { src: string; className?: string;
       )}
     </div>
   );
-}
-
-/* ─── Types ─── */
-interface ClaudeMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
 }
 
 /* ─── Feature data ─── */
@@ -237,27 +223,19 @@ export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set<string>());
   const [heroVisible, setHeroVisible] = useState(false);
 
-  /* ── Agent state ── */
-  const [isAgentOpen, setIsAgentOpen] = useState(false);
-
-  /* ── AI Chat state ── */
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [claudeMessages, setClaudeMessages] = useState<ClaudeMessage[]>([]);
-  const [claudeInput, setClaudeInput] = useState("");
-  const [isClaudeTyping, setIsClaudeTyping] = useState(false);
-  const [aiHealth, setAiHealth] = useState<{ ai_enabled: boolean } | null>(null);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [codeTheme] = useState<"vscDarkPlus" | "oneDark" | "tomorrow" | "dracula">("vscDarkPlus");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const themeMap: Record<string, any> = { vscDarkPlus, oneDark, tomorrow, dracula };
+  /* ── AI Panel state ── */
+  const [isAIOpen, setIsAIOpen] = useState(false);
+  const [aiInitialTab, setAIInitialTab] = useState<"chat" | "create" | "voice">("chat");
+  const [voiceActivated, setVoiceActivated] = useState(false);
 
   /* ── Refs ── */
   const showcaseRef = useRef<HTMLElement>(null);
   const exploreRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
+  const wakeRecRef = useRef<SpeechRecognition | null>(null);
+  const wakeActiveRef = useRef(false);
+  const panelWasOpenRef = useRef(false);
 
   /* ═══════════════════════════════════════════
      AUTH & AVATAR EFFECTS (preserved from v1)
@@ -363,30 +341,91 @@ export default function HomePage() {
     return () => observer.disconnect();
   }, []);
 
-  /* ── AI health check ── */
+  /* ── "Hey Star" wake word listener (page-level, runs when panel is closed) ── */
   useEffect(() => {
-    const checkAIHealth = async () => {
+    const SR = typeof window !== "undefined"
+      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      : null;
+    if (!SR) return;
+
+    let startTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const launch = () => {
+      if (!wakeActiveRef.current) return;
+
+      const r = new SR();
+      r.continuous = true;
+      r.interimResults = true;
+      r.lang = "en-US";
+      r.maxAlternatives = 1;
+      wakeRecRef.current = r;
+
+      r.onresult = (e: SpeechRecognitionEvent) => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const text = e.results[i][0].transcript.toLowerCase().trim();
+          if (text.includes("hey star")) {
+            console.log("[page] Wake word detected — opening Voice panel");
+            stopWake();
+            setAIInitialTab("voice");
+            setVoiceActivated(true);
+            setIsAIOpen(true);
+            return;
+          }
+        }
+      };
+
+      r.onend = () => {
+        if (wakeActiveRef.current) {
+          setTimeout(launch, 250);
+        }
+      };
+
+      r.onerror = (e: SpeechRecognitionErrorEvent) => {
+        if (e.error === "aborted" || e.error === "no-speech") {
+          if (wakeActiveRef.current) setTimeout(launch, 250);
+          return;
+        }
+        console.error("[page] Wake word error:", e.error);
+        if (wakeActiveRef.current) setTimeout(launch, 2000);
+      };
+
       try {
-        const response = await fetch("/api/health");
-        const health = await response.json();
-        setAiHealth(health);
+        r.start();
+        console.log("[page] Wake word listener started");
       } catch {
-        setAiHealth({ ai_enabled: false });
+        console.log("[page] Wake start failed, retrying...");
+        if (wakeActiveRef.current) setTimeout(launch, 1000);
       }
     };
-    checkAIHealth();
-  }, []);
 
-  /* ── Lock body scroll when chat is open ── */
-  useEffect(() => {
-    document.body.style.overflow = isChatOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [isChatOpen]);
+    const startWake = (delay: number) => {
+      if (wakeActiveRef.current) return;
+      wakeActiveRef.current = true;
+      // Delay lets any previous SpeechRecognition (from VoiceTab) fully release the mic
+      startTimer = setTimeout(launch, delay);
+    };
 
-  /* ── Auto-scroll chat ── */
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [claudeMessages]);
+    const stopWake = () => {
+      wakeActiveRef.current = false;
+      if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+      if (wakeRecRef.current) {
+        try { wakeRecRef.current.stop(); } catch { /* ignore */ }
+        wakeRecRef.current = null;
+      }
+    };
+
+    if (!isAIOpen) {
+      // Panel closed — delay longer after panel was open to let VoiceTab release mic
+      const delay = panelWasOpenRef.current ? 1200 : 300;
+      panelWasOpenRef.current = false;
+      startWake(delay);
+    } else {
+      panelWasOpenRef.current = true;
+      stopWake();
+    }
+
+    return () => stopWake();
+  }, [isAIOpen]);
 
   /* ═══════════════════════════════════════════
      AUTH HANDLERS (preserved)
@@ -446,119 +485,7 @@ export default function HomePage() {
     }
   };
 
-  /* ═══════════════════════════════════════════
-     AI CHAT (streaming, preserved)
-     ═══════════════════════════════════════════ */
-  const AI_SYSTEM_PROMPT =
-    "You are the Starcyeed AI assistant. Do not self-identify as \"Claude\" or mention model/provider names unless explicitly asked. Avoid greetings like \"Hi\" or \"I'm ...\". Be concise, friendly, and helpful. Focus on answering the user's question directly, with code blocks where useful.";
 
-  const stripSelfIdentificationIntro = (text: string): string => {
-    const lines = text.split("\n");
-    let removeCount = 0;
-    const isGreeting = (s: string) => /\b(hi|hello|hey|welcome|greetings)\b/i.test(s);
-    const isSelfIntro = (s: string) => /\b(i\s*'?m|i\s*am|my\s*name\s*is)\b/i.test(s);
-    const mentionsClaude = (s: string) => /\bclaude\b/i.test(s);
-    const mentionsAssistant = (s: string) => /\ban\s+ai\s+assistant\b/i.test(s);
-    for (let i = 0; i < Math.min(3, lines.length); i++) {
-      const s = lines[i].trim();
-      if (i === 0 && isGreeting(s)) { removeCount++; continue; }
-      if ((isSelfIntro(s) && (mentionsClaude(s) || mentionsAssistant(s))) || mentionsClaude(s)) { removeCount++; continue; }
-      break;
-    }
-    let result = removeCount > 0 ? lines.slice(removeCount).join("\n").trimStart() : text;
-    result = result.replace(/^\s*claude[:,]?\s*/i, "");
-    return result;
-  };
-
-  const handleAskClaude = async () => {
-    if (!claudeInput.trim()) return;
-    if (aiHealth && !aiHealth.ai_enabled) { toast.error("AI is offline"); return; }
-
-    const userMessage: ClaudeMessage = { id: Date.now().toString(), role: "user", content: claudeInput.trim(), timestamp: new Date() };
-    setClaudeMessages((prev) => [...prev, userMessage]);
-    const promptText = claudeInput.trim();
-    setClaudeInput("");
-    setIsClaudeTyping(true);
-
-    const assistantMessageId = (Date.now() + 1).toString();
-    setClaudeMessages((prev) => [...prev, { id: assistantMessageId, role: "assistant", content: "", timestamp: new Date() }]);
-
-    try {
-      const conversation_history = claudeMessages
-        .filter((msg) => msg.content && msg.content.trim() !== "")
-        .map((msg) => ({ role: msg.role, content: msg.content }));
-
-      const response = await fetch("/api/ai-stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: promptText,
-          conversation_history,
-          conversation_id: `conv_${Date.now()}`,
-          enable_search: true,
-          system_prompt: AI_SYSTEM_PROMPT,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to send message");
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "";
-      let hasError = false;
-      let buffer = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.error) {
-                const errorMsg = `⚠️ AI Error: ${parsed.error}\n\nPlease try again or contact support if the issue persists.`;
-                setClaudeMessages((prev) => prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: errorMsg } : msg)));
-                hasError = true;
-                break;
-              }
-              if (parsed.content || parsed.text) {
-                let newContent = parsed.content || parsed.text;
-                if (!fullContent) newContent = stripSelfIdentificationIntro(newContent);
-                fullContent += newContent;
-                setClaudeMessages((prev) => prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: fullContent } : msg)));
-              }
-            } catch {
-              /* skip unparseable chunks */
-            }
-          }
-          if (hasError) break;
-        }
-      }
-    } catch (error) {
-      const errorMsg = `⚠️ Network Error: ${error instanceof Error ? error.message : "Unknown error"}\n\nPlease check your connection and try again.`;
-      setClaudeMessages((prev) => prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: errorMsg } : msg)));
-    } finally {
-      setIsClaudeTyping(false);
-    }
-  };
-
-  const handleClaudeKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskClaude(); }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCode(text);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
 
   /* ── Navigation helpers ── */
   const scrollToSection = (id: string) => {
@@ -611,7 +538,7 @@ export default function HomePage() {
               onMouseLeave={() => setActiveSideItem(null)}
               onClick={() => {
                 if ((item as any).action === "openAgent") {
-                  setIsAgentOpen(true);
+                  setIsAIOpen(true);
                 } else if (item.href) {
                   navigateOrAuth(item.href, !!item.requiresAuth);
                 } else {
@@ -976,159 +903,25 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ═══ AI CHAT WIDGET (full streaming) ═══ */}
-      {isChatOpen && (
-        <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8, overflow: "hidden" }}>
-          <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
-          <div className="flex flex-col overflow-hidden relative" style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}>
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
-            <div className="flex items-center gap-2">
-              <Cog6ToothIcon className="w-4 h-4 animate-spin" style={{ color: '#cc00cc', animationDuration: '3s' }} />
-              <span className="text-xs font-semibold">AI Assistant</span>
-              <div className={`w-1.5 h-1.5 rounded-full ${aiHealth?.ai_enabled ? "bg-green-400" : "bg-red-400"}`} />
-            </div>
-            <button onClick={() => setIsChatOpen(false)} className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:scale-110" style={{ background: 'rgba(255,60,60,0.15)', border: '1px solid rgba(255,60,60,0.3)' }} aria-label="Close AI Chat">
-              <X className="w-5 h-5" style={{ color: '#ff4444', filter: 'drop-shadow(0 0 4px rgba(255,68,68,0.5))' }} />
-            </button>
-          </div>
+      {/* ═══ UNIFIED AI PANEL ═══ */}
+      <UnifiedAIPanel isOpen={isAIOpen} onClose={() => { setIsAIOpen(false); setAIInitialTab("chat"); setVoiceActivated(false); }} initialTab={aiInitialTab} voiceActivated={voiceActivated} onVoiceActivated={() => setVoiceActivated(false)} />
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-            {claudeMessages.length === 0 && (
-              <div className="text-center text-xs py-8" style={{ color: "rgba(255,255,255,0.2)" }}>
-                Ask me anything about the platform, coding, or AI generation.
-              </div>
-            )}
-            {claudeMessages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] overflow-hidden ${message.role === "user" ? "rounded-lg p-3 bg-cyan-600 text-white" : "text-slate-100"}`}>
-                  {message.role === "assistant" ? (
-                    <div className="prose prose-sm prose-invert max-w-none break-words">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a({ children, href, ...props }) {
-                            return (<a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline" {...props}>{children}</a>);
-                          },
-                          code({ className, children, ...props }: any) {
-                            const inline = !className;
-                            const match = /language-(\w+)/.exec(className || "");
-                            const language = match ? match[1] : "";
-                            const codeString = String(children).replace(/\n$/, "");
-                            if (!inline && language) {
-                              return (
-                                <div className="relative">
-                                  <button onClick={() => copyToClipboard(codeString)} className="absolute top-2 right-2 p-1 rounded bg-slate-600 hover:bg-slate-500 text-white z-10" title="Copy code">
-                                    {copiedCode === codeString ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                  </button>
-                                  <SyntaxHighlighter style={themeMap[codeTheme]} language={language} PreTag="div" className="text-xs rounded-md overflow-x-auto max-w-full" {...props}>
-                                    {codeString}
-                                  </SyntaxHighlighter>
-                                </div>
-                              );
-                            }
-                            return (<code className={`${className} break-all`} {...props}>{children}</code>);
-                          },
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isClaudeTyping && (
-              <div className="flex justify-start">
-                <div>
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce shadow-[0_0_8px_rgba(163,230,53,0.85)]" style={{ animationDelay: "300ms" }} />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="px-3 py-2" style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}>
-            <div className="flex gap-2">
-              <input
-                ref={inputRef}
-                value={claudeInput}
-                onChange={(e) => setClaudeInput(e.target.value)}
-                onKeyDown={handleClaudeKeyPress}
-                placeholder="Ask anything..."
-                disabled={isClaudeTyping || !!(aiHealth && !aiHealth.ai_enabled)}
-                className="flex-1 px-3 py-2 rounded text-xs outline-none disabled:opacity-50"
-                style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.1)", color: "white" }}
-              />
-              <button
-                onClick={handleAskClaude}
-                disabled={!claudeInput.trim() || isClaudeTyping || !!(aiHealth && !aiHealth.ai_enabled)}
-                className="px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(34,211,238,0.12)" }}
-                aria-label="Send message"
-              >
-                {isClaudeTyping ? (
-                  <Cog6ToothIcon className="w-4 h-4 animate-spin text-cyan-400" />
-                ) : (
-                  <PaperAirplaneIcon className="w-4 h-4 text-cyan-400" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-        </div>
-      )}
-
-      {/* Chat toggle */}
+      {/* AI toggle button */}
       <button
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed rounded-full transition-all duration-300"
-        style={{ bottom: 24, right: 16, zIndex: 40, padding: 13, background: "rgba(8,8,15,0.85)", border: "none", backdropFilter: "blur(8px)", boxShadow: "0 0 12px rgba(139,92,246,0.2)", position: "fixed" }}
-        title={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
-        aria-label={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
-      >
-        <div className="ai-btn-rainbow-border" />
-        <Cog6ToothIcon className="w-5 h-5 animate-spin relative z-10" style={{ color: '#cc00cc', animationDuration: '3s' }} />
-      </button>
-
-      {/* Agent toggle button — sits left of chat button (rendered before panel so it always appears) */}
-      <button
-        onClick={() => setIsAgentOpen(!isAgentOpen)}
+        onClick={() => { setAIInitialTab("chat"); setIsAIOpen(!isAIOpen); }}
         className="fixed rounded-full transition-all duration-300"
         style={{
-          bottom:        24,
-          right:         72,
-          zIndex:        40,
-          padding:       13,
-          background:    "rgba(8,8,15,0.85)",
-          border:        "none",
-          backdropFilter:"blur(8px)",
-          boxShadow:     "0 0 12px rgba(139,92,246,0.2)",
-          position:      "fixed",
+          bottom: 24, right: 16, zIndex: 40, padding: 13,
+          background: "rgba(8,8,15,0.85)",
+          backdropFilter: "blur(8px)",
+          boxShadow: "0 0 12px rgba(139,92,246,0.2)",
+          position: "fixed", border: "none",
         }}
-        title="Creative Agent"
-        aria-label="Open Creative Agent"
+        aria-label="Open AI"
       >
         <div className="ai-btn-rainbow-border" />
-        <Sparkles
-          className="w-5 h-5 relative z-10"
-          style={{ color: "#c084fc" }}
-        />
+        <Sparkles className="w-5 h-5 relative z-10" style={{ color: "#c084fc" }} />
       </button>
-
-      {/* ═══ AGENT PANEL ═══ */}
-      <AgentPanel
-        isOpen={isAgentOpen}
-        onClose={() => setIsAgentOpen(false)}
-      />
 
       {/* Shimmer animation */}
       <style>{`
@@ -1161,14 +954,38 @@ export default function HomePage() {
         .ai-chat-rainbow-border {
           position: absolute; inset: -6px; border-radius: 14px; z-index: 0; overflow: hidden;
           animation: rainbowPulse 2s ease-in-out infinite;
-          box-shadow: 0 0 25px rgba(139,92,246,0.5), 0 0 50px rgba(139,92,246,0.25), 0 0 80px rgba(139,92,246,0.1);
+          box-shadow: 0 0 30px rgba(139,92,246,0.5), 0 0 60px rgba(139,92,246,0.3), 0 0 100px rgba(139,92,246,0.15), 0 0 160px rgba(139,92,246,0.06);
         }
         .ai-chat-rainbow-border::before {
           content: ''; position: absolute; inset: -100%; border-radius: 14px;
           background: conic-gradient(from 0deg, #ff3333, #ffaa00, #33ff66, #00ddff, #aa66ff, #ff44aa, #ff3333);
           animation: rainbowSpin 2.5s linear infinite;
+          filter: blur(8px);
         }
         .ai-chat-rainbow-border::after {
+          content: ''; position: absolute; inset: 5px; border-radius: 8px;
+          background: rgba(8,8,15,0.98);
+        }
+        @keyframes greenPulse {
+          0%, 100% { opacity: 1; filter: blur(8px) brightness(2.5); }
+          50%      { opacity: 1; filter: blur(14px) brightness(3.5); }
+        }
+        @keyframes greenSpin {
+          0%   { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .ai-chat-speaking-border {
+          position: absolute; inset: -8px; border-radius: 14px; z-index: 0; overflow: hidden;
+          animation: greenPulse 0.8s ease-in-out infinite;
+          box-shadow: 0 0 40px rgba(0,255,65,0.8), 0 0 80px rgba(0,255,65,0.5), 0 0 120px rgba(0,255,65,0.25), 0 0 200px rgba(0,255,65,0.1);
+        }
+        .ai-chat-speaking-border::before {
+          content: ''; position: absolute; inset: -100%; border-radius: 14px;
+          background: conic-gradient(from 0deg, #00ff41, #39ff14, #00ff41, #00e639, #00ff41);
+          animation: greenSpin 1.2s linear infinite;
+          filter: blur(10px);
+        }
+        .ai-chat-speaking-border::after {
           content: ''; position: absolute; inset: 5px; border-radius: 8px;
           background: rgba(8,8,15,0.98);
         }

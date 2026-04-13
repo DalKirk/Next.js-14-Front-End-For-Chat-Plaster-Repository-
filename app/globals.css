@@ -9,10 +9,14 @@
     -webkit-text-size-adjust: 100%;
     /* Fill available viewport height */
     height: -webkit-fill-available;
-    /* Prevent pull-to-refresh */
-    overscroll-behavior-y: contain;
-    /* Allow panning + pinch-zoom but don't block slider/interactive touches */
-    touch-action: manipulation;
+    /* Smooth scroll for anchor / programmatic scrolls */
+    scroll-behavior: smooth;
+    /* Hide browser scrollbar globally */
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
   }
 
   .video-fullscreen {
@@ -41,10 +45,14 @@
     /* Allow normal scrolling */
     overflow-x: hidden;
     overflow-y: auto;
-    /* Smooth scrolling */
+    /* Smooth scrolling on iOS */
     -webkit-overflow-scrolling: touch;
-    /* Prevent pull-to-refresh */
-    overscroll-behavior-y: contain;
+    /* Hide browser scrollbar on desktop */
+    scrollbar-width: none;
+  }
+
+  body::-webkit-scrollbar {
+    display: none;
   }
 
   /* Custom scrollbar styles */
@@ -976,6 +984,59 @@
     opacity: 1;
     pointer-events: auto;
   }
+}
+
+/* ── Agent image upload ── */
+.agent-btn-attach {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  background: rgba(139,92,246,0.06);
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+.agent-btn-attach:hover {
+  background: rgba(139,92,246,0.15);
+  color: rgba(255,255,255,0.8);
+}
+.agent-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(139,92,246,0.05);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.agent-image-preview img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(139,92,246,0.15);
+}
+.agent-btn-remove-image {
+  background: rgba(255,80,80,0.15);
+  color: #ff5050;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.agent-btn-remove-image:hover {
+  background: rgba(255,80,80,0.35);
 }
 
 /* ========================================

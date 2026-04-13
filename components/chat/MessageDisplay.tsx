@@ -193,8 +193,15 @@ export function extractAssetsFromResult(tool: string, result?: Record<string, un
   const assets: AgentAsset[] = [];
   const urls: string[] = [];
 
-  if (result.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
-  if (result.url && typeof result.url === "string" && !urls.includes(result.url)) urls.push(result.url);
+  // Check all common result fields for URLs
+  for (const key of ["urls", "url", "video_url", "output_url", "model_url"]) {
+    const val = result[key];
+    if (Array.isArray(val)) {
+      for (const v of val) if (typeof v === "string" && !urls.includes(v)) urls.push(v);
+    } else if (typeof val === "string" && !urls.includes(val)) {
+      urls.push(val);
+    }
+  }
 
   const typeMap: Record<string, AgentAsset["type"]> = {
     generate_image: "image",
