@@ -30,8 +30,7 @@ interface VoiceTabProps {
   sharedTurns:   number
   useAgentMode:  boolean
   onToggleMode:  () => void
-  onSwitchTab?:  (tab: "chat" | "create") => void
-  onSpeakingChange?: (speaking: boolean) => void
+  onSwitchTab:   (tab: "chat" | "create") => void
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -39,10 +38,16 @@ const uid = () => Math.random().toString(36).slice(2, 8)
 // ─── Mobile detection ─────────────────────────────────────────────────────────
 
 function getIsMobile(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
-    navigator.userAgent
-  )
+  if (typeof window === "undefined") return false
+
+  // Require ALL three signals to count as mobile.
+  // Desktop Chrome with touch-enabled extensions will lack pointer:coarse.
+  const hasTouch    = navigator.maxTouchPoints > 0
+  const hasCoarse   = window.matchMedia("(pointer: coarse)").matches
+  const mobileUA    = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
+  const isSmall     = window.innerWidth <= 820
+
+  return hasTouch && hasCoarse && (mobileUA || isSmall)
 }
 
 // ─── Shared top bar ───────────────────────────────────────────────────────────
@@ -181,7 +186,6 @@ function MobileVoiceTab({
   sharedTurns,
   useAgentMode,
   onToggleMode,
-  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,  setEntries]  = useState<VoiceEntry[]>([])
   const [autoPlay, setAutoPlay] = useState(true)
@@ -194,8 +198,6 @@ function MobileVoiceTab({
       onUserSpeech(text)
     },
   })
-
-  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   // Auto-scroll
   useEffect(() => {
@@ -342,7 +344,6 @@ function DesktopVoiceTab({
   useAgentMode,
   onToggleMode,
   onSwitchTab,
-  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,   setEntries]   = useState<VoiceEntry[]>([])
   const [autoPlay,  setAutoPlay]  = useState(true)
@@ -360,8 +361,6 @@ function DesktopVoiceTab({
   })
 
   useEffect(() => { return () => { voice.deactivate() } }, []) // eslint-disable-line
-
-  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" })
