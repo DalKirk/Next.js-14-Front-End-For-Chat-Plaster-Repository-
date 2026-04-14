@@ -8,8 +8,6 @@ import { NextRequest } from "next/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || "sk_b43a5a3c4801e95a0ef9b2bc47aff6cb0b95d183226e9133"
-
 /** Map MIME type → file extension ElevenLabs expects */
 function getFileExtension(mime: string): string {
   const m = mime.toLowerCase()
@@ -23,6 +21,12 @@ function getFileExtension(mime: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const ELEVEN_API_KEY =
+    process.env.ELEVENLABS_API_KEY ||
+    process.env.ELEVEN_API_KEY ||
+    process.env.ELEVEN_LABS_API_KEY ||
+    "sk_b43a5a3c4801e95a0ef9b2bc47aff6cb0b95d183226e9133"
+
   if (!ELEVEN_API_KEY) {
     return new Response("ElevenLabs not configured", { status: 503 })
   }

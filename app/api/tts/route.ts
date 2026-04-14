@@ -7,10 +7,13 @@ import { NextRequest } from "next/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || "sk_b43a5a3c4801e95a0ef9b2bc47aff6cb0b95d183226e9133"
-const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
-
 export async function POST(req: NextRequest) {
+  const ELEVEN_API_KEY =
+    process.env.ELEVENLABS_API_KEY ||
+    process.env.ELEVEN_API_KEY ||
+    process.env.ELEVEN_LABS_API_KEY ||
+    "sk_b43a5a3c4801e95a0ef9b2bc47aff6cb0b95d183226e9133"
+  const DEFAULT_VOICE = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
 
   try {
     const { text, voice_id } = await req.json()
@@ -20,8 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!ELEVEN_API_KEY) {
-      const checked = "ELEVENLABS_API_KEY, ELEVEN_API_KEY, ELEVEN_LABS_API_KEY, ELEVENLABS_KEY, ELEVEN_LABS_KEY"
-      return new Response("ElevenLabs not configured — set one of: " + checked, { status: 503 })
+      return new Response("ElevenLabs not configured", { status: 503 })
     }
 
     const voiceId = voice_id || DEFAULT_VOICE
