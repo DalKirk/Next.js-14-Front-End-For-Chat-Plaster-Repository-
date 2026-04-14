@@ -907,7 +907,7 @@ export default function HomePage() {
       </footer>
 
       {/* ═══ UNIFIED AI PANEL ═══ */}
-      <UnifiedAIPanel isOpen={isAIOpen} onClose={() => { setIsAIOpen(false); setAIInitialTab("chat"); setVoiceActivated(false); }} initialTab={aiInitialTab} voiceActivated={voiceActivated} onVoiceActivated={() => setVoiceActivated(false)} />
+      <UnifiedAIPanel isOpen={isAIOpen} onClose={() => { setIsAIOpen(false); setAIInitialTab("chat"); setVoiceActivated(false); }} />
 
       {/* AI toggle button */}
       <button

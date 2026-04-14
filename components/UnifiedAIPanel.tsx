@@ -24,26 +24,8 @@ import {
   X, Sparkles, MessageSquare, Mic,
   Image as ImageIcon, Video, Box, Search, Type,
   Loader2, RotateCcw, Send, Copy, Check,
-  Download, Maximize2,
 } from "lucide-react";
 import VoiceTab from "@/components/VoiceTab";
-
-// ─── Download helper (cross-origin safe) ─────────────────────────────────────
-function downloadAsset(url: string) {
-  fetch(url)
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      const ext = url.split(".").pop()?.split("?")[0] ?? "png";
-      a.download = `asset_${Date.now()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
-    })
-    .catch(() => window.open(url, "_blank"));
-}
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -97,12 +79,19 @@ const TOOL_META: Record<string, { label: string; icon: React.ReactNode; color: s
   generate_skyreel:   { label: "SkyReels video",       icon: <Video className="w-3.5 h-3.5" />,     color: "#f43f5e" },
   generate_3d:        { label: "Generating 3D model",  icon: <Box className="w-3.5 h-3.5" />,       color: "#67e8f9" },
   web_search:         { label: "Searching the web",    icon: <Search className="w-3.5 h-3.5" />,    color: "#34d399" },
+  get_location:       { label: "Getting location",     icon: <Search className="w-3.5 h-3.5" />,    color: "#38bdf8" },
+  get_nasa_apod:      { label: "NASA Picture of Day",  icon: <Sparkles className="w-3.5 h-3.5" />,  color: "#818cf8" },
+  get_nasa_mars:      { label: "Mars rover photos",    icon: <Sparkles className="w-3.5 h-3.5" />,  color: "#f97316" },
+  get_nasa_epic:      { label: "Earth from space",     icon: <Sparkles className="w-3.5 h-3.5" />,  color: "#34d399" },
+  get_iss_location:   { label: "ISS location",         icon: <Sparkles className="w-3.5 h-3.5" />,  color: "#a78bfa" },
+  get_iss_live:       { label: "ISS live stream",      icon: <Video className="w-3.5 h-3.5" />,     color: "#f43f5e" },
+  get_nasa_live:      { label: "NASA TV live",         icon: <Video className="w-3.5 h-3.5" />,     color: "#ef4444" },
 };
 
 const AGENT_EXAMPLES = [
   "Create a logo for a streetwear brand called VOID, dark neon aesthetic",
-  "Generate a mood board for a sci-fi film — deep space, abandoned station",
-  "Design a YouTube thumbnail for an AI art video with bold text",
+  "Show me today's NASA space image and create artwork inspired by it",
+  "Show me the ISS live stream",
 ];
 
 const AI_SYSTEM_PROMPT =
@@ -150,9 +139,9 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
     if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
       urls.push(result.url as string);
 
-    const webResults = event.tool === "web_search" && result?.results && Array.isArray(result.results)
-      ? (result.results as Array<{ title: string; url: string; snippet: string }>).slice(0, 3)
-      : [];
+    // ── YouTube embed (ISS live / NASA TV) ──────────────────────────────────────
+    const embedUrl = result?.embed_url as string | undefined;
+    const embedType = result?.embed_type as string | undefined;
 
     return (
       <div className="space-y-2">
@@ -164,9 +153,91 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
           {event.cost ? <span className="ml-auto text-[10px] shrink-0" style={{ color: "rgba(52,211,153,0.5)" }}>-{event.cost} cr</span> : null}
         </div>
 
-        {webResults.length > 0 && (
+        {/* YouTube live embed */}
+        {embedType === "youtube" && !!embedUrl && (
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.2)" }}>
+            <div className="px-3 py-2 flex items-center justify-between"
+              style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.1)" }}>
+              <span className="text-xs font-medium" style={{ color: "rgba(192,132,252,0.9)" }}>
+                {String(result?.title ?? "Live Stream")}
+              </span>
+              <a href={String(result?.watch_url ?? "#")} target="_blank" rel="noopener noreferrer"
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(255,0,0,0.15)", border: "1px solid rgba(255,0,0,0.25)", color: "rgba(255,100,100,0.9)" }}>
+                ● LIVE
+              </a>
+            </div>
+            <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
+              <iframe
+                src={embedUrl}
+                title={String(result?.title ?? "Live Stream")}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            {!!result?.iss_location && (
+              <div className="px-3 py-2 text-[10px]" style={{ color: "rgba(255,255,255,0.4)", background: "rgba(0,0,0,0.3)" }}>
+                ISS currently {String(result.iss_location)} · {408}km altitude · 27,600 km/h
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Regular image grid */}
+        {urls.length > 0 && !embedType && (
+          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {urls.map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
+                style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
+                <img src={url} alt={`Generated ${event.tool} ${i + 1}`}
+                  className="w-full object-cover" style={{ maxHeight: 200 }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* NASA APOD — show image + explanation */}
+        {(event.tool === "get_nasa_apod" && result && typeof result.url === "string") ? (
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
+            <img src={result.url} alt={String(result.title ?? "NASA APOD")}
+              className="w-full object-cover" style={{ maxHeight: 220 }}
+              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            {typeof result.title === "string" && (
+              <div className="px-3 py-2" style={{ background: "rgba(0,0,0,0.4)" }}>
+                <p className="text-xs font-medium mb-1" style={{ color: "rgba(192,132,252,0.9)" }}>{result.title}</p>
+                {typeof result.date === "string" && <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>{result.date} · {String(result.copyright ?? "NASA")}</p>}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* ISS location info */}
+        {event.tool === "get_iss_location" && result?.latitude !== undefined && (
+          <div className="px-3 py-2.5 rounded-xl text-xs space-y-1"
+            style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
+            <p style={{ color: "rgba(52,211,153,0.9)" }}>🛰 ISS is currently {String(result.location)}</p>
+            <p style={{ color: "rgba(255,255,255,0.4)" }}>
+              {(result.latitude as number).toFixed(2)}°, {(result.longitude as number).toFixed(2)}° · {408}km altitude
+            </p>
+          </div>
+        )}
+
+        {/* Location info */}
+        {event.tool === "get_location" && !!result?.city && (
+          <div className="px-3 py-2.5 rounded-xl text-xs space-y-1"
+            style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
+            <p style={{ color: "rgba(6,182,212,0.9)" }}>📍 {String(result.city)}, {String(result.country)}</p>
+            <p style={{ color: "rgba(255,255,255,0.4)" }}>{String(result.timezone)}</p>
+          </div>
+        )}
+
+        {/* Web search results */}
+        {event.tool === "web_search" && !!result?.results && Array.isArray(result.results) && (
           <div className="space-y-1.5">
-            {webResults.map((r, i) => (
+            {(result.results as Array<{ title: string; url: string; snippet: string }>).slice(0, 3).map((r, i) => (
               <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
                 className="block p-2.5 rounded-lg transition-colors hover:bg-white/5"
                 style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -211,7 +282,7 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
 }) => (
   <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
     <div
-      className={`max-w-[85%] sm:max-w-[60%] overflow-hidden ${
+      className={`max-w-[85%] overflow-hidden ${
         message.role === "user"
           ? "rounded-xl px-3 py-2 text-sm"
           : "text-slate-100"
@@ -223,22 +294,6 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              img({ src, alt, ...props }) {
-                if (!src) return null;
-                return (
-                  <a href={src} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={src}
-                      alt={alt || ""}
-                      loading="lazy"
-                      className="rounded-lg my-2"
-                      style={{ maxHeight: 320, maxWidth: "55%" }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      {...props}
-                    />
-                  </a>
-                );
-              },
               a({ children, href, ...props }) {
                 return <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline" {...props}>{children}</a>;
               },
@@ -287,13 +342,10 @@ type Tab = "chat" | "create" | "voice";
 interface UnifiedAIPanelProps {
   isOpen:  boolean;
   onClose: () => void;
-  initialTab?: "chat" | "create" | "voice";
-  voiceActivated?: boolean;
-  onVoiceActivated?: () => void;
 }
 
-export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActivated, onVoiceActivated }: UnifiedAIPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "chat");
+export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps) {
+  const [activeTab, setActiveTab] = useState<Tab>("chat");
 
   // ── Shared conversation memory ─────────────────────────────────────────────
   // Both Chat and Create read from and write to this shared history.
@@ -324,11 +376,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   // ── Voice state ───────────────────────────────────────────────────────────
   const [voiceResponse,   setVoiceResponse]   = useState("");
   const [voiceProcessing, setVoiceProcessing] = useState(false);
-  const [voiceAgentMode,  setVoiceAgentMode]  = useState(true);
-  const [starSpeaking,    setStarSpeaking]    = useState(false);
-
-  // Which tab triggered the current agent run
-  const [agentOwnerTab, setAgentOwnerTab] = useState<"create" | "voice">("create");
+  const [voiceAgentMode,  setVoiceAgentMode]  = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const chatEndRef   = useRef<HTMLDivElement>(null);
@@ -338,10 +386,6 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   const agentReplyRef = useRef<HTMLInputElement>(null);
   const chatAbortRef  = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
-
-  // ── Voice initiated ref — only true when voice tab triggered the request ──────
-  const voiceInitiatedRef   = useRef(false);
-  const agentWasRunningRef  = useRef(false);
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
@@ -474,7 +518,6 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   // ══════════════════════════════════════════════════════════════════════════
 
   const resetAgent = useCallback(() => {
-    setAgentOwnerTab("create");
     setAgentEvents([]);
     setAgentContent("");
     setAgentSummary(null);
@@ -590,14 +633,12 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   }, [agentRunning, agentConvId]);
 
   const submitAgentPrompt = useCallback(() => {
-    setAgentOwnerTab("create");
     const text = agentPrompt.trim();
     setAgentPrompt("");
     runAgent(text);
   }, [agentPrompt, runAgent]);
 
   const submitAgentReply = useCallback(() => {
-    setAgentOwnerTab("create");
     const text = agentReply.trim();
     if (!text) return;
     setAgentReply("");
@@ -613,15 +654,10 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
   // ── Voice speech handler — routes to chat or agent ─────────────────────────
   const handleVoiceSpeech = useCallback(async (text: string) => {
     setVoiceProcessing(true);
-    voiceInitiatedRef.current = true;
-    setAgentOwnerTab("voice");
     try {
       if (voiceAgentMode) {
-        // Agent mode — runAgent streams content
-        // voiceResponse will be set ONCE when agent finishes (see useEffect below)
         await runAgent(text);
       } else {
-        // Chat mode — inline fetch
         const msgId  = uid();
         const asstId = uid();
         setChatMessages(prev => [
@@ -644,7 +680,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
             message:              text,
             conversation_history: chatHistory,
             conversation_id:      chatConvId,
-            enable_search:        false,  // faster for voice
+            enable_search:        false,
             system_prompt:        AI_SYSTEM_PROMPT,
           }),
         });
@@ -686,43 +722,46 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
           { role: "user",      content: text,        source: "chat" },
           { role: "assistant", content: fullContent,  source: "chat" },
         ];
-
-        // Set voice response ONCE for chat — only if voice initiated
-        if (voiceInitiatedRef.current) {
-          voiceInitiatedRef.current = false;
-          setVoiceResponse(fullContent);
-        }
       }
     } catch (err) {
       console.error("[voice] handleVoiceSpeech error:", err);
-      voiceInitiatedRef.current = false;
     } finally {
       setVoiceProcessing(false);
     }
   }, [voiceAgentMode, runAgent, chatConvId]);
 
-  // ── Voice response from agent — fires ONCE when agent finishes ───────────────
-  // Only triggers when voice tab initiated the request AND agent just finished
+  // ── Voice response — speaks whenever Voice tab is open ───────────────────────
+  // Fires for ANY response (typed or spoken) as long as Voice tab is active.
+
+  // Track last spoken content to avoid double-speak
+  const lastVoiceContentRef = useRef("")
+
+  // Chat response → speak if on Voice tab
   useEffect(() => {
-    if (!voiceInitiatedRef.current) return;
-    if (agentRunning) {
-      agentWasRunningRef.current = true;
-      return;
-    }
-    // Agent just finished (was running, now stopped)
-    if (agentWasRunningRef.current && agentContent) {
-      agentWasRunningRef.current = false;
-      voiceInitiatedRef.current  = false;
-      // Only speak if still on voice tab
-      if (activeTab === "voice") {
-        setVoiceResponse(agentContent);
-      }
-    }
-  }, [agentRunning, agentContent, activeTab]);
+    if (activeTab !== "voice") return
+    if (chatStreaming) return
+    const lastMsg = chatMessages[chatMessages.length - 1]
+    if (!lastMsg || lastMsg.role !== "assistant") return
+    if (!lastMsg.content) return
+    if (lastMsg.content === lastVoiceContentRef.current) return
+    lastVoiceContentRef.current = lastMsg.content
+    setVoiceResponse(lastMsg.content)
+  }, [chatMessages, chatStreaming, activeTab])
+
+  // Agent response → speak if on Voice tab, fires once when agent finishes
+  useEffect(() => {
+    if (activeTab !== "voice") return
+    if (agentRunning) return
+    if (!agentContent) return
+    if (agentContent === lastVoiceContentRef.current) return
+    // Only speak agent content if voice initiated OR user is on voice tab
+    lastVoiceContentRef.current = agentContent
+    setVoiceResponse(agentContent)
+  }, [agentRunning, agentContent, activeTab])
 
   if (!isOpen) return null;
 
-  const agentHasActivity = agentOwnerTab === "create" && (agentEvents.length > 0 || agentContent || agentSummary || agentTurns.length > 0);
+  const agentHasActivity = agentEvents.length > 0 || agentContent || agentSummary || agentTurns.length > 0;
   const showReplyBar     = !agentRunning && agentContent;
 
   // ── Tab config ─────────────────────────────────────────────────────────────
@@ -734,7 +773,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
 
   return (
     <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8, overflow: "hidden" }}>
-      <div className={starSpeaking ? "ai-chat-speaking-border" : "ai-chat-rainbow-border"} style={{ inset: 0, borderRadius: 0 }} />
+      <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
 
       <div className="flex flex-col overflow-hidden relative"
         style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}>
@@ -794,18 +833,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
               </span>
             )}
             <button
-              onClick={() => {
-                chatAbortRef.current?.abort();
-                agentAbortRef.current?.abort();
-                sharedHistory.current = [];
-                setChatMessages([]);
-                setAgentEvents([]);
-                setAgentContent("");
-                setAgentTurns([]);
-                setAgentSummary(null);
-                setVoiceResponse("");
-                onClose();
-              }}
+              onClick={() => { chatAbortRef.current?.abort(); agentAbortRef.current?.abort(); onClose(); }}
               className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:scale-110"
               style={{ background: "rgba(255,60,60,0.15)", border: "1px solid rgba(255,60,60,0.3)" }}
               aria-label="Close">
@@ -819,7 +847,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "chat" && (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 agent-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
               {chatMessages.length === 0 && (
                 <div className="text-center text-xs py-8" style={{ color: "rgba(255,255,255,0.2)" }}>
                   Ask me anything — code, research, creative writing, platform help.
@@ -923,7 +951,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
             )}
 
             {/* Activity feed */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0 agent-scrollbar">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
 
               {/* Empty state */}
               {!agentHasActivity && !agentRunning && (
@@ -952,8 +980,8 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
                 </div>
               )}
 
-              {/* Current user prompt bubble — only show if Create tab owns this run */}
-              {agentOwnerTab === "create" && agentTurns.length > 0 && (
+              {/* Current user prompt bubble */}
+              {agentTurns.length > 0 && (
                 <div className="flex justify-end mb-1">
                   <div className="max-w-[80%] px-3 py-2 rounded-xl text-xs"
                     style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.15)", color: "rgba(255,255,255,0.75)" }}>
@@ -962,181 +990,45 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
                 </div>
               )}
 
-              {agentOwnerTab === "create" && agentEvents.map(event => <AgentEventRow key={event.id} event={event} />)}
+              {agentEvents.map(event => <AgentEventRow key={event.id} event={event} />)}
 
-              {/* Streaming final answer — strip image/video markdown, show text only */}
-              {agentOwnerTab === "create" && agentContent && (() => {
-                const textOnly = agentContent
-                  .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
-                  .replace(/\[([^\]]*)\]\(https?:\/\/[^)]+\)/g, "$1")
-                  .replace(/https?:\/\/\S+\.(png|jpg|jpeg|gif|webp|mp4|webm|mov|glb)(\?\S*)?\s*/gi, "")
-                  .replace(/\n{3,}/g, "\n\n")
-                  .trim();
-                return textOnly ? (
-                <div className="py-3 px-3 rounded-xl text-xs leading-relaxed prose prose-sm prose-invert max-w-none"
-                  style={{ background: "transparent", color: "rgba(255,255,255,0.75)" }}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a({ children, href, ...props }) {
-                        return <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline" {...props}>{children}</a>;
-                      },
-                    }}
-                  >
-                    {textOnly}
-                  </ReactMarkdown>
+              {/* Streaming answer */}
+              {agentContent && (
+                <div className="py-3 px-3 rounded-xl text-xs leading-relaxed"
+                  style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.08)", color: "rgba(255,255,255,0.75)", whiteSpace: "pre-wrap" }}>
+                  {agentContent}
                   {agentRunning && (
                     <span style={{ display: "inline-block", width: 2, height: "1em", background: "rgba(192,132,252,0.8)", animation: "blink 0.8s step-end infinite", verticalAlign: "text-bottom", marginLeft: 2 }} />
                   )}
                 </div>
-                ) : agentRunning ? (
-                  <div className="flex items-center gap-2 py-2">
-                    <Loader2 className="w-3 h-3 animate-spin" style={{ color: "rgba(139,92,246,0.6)" }} />
-                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Generating…</span>
-                  </div>
-                ) : null;
-              })()}
+              )}
 
-              {/* Summary asset grid — from summary event, or fallback from tool_done results */}
-              {agentOwnerTab === "create" && (() => {
-                let assets: { type: string; url: string; tool: string }[] = [];
-                if (agentSummary && agentSummary.assets.length > 0) {
-                  assets = agentSummary.assets;
-                } else {
-                  const seen = new Set<string>();
-                  for (const ev of agentEvents) {
-                    if (ev.type !== "tool_done" || !ev.result) continue;
-                    const r = ev.result as Record<string, unknown>;
-                    for (const key of ["urls", "url", "video_url", "output_url", "model_url"]) {
-                      const val = r[key];
-                      const list = Array.isArray(val) ? val : val ? [val] : [];
-                      for (const u of list) {
-                        if (typeof u === "string" && !seen.has(u)) {
-                          seen.add(u);
-                          const isVid = ev.tool === "generate_video" || ev.tool === "generate_skyreel";
-                          const is3d  = ev.tool === "generate_3d";
-                          assets.push({ type: isVid ? "video" : is3d ? "3d" : "image", url: u, tool: ev.tool ?? "" });
-                        }
-                      }
-                    }
-                  }
-                }
-                if (assets.length === 0) return null;
-                return (
-                  <div className="rounded-xl p-3" style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
-                    <div className="text-[10px] mb-2 flex items-center justify-between" style={{ color: "rgba(52,211,153,0.7)" }}>
-                      <span>✓ {assets.length} asset{assets.length !== 1 ? "s" : ""} created</span>
-                      {agentSummary ? <span>{agentSummary.total_cost} credits used</span> : null}
-                    </div>
-                    <div className="grid gap-3 grid-cols-2">
-                      {assets.map((asset, i) => {
-                        if (!asset.url) return null;
-                        const isAssetVideo = asset.type === "video";
-                        const isAsset3D = asset.type === "3d";
-                        const toolMeta = asset.tool ? TOOL_META[asset.tool] : null;
-                        return (
-                          <div
-                            key={i}
-                            className="agent-asset-card"
-                            style={{
-                              padding: 1,
-                              borderRadius: 8,
-                              cursor: "pointer",
-                              transition: "all 0.3s",
-                              background: "linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))",
-                            }}
-                          >
-                            <div style={{ borderRadius: 7, overflow: "hidden", background: "rgba(8,8,15,0.9)" }}>
-                              <div
-                                style={{
-                                  position: "relative",
-                                  aspectRatio: isAssetVideo ? "4/3" : isAsset3D ? undefined : "1/1",
-                                  background: `linear-gradient(135deg,${(toolMeta?.color ?? "#c084fc")}15,${(toolMeta?.color ?? "#c084fc")}10)`,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {isAssetVideo ? (
-                                  <video
-                                    src={asset.url}
-                                    controls
-                                    preload="metadata"
-                                    muted
-                                    loop
-                                    playsInline
-                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                  />
-                                ) : isAsset3D ? (
-                                  <div className="flex flex-col items-center gap-1 py-4">
-                                    <Box className="w-6 h-6" style={{ color: "#67e8f9" }} />
-                                    <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.5)" }}>3D Model</span>
-                                  </div>
-                                ) : (
-                                  <img
-                                    src={asset.url}
-                                    alt={`Asset ${i + 1}`}
-                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                  />
-                                )}
-                                <div
-                                  className="agent-asset-overlay"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <button
-                                    onClick={() => downloadAsset(asset.url)}
-                                    title="Download"
-                                    style={{
-                                      padding: 8,
-                                      borderRadius: 6,
-                                      background: "rgba(255,255,255,0.12)",
-                                      border: "1px solid rgba(255,255,255,0.12)",
-                                      color: "#fff",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                    }}
-                                  >
-                                    <Download size={14} />
-                                  </button>
-                                  <a
-                                    href={asset.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open full size"
-                                    style={{
-                                      padding: 8,
-                                      borderRadius: 6,
-                                      background: "rgba(255,255,255,0.12)",
-                                      border: "1px solid rgba(255,255,255,0.12)",
-                                      color: "#fff",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                    }}
-                                  >
-                                    <Maximize2 size={14} />
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+              {/* Summary grid */}
+              {agentSummary && agentSummary.assets.length > 0 && (
+                <div className="rounded-xl p-3" style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
+                  <div className="text-[10px] mb-2 flex items-center justify-between" style={{ color: "rgba(52,211,153,0.7)" }}>
+                    <span>✓ {agentSummary.assets.length} asset{agentSummary.assets.length !== 1 ? "s" : ""} created</span>
+                    <span>{agentSummary.total_cost} credits used</span>
                   </div>
-                );
-              })()}
+                  <div className={`grid gap-2 ${agentSummary.assets.length > 2 ? "grid-cols-3" : agentSummary.assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {agentSummary.assets.map((asset, i) => asset.url ? (
+                      <a key={i} href={asset.url} target="_blank" rel="noopener noreferrer"
+                        className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
+                        style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
+                        <img src={asset.url} alt={`Asset ${i + 1}`} className="w-full object-cover"
+                          style={{ maxHeight: 120 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      </a>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
 
               <div ref={agentEndRef} />
             </div>
 
             {/* Reply bar */}
-            {agentOwnerTab === "create" && showReplyBar && (
+            {showReplyBar && (
               <div className="px-4 py-3 shrink-0" style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}>
                 <div className="flex gap-2 items-center rounded-xl px-3 py-2"
                   style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)" }}>
@@ -1177,8 +1069,6 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
             sharedTurns={Math.floor(sharedHistory.current.length / 2)}
             useAgentMode={voiceAgentMode}
             onToggleMode={() => setVoiceAgentMode(v => !v)}
-            onSwitchTab={(tab: "chat" | "create") => setActiveTab(tab)}
-            onSpeakingChange={setStarSpeaking}
           />
         )}
 

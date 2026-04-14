@@ -30,7 +30,7 @@ interface VoiceTabProps {
   sharedTurns:   number
   useAgentMode:  boolean
   onToggleMode:  () => void
-  onSwitchTab:   (tab: "chat" | "create") => void
+  onSwitchTab?:  (tab: "chat" | "create") => void
   onSpeakingChange?: (speaking: boolean) => void
 }
 
@@ -406,11 +406,11 @@ function DesktopVoiceTab({
         <Mic className="w-10 h-10" style={{ color: "rgba(239,68,68,0.4)" }} />
         <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>Voice requires Chrome on desktop</p>
         <div className="flex gap-3">
-          <button onClick={() => onSwitchTab("chat")} className="px-4 py-2 rounded-xl text-xs"
+          <button onClick={() => onSwitchTab?.("chat")} className="px-4 py-2 rounded-xl text-xs"
             style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "rgba(6,182,212,0.8)" }}>
             Open Chat
           </button>
-          <button onClick={() => onSwitchTab("create")} className="px-4 py-2 rounded-xl text-xs"
+          <button onClick={() => onSwitchTab?.("create")} className="px-4 py-2 rounded-xl text-xs"
             style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "rgba(192,132,252,0.8)" }}>
             Open Create
           </button>
