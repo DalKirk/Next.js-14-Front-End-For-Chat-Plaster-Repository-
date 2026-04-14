@@ -109,6 +109,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 // ─── AgentEventRow ────────────────────────────────────────────────────────────
 
 function AgentEventRow({ event }: { event: AgentEvent }) {
+  console.log("[AgentEventRow] called with type:", event.type, "tool:", event.tool, "hasResult:", !!event.result)
   const meta = event.tool ? TOOL_META[event.tool] : null;
 
   if (event.type === "status" || event.type === "plan") {
