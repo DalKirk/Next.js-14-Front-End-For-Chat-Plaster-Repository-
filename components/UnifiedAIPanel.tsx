@@ -848,7 +848,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "chat" && (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 agent-scrollbar">
               {chatMessages.length === 0 && (
                 <div className="text-center text-xs py-8" style={{ color: "rgba(255,255,255,0.2)" }}>
                   Ask me anything — code, research, creative writing, platform help.
@@ -952,7 +952,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             )}
 
             {/* Activity feed */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0 agent-scrollbar">
 
               {/* Empty state */}
               {!agentHasActivity && !agentRunning && (
