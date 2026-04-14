@@ -134,6 +134,7 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
 
   if (event.type === "tool_done") {
     const result = event.result as Record<string, unknown> | undefined;
+    console.log("[AgentEventRow] result:", JSON.stringify(result))
     const urls: string[] = [];
     if (result?.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
     if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
@@ -142,6 +143,7 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
     // ── YouTube embed (ISS live / NASA TV) ──────────────────────────────────────
     const embedUrl = result?.embed_url as string | undefined;
     const embedType = result?.embed_type as string | undefined;
+    console.log("[AgentEventRow] embedType:", embedType, "embedUrl:", embedUrl)
 
     return (
       <div className="space-y-2">
@@ -608,6 +610,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
             // Replace tool_start with tool_done in place
             if (data.type === "tool_done") {
+              console.log("[runAgent] tool_done result:", JSON.stringify(data.result))
               if (data.cost) setAgentCost(prev => prev + (data.cost ?? 0));
               setAgentEvents(prev => {
                 const idx = [...prev].reverse().findIndex(e => e.type === "tool_start" && e.tool === data.tool);
