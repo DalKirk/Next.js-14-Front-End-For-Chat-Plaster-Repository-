@@ -31,7 +31,6 @@ interface VoiceTabProps {
   useAgentMode:  boolean
   onToggleMode:  () => void
   onSwitchTab:   (tab: "chat" | "create") => void
-  onSpeakingChange?: (speaking: boolean) => void
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -181,7 +180,6 @@ function MobileVoiceTab({
   sharedTurns,
   useAgentMode,
   onToggleMode,
-  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,  setEntries]  = useState<VoiceEntry[]>([])
   const [autoPlay, setAutoPlay] = useState(true)
@@ -194,8 +192,6 @@ function MobileVoiceTab({
       onUserSpeech(text)
     },
   })
-
-  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   // Auto-scroll
   useEffect(() => {
@@ -342,7 +338,6 @@ function DesktopVoiceTab({
   useAgentMode,
   onToggleMode,
   onSwitchTab,
-  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,   setEntries]   = useState<VoiceEntry[]>([])
   const [autoPlay,  setAutoPlay]  = useState(true)
@@ -360,8 +355,6 @@ function DesktopVoiceTab({
   })
 
   useEffect(() => { return () => { voice.deactivate() } }, []) // eslint-disable-line
-
-  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -519,10 +512,10 @@ function DesktopVoiceTab({
 // ══════════════════════════════════════════════════════════════════════════════
 
 export default function VoiceTab(props: VoiceTabProps) {
-  const isMobile = getIsMobile()
+  // useState ensures this is evaluated once on mount and never changes
+  // Prevents switching between desktop/mobile UI after first voice request
+  const [isMobile] = useState(() => getIsMobile())
 
-  // Mobile → tap-to-talk (MediaRecorder + ElevenLabs STT)
-  // Desktop → Hey Star wake word (Web Speech API)
   return isMobile
     ? <MobileVoiceTab  {...props} />
     : <DesktopVoiceTab {...props} />
