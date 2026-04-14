@@ -1,32 +1,16 @@
 // app/api/tts/route.ts
 // Proxies text → ElevenLabs TTS → returns MP3 audio stream.
-// Keeps the API key server-side.
+// Keeps the API key server-side (never sent to browser).
 
 import { NextRequest } from "next/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Diagnostic — returns which ELEVEN* env var names exist (no values)
-export async function GET() {
-  const keys = Object.keys(process.env).filter(k => /eleven/i.test(k))
-  return new Response(JSON.stringify({ matched_keys: keys, has_key: !!findApiKey() }), {
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
-  })
-}
-
-// Check multiple common env var names
-function findApiKey(): string | undefined {
-  return process.env.ELEVENLABS_API_KEY
-    || process.env.ELEVEN_API_KEY
-    || process.env.ELEVEN_LABS_API_KEY
-    || process.env.ELEVENLABS_KEY
-    || process.env.ELEVEN_LABS_KEY
-}
+const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || "sk_b43a5a3c4801e95a0ef9b2bc47aff6cb0b95d183226e9133"
+const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
 
 export async function POST(req: NextRequest) {
-  const ELEVEN_API_KEY = findApiKey()
-  const DEFAULT_VOICE  = process.env.ELEVENLABS_VOICE_ID || process.env.ELEVEN_VOICE_ID || "Tzd7T62CaEjAmITJt8xL"
 
   try {
     const { text, voice_id } = await req.json()
