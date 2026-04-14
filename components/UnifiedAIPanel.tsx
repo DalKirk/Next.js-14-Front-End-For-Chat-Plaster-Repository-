@@ -134,7 +134,7 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
 
   if (event.type === "tool_done") {
     const result = event.result as Record<string, unknown> | undefined;
-    console.log("[AgentEventRow] result:", JSON.stringify(result))
+    console.log("[AgentEventRow] event:", JSON.stringify(event))
     const urls: string[] = [];
     if (result?.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
     if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
