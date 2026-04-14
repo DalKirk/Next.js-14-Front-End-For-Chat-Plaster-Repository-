@@ -792,7 +792,18 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
               </span>
             )}
             <button
-              onClick={() => { chatAbortRef.current?.abort(); agentAbortRef.current?.abort(); onClose(); }}
+              onClick={() => {
+                chatAbortRef.current?.abort();
+                agentAbortRef.current?.abort();
+                sharedHistory.current = [];
+                setChatMessages([]);
+                setAgentEvents([]);
+                setAgentContent("");
+                setAgentTurns([]);
+                setAgentSummary(null);
+                setVoiceResponse("");
+                onClose();
+              }}
               className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:scale-110"
               style={{ background: "rgba(255,60,60,0.15)", border: "1px solid rgba(255,60,60,0.3)" }}
               aria-label="Close">

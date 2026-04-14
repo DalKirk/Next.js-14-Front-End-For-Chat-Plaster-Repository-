@@ -67,6 +67,8 @@ function stripMarkdown(text: string): string {
     .replace(/\[ref:.*?\]/g, "")
     .replace(/\|/g, " ")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/\[pause\]/gi, "")
+    .replace(/\[\u043f\u0430\u0443\u0437\u0430\]/gi, "")
     .trim()
 }
 
