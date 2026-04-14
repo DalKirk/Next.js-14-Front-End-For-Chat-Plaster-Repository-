@@ -31,6 +31,7 @@ interface VoiceTabProps {
   useAgentMode:  boolean
   onToggleMode:  () => void
   onSwitchTab:   (tab: "chat" | "create") => void
+  onSpeakingChange?: (speaking: boolean) => void
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -180,6 +181,7 @@ function MobileVoiceTab({
   sharedTurns,
   useAgentMode,
   onToggleMode,
+  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,  setEntries]  = useState<VoiceEntry[]>([])
   const [autoPlay, setAutoPlay] = useState(true)
@@ -192,6 +194,8 @@ function MobileVoiceTab({
       onUserSpeech(text)
     },
   })
+
+  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   // Auto-scroll
   useEffect(() => {
@@ -338,6 +342,7 @@ function DesktopVoiceTab({
   useAgentMode,
   onToggleMode,
   onSwitchTab,
+  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,   setEntries]   = useState<VoiceEntry[]>([])
   const [autoPlay,  setAutoPlay]  = useState(true)
@@ -355,6 +360,8 @@ function DesktopVoiceTab({
   })
 
   useEffect(() => { return () => { voice.deactivate() } }, []) // eslint-disable-line
+
+  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking]) // eslint-disable-line
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" })

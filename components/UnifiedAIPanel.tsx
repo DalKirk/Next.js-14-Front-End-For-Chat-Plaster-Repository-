@@ -1164,6 +1164,7 @@ export default function UnifiedAIPanel({ isOpen, onClose, initialTab, voiceActiv
             useAgentMode={voiceAgentMode}
             onToggleMode={() => setVoiceAgentMode(v => !v)}
             onSwitchTab={(tab: "chat" | "create") => setActiveTab(tab)}
+            onSpeakingChange={setStarSpeaking}
           />
         )}
 
