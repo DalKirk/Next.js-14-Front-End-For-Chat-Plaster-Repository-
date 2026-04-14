@@ -610,13 +610,17 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
             // Replace tool_start with tool_done in place
             if (data.type === "tool_done") {
-              console.log("[runAgent] tool_done result:", JSON.stringify(data.result))
+              console.log("[tool_done state] data.result:", JSON.stringify(data.result))
               if (data.cost) setAgentCost(prev => prev + (data.cost ?? 0));
               setAgentEvents(prev => {
                 const idx = [...prev].reverse().findIndex(e => e.type === "tool_start" && e.tool === data.tool);
-                if (idx === -1) return [...prev, { ...data, id: uid() }];
+                if (idx === -1) {
+                  console.log("[tool_done state] no tool_start found, appending new")
+                  return [...prev, { ...data, id: uid() }];
+                }
                 const realIdx = prev.length - 1 - idx;
                 const next    = [...prev];
+                console.log("[tool_done state] replacing idx:", realIdx, "result:", JSON.stringify(data.result))
                 next[realIdx] = { ...data, id: prev[realIdx].id };
                 return next;
               });
@@ -993,6 +997,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                 </div>
               )}
 
+              {(() => { console.log("[Create tab] events:", agentEvents.length, agentEvents.map(e => e.type + ":" + e.tool)); return null; })()}
               {agentEvents.map(event => <AgentEventRow key={event.id} event={event} />)}
 
               {/* Streaming answer */}
