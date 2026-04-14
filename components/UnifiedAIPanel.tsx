@@ -109,7 +109,6 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 // ─── AgentEventRow ────────────────────────────────────────────────────────────
 
 function AgentEventRow({ event }: { event: AgentEvent }) {
-  console.log("[AgentEventRow] called with type:", event.type, "tool:", event.tool, "hasResult:", !!event.result)
   const meta = event.tool ? TOOL_META[event.tool] : null;
 
   if (event.type === "status" || event.type === "plan") {
@@ -135,7 +134,6 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
 
   if (event.type === "tool_done") {
     const result = event.result as Record<string, unknown> | undefined;
-    console.log("[AgentEventRow] tool:", event.tool, "result:", JSON.stringify(result))
     const urls: string[] = [];
     if (result?.urls && Array.isArray(result.urls)) urls.push(...(result.urls as string[]));
     if (result?.url && typeof result.url === "string" && !urls.includes(result.url as string))
@@ -144,7 +142,6 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
     // ── YouTube embed (ISS live / NASA TV) ──────────────────────────────────────
     const embedUrl = result?.embed_url as string | undefined;
     const embedType = result?.embed_type as string | undefined;
-    console.log("[AgentEventRow] embedType:", embedType, "embedUrl:", embedUrl)
 
     return (
       <div className="space-y-2">
@@ -611,17 +608,12 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
             // Replace tool_start with tool_done in place
             if (data.type === "tool_done") {
-              console.log("[tool_done state] data.result:", JSON.stringify(data.result))
               if (data.cost) setAgentCost(prev => prev + (data.cost ?? 0));
               setAgentEvents(prev => {
                 const idx = [...prev].reverse().findIndex(e => e.type === "tool_start" && e.tool === data.tool);
-                if (idx === -1) {
-                  console.log("[tool_done state] no tool_start found, appending new")
-                  return [...prev, { ...data, id: uid() }];
-                }
+                if (idx === -1) return [...prev, { ...data, id: uid() }];
                 const realIdx = prev.length - 1 - idx;
                 const next    = [...prev];
-                console.log("[tool_done state] replacing idx:", realIdx, "result:", JSON.stringify(data.result))
                 next[realIdx] = { ...data, id: prev[realIdx].id };
                 return next;
               });
@@ -664,6 +656,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
     setVoiceProcessing(true);
     try {
       if (voiceAgentMode) {
+        setActiveTab("create");
         await runAgent(text);
       } else {
         const msgId  = uid();
@@ -998,7 +991,6 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                 </div>
               )}
 
-              {(() => { console.log("[Create tab] events:", agentEvents.length, agentEvents.map(e => e.type + ":" + e.tool)); return null; })()}
               {agentEvents.map(event => <AgentEventRow key={event.id} event={event} />)}
 
               {/* Streaming answer */}
