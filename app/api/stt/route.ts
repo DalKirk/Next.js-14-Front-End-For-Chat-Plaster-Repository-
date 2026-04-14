@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const error = await res.text().catch(() => "Unknown error")
-      console.error("[STT] ElevenLabs error:", res.status, error)
-      return new Response(`STT failed: ${error}`, { status: res.status })
+      console.error("[STT] ElevenLabs error:", res.status, res.statusText, error)
+      return new Response(`STT failed ${res.status}: ${error}`, { status: res.status })
     }
 
     const data = await res.json()
