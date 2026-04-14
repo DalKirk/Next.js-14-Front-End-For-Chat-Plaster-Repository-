@@ -58,10 +58,10 @@ function stripMarkdown(text: string): string {
     .replace(/^>\s+/gm, "")
     .replace(/^[-*_]{3,}$/gm, "")
     .replace(/\[ref:.*?\]/g, "")
+    .replace(/\[pause\]/gi, "")
+    .replace(/\[пауза\]/gi, "")
     .replace(/\|/g, " ")
     .replace(/\n{3,}/g, "\n\n")
-    .replace(/\[pause\]/gi, "")
-    .replace(/\[\u043f\u0430\u0443\u0437\u0430\]/gi, "")
     .trim()
 }
 
@@ -87,9 +87,13 @@ export function useVoiceMobile(options: UseVoiceMobileOptions = {}): UseVoiceMob
     }
   }, [])
 
+  const speakingRef = useRef(false)
+
   // ── TTS via ElevenLabs ────────────────────────────────────────────────────────
   const speak = useCallback(async (text: string): Promise<void> => {
     if (!text.trim()) return
+    if (speakingRef.current) return  // prevent double-speak
+
     const clean = stripMarkdown(text)
     if (!clean) return
 
@@ -99,17 +103,23 @@ export function useVoiceMobile(options: UseVoiceMobileOptions = {}): UseVoiceMob
       audioRef.current = null
     }
 
+    speakingRef.current = true
     setStatus("speaking")
 
-    // Safety timeout — if audio never ends, reset after 15s
+    // Dynamic safety timeout based on word count
+    // ~150 words per minute for TTS + 8 second buffer
+    const wordCount  = clean.split(/\s+/).filter(Boolean).length
+    const safetyMs   = Math.max(20000, Math.ceil((wordCount / 150) * 60000) + 8000)
+
     clearSafety()
     safetyTimerRef.current = setTimeout(() => {
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current = null
       }
+      speakingRef.current = false
       setStatus("idle")
-    }, 15000)
+    }, safetyMs)
 
     try {
       const res = await fetch("/api/tts", {
@@ -125,29 +135,31 @@ export function useVoiceMobile(options: UseVoiceMobileOptions = {}): UseVoiceMob
       const audio = new Audio(url)
       audioRef.current = audio
 
+      let doneCalled = false
       const done = () => {
+        if (doneCalled) return  // prevent double done
+        doneCalled = true
         clearSafety()
+        clearInterval(poll)
         URL.revokeObjectURL(url)
-        audioRef.current = null
+        audioRef.current    = null
+        speakingRef.current = false
         setStatus("idle")
       }
 
-      // Poll for completion — mobile onended is unreliable
+      // Poll every 300ms — more reliable than onended on mobile
       const poll = setInterval(() => {
         if (!audioRef.current) { clearInterval(poll); return }
-        if (audioRef.current.ended || audioRef.current.paused) {
-          clearInterval(poll)
-          done()
-        }
-      }, 500)
+        if (audioRef.current.ended || audioRef.current.paused) done()
+      }, 300)
 
-      audio.onended = () => { clearInterval(poll); done() }
-      audio.onerror = () => { clearInterval(poll); done() }
-
+      audio.onended = done
+      audio.onerror = done
       await audio.play()
 
     } catch (err) {
       clearSafety()
+      speakingRef.current = false
       console.error("[useVoiceMobile] TTS error:", err)
       setStatus("error")
       setTimeout(() => setStatus("idle"), 2000)
