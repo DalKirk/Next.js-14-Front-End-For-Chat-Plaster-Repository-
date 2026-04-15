@@ -14,6 +14,7 @@ import React, { useEffect, useRef, useCallback, useState } from "react"
 import { Mic, MicOff, Volume2, VolumeX, RotateCcw, Sparkles, Zap } from "lucide-react"
 import { useVoice } from "@/hooks/useVoice"
 import { useVoiceMobile } from "@/hooks/useVoiceMobile"
+import { AgentEventRow } from "@/components/UnifiedAIPanel"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,11 +141,15 @@ function TranscriptFeed({
   interimText,
   emptyMessage,
   feedEndRef,
+  agentEvents,
+  agentRunning,
 }: {
-  entries:      VoiceEntry[]
-  interimText?: string
-  emptyMessage: React.ReactNode
-  feedEndRef:   React.RefObject<HTMLDivElement>
+  entries:       VoiceEntry[]
+  interimText?:  string
+  emptyMessage:  React.ReactNode
+  feedEndRef:    React.RefObject<HTMLDivElement>
+  agentEvents?:  any[]
+  agentRunning?: boolean
 }) {
   return (
     <div className="flex-1 px-3 sm:px-4 py-3 space-y-2 min-h-0 agent-scrollbar" style={{ overflowY: "scroll" }}>
@@ -173,6 +178,26 @@ function TranscriptFeed({
           </div>
         </div>
       )}
+      {/* Agent tool results — images, videos, NASA data, embeds */}
+      {(agentEvents ?? [])
+        .filter((e: any) => e.type === "tool_done")
+        .map((event: any) => (
+          <AgentEventRow key={event.id} event={event} />
+        ))
+      }
+      {/* Agent creating indicator */}
+      {agentRunning && (
+        <div className="flex justify-start">
+          <div className="px-3 py-2 rounded-xl text-xs"
+            style={{
+              background: "rgba(139,92,246,0.06)",
+              border:     "1px solid rgba(139,92,246,0.12)",
+              color:      "rgba(255,255,255,0.4)"
+            }}>
+            Creating...
+          </div>
+        </div>
+      )}
       <div ref={feedEndRef} />
     </div>
   )
@@ -190,6 +215,8 @@ function MobileVoiceTab({
   useAgentMode,
   onToggleMode,
   onSpeakingChange,
+  agentEvents,
+  agentRunning,
 }: VoiceTabProps) {
   const [entries,  setEntries]  = useState<VoiceEntry[]>([])
   const [autoPlay, setAutoPlay] = useState(true)
@@ -255,6 +282,8 @@ function MobileVoiceTab({
       <TranscriptFeed
         entries={entries}
         feedEndRef={feedEndRef}
+        agentEvents={agentEvents}
+        agentRunning={agentRunning}
         emptyMessage={
           <p className="text-xs leading-relaxed max-w-[200px]"
             style={{ color: "rgba(255,255,255,0.2)" }}>
@@ -352,6 +381,8 @@ function DesktopVoiceTab({
   onToggleMode,
   onSwitchTab,
   onSpeakingChange,
+  agentEvents,
+  agentRunning,
 }: VoiceTabProps) {
   const [entries,   setEntries]   = useState<VoiceEntry[]>([])
   const [autoPlay,  setAutoPlay]  = useState(true)
@@ -446,6 +477,8 @@ function DesktopVoiceTab({
         entries={entries}
         interimText={voice.isListening && voice.transcript ? voice.transcript : undefined}
         feedEndRef={feedEndRef}
+        agentEvents={agentEvents}
+        agentRunning={agentRunning}
         emptyMessage={
           !activated ? (
             <>

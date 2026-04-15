@@ -23,7 +23,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   X, Sparkles, MessageSquare, Mic,
   Image as ImageIcon, Video, Box, Search, Type,
-  Loader2, RotateCcw, Send, Copy, Check,
+  Loader2, RotateCcw, Send, Copy, Check, Download, Maximize2,
 } from "lucide-react";
 import VoiceTab from "@/components/VoiceTab";
 
@@ -98,7 +98,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ─── AgentEventRow ────────────────────────────────────────────────────────────
 
-function AgentEventRow({ event }: { event: AgentEvent }) {
+export function AgentEventRow({ event }: { event: AgentEvent }) {
   const meta = event.tool ? TOOL_META[event.tool] : null;
 
   if (event.type === "status" || event.type === "plan") {
@@ -175,26 +175,53 @@ function AgentEventRow({ event }: { event: AgentEvent }) {
         )}
 
         {/* Regular image grid */}
-        {urls.length > 0 && !embedType && (
-          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {urls.length > 0 && !embedType && event.tool !== "get_nasa_apod" && (
+          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`} style={{ maxWidth: 480 }}>
             {urls.map((url, i) => (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
+              <div key={i} className="group relative rounded-lg overflow-hidden"
                 style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
                 <img src={url} alt={`Generated ${event.tool} ${i + 1}`}
-                  className="w-full object-cover" style={{ maxHeight: 200 }}
+                  className="w-full object-contain" style={{ maxHeight: 200 }}
                   onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              </a>
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <a href={url} target="_blank" rel="noopener noreferrer"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                    style={{ background: "rgba(139,92,246,0.8)", border: "1px solid rgba(192,132,252,0.5)" }}
+                    title="Expand">
+                    <Maximize2 className="w-4 h-4" style={{ color: "#f0e6ff" }} />
+                  </a>
+                  <a href={url} download target="_blank" rel="noopener noreferrer"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                    style={{ background: "rgba(52,211,153,0.8)", border: "1px solid rgba(52,211,153,0.5)" }}
+                    title="Download">
+                    <Download className="w-4 h-4" style={{ color: "#fff" }} />
+                  </a>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
         {/* NASA APOD — show image + explanation */}
         {(event.tool === "get_nasa_apod" && result && typeof result.url === "string") ? (
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
+          <div className="group rounded-xl overflow-hidden relative" style={{ border: "1px solid rgba(139,92,246,0.15)", maxWidth: 480 }}>
             <img src={result.url} alt={String(result.title ?? "NASA APOD")}
-              className="w-full object-cover" style={{ maxHeight: 220 }}
+              className="w-full object-contain" style={{ maxHeight: 220 }}
               onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3" style={{ bottom: "auto", height: 220 }}>
+              <a href={result.url as string} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                style={{ background: "rgba(139,92,246,0.8)", border: "1px solid rgba(192,132,252,0.5)" }}
+                title="Expand">
+                <Maximize2 className="w-4 h-4" style={{ color: "#f0e6ff" }} />
+              </a>
+              <a href={result.url as string} download target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                style={{ background: "rgba(52,211,153,0.8)", border: "1px solid rgba(52,211,153,0.5)" }}
+                title="Download">
+                <Download className="w-4 h-4" style={{ color: "#fff" }} />
+              </a>
+            </div>
             {typeof result.title === "string" && (
               <div className="px-3 py-2" style={{ background: "rgba(0,0,0,0.4)" }}>
                 <p className="text-xs font-medium mb-1" style={{ color: "rgba(192,132,252,0.9)" }}>{result.title}</p>
@@ -651,16 +678,26 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
               continue;
             }
 
-            // Replace tool_start with tool_done in place
+            // Replace tool_start with tool_done in place; update existing tool_done to prevent duplicates
             if (data.type === "tool_done") {
               if (data.cost) setAgentCost(prev => prev + (data.cost ?? 0));
               setAgentEvents(prev => {
                 const idx = [...prev].reverse().findIndex(e => e.type === "tool_start" && e.tool === data.tool);
-                if (idx === -1) return [...prev, { ...data, id: uid() }];
-                const realIdx = prev.length - 1 - idx;
-                const next    = [...prev];
-                next[realIdx] = { ...data, id: prev[realIdx].id };
-                return next;
+                if (idx !== -1) {
+                  const realIdx = prev.length - 1 - idx;
+                  const next    = [...prev];
+                  next[realIdx] = { ...data, id: prev[realIdx].id };
+                  return next;
+                }
+                // No tool_start found — replace existing tool_done for same tool instead of duplicating
+                const doneIdx = [...prev].reverse().findIndex(e => e.type === "tool_done" && e.tool === data.tool);
+                if (doneIdx !== -1) {
+                  const realDoneIdx = prev.length - 1 - doneIdx;
+                  const next = [...prev];
+                  next[realDoneIdx] = { ...data, id: prev[realDoneIdx].id };
+                  return next;
+                }
+                return [...prev, { ...data, id: uid() }];
               });
               continue;
             }
@@ -701,7 +738,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
     setVoiceProcessing(true);
     try {
       if (voiceAgentMode) {
-        setAgentOwnerTab("create");
+        setAgentOwnerTab("voice");
         await runAgent(text);
       } else {
         const msgId  = uid();
@@ -1045,23 +1082,12 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                 </div>
               )}
 
-              {/* Summary grid */}
+              {/* Summary info */}
               {agentSummary && agentSummary.assets.length > 0 && (
-                <div className="rounded-xl p-3" style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
-                  <div className="text-[10px] mb-2 flex items-center justify-between" style={{ color: "rgba(52,211,153,0.7)" }}>
+                <div className="rounded-xl px-3 py-2" style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
+                  <div className="text-[10px] flex items-center justify-between" style={{ color: "rgba(52,211,153,0.7)" }}>
                     <span>✓ {agentSummary.assets.length} asset{agentSummary.assets.length !== 1 ? "s" : ""} created</span>
                     <span>{agentSummary.total_cost} credits used</span>
-                  </div>
-                  <div className={`grid gap-2 ${agentSummary.assets.length > 2 ? "grid-cols-3" : agentSummary.assets.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                    {agentSummary.assets.map((asset, i) => asset.url ? (
-                      <a key={i} href={asset.url} target="_blank" rel="noopener noreferrer"
-                        className="block rounded-lg overflow-hidden transition-transform hover:scale-[1.02]"
-                        style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
-                        <img src={asset.url} alt={`Asset ${i + 1}`} className="w-full object-cover"
-                          style={{ maxHeight: 120 }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      </a>
-                    ) : null)}
                   </div>
                 </div>
               )}
