@@ -992,6 +992,29 @@ export default function HomePage() {
           content: ''; position: absolute; inset: 5px; border-radius: 8px;
           background: rgba(8,8,15,0.98);
         }
+        @keyframes silverPulse {
+          0%, 100% { opacity: 1; filter: blur(8px) brightness(3); }
+          50%      { opacity: 1; filter: blur(16px) brightness(5); }
+        }
+        @keyframes silverSpin {
+          0%   { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .ai-chat-silver-border {
+          position: absolute; inset: -8px; border-radius: 14px; z-index: 0; overflow: hidden;
+          animation: silverPulse 0.7s ease-in-out infinite;
+          box-shadow: 0 0 50px rgba(220,220,255,0.9), 0 0 100px rgba(200,200,255,0.6), 0 0 160px rgba(180,180,255,0.35), 0 0 240px rgba(200,200,255,0.15);
+        }
+        .ai-chat-silver-border::before {
+          content: ''; position: absolute; inset: -100%; border-radius: 14px;
+          background: conic-gradient(from 0deg, #e8e8ff, #ffffff, #c8c8ff, #f0f0ff, #d0d0ff, #ffffff, #e8e8ff);
+          animation: silverSpin 1s linear infinite;
+          filter: blur(10px) brightness(2);
+        }
+        .ai-chat-silver-border::after {
+          content: ''; position: absolute; inset: 5px; border-radius: 8px;
+          background: rgba(8,8,15,0.98);
+        }
       `}</style>
     </div>
   );

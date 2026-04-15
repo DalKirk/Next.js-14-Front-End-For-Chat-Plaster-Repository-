@@ -23,6 +23,16 @@ interface VoiceEntry {
   content: string
 }
 
+interface AgentEventObj {
+  id:          string
+  type:        string
+  text?:       string
+  tool?:       string
+  result?:     Record<string, unknown>
+  error?:      string
+  assets?:     { type: string; url: string; tool: string }[]
+}
+
 interface VoiceTabProps {
   onUserSpeech:  (text: string) => void
   responseText:  string
@@ -31,6 +41,9 @@ interface VoiceTabProps {
   useAgentMode:  boolean
   onToggleMode:  () => void
   onSwitchTab:   (tab: "chat" | "create") => void
+  agentEvents?:  AgentEventObj[]
+  agentRunning?: boolean
+  onSpeakingChange?: (speaking: boolean) => void
 }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -66,13 +79,13 @@ function TopBar({
   onClear:         () => void
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 shrink-0"
+    <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 shrink-0"
       style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}>
 
       <div className="flex items-center gap-1 rounded-lg p-0.5"
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
         <button onClick={() => { if (useAgentMode) onToggleMode() }}
-          className="px-2.5 py-1 rounded-md text-[10px] transition-all"
+          className="px-2 sm:px-2.5 py-1 rounded-md text-[10px] transition-all"
           style={{
             background: !useAgentMode ? "rgba(6,182,212,0.12)"  : "transparent",
             color:      !useAgentMode ? "rgba(6,182,212,0.9)"   : "rgba(255,255,255,0.3)",
@@ -81,7 +94,7 @@ function TopBar({
           Chat
         </button>
         <button onClick={() => { if (!useAgentMode) onToggleMode() }}
-          className="px-2.5 py-1 rounded-md text-[10px] transition-all"
+          className="px-2 sm:px-2.5 py-1 rounded-md text-[10px] transition-all"
           style={{
             background: useAgentMode ? "rgba(139,92,246,0.12)"  : "transparent",
             color:      useAgentMode ? "rgba(192,132,252,0.9)"  : "rgba(255,255,255,0.3)",
@@ -91,22 +104,22 @@ function TopBar({
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {sharedTurns > 0 && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full"
+          <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap"
             style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.6)" }}>
             {sharedTurns} shared
           </span>
         )}
         <button onClick={onToggleAudio}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] transition-all"
+          className="flex items-center justify-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-[10px] transition-all"
           style={{
             background: autoPlay ? "rgba(192,132,252,0.08)" : "rgba(255,255,255,0.03)",
             border:     autoPlay ? "1px solid rgba(192,132,252,0.2)" : "1px solid rgba(255,255,255,0.06)",
             color:      autoPlay ? "rgba(192,132,252,0.8)" : "rgba(255,255,255,0.3)",
           }}>
           {autoPlay ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
-          {autoPlay ? "Audio on" : "Muted"}
+          <span className="hidden sm:inline">{autoPlay ? "Audio on" : "Muted"}</span>
         </button>
         {hasEntries && (
           <button onClick={onClear}
@@ -134,7 +147,7 @@ function TranscriptFeed({
   feedEndRef:   React.RefObject<HTMLDivElement>
 }) {
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0">
+    <div className="flex-1 px-3 sm:px-4 py-3 space-y-2 min-h-0 agent-scrollbar" style={{ overflowY: "scroll" }}>
       {entries.length === 0 && !interimText && (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
           {emptyMessage}
@@ -142,14 +155,10 @@ function TranscriptFeed({
       )}
       {entries.map(entry => (
         <div key={entry.id} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
-          <div className="max-w-[82%] px-3 py-2 rounded-xl text-xs leading-relaxed"
+          <div className="max-w-[82%] px-3 py-2 text-xs leading-relaxed"
             style={entry.role === "user" ? {
-              background: "rgba(6,182,212,0.1)",
-              border:     "1px solid rgba(6,182,212,0.15)",
-              color:      "rgba(255,255,255,0.75)",
+              color:      "rgba(6,182,212,0.9)",
             } : {
-              background: "rgba(139,92,246,0.06)",
-              border:     "1px solid rgba(139,92,246,0.12)",
               color:      "rgba(255,255,255,0.7)",
             }}>
             {entry.content}
@@ -158,8 +167,8 @@ function TranscriptFeed({
       ))}
       {interimText && (
         <div className="flex justify-end">
-          <div className="max-w-[82%] px-3 py-2 rounded-xl text-xs italic"
-            style={{ background: "rgba(6,182,212,0.04)", border: "1px dashed rgba(6,182,212,0.12)", color: "rgba(255,255,255,0.35)" }}>
+          <div className="max-w-[82%] px-3 py-2 text-xs italic"
+            style={{ color: "rgba(255,255,255,0.35)" }}>
             {interimText}…
           </div>
         </div>
@@ -180,6 +189,7 @@ function MobileVoiceTab({
   sharedTurns,
   useAgentMode,
   onToggleMode,
+  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,  setEntries]  = useState<VoiceEntry[]>([])
   const [autoPlay, setAutoPlay] = useState(true)
@@ -192,6 +202,9 @@ function MobileVoiceTab({
       onUserSpeech(text)
     },
   })
+
+  // Propagate speaking state up
+  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking, onSpeakingChange])
 
   // Auto-scroll
   useEffect(() => {
@@ -251,7 +264,7 @@ function MobileVoiceTab({
       />
 
       {/* Orb */}
-      <div className="flex flex-col items-center gap-4 pt-4 pb-6 px-4 shrink-0"
+      <div className="flex flex-col items-center gap-3 sm:gap-4 pt-3 sm:pt-4 pb-4 sm:pb-6 px-3 sm:px-4 shrink-0"
         style={{ borderTop: "1px solid rgba(139,92,246,0.06)" }}>
 
         <p className="text-[10px] tracking-widest text-center uppercase"
@@ -262,7 +275,7 @@ function MobileVoiceTab({
         {/* Hold to talk orb */}
         <div
           className="relative flex items-center justify-center select-none"
-          style={{ width: 88, height: 88, cursor: "pointer" }}
+          style={{ width: 80, height: 80, cursor: "pointer" }}
           onPointerDown={(e) => {
             e.preventDefault()
             if (!voice.isSpeaking && !voice.isRecording) voice.startRecording()
@@ -338,6 +351,7 @@ function DesktopVoiceTab({
   useAgentMode,
   onToggleMode,
   onSwitchTab,
+  onSpeakingChange,
 }: VoiceTabProps) {
   const [entries,   setEntries]   = useState<VoiceEntry[]>([])
   const [autoPlay,  setAutoPlay]  = useState(true)
@@ -355,6 +369,9 @@ function DesktopVoiceTab({
   })
 
   useEffect(() => { return () => { voice.deactivate() } }, []) // eslint-disable-line
+
+  // Propagate speaking state up
+  useEffect(() => { onSpeakingChange?.(voice.isSpeaking) }, [voice.isSpeaking, onSpeakingChange])
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -395,10 +412,10 @@ function DesktopVoiceTab({
 
   if (!voice.isSupported) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 sm:px-8 text-center">
         <Mic className="w-10 h-10" style={{ color: "rgba(239,68,68,0.4)" }} />
         <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>Voice requires Chrome on desktop</p>
-        <div className="flex gap-3">
+        <div className="flex gap-3 justify-center">
           <button onClick={() => onSwitchTab("chat")} className="px-4 py-2 rounded-xl text-xs"
             style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "rgba(6,182,212,0.8)" }}>
             Open Chat
@@ -448,7 +465,7 @@ function DesktopVoiceTab({
         }
       />
 
-      <div className="flex flex-col items-center gap-4 pt-4 pb-6 px-4 shrink-0"
+      <div className="flex flex-col items-center gap-3 sm:gap-4 pt-3 sm:pt-4 pb-4 sm:pb-6 px-3 sm:px-4 shrink-0"
         style={{ borderTop: "1px solid rgba(139,92,246,0.06)" }}>
 
         <p className="text-[10px] tracking-widest text-center uppercase transition-all duration-300"
@@ -457,7 +474,7 @@ function DesktopVoiceTab({
         </p>
 
         <div className="relative flex items-center justify-center cursor-pointer select-none"
-          onClick={handleOrbTap} style={{ width: 88, height: 88 }}>
+          onClick={handleOrbTap} style={{ width: 80, height: 80 }}>
 
           {orb.pulse && (
             <>

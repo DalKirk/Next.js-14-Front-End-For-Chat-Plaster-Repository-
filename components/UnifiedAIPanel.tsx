@@ -94,16 +94,6 @@ const AGENT_EXAMPLES = [
   "Show me the ISS live stream",
 ];
 
-const AI_SYSTEM_PROMPT =
-  `You are Star, an AI assistant built into the Starcyeed platform. ` +
-  `Your name is Star. You were created by Starcyeed. ` +
-  `NEVER refer to yourself as Claude, never mention Anthropic, OpenAI, or any AI company or model. ` +
-  `If anyone asks what AI you are or who made you, say you are Star, made by Starcyeed. ` +
-  `Never correct users about your name — your name is Star, not Claude. ` +
-  `Today's date is ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}. ` +
-  `Be concise, friendly, and helpful. Respond in the same language the user writes in. ` +
-  `You have memory of this conversation — use it to give contextually relevant answers.`;
-
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ─── AgentEventRow ────────────────────────────────────────────────────────────
@@ -284,10 +274,10 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
     <div
       className={`max-w-[85%] overflow-hidden ${
         message.role === "user"
-          ? "rounded-xl px-3 py-2 text-sm"
+          ? "px-3 py-2 text-sm"
           : "text-slate-100"
       }`}
-      style={message.role === "user" ? { background: "rgba(6,182,212,0.18)", border: "1px solid rgba(6,182,212,0.2)", color: "rgba(255,255,255,0.9)" } : {}}
+      style={message.role === "user" ? { color: "rgba(6,182,212,0.9)" } : {}}
     >
       {message.role === "assistant" ? (
         <div className="prose prose-sm prose-invert max-w-none break-words text-xs leading-relaxed">
@@ -345,6 +335,26 @@ interface UnifiedAIPanelProps {
 }
 
 export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps) {
+  function getSystemPrompt(): string {
+    const now = new Date();
+    const userDate = now.toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const userTime = now.toLocaleTimeString("en-US", {
+      hour: "numeric", minute: "2-digit", hour12: true
+    });
+    return (
+      `You are Star, an AI assistant built into the Starcyeed platform. ` +
+      `Your name is Star. You were created by Starcyeed. ` +
+      `NEVER refer to yourself as Claude, never mention Anthropic, OpenAI, or any AI company or model. ` +
+      `If anyone asks what AI you are or who made you, say you are Star, made by Starcyeed. ` +
+      `Never correct users about your name — your name is Star, not Claude. ` +
+      `Today's date is ${userDate} and the current time is ${userTime}. ` +
+      `Be concise, friendly, and helpful. Respond in the same language the user writes in. ` +
+      `You have memory of this conversation — use it to give contextually relevant answers.`
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>("chat");
 
   // ── Shared conversation memory ─────────────────────────────────────────────
@@ -369,6 +379,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
   const [agentEvents,  setAgentEvents]  = useState<AgentEvent[]>([]);
   const [agentContent, setAgentContent] = useState("");
   const [agentRunning, setAgentRunning] = useState(false);
+  const [agentOwnerTab, setAgentOwnerTab] = useState<"create" | "voice">("create");
   const [agentSummary, setAgentSummary] = useState<{ assets: AgentAsset[]; total_cost: number } | null>(null);
   const [agentCost,    setAgentCost]    = useState(0);
   const [agentTurns,   setAgentTurns]   = useState<{ role: string; content: string }[]>([]);
@@ -377,6 +388,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
   const [voiceResponse,   setVoiceResponse]   = useState("");
   const [voiceProcessing, setVoiceProcessing] = useState(false);
   const [voiceAgentMode,  setVoiceAgentMode]  = useState(false);
+  const [isSpeaking,      setIsSpeaking]      = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const chatEndRef   = useRef<HTMLDivElement>(null);
@@ -386,6 +398,23 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
   const agentReplyRef = useRef<HTMLInputElement>(null);
   const chatAbortRef  = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
+
+  // ── Force neon lime green scrollbar via DOM injection ─────────────────────
+  useEffect(() => {
+    const id = "agent-scrollbar-style";
+    if (!document.getElementById(id)) {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = [
+        ".agent-scrollbar { scrollbar-width: thin !important; scrollbar-color: #00ff66 #000000 !important; overflow-y: scroll !important; }",
+        ".agent-scrollbar::-webkit-scrollbar { width: 8px !important; display: block !important; background: #000 !important; }",
+        ".agent-scrollbar::-webkit-scrollbar-track { background: #000 !important; }",
+        ".agent-scrollbar::-webkit-scrollbar-thumb { background: #00ff66 !important; border-radius: 4px !important; }",
+        ".agent-scrollbar::-webkit-scrollbar-thumb:hover { background: #33ff88 !important; }",
+      ].join("\n");
+      document.head.appendChild(style);
+    }
+  }, []);
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
@@ -442,19 +471,35 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
       .filter(e => e.source === "chat")
       .map(e => ({ role: e.role, content: e.content }));
 
+    const now = new Date();
+    const userDate = now.toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const userTime = now.toLocaleTimeString("en-US", {
+      hour: "numeric", minute: "2-digit", hour12: true
+    });
+    const dateContext = `[Today is ${userDate} at ${userTime}]`;
+
+    const chatHistoryWithDate = chatHistory.length === 0
+      ? [{ role: "user", content: dateContext }, { role: "assistant", content: "Understood." }]
+      : chatHistory;
+
     let fullContent = "";
 
     try {
+      const prompt = getSystemPrompt();
+      console.log("[Star] system_prompt date:", prompt.match(/Today's date is ([^.]+)/)?.[1]);
+
       const res = await fetch("/api/ai-stream", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         signal:  chatAbortRef.current.signal,
         body:    JSON.stringify({
           message:              text,
-          conversation_history: chatHistory,
+          conversation_history: chatHistoryWithDate,
           conversation_id:      chatConvId,
-          enable_search:        true,
-          system_prompt:        AI_SYSTEM_PROMPT,
+          enable_search:        false,
+          system_prompt:        prompt,
         }),
       });
 
@@ -656,7 +701,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
     setVoiceProcessing(true);
     try {
       if (voiceAgentMode) {
-        setActiveTab("create");
+        setAgentOwnerTab("create");
         await runAgent(text);
       } else {
         const msgId  = uid();
@@ -682,7 +727,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             conversation_history: chatHistory,
             conversation_id:      chatConvId,
             enable_search:        false,
-            system_prompt:        AI_SYSTEM_PROMPT,
+            system_prompt:        getSystemPrompt(),
           }),
         });
 
@@ -774,22 +819,22 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
   return (
     <div className="fixed" style={{ inset: 0, zIndex: 2000, width: "100vw", height: "100dvh", padding: 8, overflow: "hidden" }}>
-      <div className="ai-chat-rainbow-border" style={{ inset: 0, borderRadius: 0 }} />
+      <div className={isSpeaking ? "ai-chat-silver-border" : "ai-chat-rainbow-border"} style={{ inset: 0, borderRadius: 0 }} />
 
       <div className="flex flex-col overflow-hidden relative"
-        style={{ width: "100%", height: "100%", borderRadius: 6, background: "rgba(8,8,15,0.98)", backdropFilter: "blur(20px)", zIndex: 1 }}>
+        style={{ width: "100%", height: "100%", borderRadius: 6, background: "#000000", zIndex: 1 }}>
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0"
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 shrink-0"
           style={{ borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-1 min-w-0">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+                className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs transition-all"
                 style={{
                   background:   activeTab === tab.id ? "rgba(139,92,246,0.12)" : "transparent",
                   border:       activeTab === tab.id ? "1px solid rgba(139,92,246,0.25)" : "1px solid transparent",
@@ -798,13 +843,13 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                 }}
               >
                 {tab.icon}
-                {tab.label}
+                <span className="hidden xs:inline sm:inline">{tab.label}</span>
               </button>
             ))}
 
             {/* Context indicator */}
             {sharedHistory.current.length > 0 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full ml-1"
+              <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full ml-0.5 sm:ml-1 whitespace-nowrap"
                 style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.12)", color: "rgba(52,211,153,0.6)" }}>
                 {Math.floor(sharedHistory.current.length / 2)} shared
               </span>
@@ -812,19 +857,19 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {activeTab === "chat" && chatMessages.length > 0 && (
               <button onClick={clearChat}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] transition-all hover:bg-white/5"
+                className="flex items-center justify-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-[10px] transition-all hover:bg-white/5"
                 style={{ color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <RotateCcw className="w-3 h-3" /> Clear
+                <RotateCcw className="w-3 h-3" /> <span className="hidden sm:inline">Clear</span>
               </button>
             )}
             {activeTab === "create" && agentHasActivity && !agentRunning && (
               <button onClick={resetAgent}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] transition-all hover:bg-white/5"
+                className="flex items-center justify-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-[10px] transition-all hover:bg-white/5"
                 style={{ color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <RotateCcw className="w-3 h-3" /> New
+                <RotateCcw className="w-3 h-3" /> <span className="hidden sm:inline">New</span>
               </button>
             )}
             {agentRunning && activeTab === "create" && (
@@ -835,10 +880,10 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             )}
             <button
               onClick={() => { chatAbortRef.current?.abort(); agentAbortRef.current?.abort(); onClose(); }}
-              className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:scale-110"
+              className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg transition-all hover:scale-110"
               style={{ background: "rgba(255,60,60,0.15)", border: "1px solid rgba(255,60,60,0.3)" }}
               aria-label="Close">
-              <X className="w-5 h-5" style={{ color: "#ff4444", filter: "drop-shadow(0 0 4px rgba(255,68,68,0.5))" }} />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: "#ff4444", filter: "drop-shadow(0 0 4px rgba(255,68,68,0.5))" }} />
             </button>
           </div>
         </div>
@@ -848,7 +893,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "chat" && (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 agent-scrollbar">
+            <div className="flex-1 p-3 sm:p-4 space-y-3 min-h-0 agent-scrollbar" style={{ overflowY: "scroll" }}>
               {chatMessages.length === 0 && (
                 <div className="text-center text-xs py-8" style={{ color: "rgba(255,255,255,0.2)" }}>
                   Ask me anything — code, research, creative writing, platform help.
@@ -864,8 +909,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
               ))}
               {chatStreaming && chatMessages[chatMessages.length - 1]?.role !== "assistant" && (
                 <div className="flex justify-start">
-                  <div className="flex space-x-1.5 px-3 py-2 rounded-xl"
-                    style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.1)" }}>
+                  <div className="flex space-x-1.5 px-3 py-2">
                     {[0, 150, 300].map(d => (
                       <div key={d} className="w-1.5 h-1.5 rounded-full animate-bounce"
                         style={{ background: "rgba(192,132,252,0.6)", animationDelay: `${d}ms` }} />
@@ -876,9 +920,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
               <div ref={chatEndRef} />
             </div>
 
-            <div className="px-3 py-2.5 shrink-0" style={{ borderTop: "1px solid rgba(139,92,246,0.06)" }}>
-              <div className="flex gap-2 items-end rounded-xl p-2 transition-all"
-                style={{ background: "rgba(139,92,246,0.04)", border: `1px solid ${chatStreaming ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.1)"}` }}>
+            <div className="px-2.5 sm:px-3 py-2 sm:py-2.5 shrink-0">
+              <div className="flex gap-2 items-end p-2">
                 <textarea
                   ref={chatInputRef}
                   value={chatInput}
@@ -887,7 +930,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                   placeholder="Ask anything…"
                   disabled={chatStreaming}
                   rows={1}
-                  className="flex-1 resize-none text-xs outline-none disabled:opacity-50 bg-transparent"
+                  className="flex-1 resize-none text-xs outline-none disabled:opacity-50 bg-transparent min-w-0"
                   style={{ color: "rgba(255,255,255,0.85)", lineHeight: 1.6, paddingLeft: 4 }}
                 />
                 <button
@@ -898,8 +941,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                   <Send className="w-3.5 h-3.5" style={{ color: "#f0e6ff" }} />
                 </button>
               </div>
-              <p className="text-[10px] mt-1 px-1" style={{ color: "rgba(255,255,255,0.15)" }}>
-                Enter to send · Shift+Enter for new line · Context shared with Create tab
+              <p className="text-[9px] sm:text-[10px] mt-1 px-1 text-center sm:text-left" style={{ color: "rgba(255,255,255,0.15)" }}>
+                Enter to send · Shift+Enter for new line
               </p>
             </div>
           </>
@@ -912,9 +955,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
           <>
             {/* Prompt input — only shown before first run */}
             {!agentHasActivity && (
-              <div className="px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(139,92,246,0.06)" }}>
-                <div className="flex gap-2 rounded-xl p-2 transition-all"
-                  style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.1)" }}>
+              <div className="px-3 sm:px-4 py-3 shrink-0">
+                <div className="flex gap-2 p-2">
                   <textarea
                     ref={agentInputRef}
                     value={agentPrompt}
@@ -923,28 +965,28 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                     placeholder="Describe what you want to create…"
                     disabled={agentRunning}
                     rows={2}
-                    className="flex-1 resize-none text-xs outline-none disabled:opacity-50 bg-transparent"
+                    className="flex-1 resize-none text-xs outline-none disabled:opacity-50 bg-transparent min-w-0"
                     style={{ color: "rgba(255,255,255,0.85)", lineHeight: 1.6, paddingLeft: 4 }}
                   />
                   <button
                     onClick={submitAgentPrompt}
                     disabled={!agentPrompt.trim()}
-                    className="self-end px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 shrink-0"
+                    className="self-end px-2.5 sm:px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold transition-all disabled:opacity-30 shrink-0"
                     style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))", border: "1px solid rgba(139,92,246,0.3)", color: "#f0e6ff", boxShadow: "0 0 16px rgba(139,92,246,0.2)" }}>
                     Create →
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mt-2.5">
                   {AGENT_EXAMPLES.slice(0, 3).map((p, i) => (
                     <button key={i} onClick={() => setAgentPrompt(p)}
-                      className="text-[10px] px-2.5 py-1 rounded-full transition-all hover:border-[rgba(139,92,246,0.3)]"
+                      className="text-[9px] sm:text-[10px] px-2 sm:px-2.5 py-1 rounded-full transition-all hover:border-[rgba(139,92,246,0.3)] text-center"
                       style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.1)", color: "rgba(255,255,255,0.35)" }}>
-                      {p.slice(0, 42)}…
+                      {p.slice(0, 36)}…
                     </button>
                   ))}
                 </div>
                 {sharedHistory.current.length > 0 && (
-                  <p className="text-[10px] mt-2 px-1" style={{ color: "rgba(52,211,153,0.5)" }}>
+                  <p className="text-[10px] mt-2 px-1 text-center sm:text-left" style={{ color: "rgba(52,211,153,0.5)" }}>
                     ✦ Agent has context from your Chat tab — {Math.floor(sharedHistory.current.length / 2)} turn{Math.floor(sharedHistory.current.length / 2) !== 1 ? "s" : ""} shared
                   </p>
                 )}
@@ -952,13 +994,12 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             )}
 
             {/* Activity feed */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0 agent-scrollbar">
+            <div className="flex-1 px-3 sm:px-4 py-3 space-y-2 min-h-0 agent-scrollbar" style={{ overflowY: "scroll" }}>
 
               {/* Empty state */}
               {!agentHasActivity && !agentRunning && (
                 <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-8">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                    style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.12)" }}>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center">
                     <Sparkles className="w-6 h-6" style={{ color: "rgba(192,132,252,0.6)" }} />
                   </div>
                   <div>
@@ -967,9 +1008,9 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
                       Logos, images, videos, mood boards. The agent picks the right tools automatically.
                     </p>
                   </div>
-                  <div className="flex flex-wrap justify-center gap-1.5 max-w-[280px]">
+                  <div className="flex flex-wrap justify-center gap-1 sm:gap-1.5 max-w-[260px] sm:max-w-[280px]">
                     {Object.entries(TOOL_META).map(([key, meta]) => (
-                      <div key={key} className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px]"
+                      <div key={key} className="flex items-center justify-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px]"
                         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: meta.color }}>
                         {meta.icon}
                         <span style={{ color: "rgba(255,255,255,0.35)" }}>
@@ -984,8 +1025,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
               {/* Current user prompt bubble */}
               {agentTurns.length > 0 && (
                 <div className="flex justify-end mb-1">
-                  <div className="max-w-[80%] px-3 py-2 rounded-xl text-xs"
-                    style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.15)", color: "rgba(255,255,255,0.75)" }}>
+                  <div className="max-w-[80%] px-3 py-2 text-xs"
+                    style={{ color: "rgba(139,92,246,0.9)" }}>
                     {agentTurns[agentTurns.length - 1].content}
                   </div>
                 </div>
@@ -995,8 +1036,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
               {/* Streaming answer */}
               {agentContent && (
-                <div className="py-3 px-3 rounded-xl text-xs leading-relaxed"
-                  style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.08)", color: "rgba(255,255,255,0.75)", whiteSpace: "pre-wrap" }}>
+                <div className="py-3 px-3 text-xs leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.75)", whiteSpace: "pre-wrap" }}>
                   {agentContent}
                   {agentRunning && (
                     <span style={{ display: "inline-block", width: 2, height: "1em", background: "rgba(192,132,252,0.8)", animation: "blink 0.8s step-end infinite", verticalAlign: "text-bottom", marginLeft: 2 }} />
@@ -1030,25 +1071,24 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
             {/* Reply bar */}
             {showReplyBar && (
-              <div className="px-4 py-3 shrink-0" style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}>
-                <div className="flex gap-2 items-center rounded-xl px-3 py-2"
-                  style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)" }}>
+              <div className="px-2.5 sm:px-4 py-2 sm:py-3 shrink-0">
+                <div className="flex gap-2 items-center px-2.5 sm:px-3 py-2">
                   <input
                     ref={agentReplyRef}
                     value={agentReply}
                     onChange={e => setAgentReply(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submitAgentReply(); } }}
-                    placeholder="Refine or continue… e.g. 'Make it more minimal'"
-                    className="flex-1 text-xs outline-none bg-transparent"
+                    placeholder="Refine or continue…"
+                    className="flex-1 text-xs outline-none bg-transparent min-w-0"
                     style={{ color: "rgba(255,255,255,0.8)" }}
                   />
                   <button onClick={submitAgentReply} disabled={!agentReply.trim()}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-30 shrink-0"
+                    className="px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all disabled:opacity-30 shrink-0"
                     style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(139,92,246,0.8))", border: "1px solid rgba(139,92,246,0.3)", color: "#f0e6ff" }}>
                     Run →
                   </button>
                 </div>
-                <p className="text-[10px] mt-1.5 px-1" style={{ color: "rgba(255,255,255,0.2)" }}>
+                <p className="text-[9px] sm:text-[10px] mt-1.5 px-1 text-center sm:text-left" style={{ color: "rgba(255,255,255,0.2)" }}>
                   Agent remembers this session ·{" "}
                   <button onClick={resetAgent} className="underline" style={{ color: "rgba(255,255,255,0.3)" }}>
                     Start new session
@@ -1071,6 +1111,9 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             useAgentMode={voiceAgentMode}
             onToggleMode={() => setVoiceAgentMode(v => !v)}
             onSwitchTab={(tab: "chat" | "create") => setActiveTab(tab)}
+            agentEvents={voiceAgentMode ? agentEvents : []}
+            agentRunning={agentRunning}
+            onSpeakingChange={setIsSpeaking}
           />
         )}
 

@@ -934,23 +934,26 @@
   font-size: 0.6875rem;
 }
 
-/* Dark scrollbar for agent panel */
+/* Dark scrollbar for agent panel — neon lime green */
 .agent-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #00ff66 #000000;
+  scrollbar-width: thin !important;
+  scrollbar-color: #00ff66 #000000 !important;
+  overflow-y: auto !important;
 }
 .agent-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px !important;
+  display: block !important;
+  background: #000000 !important;
 }
 .agent-scrollbar::-webkit-scrollbar-track {
-  background: #000000;
+  background: #000000 !important;
 }
 .agent-scrollbar::-webkit-scrollbar-thumb {
-  background: #00ff66;
-  border-radius: 3px;
+  background: #00ff66 !important;
+  border-radius: 4px !important;
 }
 .agent-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #33ff88;
+  background: #33ff88 !important;
 }
 
 /* Agent asset cards — hover overlay + glow */
