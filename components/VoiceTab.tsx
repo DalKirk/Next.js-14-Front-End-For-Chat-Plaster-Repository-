@@ -244,7 +244,10 @@ function MobileVoiceTab({
     if (responseText === lastSpokenRef.current) return
     if (isProcessing)                           return
     lastSpokenRef.current = responseText
-    setEntries(prev => [...prev, { id: uid(), role: "assistant", content: responseText }])
+    setEntries(prev => {
+      if (prev.some(e => e.role === "assistant" && e.content === responseText)) return prev
+      return [...prev, { id: uid(), role: "assistant", content: responseText }]
+    })
     if (autoPlay) voice.speak(responseText)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseText, isProcessing])
@@ -413,7 +416,10 @@ function DesktopVoiceTab({
     if (responseText === lastSpokenRef.current) return
     if (isProcessing)                           return
     lastSpokenRef.current = responseText
-    setEntries(prev => [...prev, { id: uid(), role: "assistant", content: responseText }])
+    setEntries(prev => {
+      if (prev.some(e => e.role === "assistant" && e.content === responseText)) return prev
+      return [...prev, { id: uid(), role: "assistant", content: responseText }]
+    })
     if (autoPlay && activated) voice.speak(responseText)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseText, isProcessing])

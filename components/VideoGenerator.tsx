@@ -58,7 +58,7 @@ const MODEL_CONFIG = {
     name: 'Talking Avatar',
     sub: 'Portrait + Audio → Lip-synced video · 19B',
     modes: ['avatar'] as AvatarMode[],
-    defaultSteps: 40,
+    defaultSteps: 25,
     defaultGuidance: 5.0,
     creditCost: { avatar: 12 } as Record<string, number>,
     supportsNegativePrompt: false,
@@ -173,9 +173,12 @@ export default function VideoGenerator() {
   const [guidanceScaleImg, setGuidanceScaleImg] = useState(1.0);
   const [avatarResolution, setAvatarResolution] = useState('480P');
   const [skyreelResolution, setSkyreelResolution] = useState('720P');
-  const [samplingSteps, setSamplingSteps] = useState(40);
+  const [samplingSteps, setSamplingSteps] = useState(25);
   const [textGuideScale, setTextGuideScale] = useState(5.0);
   const [audioGuideScale, setAudioGuideScale] = useState(4.0);
+  const [avatarScanLine, setAvatarScanLine] = useState(0);
+  const avatarScanRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const avatarScanDir = useRef(1);
   const [savingToProfile, setSavingToProfile] = useState<Record<string, boolean>>({});
   const [savedToProfile, setSavedToProfile] = useState<Record<string, boolean>>({});
   const videoElRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -187,6 +190,24 @@ export default function VideoGenerator() {
   const refImageInputRef = useRef<HTMLInputElement>(null);
   const portraitInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+
+  // Animated scan line during avatar generation
+  useEffect(() => {
+    if (generating && mode === 'avatar') {
+      avatarScanDir.current = 1;
+      avatarScanRef.current = setInterval(() => {
+        setAvatarScanLine(p => {
+          if (p >= 100) { avatarScanDir.current = -1; return 99; }
+          if (p <= 0) { avatarScanDir.current = 1; return 1; }
+          return p + avatarScanDir.current;
+        });
+      }, 60);
+    } else {
+      if (avatarScanRef.current) clearInterval(avatarScanRef.current);
+      setAvatarScanLine(0);
+    }
+    return () => { if (avatarScanRef.current) clearInterval(avatarScanRef.current); };
+  }, [generating, mode]);
 
   const modelCfg = MODEL_CONFIG[model];
   const framePresets = FRAME_PRESETS[model] || FRAME_PRESETS.wan;
@@ -671,15 +692,15 @@ export default function VideoGenerator() {
           </div>
 
           {/* Mode tabs */}
-          <div className="video-mode-tabs" style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, overflowX: 'auto', maxWidth: '100%' }}>
+          <div className="video-mode-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, maxWidth: '100%' }}>
             {modelCfg.modes.map(tab => {
               const labels: Record<string, { label: string; icon: React.ReactNode }> = {
-                t2v: { label: 'Text to Video', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-                i2v: { label: 'Image to Video', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                t2v: { label: 'Text→Vid', icon: <Film size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                i2v: { label: 'Img→Vid', icon: <Upload size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
                 smart: { label: 'Smart', icon: <Zap size={12} style={{ verticalAlign: -1, marginRight: 4, marginBottom: 4, color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.6))' }} /> },
-                v2v: { label: 'Video to Video', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-                ref2video: { label: 'Ref to Video', icon: <ImageIcon size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
-                avatar: { label: 'Talking Avatar', icon: <Mic size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                v2v: { label: 'Vid→Vid', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                ref2video: { label: 'Ref→Vid', icon: <ImageIcon size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                avatar: { label: 'Avatar', icon: <Mic size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
               };
               const info = labels[tab] || { label: tab, icon: null };
               return (
@@ -687,7 +708,7 @@ export default function VideoGenerator() {
                 key={tab}
                 onClick={() => setMode(tab)}
                 style={{
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+                  padding: '7px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
                   background: mode === tab ? 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))' : 'transparent',
                   color: mode === tab ? '#c084fc' : 'rgba(255,255,255,0.75)',
                   ...(mode === tab ? { border: '1px solid rgba(139,92,246,0.25)' } : {}),
@@ -726,7 +747,7 @@ export default function VideoGenerator() {
           {mode === 'i2v' && !uploadedImage && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              style={{ border: '1px dashed rgba(139,92,246,0.30)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(139,92,246,0.04)' }}
+              style={{ border: '1px dashed rgba(139,92,246,0.30)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(139,92,246,0.04)', maxWidth: 320, aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
             >
               <Upload size={28} color="rgba(139,92,246,0.5)" style={{ marginBottom: 8 }} />
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Upload a source image</p>
@@ -735,9 +756,9 @@ export default function VideoGenerator() {
           )}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
           {mode === 'i2v' && uploadedImage && (
-            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)', maxWidth: 320, aspectRatio: '1', background: '#0a0a14' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={uploadedImage} alt="Preview" style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} />
+              <img src={uploadedImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
               <button onClick={removeImage} style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 6, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={14} />
               </button>
@@ -748,7 +769,7 @@ export default function VideoGenerator() {
           {mode === 'v2v' && !uploadedVideo && (
             <div
               onClick={() => videoInputRef.current?.click()}
-              style={{ border: '1px dashed rgba(6,182,212,0.35)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(6,182,212,0.04)' }}
+              style={{ border: '1px dashed rgba(6,182,212,0.35)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 16, cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(6,182,212,0.04)', maxWidth: 320, aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
             >
               <Video size={28} color="rgba(6,182,212,0.5)" style={{ marginBottom: 8 }} />
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Upload a source video</p>
@@ -757,8 +778,8 @@ export default function VideoGenerator() {
           )}
           <input ref={videoInputRef} type="file" accept="video/mp4,video/webm" onChange={handleVideoUpload} style={{ display: 'none' }} />
           {mode === 'v2v' && uploadedVideo && (
-            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
-              <video src={uploadedVideo} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} muted playsInline />
+            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)', maxWidth: 320, aspectRatio: '1', background: '#0a0a14' }}>
+              <video src={uploadedVideo} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} muted playsInline />
               <button onClick={removeVideo} style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 6, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={14} />
               </button>
@@ -797,23 +818,26 @@ export default function VideoGenerator() {
 
           {/* Portrait + Audio upload (Avatar) */}
           <input ref={portraitInputRef} type="file" accept="image/*" onChange={handlePortraitUpload} style={{ display: 'none' }} />
-          <input ref={audioInputRef} type="file" accept="audio/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
+          <input ref={audioInputRef} type="file" accept="audio/*,video/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
           {mode === 'avatar' && (
             <div className="grid grid-cols-2 gap-2.5" style={{ marginBottom: 16 }}>
               {/* Portrait upload */}
               {!portraitImage ? (
                 <div
                   onClick={() => portraitInputRef.current?.click()}
-                  style={{ border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                  style={{ aspectRatio: '1', border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <User size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Portrait photo</p>
                   <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Face image, max 10MB</small>
                 </div>
               ) : (
-                <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)', background: '#0a0a14' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={portraitImage} alt="Portrait" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                  <img src={portraitImage} alt="Portrait" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                  {generating && mode === 'avatar' && (
+                    <div style={{ position: 'absolute', left: 0, right: 0, height: 6, top: `${avatarScanLine}%`, background: 'linear-gradient(90deg, transparent, rgba(255,79,216,0.15), rgba(255,79,216,0.9), rgba(157,78,255,0.85), transparent)', boxShadow: '0 0 18px 4px rgba(255,79,216,0.8), 0 0 36px 6px rgba(157,78,255,0.5)', pointerEvents: 'none', transition: 'top 0.12s ease', borderRadius: 3 }} />
+                  )}
                   <button onClick={removePortrait} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <X size={12} />
                   </button>
@@ -823,14 +847,14 @@ export default function VideoGenerator() {
               {!audioFile ? (
                 <div
                   onClick={() => audioInputRef.current?.click()}
-                  style={{ border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)' }}
+                  style={{ aspectRatio: '1', border: '1px dashed rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, textAlign: 'center', cursor: 'pointer', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Mic size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Audio file</p>
-                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>WAV/MP3, max 30MB</small>
+                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Any Audio/Max 30MB</small>
                 </div>
               ) : (
-                <div style={{ position: 'relative', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <Mic size={20} color="#34d399" />
                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', textAlign: 'center', wordBreak: 'break-all' }}>{audioFileName || 'Audio loaded'}</span>
                   <button onClick={removeAudio} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -838,6 +862,25 @@ export default function VideoGenerator() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+          {mode === 'avatar' && (
+            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <style>{`@keyframes neonPulse { 0%, 100% { box-shadow: 0 0 8px rgba(255,110,180,0.3), 0 0 16px rgba(255,110,180,0.15); text-shadow: 0 0 6px rgba(255,110,180,0.5); } 50% { box-shadow: 0 0 18px rgba(255,110,180,0.7), 0 0 36px rgba(255,110,180,0.3); text-shadow: 0 0 14px rgba(255,110,180,0.9); } }`}</style>
+              <span style={{ fontSize: 11, color: '#ff6eb4', fontWeight: 600, textShadow: '0 0 8px rgba(255,110,180,0.5)' }}>Need audio?</span>
+              <a
+                href="https://elevenlabs.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 8, background: 'rgba(255,110,180,0.10)', border: '1px solid rgba(255,110,180,0.45)', color: '#ff6eb4', fontSize: 11, fontWeight: 600, textDecoration: 'none', animation: 'neonPulse 1.5s ease-in-out infinite' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }}>
+                  <rect width="32" height="32" rx="6" fill="#000"/>
+                  <rect x="11.5" y="6" width="3.5" height="20" rx="1.75" fill="#ff6eb4"/>
+                  <rect x="17" y="6" width="3.5" height="20" rx="1.75" fill="#ff6eb4"/>
+                </svg>
+                Generate with ElevenLabs
+              </a>
             </div>
           )}
 

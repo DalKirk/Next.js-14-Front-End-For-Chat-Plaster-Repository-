@@ -158,7 +158,7 @@ export async function generateAvatarVideo({
   portraitImage,
   audio,
   resolution = '480P',
-  samplingSteps = 40,
+  samplingSteps = 25,
   textGuideScale = 5.0,
   audioGuideScale = 4.0,
   seed = null,

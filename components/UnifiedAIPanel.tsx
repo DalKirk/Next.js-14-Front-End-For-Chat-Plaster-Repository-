@@ -26,6 +26,7 @@ import {
   Loader2, RotateCcw, Send, Copy, Check, Download, Maximize2,
 } from "lucide-react";
 import VoiceTab from "@/components/VoiceTab";
+import { generateVideo, pollVideoJob, getVideoResultUrl } from "@/services/video-generation.service";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -174,31 +175,41 @@ export function AgentEventRow({ event }: { event: AgentEvent }) {
           </div>
         )}
 
-        {/* Regular image grid */}
+        {/* Regular image/video grid */}
         {urls.length > 0 && !embedType && event.tool !== "get_nasa_apod" && (
           <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`} style={{ maxWidth: 480 }}>
-            {urls.map((url, i) => (
-              <div key={i} className="group relative rounded-lg overflow-hidden"
-                style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
-                <img src={url} alt={`Generated ${event.tool} ${i + 1}`}
-                  className="w-full object-contain" style={{ maxHeight: 200 }}
-                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                  <a href={url} target="_blank" rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                    style={{ background: "rgba(139,92,246,0.8)", border: "1px solid rgba(192,132,252,0.5)" }}
-                    title="Expand">
-                    <Maximize2 className="w-4 h-4" style={{ color: "#f0e6ff" }} />
-                  </a>
-                  <a href={url} download target="_blank" rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                    style={{ background: "rgba(52,211,153,0.8)", border: "1px solid rgba(52,211,153,0.5)" }}
-                    title="Download">
-                    <Download className="w-4 h-4" style={{ color: "#fff" }} />
-                  </a>
+            {urls.map((url, i) => {
+              const isVideo = event.tool === "generate_video" ||
+                              event.tool === "generate_skyreel" ||
+                              (typeof url === "string" && (url.endsWith(".mp4") || url.endsWith(".webm")));
+              return (
+                <div key={i} className="group relative rounded-lg overflow-hidden"
+                  style={{ border: "1px solid rgba(139,92,246,0.15)" }}>
+                  {isVideo ? (
+                    <video src={url} controls playsInline
+                      className="w-full" style={{ maxHeight: 200 }} />
+                  ) : (
+                    <img src={url} alt={`Generated ${event.tool} ${i + 1}`}
+                      className="w-full object-contain" style={{ maxHeight: 200 }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                      style={{ background: "rgba(139,92,246,0.8)", border: "1px solid rgba(192,132,252,0.5)" }}
+                      title="Expand">
+                      <Maximize2 className="w-4 h-4" style={{ color: "#f0e6ff" }} />
+                    </a>
+                    <a href={url} download target="_blank" rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                      style={{ background: "rgba(52,211,153,0.8)", border: "1px solid rgba(52,211,153,0.5)" }}
+                      title="Download">
+                      <Download className="w-4 h-4" style={{ color: "#fff" }} />
+                    </a>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -733,11 +744,70 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
+  // ── Direct video generation for voice (uses working /video/generate API) ───
+  const handleDirectVideoGeneration = useCallback(async (prompt: string) => {
+    setAgentOwnerTab("voice");
+    setAgentEvents([]);
+    setAgentContent("");
+    setAgentSummary(null);
+    setAgentRunning(true);
+
+    const startId = uid();
+    setAgentEvents([{ id: startId, type: "tool_start", tool: "generate_video", text: "Generating video…" }]);
+
+    try {
+      const job = await generateVideo({ prompt, model: "wan", mode: "t2v" });
+      let result = job;
+      while (result.status === "queued" || result.status === "processing") {
+        await new Promise(function (r) { setTimeout(r, 3000); });
+        result = await pollVideoJob("wan", job.job_id);
+      }
+      if (result.status === "complete" && result.video_url) {
+        const videoUrl = result.video_url.startsWith("http")
+          ? result.video_url
+          : getVideoResultUrl("wan", job.job_id);
+        setAgentEvents([{
+          id: startId, type: "tool_done", tool: "generate_video",
+          result: { url: videoUrl, urls: [videoUrl] },
+        }]);
+        setAgentContent("Here's your generated video!");
+      } else {
+        throw new Error(result.error || "Video generation failed");
+      }
+    } catch (err: any) {
+      setAgentEvents(function (prev) { return prev.concat([{
+        id: uid(), type: "tool_error", tool: "generate_video",
+        error: err.message || "Video generation failed",
+      }]); });
+      setAgentContent("Sorry, video generation failed. Please try again.");
+    } finally {
+      setAgentRunning(false);
+    }
+  }, []);
+
   // ── Voice speech handler — routes to chat or agent ─────────────────────────
   const handleVoiceSpeech = useCallback(async (text: string) => {
     setVoiceProcessing(true);
+
+    const lower = text.toLowerCase();
+
+    // Detect video generation requests — route to direct video API (working)
+    const isVideoRequest =
+      /\b(generat|creat|mak)\w*\s+(a\s+)?video/i.test(lower) ||
+      /\bvideo\s+(of|for|about|with)/i.test(lower);
+
+    // Auto-detect if this request needs the agent (tool-capable)
+    const needsAgent = voiceAgentMode ||
+      /\b(generat|creat|mak|design|draw|render)\w*\s+(a\s+)?(image|picture|photo|logo|thumbnail|3d|model)/i.test(lower) ||
+      /\b(image|logo|thumbnail|3d)\s+(of|for|about|with)/i.test(lower) ||
+      /\b(skyreel|sky\s*reel)/i.test(lower) ||
+      /\b(nasa|apod|mars rover|iss|space station|earth from space)/i.test(lower) ||
+      /\b(search|look up|find|google)\b/i.test(lower);
+
     try {
-      if (voiceAgentMode) {
+      if (isVideoRequest) {
+        await handleDirectVideoGeneration(text);
+      } else if (needsAgent) {
         setAgentOwnerTab("voice");
         await runAgent(text);
       } else {
@@ -811,7 +881,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
     } finally {
       setVoiceProcessing(false);
     }
-  }, [voiceAgentMode, runAgent, chatConvId]);
+  }, [voiceAgentMode, runAgent, chatConvId, handleDirectVideoGeneration]);
 
   // ── Voice response — speaks whenever Voice tab is open ───────────────────────
   // Fires for ANY response (typed or spoken) as long as Voice tab is active.
@@ -823,24 +893,25 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
   useEffect(() => {
     if (activeTab !== "voice") return
     if (chatStreaming) return
+    if (voiceProcessing) return
     const lastMsg = chatMessages[chatMessages.length - 1]
     if (!lastMsg || lastMsg.role !== "assistant") return
     if (!lastMsg.content) return
     if (lastMsg.content === lastVoiceContentRef.current) return
     lastVoiceContentRef.current = lastMsg.content
     setVoiceResponse(lastMsg.content)
-  }, [chatMessages, chatStreaming, activeTab])
+  }, [chatMessages, chatStreaming, activeTab, voiceProcessing])
 
   // Agent response → speak if on Voice tab, fires once when agent finishes
   useEffect(() => {
     if (activeTab !== "voice") return
     if (agentRunning) return
+    if (voiceProcessing) return
     if (!agentContent) return
     if (agentContent === lastVoiceContentRef.current) return
-    // Only speak agent content if voice initiated OR user is on voice tab
     lastVoiceContentRef.current = agentContent
     setVoiceResponse(agentContent)
-  }, [agentRunning, agentContent, activeTab])
+  }, [agentRunning, agentContent, activeTab, voiceProcessing])
 
   if (!isOpen) return null;
 
@@ -1137,7 +1208,7 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
             useAgentMode={voiceAgentMode}
             onToggleMode={() => setVoiceAgentMode(v => !v)}
             onSwitchTab={(tab: "chat" | "create") => setActiveTab(tab)}
-            agentEvents={voiceAgentMode ? agentEvents : []}
+            agentEvents={(voiceAgentMode || agentOwnerTab === "voice") ? agentEvents : []}
             agentRunning={agentRunning}
             onSpeakingChange={setIsSpeaking}
           />
