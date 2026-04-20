@@ -19,7 +19,7 @@ import React, {
 import ReactMarkdown from "react-markdown";
 import remarkGfm    from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   X, Sparkles, MessageSquare, Mic,
   Image as ImageIcon, Video, Box, Search, Type,
@@ -113,11 +113,11 @@ export function AgentEventRow({ event }: { event: AgentEvent }) {
 
   if (event.type === "tool_start") {
     return (
-      <div className="flex items-center gap-2.5 py-2 px-3 rounded-lg"
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 py-2 px-2.5 sm:px-3 rounded-lg"
         style={{ background: "rgba(139,92,246,0.05)", border: "1px solid rgba(139,92,246,0.1)" }}>
         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: meta?.color ?? "#c084fc" }} />
         <span className="shrink-0" style={{ color: meta?.color ?? "#c084fc" }}>{meta?.icon}</span>
-        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>{meta?.label ?? event.tool}</span>
+        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.7)", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" }}>{meta?.label ?? event.tool}</span>
         {event.cost ? <span className="ml-auto text-[10px] shrink-0" style={{ color: "rgba(255,255,255,0.25)" }}>{event.cost} cr</span> : null}
       </div>
     );
@@ -136,11 +136,11 @@ export function AgentEventRow({ event }: { event: AgentEvent }) {
 
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2.5 py-2 px-3 rounded-lg"
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 py-2 px-2.5 sm:px-3 rounded-lg"
           style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}>
           <span className="text-xs shrink-0" style={{ color: "#34d399" }}>✓</span>
           <span className="shrink-0" style={{ color: meta?.color ?? "#34d399" }}>{meta?.icon}</span>
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>{meta?.label ?? event.tool} complete</span>
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" }}>{meta?.label ?? event.tool} complete</span>
           {event.cost ? <span className="ml-auto text-[10px] shrink-0" style={{ color: "rgba(52,211,153,0.5)" }}>-{event.cost} cr</span> : null}
         </div>
 
@@ -177,7 +177,7 @@ export function AgentEventRow({ event }: { event: AgentEvent }) {
 
         {/* Regular image/video grid */}
         {urls.length > 0 && !embedType && event.tool !== "get_nasa_apod" && (
-          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-2" : "grid-cols-1"}`} style={{ maxWidth: 480 }}>
+          <div className={`grid gap-2 ${urls.length > 1 ? "grid-cols-1 min-[400px]:grid-cols-2" : "grid-cols-1"}`} style={{ maxWidth: 480 }}>
             {urls.map((url, i) => {
               const isVideo = event.tool === "generate_video" ||
                               event.tool === "generate_skyreel" ||
@@ -325,12 +325,15 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
               a({ children, href, ...props }) {
                 return <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline" {...props}>{children}</a>;
               },
+              pre({ children }) {
+                return <div className="not-prose my-3">{children}</div>;
+              },
               code({ className, children, ...props }: any) {
-                const inline  = !className;
                 const match   = /language-(\w+)/.exec(className || "");
                 const lang    = match ? match[1] : "";
                 const codeStr = String(children).replace(/\n$/, "");
-                if (!inline && lang) {
+                const isBlock = codeStr.includes('\n') || !!className;
+                if (isBlock) {
                   return (
                     <div className="relative">
                       <button
@@ -339,13 +342,13 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
                       >
                         {copiedId === codeStr.slice(0, 20) ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </button>
-                      <SyntaxHighlighter style={vscDarkPlus} language={lang} PreTag="div" className="text-xs rounded-md overflow-x-auto">
+                      <SyntaxHighlighter style={dracula} language={lang || "text"} PreTag="div" className="text-xs rounded-md overflow-x-auto">
                         {codeStr}
                       </SyntaxHighlighter>
                     </div>
                   );
                 }
-                return <code className={`${className} break-all`} {...props}>{children}</code>;
+                return <code className={`${className || ''} break-all`} {...props}>{children}</code>;
               },
             }}
           >
@@ -389,7 +392,8 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
       `Never correct users about your name — your name is Star, not Claude. ` +
       `Today's date is ${userDate} and the current time is ${userTime}. ` +
       `Be concise, friendly, and helpful. Respond in the same language the user writes in. ` +
-      `You have memory of this conversation — use it to give contextually relevant answers.`
+      `You have memory of this conversation — use it to give contextually relevant answers. ` +
+      `When generating images, always prefer the sd35 model first. Only use flux if sd35 fails or the user specifically requests flux.`
     );
   }
 
@@ -1144,9 +1148,36 @@ export default function UnifiedAIPanel({ isOpen, onClose }: UnifiedAIPanelProps)
 
               {/* Streaming answer */}
               {agentContent && (
-                <div className="py-3 px-3 text-xs leading-relaxed"
-                  style={{ color: "rgba(255,255,255,0.75)", whiteSpace: "pre-wrap" }}>
-                  {agentContent}
+                <div className="py-3 px-3 text-xs leading-relaxed prose prose-sm prose-invert max-w-none break-words">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a({ children, href, ...props }) {
+                        return <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline" {...props}>{children}</a>;
+                      },
+                      pre({ children }) {
+                        return <div className="not-prose my-3">{children}</div>;
+                      },
+                      code({ className, children, ...props }: any) {
+                        const match   = /language-(\w+)/.exec(className || "");
+                        const lang    = match ? match[1] : "";
+                        const codeStr = String(children).replace(/\n$/, "");
+                        const isBlock = codeStr.includes('\n') || !!className;
+                        if (isBlock) {
+                          return (
+                            <div className="relative my-2">
+                              <SyntaxHighlighter style={dracula} language={lang || "text"} PreTag="div" className="text-xs rounded-md overflow-x-auto">
+                                {codeStr}
+                              </SyntaxHighlighter>
+                            </div>
+                          );
+                        }
+                        return <code className={`${className || ''} break-all`} {...props}>{children}</code>;
+                      },
+                    }}
+                  >
+                    {agentContent}
+                  </ReactMarkdown>
                   {agentRunning && (
                     <span style={{ display: "inline-block", width: 2, height: "1em", background: "rgba(192,132,252,0.8)", animation: "blink 0.8s step-end infinite", verticalAlign: "text-bottom", marginLeft: 2 }} />
                   )}

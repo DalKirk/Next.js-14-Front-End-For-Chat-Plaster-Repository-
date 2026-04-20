@@ -34,6 +34,8 @@ const nextConfig = {
   },
   // Silence Next 16 build error by declaring empty Turbopack config
   turbopack: {},
+  // Hide the dev overlay indicator so it doesn't block mobile testing
+  devIndicators: false,
   webpack: (config, { isServer }) => {
     // Handle Three.js examples imports (fallback for when Webpack is used)
     config.resolve.alias = {

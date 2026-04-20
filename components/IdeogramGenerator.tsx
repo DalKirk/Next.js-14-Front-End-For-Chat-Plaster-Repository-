@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
-  Settings2, ChevronDown, RefreshCw, X, Maximize2, Copy, ArrowLeft,
+  Cog, ChevronDown, RefreshCw, X, Maximize2, Copy, ArrowLeft,
   Trash2, Check, RotateCcw, Type, Grid,
 } from 'lucide-react';
 import { useBackgroundRemoval } from '@/hooks/useBackgroundRemoval';
@@ -394,13 +394,13 @@ export default function IdeogramGenerator() {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px]" style={{ position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 56px)' }}>
 
         {/* ────── LEFT: Prompt + Gallery ────── */}
-        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="p-3 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           {/* Prompt area */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(236,72,153,0.40),rgba(168,85,247,0.25),rgba(6,182,212,0.20))' }}>
-              <div style={{ borderRadius: 13, background: '#0a0a14', padding: '18px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+              <div style={{ borderRadius: 13, background: '#0a0a14', padding: '14px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <div className="ideo-rainbow-glow" />
                   </div>
@@ -424,8 +424,8 @@ export default function IdeogramGenerator() {
                       <Layers size={11} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{curStyle?.name}</span>
                     </button>
                     <span style={{ fontSize: 11, padding: '5px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.72)' }}>{curRatio.label}</span>
-                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#ec4899' : 'rgba(255,255,255,0.6)' }}>
-                      <Settings2 size={14} />
+                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#22d3ee', filter: 'drop-shadow(0 0 6px rgba(34,211,238,0.6))' }}>
+                      <Cog size={14} className={settings ? '' : 'animate-[spin_3s_linear_infinite]'} />
                     </button>
                   </div>
                   <button
@@ -433,8 +433,8 @@ export default function IdeogramGenerator() {
                     onClick={generate}
                     disabled={!prompt.trim() || generating}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none',
-                      fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 9, border: 'none',
+                      fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0,
                       cursor: prompt.trim() && !generating ? 'pointer' : 'not-allowed',
                       opacity: !prompt.trim() && !generating ? 0.3 : 1,
                       background: generating ? 'rgba(236,72,153,0.12)' : 'linear-gradient(135deg,#ec4899,#a855f7)',
@@ -673,7 +673,7 @@ export default function IdeogramGenerator() {
           </div>
 
           {/* Gallery grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {images.map(img => {
               const hov = hCard === img.id;
               return (
@@ -733,9 +733,9 @@ export default function IdeogramGenerator() {
                         </div>
                       )}
                     </div>
-                    <div style={{ padding: '9px 11px' }}>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.prompt}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+                    <div style={{ padding: '9px 11px', minWidth: 0 }}>
+                      <p className="line-clamp-2" style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>{img.prompt}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(236,72,153,0.08)', color: 'rgba(244,114,182,0.8)' }}>{img.style}</span>
                         {img.time != null && (
                           <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{img.time.toFixed(1)}s</span>
@@ -753,7 +753,7 @@ export default function IdeogramGenerator() {
         </div>
 
         {/* ────── RIGHT: Style Picker ────── */}
-        <div className="p-4 sm:p-5" style={{ background: 'rgba(5,5,12,0.5)' }}>
+        <div className="p-3 sm:p-5" style={{ background: 'rgba(5,5,12,0.5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <Layers size={15} color="#f472b6" />
@@ -930,7 +930,7 @@ export default function IdeogramGenerator() {
 
       {/* Expanded modal */}
       {expanded && (
-        <div onClick={() => setExpanded(null)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={() => setExpanded(null)} className="ideo-expanded-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
           <div onClick={e => e.stopPropagation()} style={{ padding: 1, borderRadius: 14, background: `linear-gradient(135deg,${expanded.c1}66,${expanded.c2}44)`, maxWidth: 560, width: '100%', position: 'relative' }}>
             <div style={{ borderRadius: 13, background: '#08080f', overflow: 'hidden' }}>
               <div style={{ aspectRatio: '1/1', maxHeight: '50vh', background: `linear-gradient(135deg,${expanded.c1}12,${expanded.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -950,9 +950,9 @@ export default function IdeogramGenerator() {
                   <ImageIcon size={36} color="rgba(255,255,255,0.05)" />
                 )}
               </div>
-              <div style={{ padding: 18 }}>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div className="ideo-expanded-content" style={{ padding: 18 }}>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px', wordBreak: 'break-word' }}>{expanded.prompt}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(236,72,153,0.14)', border: '1px solid rgba(236,72,153,0.22)', color: 'rgba(236,72,153,0.70)' }}>{expanded.style}</span>
                   {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time.toFixed(1)}s</span>}
                   <div style={{ flex: 1 }} />
@@ -1008,6 +1008,11 @@ export default function IdeogramGenerator() {
         .ideo-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ec4899,#a855f7,#06b6d4,#ec4899);animation:rainbowSpin 2.5s linear infinite}
         .ideo-rainbow-glow::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0a0a14}
         .ideo-card:hover .ideo-card-overlay,.ideo-card.touched .ideo-card-overlay{opacity:1!important;pointer-events:auto!important}
+        @media(max-width:480px){
+          .ideo-expanded-overlay{padding:8px !important}
+          .ideo-expanded-content{padding:12px !important}
+          .ideo-expanded-content button{padding:6px 8px !important;font-size:10px !important}
+        }
         textarea::placeholder,input::placeholder{color:rgba(255,255,255,0.48)}
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}

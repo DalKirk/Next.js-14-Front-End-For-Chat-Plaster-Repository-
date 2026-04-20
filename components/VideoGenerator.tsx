@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Zap, Layers, Clock, Download, Settings2, RefreshCw, X, Maximize2,
+  Zap, Layers, Clock, Download, Cog, RefreshCw, X, Maximize2,
   ArrowLeft, Trash2, Check, RotateCcw, Play, Upload, Film, Video, Copy,
   Mic, User, Image as ImageIcon, Plus,
 } from 'lucide-react';
@@ -711,7 +711,7 @@ export default function VideoGenerator() {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px]" style={{ position: 'relative', zIndex: 1, minHeight: 'calc(100vh - 56px)' }}>
 
         {/* ────── LEFT: Prompt + Gallery ────── */}
-        <div className="p-4 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="p-3 sm:p-6 md:border-r" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           {/* Title row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -952,8 +952,8 @@ export default function VideoGenerator() {
           {/* Prompt area */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ padding: 1, borderRadius: 14, background: 'linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.15),rgba(236,72,153,0.12))' }}>
-              <div style={{ borderRadius: 13, background: '#0a0a14', padding: '18px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+              <div style={{ borderRadius: 13, background: '#0a0a14', padding: '14px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <div className="video-rainbow-glow" />
                   </div>
@@ -987,8 +987,8 @@ export default function VideoGenerator() {
                     {model === 'skyreel' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{skyreelResolution}</span>}
                     {model === 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{avatarResolution}</span>}
                     {model === 'hunyuan-avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{hunyuanImageSize}px</span>}
-                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.62)' }}>
-                      <Settings2 size={14} />
+                    <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#22d3ee', filter: 'drop-shadow(0 0 6px rgba(34,211,238,0.6))' }}>
+                      <Cog size={14} className={settings ? '' : 'animate-[spin_3s_linear_infinite]'} />
                     </button>
                   </div>
                   {(() => {
@@ -999,8 +999,8 @@ export default function VideoGenerator() {
                     onClick={generate}
                     disabled={!canGenerate}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none',
-                      fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0, fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: 'none',
+                      fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', color: '#fff', flexShrink: 0, fontFamily: 'inherit',
                       cursor: canGenerate ? 'pointer' : 'not-allowed',
                       opacity: canGenerate || generating ? 1 : 0.3,
                       background: generating ? 'rgba(139,92,246,0.12)' : 'linear-gradient(135deg,#7c3aed,#06b6d4)',
@@ -1339,9 +1339,9 @@ export default function VideoGenerator() {
                         </div>
                       )}
                     </div>
-                    <div style={{ padding: '9px 11px' }}>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
+                    <div style={{ padding: '9px 11px', minWidth: 0 }}>
+                      <p className="line-clamp-2" style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>{vid.prompt}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : vid.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : vid.model === 'avatar' ? 'rgba(16,185,129,0.08)' : vid.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : vid.model === 'skyreel' ? '#ec4899' : vid.model === 'avatar' ? '#34d399' : vid.model === 'hunyuan-avatar' ? '#fbbf24' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
                         <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : vid.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : (vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : vid.mode === 'ref2video' ? '#ec4899' : (vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{vid.mode === 'hunyuan-avatar' ? 'hunyuan' : vid.mode}{vid.mode === 'smart' && ' ✨'}{(vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') && ' 🎙️'}</span>
                         {vid.time != null && (
@@ -1361,7 +1361,7 @@ export default function VideoGenerator() {
         </div>
 
         {/* ────── RIGHT: Info Panel ────── */}
-        <div className="p-4 sm:p-5" style={{ background: 'rgba(5,5,12,0.5)' }}>
+        <div className="p-3 sm:p-5" style={{ background: 'rgba(5,5,12,0.5)' }}>
 
           {/* Queue status */}
           <div style={{ marginBottom: 18 }}>
@@ -1428,7 +1428,7 @@ export default function VideoGenerator() {
 
       {/* Expanded modal */}
       {expanded && (
-        <div onClick={() => setExpanded(null)} className="video-expanded-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={() => setExpanded(null)} className="video-expanded-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(3,3,8,0.92)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
           <div onClick={e => e.stopPropagation()} style={{ padding: 1, borderRadius: 14, background: `linear-gradient(135deg,${expanded.c1}66,${expanded.c2}44)`, maxWidth: 640, width: '100%', position: 'relative' }}>
             <div style={{ borderRadius: 13, background: '#08080f', overflow: 'hidden' }}>
               <div style={{ aspectRatio: '16/9', maxHeight: '45vh', background: `linear-gradient(135deg,${expanded.c1}12,${expanded.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -1441,7 +1441,7 @@ export default function VideoGenerator() {
                 )}
               </div>
               <div className="video-expanded-content" style={{ padding: 18 }}>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>{expanded.prompt}</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 10px', wordBreak: 'break-word' }}>{expanded.prompt}</p>
                 {expanded.enhancedPrompt && (
                   <div style={{ position: 'relative', marginBottom: 10, padding: '8px 40px 8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.08)', fontSize: 11, color: 'rgba(251,191,36,0.55)' }}>
                     <button onClick={() => { navigator.clipboard.writeText(expanded.enhancedPrompt!); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000); }} title="Copy enhanced prompt" style={{ position: 'absolute', top: 6, right: 6, padding: '3px 6px', borderRadius: 5, background: copiedPrompt ? 'rgba(16,185,129,0.12)' : 'rgba(251,191,36,0.08)', border: `1px solid ${copiedPrompt ? 'rgba(16,185,129,0.25)' : 'rgba(251,191,36,0.12)'}`, color: copiedPrompt ? '#10b981' : 'rgba(251,191,36,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, transition: 'all 0.2s' }}>{copiedPrompt ? <><Check size={10} /><span style={{ fontSize: 9, fontWeight: 600 }}>Copied</span></> : <Copy size={11} />}</button>
@@ -1449,7 +1449,7 @@ export default function VideoGenerator() {
                     {expanded.enhancedPrompt}
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.08)' : expanded.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.15)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.15)' : expanded.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : expanded.model === 'skyreel' ? '#ec4899' : expanded.model === 'avatar' ? '#34d399' : expanded.model === 'hunyuan-avatar' ? '#fbbf24' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.15)' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : expanded.mode === 'ref2video' ? '#ec4899' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{expanded.mode === 'hunyuan-avatar' ? 'hunyuan' : expanded.mode}{expanded.mode === 'smart' && ' ✨'}{(expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') && ' 🎙️'}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)' }}>{expanded.duration}</span>
@@ -1501,8 +1501,9 @@ export default function VideoGenerator() {
         .video-mode-tabs{-ms-overflow-style:none;scrollbar-width:none}
         .video-mode-tabs::-webkit-scrollbar{display:none}
         @media(max-width:480px){
-          .video-expanded-overlay{padding:10px !important}
+          .video-expanded-overlay{padding:8px !important}
           .video-expanded-content{padding:12px !important}
+          .video-expanded-content button{padding:6px 8px !important;font-size:10px !important}
         }
         .video-rainbow-glow{position:absolute;inset:-4px;border-radius:50%;z-index:0;overflow:hidden;animation:rainbowPulse 2s ease-in-out infinite}
         .video-rainbow-glow::before{content:'';position:absolute;inset:-50%;border-radius:50%;background:conic-gradient(from 0deg,#ff3333,#ffaa00,#33ff66,#00ddff,#aa66ff,#ff44aa,#ff3333);animation:rainbowSpin 2.5s linear infinite}

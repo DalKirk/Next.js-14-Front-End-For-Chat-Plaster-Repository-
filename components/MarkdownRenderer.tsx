@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Copy, Check } from 'lucide-react';
 
 interface MarkdownRendererProps {
   content: string;
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyCode = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const renderMarkdown = (text: string) => {
     const lines = text.split('\n');
     const elements: React.ReactNode[] = [];
@@ -82,6 +93,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
       // Code blocks
       if (trimmed.startsWith('```')) {
+        const lang = trimmed.slice(3).trim();
         const codeLines: string[] = [];
         i++;
         while (i < lines.length && !lines[i].trim().startsWith('```')) {
@@ -89,10 +101,30 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           i++;
         }
         i++;
+        const codeStr = codeLines.join('\n');
+        const codeId = `code-${i}-${codeStr.slice(0, 20)}`;
         elements.push(
-          <pre key={`pre-${i}`} className="md-pre">
-            <code className="md-code-block">{codeLines.join('\n')}</code>
-          </pre>
+          <div key={`pre-${i}`} style={{ position: 'relative', margin: '0.75rem 0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+            <button
+              onClick={() => copyCode(codeStr, codeId)}
+              style={{
+                position: 'absolute', top: 8, right: 8, zIndex: 10,
+                padding: '4px', borderRadius: 4,
+                background: 'rgba(100,116,139,0.7)',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,1)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,0.7)'; }}
+            >
+              {copiedId === codeId
+                ? <Check size={12} color="#fff" />
+                : <Copy size={12} color="#fff" />}
+            </button>
+            <SyntaxHighlighter language={lang || 'text'} style={dracula} PreTag="div" customStyle={{ margin: 0, fontSize: '0.875rem', borderRadius: '0.5rem' }}>
+              {codeStr}
+            </SyntaxHighlighter>
+          </div>
         );
         continue;
       }

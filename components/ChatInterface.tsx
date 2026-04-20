@@ -70,7 +70,7 @@ const MessageBubble = memo(({ message, index }: { message: Message; index: numbe
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`chat-message-container max-w-[80%] ${message.role === 'user' ? 'rounded-lg p-4 bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]' : 'text-[oklch(90%_0.05_260)]'} break-words overflow-hidden`}
+        className={`chat-message-container max-w-[90%] sm:max-w-[80%] ${message.role === 'user' ? 'rounded-lg p-3 sm:p-4 bg-[oklch(45%_0.15_260)] text-[oklch(98%_0.02_260)]' : 'text-[oklch(90%_0.05_260)]'} break-words`}
         style={{
           wordWrap: 'break-word',
           wordBreak: 'break-word',

@@ -1,5 +1,23 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com';
 
+/* ─── Retry helper for transient gateway errors ─── */
+const RETRYABLE = new Set([502, 503, 504]);
+const MAX_RETRIES = 3;
+
+async function fetchWithRetry(
+  input: string,
+  init?: RequestInit,
+  retries = MAX_RETRIES,
+): Promise<Response> {
+  let lastRes: Response | undefined;
+  for (let i = 0; i <= retries; i++) {
+    lastRes = await fetch(input, init);
+    if (!RETRYABLE.has(lastRes.status) || i === retries) return lastRes;
+    await new Promise(r => setTimeout(r, 1000 * 2 ** i)); // 1s, 2s, 4s
+  }
+  return lastRes!;
+}
+
 export interface IdeogramJobStatus {
   job_id: string;
   status: 'queued' | 'processing' | 'complete' | 'failed';
@@ -37,7 +55,7 @@ export async function generateIdeogramImage(params: IdeogramGenerateRequest): Pr
   if (params.negative_prompt) body.negative_prompt = params.negative_prompt;
   if (params.seed != null) body.seed = params.seed;
 
-  const res = await fetch(`${API_URL}/ideogram/generate`, {
+  const res = await fetchWithRetry(`${API_URL}/ideogram/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -55,7 +73,7 @@ export async function generateIdeogramImage(params: IdeogramGenerateRequest): Pr
 }
 
 export async function pollIdeogramJob(jobId: string): Promise<IdeogramJobStatus> {
-  const res = await fetch(`${API_URL}/ideogram/job/${encodeURIComponent(jobId)}`);
+  const res = await fetchWithRetry(`${API_URL}/ideogram/job/${encodeURIComponent(jobId)}`);
   if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
   return res.json();
 }

@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes — image generation can be slow
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.starcyeed.com";
 
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       enable_search:        body.enable_search ?? true,
       max_steps:            body.max_steps     ?? 8,
       conversation_id:      body.conversation_id,
+      preferred_image_model: body.preferred_image_model ?? "sd35",
     };
     if (body.image_data) {
       payload.image_data       = body.image_data;
@@ -72,14 +74,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Pipe stream straight through — no buffering
-    return new Response(backendRes.body, {
+    // Pipe stream through with keepalive heartbeats to prevent timeout
+    const encoder = new TextEncoder();
+    const reader = backendRes.body.getReader();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+        // Send a SSE comment every 15s to keep the connection alive
+        heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(": heartbeat\n\n"));
+          } catch {
+            if (heartbeat) clearInterval(heartbeat);
+          }
+        }, 15_000);
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        } finally {
+          if (heartbeat) clearInterval(heartbeat);
+        }
+      },
+      cancel() {
+        reader.cancel();
+      },
+    });
+
+    return new Response(stream, {
       headers: {
         "Content-Type":      "text/event-stream",
         "Cache-Control":     "no-cache, no-transform",
         "Connection":        "keep-alive",
         "X-Accel-Buffering": "no",
-        "Transfer-Encoding": "chunked",
       },
     });
 

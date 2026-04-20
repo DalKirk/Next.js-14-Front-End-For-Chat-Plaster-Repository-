@@ -497,12 +497,16 @@
 .ws-agent-text-label {
   font-weight: 500;
   color: var(--ws-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ws-agent-text-sub {
   font-size: 11px;
   color: var(--ws-text-muted);
   margin-top: 2px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ws-agent-cost {
@@ -1221,12 +1225,51 @@
   }
 
   .ws-center {
+    padding-top: 52px; /* space for mobile voice strip at top */
     padding-bottom: 64px; /* space for bottom nav */
   }
 
   .ws-agent-input-wrap {
     background: transparent;
     border-top: none;
+    padding: 8px 10px;
+  }
+
+  .ws-agent-input-row {
+    gap: 4px;
+  }
+
+  .ws-agent-btn-attach {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
+  .ws-agent-input {
+    font-size: 12px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+
+  .ws-agent-send {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .ws-agent {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .ws-agent-event {
+    gap: 6px;
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+
+  .ws-agent-assets {
+    grid-template-columns: 1fr;
   }
 
   .ws-gallery-grid {
@@ -1282,16 +1325,14 @@
     align-items: center;
     gap: 10px;
     position: fixed;
-    bottom: 140px;
-    left: 10px;
-    right: 10px;
-    padding: 6px 10px 6px 14px;
-    background: transparent;
-    backdrop-filter: none;
-    border: none;
-    border-radius: 0;
-    z-index: 50;
-    box-shadow: none;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 12px;
+    background: var(--ws-surface);
+    border-bottom: 1px solid var(--ws-border);
+    z-index: 60;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
 
   .ws-mobile-voice-mic {

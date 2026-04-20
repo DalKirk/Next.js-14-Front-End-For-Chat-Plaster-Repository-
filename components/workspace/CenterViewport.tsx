@@ -268,7 +268,22 @@ function GalleryView({ gallery, removeFromGallery, onOpenTool }: GalleryViewProp
                     <span style={{ fontSize: 11, color: 'var(--ws-text-muted)' }}>3D Model</span>
                   </div>
                 ) : (
-                  <img src={item.url} alt={item.prompt} />
+                  <img
+                    src={item.url}
+                    alt={item.prompt}
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      t.style.display = 'none';
+                      const p = t.parentElement;
+                      if (p && !p.querySelector('.ws-gallery-fallback')) {
+                        const d = document.createElement('div');
+                        d.className = 'ws-gallery-fallback';
+                        Object.assign(d.style, { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--ws-text-muted)', fontSize: '11px', textAlign: 'center', padding: '12px' });
+                        d.textContent = 'Image expired';
+                        p.appendChild(d);
+                      }
+                    }}
+                  />
                 )}
 
                 {/* Hover overlay with action buttons — same as VideoGenerator */}
@@ -370,6 +385,18 @@ function GalleryView({ gallery, removeFromGallery, onOpenTool }: GalleryViewProp
                 src={expanded.url}
                 alt={expanded.prompt}
                 style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 10 }}
+                onError={(e) => {
+                  const t = e.currentTarget;
+                  t.style.display = 'none';
+                  const p = t.parentElement;
+                  if (p && !p.querySelector('.ws-gallery-fallback')) {
+                    const d = document.createElement('div');
+                    d.className = 'ws-gallery-fallback';
+                    Object.assign(d.style, { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minHeight: '200px', color: 'var(--ws-text-muted)', fontSize: '13px' });
+                    d.textContent = 'Image no longer available';
+                    p.appendChild(d);
+                  }
+                }}
               />
             )}
 

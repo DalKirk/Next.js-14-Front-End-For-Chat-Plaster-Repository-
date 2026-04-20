@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Send,
   Copy,
@@ -36,12 +36,15 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
                   </a>
                 );
               },
+              pre({ children }) {
+                return <div className="not-prose" style={{ margin: '8px 0' }}>{children}</div>;
+              },
               code({ className, children, ...props }: any) {
-                const inline = !className;
                 const match = /language-(\w+)/.exec(className || '');
                 const lang = match ? match[1] : '';
                 const codeStr = String(children).replace(/\n$/, '');
-                if (!inline && lang) {
+                const isBlock = codeStr.includes('\n') || !!className;
+                if (isBlock) {
                   return (
                     <div style={{ position: 'relative' }}>
                       <button
@@ -53,8 +56,8 @@ const ChatBubble = memo(({ message, onCopy, copiedId }: {
                           : <Copy size={12} />}
                       </button>
                       <SyntaxHighlighter
-                        style={vscDarkPlus}
-                        language={lang}
+                        style={dracula}
+                        language={lang || 'text'}
                         PreTag="div"
                         customStyle={{ fontSize: 12, borderRadius: 8, margin: '8px 0' }}
                       >

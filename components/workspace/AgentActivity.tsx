@@ -354,8 +354,8 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       {/* Scrollable event stream */}
       <div
         ref={scrollRef}
-        style={{ flex: 1, overflowY: 'auto', padding: 16 }}
-        className="ws-center-body"
+        style={{ flex: 1, overflowY: 'auto' }}
+        className="ws-center-body p-3 sm:p-4"
       >
         {events.length === 0 && !content && !running && (
           <div className="ws-empty">
@@ -580,7 +580,7 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={attachedImage ? 'Describe the video you want from this image...' : 'Ask Star Agent to create something...'}
+            placeholder={attachedImage ? 'Describe the video you want from this image...' : 'Ask Star Agent to create...'}
             disabled={running}
           />
           {running ? (

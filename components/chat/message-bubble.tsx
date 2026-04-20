@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { Message, VideoMessage } from '@/lib/types';
 import { VideoPlayer } from '@/components/video/video-player';
 import { cn } from '@/lib/utils';
@@ -450,7 +450,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
                     <div className="bg-[#282c34] overflow-x-auto max-w-full">
                       <SyntaxHighlighter
                         language={block.language}
-                        style={oneDark}
+                        style={dracula}
                         PreTag="div"
                         showLineNumbers={true}
                         lineNumberStyle={{ 
@@ -604,7 +604,7 @@ export function MessageBubble({ message, isOwn = false, isHost = false }: Messag
                           {codeString ? (
                             <SyntaxHighlighter
                               language={language}
-                              style={oneDark}
+                              style={dracula}
                               PreTag="div"
                               showLineNumbers={true}
                               lineNumberStyle={{ 

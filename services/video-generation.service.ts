@@ -74,6 +74,9 @@ export async function generateVideo({
 
   if (image) body.image = image;
 
+  // For smart mode, prefer sd35 for the starting frame
+  if (mode === 'smart') body.preferred_image_model = 'sd35';
+
   if (model === 'wan') {
     body.width = width ?? 1280;
     body.height = height ?? 704;

@@ -114,7 +114,7 @@ function EventRow({ event }: { event: AgentEvent }) {
   if (event.type === "tool_start") {
     return (
       <div
-        className="flex items-center gap-2.5 py-2 px-3 rounded-lg"
+        className="flex flex-wrap items-center gap-2 sm:gap-2.5 py-2 px-2.5 sm:px-3 rounded-lg"
         style={{ background: "rgba(139,92,246,0.05)", border: "1px solid rgba(139,92,246,0.1)" }}
       >
         <Loader2
@@ -124,7 +124,7 @@ function EventRow({ event }: { event: AgentEvent }) {
         <span className="shrink-0" style={{ color: meta?.color ?? "#c084fc" }}>
           {meta?.icon}
         </span>
-        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>
+        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.7)", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" }}>
           {meta?.label ?? event.tool}
         </span>
         {event.cost ? (
@@ -155,12 +155,12 @@ function EventRow({ event }: { event: AgentEvent }) {
     return (
       <div className="space-y-2">
         <div
-          className="flex items-center gap-2.5 py-2 px-3 rounded-lg"
+          className="flex flex-wrap items-center gap-2 sm:gap-2.5 py-2 px-2.5 sm:px-3 rounded-lg"
           style={{ background: "rgba(52,211,153,0.04)", border: "1px solid rgba(52,211,153,0.1)" }}
         >
           <span className="text-xs shrink-0" style={{ color: "#34d399" }}>✓</span>
           <span className="shrink-0" style={{ color: meta?.color ?? "#34d399" }}>{meta?.icon}</span>
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" }}>
             {meta?.label ?? event.tool} complete
           </span>
           {event.cost ? (

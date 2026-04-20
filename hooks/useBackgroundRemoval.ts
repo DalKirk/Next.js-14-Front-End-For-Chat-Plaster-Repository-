@@ -10,6 +10,18 @@ interface UseBackgroundRemovalReturn {
   reset: () => void;
 }
 
+async function detectDevice(): Promise<'gpu' | 'cpu'> {
+  if (typeof navigator === 'undefined') return 'cpu';
+  try {
+    const gpu = (navigator as any).gpu;
+    if (!gpu) return 'cpu';
+    const adapter = await gpu.requestAdapter();
+    return adapter ? 'gpu' : 'cpu';
+  } catch {
+    return 'cpu';
+  }
+}
+
 export function useBackgroundRemoval(): UseBackgroundRemovalReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState('');
@@ -30,15 +42,18 @@ export function useBackgroundRemoval(): UseBackgroundRemovalReturn {
       try {
         const { removeBackground } = await import('@imgly/background-removal');
 
-        setProgress('Processing...');
+        setProgress('Detecting capabilities...');
+        const device = await detectDevice();
+
+        setProgress(device === 'gpu' ? 'Processing (GPU)...' : 'Processing (CPU – may be slower)...');
 
         const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
 
         const result: Blob = await removeBackground(source, {
           publicPath: `${base}/api/bg-removal-assets/`,
-          model: 'isnet_fp16',
-          device: 'gpu',
-          proxyToWorker: true,
+          model: device === 'gpu' ? 'isnet_fp16' : 'isnet_quint8',
+          device,
+          proxyToWorker: typeof Worker !== 'undefined',
           output: { format: 'image/png', quality: 1 },
           progress: (key: string, current: number, total: number) => {
             if (key === 'fetch:model') {

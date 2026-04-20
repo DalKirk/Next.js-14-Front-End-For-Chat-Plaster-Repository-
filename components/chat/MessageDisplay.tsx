@@ -173,8 +173,8 @@ export function AssetsGrid({ assets }: { assets: AgentAsset[] }) {
   if (assets.length === 0) return null;
 
   const cols =
-    assets.length >= 3 ? "grid-cols-3" :
-    assets.length === 2 ? "grid-cols-2" :
+    assets.length >= 3 ? "grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3" :
+    assets.length === 2 ? "grid-cols-1 min-[400px]:grid-cols-2" :
     "grid-cols-1";
 
   return (
