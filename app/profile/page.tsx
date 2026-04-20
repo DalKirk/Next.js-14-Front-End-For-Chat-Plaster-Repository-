@@ -349,6 +349,8 @@ function ProfilePageContent() {
   const [followersCount, setFollowersCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+  const [currentUserAvatarUrls, setCurrentUserAvatarUrls] = useState<any>(null)
 
   // ─── Load profile from backend ──────────────────────────────────────
   useEffect(() => {
@@ -541,7 +543,12 @@ function ProfilePageContent() {
   // ─── Follow state loading ──────────────────────────────────────────
   useEffect(() => {
     const storedUser = StorageUtils.safeGetItem('chat-user')
-    if (storedUser) setCurrentUserId(JSON.parse(storedUser).id)
+    if (storedUser) {
+      const u = JSON.parse(storedUser)
+      setCurrentUserId(u.id)
+      setCurrentUserName(u.username || u.displayName || null)
+      setCurrentUserAvatarUrls(u.avatar_urls || null)
+    }
   }, [])
 
   useEffect(() => {
@@ -616,15 +623,15 @@ function ProfilePageContent() {
   }, [profile])
 
   const handlePostComment = useCallback(async (postId: string, content: string) => {
-    if (!profile) return
+    if (!currentUserId) return
     try {
-      await apiClient.commentOnPost(postId, profile.id, content)
+      await apiClient.commentOnPost(postId, currentUserId, content)
       setMyPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
       ))
       toast.success('Comment added!')
     } catch { toast.error('Failed to add comment') }
-  }, [profile])
+  }, [currentUserId])
 
   const handlePostShare = useCallback(async (postId: string) => {
     if (!profile) return
@@ -2272,8 +2279,8 @@ function ProfilePageContent() {
                           <PostCard
                             post={post}
                             currentUserId={currentUserId || ''}
-                            currentUsername={profile.username}
-                            currentAvatarUrls={profile.avatar_urls}
+                            currentUsername={currentUserName || profile.username}
+                            currentAvatarUrls={currentUserAvatarUrls || profile.avatar_urls}
                             onLike={handlePostLike}
                             onComment={handlePostComment}
                             onShare={handlePostShare}
