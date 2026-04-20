@@ -34,12 +34,21 @@ const nextConfig = {
   },
   // Silence Next 16 build error by declaring empty Turbopack config
   turbopack: {},
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // Handle Three.js examples imports (fallback for when Webpack is used)
     config.resolve.alias = {
       ...config.resolve.alias,
       'three/examples/jsm': 'three/examples/jsm',
     };
+    // ONNX Runtime WASM files (used by @imgly/background-removal)
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+    if (!isServer) {
+      config.resolve.alias['onnxruntime-node'] = false;
+    }
     return config;
   },
   async redirects() {

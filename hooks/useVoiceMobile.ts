@@ -178,6 +178,13 @@ export function useVoiceMobile(options: UseVoiceMobileOptions = {}): UseVoiceMob
 
   // ── Send audio to ElevenLabs STT ──────────────────────────────────────────────
   const transcribeAudio = useCallback(async (audioBlob: Blob) => {
+    // Reject audio that's too short — ElevenLabs returns 400 for very short clips
+    if (audioBlob.size < 4000) {
+      console.warn("[useVoiceMobile] Audio too short, skipping STT:", audioBlob.size, "bytes")
+      setStatus("idle")
+      return
+    }
+
     setStatus("processing")
 
     try {

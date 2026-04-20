@@ -41,6 +41,9 @@ export interface AgentCallbacks {
 export interface AgentOptions {
   enableSearch?: boolean;
   maxSteps?: number;
+  imageData?: string;
+  imageMediaType?: string;
+  conversationId?: string;
 }
 
 /**
@@ -57,6 +60,9 @@ export function sendAgentMessage(
 
   (async () => {
     try {
+      const hasImage = !!options.imageData;
+      console.log("[agent-api] sending:", { prompt: prompt.slice(0, 60), hasImage, imageLen: options.imageData?.length ?? 0, mediaType: options.imageMediaType ?? "none" });
+
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,6 +72,8 @@ export function sendAgentMessage(
           conversation_history: conversationHistory,
           enable_search: options.enableSearch ?? true,
           max_steps: options.maxSteps ?? 8,
+          ...(options.conversationId ? { conversation_id: options.conversationId } : {}),
+          ...(options.imageData ? { image_data: options.imageData, image_media_type: options.imageMediaType } : {}),
         }),
       });
 

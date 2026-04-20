@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     const formData = new FormData();
     formData.append('user_id', userId);
     formData.append('username', username);
+    formData.append('url', url);
     if (caption) formData.append('caption', caption);
     if (mediaType) formData.append('media_type', mediaType);
 

@@ -175,6 +175,22 @@ export default function ImageGenerator() {
             setActiveJobs(prev => Math.max(0, prev - 1));
             // 3-second cooldown before allowing another generation
             setTimeout(() => setGenerating(false), 3000);
+
+            // Auto-save to gallery on completion
+            if (job.status === 'complete') {
+              try {
+                const raw = StorageUtils.safeGetItem('chat-user');
+                if (raw) {
+                  const user = JSON.parse(raw);
+                  if (user.id && user.username) {
+                    const resultUrl = getImageResultUrl(job_id);
+                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'image', prompt.trim().slice(0, 100))
+                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
+                      .catch(() => {});
+                  }
+                }
+              } catch {}
+            }
           }
         } catch {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -355,7 +371,7 @@ export default function ImageGenerator() {
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Image Generation</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#39ff14', boxShadow: '0 0 6px rgba(57,255,20,0.5)', animation: 'indicator-blink 1.4s ease-in-out infinite' }} />
           <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>SERVER READY</span>
         </div>
       </div>

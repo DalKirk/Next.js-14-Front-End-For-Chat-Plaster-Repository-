@@ -39,6 +39,7 @@ export interface UseVoiceReturn {
   isWakeListening: boolean
   activate:        () => void
   deactivate:      () => void
+  directListen:    () => void
   speak:           (text: string) => Promise<void>
   stopSpeaking:    () => void
   reset:           () => void
@@ -107,6 +108,12 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wakeRef       = useRef(wakeWord.toLowerCase().trim())
 
+  // Stable refs for callbacks — prevents stale closures in recognition sessions
+  const onTranscriptRef = useRef(onTranscript)
+  const onWakeWordRef   = useRef(onWakeWord)
+  useEffect(() => { onTranscriptRef.current = onTranscript }, [onTranscript])
+  useEffect(() => { onWakeWordRef.current = onWakeWord }, [onWakeWord])
+
   useEffect(() => { wakeRef.current = wakeWord.toLowerCase().trim() }, [wakeWord])
 
   // ── updateStatus ──────────────────────────────────────────────────────────────
@@ -154,11 +161,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     if (text) {
       updateStatus("processing")
-      onTranscript?.(text)
+      onTranscriptRef.current?.(text)
     } else {
       updateStatus("wake_listening")
     }
-  }, [clearFlush, updateStatus, onTranscript])
+  }, [clearFlush, updateStatus])
 
   // ── Start/reset silence timer ─────────────────────────────────────────────────
   const resetFlushTimer = useCallback(() => {
@@ -199,7 +206,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
           modeRef.current    = "capturing"
           captureRef.current = ""
           updateStatus("listening")
-          onWakeWord?.()
+          onWakeWordRef.current?.()
 
           // Grab anything said immediately after the wake word
           const afterWake = (finalText || interimText)
@@ -268,7 +275,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
     return r
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flush, updateStatus, onWakeWord, resetFlushTimer])
+  }, [flush, updateStatus, resetFlushTimer])
 
   // ── Resume recognition after speaking/processing ──────────────────────────────
   const resumeSession = useCallback(() => {
@@ -337,6 +344,8 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
       const done = () => {
         URL.revokeObjectURL(url)
+        // Guard: if stopSpeaking already cleaned up, skip double-resume
+        if (!audioRef.current) return
         audioRef.current = null
         // Resume wake word listening after speaking
         resumeSession()
@@ -383,6 +392,31 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       updateStatus("error")
     }
   }, [isSupported, buildSession, updateStatus])
+
+  // ── Direct listen — skip wake word, go straight to capture ────────────────────
+  const directListen = useCallback(() => {
+    if (!isSupported) return
+
+    // If not active yet, activate first
+    if (!activeRef.current) {
+      activeRef.current = true
+      const r = buildSession()
+      if (!r) return
+      rRef.current = r
+      try { r.start() } catch (err) {
+        console.error("[useVoice] directListen activate failed:", err)
+        activeRef.current = false
+        updateStatus("error")
+        return
+      }
+    }
+
+    // Switch to capture mode immediately
+    modeRef.current    = "capturing"
+    captureRef.current = ""
+    updateStatus("listening")
+    resetFlushTimer()
+  }, [isSupported, buildSession, updateStatus, resetFlushTimer])
 
   // ── Deactivate ────────────────────────────────────────────────────────────────
   const deactivate = useCallback(() => {
@@ -447,6 +481,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     isWakeListening:    status === "wake_listening",
     activate,
     deactivate,
+    directListen,
     speak,
     stopSpeaking,
     reset,

@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       payload.image_media_type = body.image_media_type || "image/png";
     }
 
+    console.log("[agent proxy] image_data present:", !!body.image_data, "length:", body.image_data?.length ?? 0, "media_type:", body.image_media_type ?? "none");
+
     const backendRes = await fetch(`${BACKEND_URL}/ai/agent/run`, {
       method:  "POST",
       headers: forwardHeaders,

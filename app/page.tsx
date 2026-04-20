@@ -72,22 +72,22 @@ const features = [
     icon: <ImageIcon className="w-5 h-5" />,
     stat: "",
     badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
+    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
     href: "/image-gen",
   },
   {
-    id: "ideogram-gen",
-    tag: "AI DESIGN",
-    title: "Logex",
-    desc: "Logos, typography & text-in-image. The best AI for graphic design and readable text.",
-    borderGradient: "linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)",
-    glowColor: "rgba(236,72,153,0.2)",
-    accentColor: "#f472b6",
-    icon: <Type className="w-5 h-5" />,
+    id: "video-gen",
+    tag: "AI VIDEO",
+    title: "Video Generation",
+    desc: "Bring images to life. Generate cinematic video clips from text or images.",
+    borderGradient: "linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)",
+    glowColor: "rgba(245,158,11,0.2)",
+    accentColor: "#fbbf24",
+    icon: <Video className="w-5 h-5" />,
     stat: "",
     badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
-    href: "/ideogram-gen",
+    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
+    href: "/video-gen",
   },
   {
     id: "3d-gen",
@@ -104,32 +104,18 @@ const features = [
     href: "/3d-generator",
   },
   {
-    id: "video-gen",
-    tag: "AI VIDEO",
-    title: "Video Generation",
-    desc: "Bring images to life. Generate cinematic video clips from text or images.",
-    borderGradient: "linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)",
-    glowColor: "rgba(245,158,11,0.2)",
-    accentColor: "#fbbf24",
-    icon: <Video className="w-5 h-5" />,
+    id: "ideogram-gen",
+    tag: "AI DESIGN",
+    title: "Logex",
+    desc: "Logos, typography & text-in-image. The best AI for graphic design and readable text.",
+    borderGradient: "linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)",
+    glowColor: "rgba(236,72,153,0.2)",
+    accentColor: "#f472b6",
+    icon: <Type className="w-5 h-5" />,
     stat: "",
     badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(52,211,153,0.4)", color: "#34d399", background: "rgba(52,211,153,0.08)" },
-    href: "/video-gen",
-  },
-  {
-    id: "ai-chat",
-    tag: "AI ASSISTANT",
-    title: "Agentic AI",
-    desc: "Ask anything. Get code, research, creative writing, and real-time answers with streaming AI.",
-    borderGradient: "linear-gradient(135deg, #10b981, #06b6d4, #8b5cf6)",
-    glowColor: "rgba(20,184,166,0.2)",
-    accentColor: "#5eead4",
-    icon: <Bot className="w-5 h-5" />,
-    stat: "Streaming responses",
-    badge: "COMING SOON",
-    badgeStyle: { border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", background: "rgba(251,191,36,0.08)" },
-    href: "/ai-chat",
+    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
+    href: "/ideogram-gen",
   },
 ];
 
@@ -730,11 +716,18 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
-              onClick={() => scrollToSection("showcase")}
-              className="group px-8 py-3.5 rounded-lg text-sm font-semibold tracking-wider transition-all duration-500 flex items-center gap-2 hover:shadow-[0_0_50px_rgba(139,92,246,0.35),0_0_100px_rgba(6,182,212,0.15)]"
-              style={{ background: "linear-gradient(135deg, #06b6d4, #8b5cf6)", boxShadow: "0 0 25px rgba(139,92,246,0.2)" }}
+              onClick={() => {
+                try {
+                  const a = new Audio('/previews/audiopapkin-mechanical-sound-design-elements-robot-ps-005-295036.mp3');
+                  a.play().catch(() => {});
+                  (window as any).__wsLoadingAudio = a;
+                } catch { /* ignore */ }
+                router.push('/workspace');
+              }}
+              className="group px-8 py-3.5 rounded-lg text-sm font-semibold tracking-wider transition-all duration-500 flex items-center gap-2 hover:shadow-[0_0_50px_rgba(0,255,100,0.4),0_0_100px_rgba(0,255,100,0.15)]"
+              style={{ background: "#39ff14", color: "#000", boxShadow: "0 0 25px rgba(57,255,20,0.3)" }}
             >
-              EXPLORE TOOLS <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              LAUNCH <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
             {!currentUser && (
             <button
@@ -788,7 +781,7 @@ export default function HomePage() {
                       <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.35)", transition: "color 0.3s" }}>{f.icon}</span>
                       <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{f.tag}</span>
                     </div>
-                    {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#34d399" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(52,211,153,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
+                    {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#39ff14" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(57,255,20,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
                   </div>
                   <h3
                     className="text-lg sm:text-2xl font-bold mb-1.5 sm:mb-2.5 transition-colors duration-300"
@@ -799,8 +792,7 @@ export default function HomePage() {
                   <p className="text-xs sm:text-sm leading-relaxed mb-4 sm:mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)" }}>
                     {f.desc}
                   </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] tracking-wide" style={{ color: "rgba(255,255,255,0.35)" }}>{f.stat}</span>
+                  <div className="flex items-center justify-end">
                     <span className="text-xs tracking-wider flex items-center gap-1 transition-all duration-300" style={{ opacity: hoveredFeature === f.id ? 1 : 0, color: f.accentColor }}>
                       Launch <ChevronRight className="w-3 h-3" />
                     </span>
@@ -880,7 +872,7 @@ export default function HomePage() {
           <div style={{ padding: 1, borderRadius: 10, background: "linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)", display: "inline-block" }}>
             <button
               onClick={() => {
-                if (currentUser) scrollToSection("showcase");
+                if (currentUser) router.push("/workspace");
                 else setShowAuthModal(true);
               }}
               className="px-10 py-3.5 rounded-[9px] text-sm font-semibold tracking-wider transition-all duration-300 hover:bg-[rgba(139,92,246,0.1)]"

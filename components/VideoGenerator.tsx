@@ -11,6 +11,7 @@ import {
   generateVideo,
   generateSkyReelVideo,
   generateAvatarVideo,
+  generateHunyuanAvatarVideo,
   pollVideoJob,
   getVideoResultUrl,
   type VideoJobResponse,
@@ -24,7 +25,8 @@ type WanMode = 't2v' | 'i2v' | 'smart';
 type LtxMode = 't2v' | 'i2v' | 'v2v';
 type SkyReelMode = 'ref2video';
 type AvatarMode = 'avatar';
-type VideoMode = WanMode | LtxMode | SkyReelMode | AvatarMode;
+type HunyuanAvatarMode = 'hunyuan-avatar';
+type VideoMode = WanMode | LtxMode | SkyReelMode | AvatarMode | HunyuanAvatarMode;
 
 const MODEL_CONFIG = {
   wan: {
@@ -63,6 +65,15 @@ const MODEL_CONFIG = {
     creditCost: { avatar: 12 } as Record<string, number>,
     supportsNegativePrompt: false,
   },
+  'hunyuan-avatar': {
+    name: 'HunyuanVideo Avatar',
+    sub: 'High-res lip-sync · Up to 1280px · 120s audio',
+    modes: ['hunyuan-avatar'] as HunyuanAvatarMode[],
+    defaultSteps: 50,
+    defaultGuidance: 7.5,
+    creditCost: { 'hunyuan-avatar': 15 } as Record<string, number>,
+    supportsNegativePrompt: false,
+  },
 } as const;
 
 /* ─── Duration presets per model ─── */
@@ -91,6 +102,9 @@ const FRAME_PRESETS: Record<string, { id: string; label: string; frames: number 
   avatar: [
     { id: 'auto', label: 'Match audio length', frames: 0 },
   ],
+  'hunyuan-avatar': [
+    { id: 'auto', label: 'Match audio length', frames: 0 },
+  ],
 };
 
 /* ─── Resolution presets (WAN fixed, LTX selectable, SkyReels/Avatar selectable) ─── */
@@ -111,6 +125,13 @@ const SKYREEL_RESOLUTIONS = [
 const AVATAR_RESOLUTIONS = [
   { id: '480P', label: '480P' },
   { id: '720P', label: '720P' },
+];
+
+const HUNYUAN_IMAGE_SIZES = [
+  { id: '512', label: '512px', size: 512 },
+  { id: '704', label: '704px', size: 704 },
+  { id: '960', label: '960px', size: 960 },
+  { id: '1280', label: '1280px', size: 1280 },
 ];
 
 /* ─── Generated video record ─── */
@@ -176,6 +197,9 @@ export default function VideoGenerator() {
   const [samplingSteps, setSamplingSteps] = useState(25);
   const [textGuideScale, setTextGuideScale] = useState(5.0);
   const [audioGuideScale, setAudioGuideScale] = useState(4.0);
+  const [hunyuanInferSteps, setHunyuanInferSteps] = useState(50);
+  const [hunyuanCfgScale, setHunyuanCfgScale] = useState(7.5);
+  const [hunyuanImageSize, setHunyuanImageSize] = useState(704);
   const [avatarScanLine, setAvatarScanLine] = useState(0);
   const avatarScanRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const avatarScanDir = useRef(1);
@@ -193,7 +217,7 @@ export default function VideoGenerator() {
 
   // Animated scan line during avatar generation
   useEffect(() => {
-    if (generating && mode === 'avatar') {
+    if (generating && (mode === 'avatar' || mode === 'hunyuan-avatar')) {
       avatarScanDir.current = 1;
       avatarScanRef.current = setInterval(() => {
         setAvatarScanLine(p => {
@@ -229,6 +253,11 @@ export default function VideoGenerator() {
     setResolution('720p');
     if (m === 'skyreel') setSkyreelResolution('720P');
     if (m === 'avatar') setAvatarResolution('480P');
+    if (m === 'hunyuan-avatar') {
+      setHunyuanInferSteps(50);
+      setHunyuanCfgScale(7.5);
+      setHunyuanImageSize(704);
+    }
   };
 
   const generate = useCallback(async () => {
@@ -237,6 +266,7 @@ export default function VideoGenerator() {
     if (mode === 'v2v' && !uploadedVideo) return;
     if (mode === 'ref2video' && refImages.length === 0) return;
     if (mode === 'avatar' && (!portraitImage || !audioFile)) return;
+    if (mode === 'hunyuan-avatar' && (!portraitImage || !audioFile)) return;
 
     const now = Date.now();
     if (now - lastSubmitRef.current < 2000) return;
@@ -255,7 +285,7 @@ export default function VideoGenerator() {
       model,
       mode,
       duration,
-      resolution: model === 'skyreel' ? skyreelResolution : model === 'avatar' ? avatarResolution : resolution,
+      resolution: model === 'skyreel' ? skyreelResolution : model === 'avatar' ? avatarResolution : model === 'hunyuan-avatar' ? `${hunyuanImageSize}px` : resolution,
       time: null,
       videoUrl: null,
       status: 'queued',
@@ -296,6 +326,18 @@ export default function VideoGenerator() {
           samplingSteps,
           textGuideScale,
           audioGuideScale,
+          seed: safeSeed,
+        });
+      } else if (model === 'hunyuan-avatar') {
+        const portraitBase64 = portraitImage!.replace(/^data:image\/[^;]+;base64,/, '');
+        const audioBase64 = audioFile!.replace(/^data:audio\/[^;]+;base64,/, '');
+        job = await generateHunyuanAvatarVideo({
+          prompt: prompt.trim(),
+          portraitImage: portraitBase64,
+          audio: audioBase64,
+          inferSteps: hunyuanInferSteps,
+          cfgScale: hunyuanCfgScale,
+          imageSize: hunyuanImageSize,
           seed: safeSeed,
         });
       } else {
@@ -372,6 +414,22 @@ export default function VideoGenerator() {
             setProgressMsg('');
             setColdStart(false);
             setTimeout(() => setGenerating(false), 3000);
+
+            // Auto-save to gallery on completion
+            if (status.status === 'complete' && status.video_url) {
+              try {
+                const raw = StorageUtils.safeGetItem('chat-user');
+                if (raw) {
+                  const user = JSON.parse(raw);
+                  if (user.id && user.username) {
+                    const resultUrl = getVideoResultUrl(model, job.job_id);
+                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'video', prompt.trim().slice(0, 100))
+                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
+                      .catch(() => {});
+                  }
+                }
+              } catch {}
+            }
           }
         } catch {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -401,7 +459,7 @@ export default function VideoGenerator() {
       setProgressMsg('');
       setGenerating(false);
     }
-  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration, refImages, portraitImage, audioFile, skyreelResolution, avatarResolution, guidanceScaleImg, samplingSteps, textGuideScale, audioGuideScale]);
+  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration, refImages, portraitImage, audioFile, skyreelResolution, avatarResolution, guidanceScaleImg, samplingSteps, textGuideScale, audioGuideScale, hunyuanInferSteps, hunyuanCfgScale, hunyuanImageSize]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -644,7 +702,7 @@ export default function VideoGenerator() {
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Video Generation</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#39ff14', boxShadow: '0 0 6px rgba(57,255,20,0.5)', animation: 'indicator-blink 1.4s ease-in-out infinite' }} />
           <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>SERVER READY</span>
         </div>
       </div>
@@ -685,6 +743,7 @@ export default function VideoGenerator() {
                   {key === 'ltx' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#22d3ee', fontWeight: 600, letterSpacing: '0.06em' }}>V2V</span>}
                   {key === 'skyreel' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', fontWeight: 600, letterSpacing: '0.06em' }}>REF</span>}
                   {key === 'avatar' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: '#34d399', fontWeight: 600, letterSpacing: '0.06em' }}>TALK</span>}
+                  {key === 'hunyuan-avatar' && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(251,191,36,0.1)', color: '#fbbf24', fontWeight: 600, letterSpacing: '0.06em' }}>HD</span>}
                 </div>
                 <div style={{ fontSize: 10, color: model === key ? 'rgba(192,132,252,0.7)' : 'rgba(255,255,255,0.6)' }}>{m.sub}</div>
               </button>
@@ -701,6 +760,7 @@ export default function VideoGenerator() {
                 v2v: { label: 'Vid→Vid', icon: <Video size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
                 ref2video: { label: 'Ref→Vid', icon: <ImageIcon size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
                 avatar: { label: 'Avatar', icon: <Mic size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
+                'hunyuan-avatar': { label: 'Avatar', icon: <Mic size={12} style={{ verticalAlign: -1, marginRight: 4 }} /> },
               };
               const info = labels[tab] || { label: tab, icon: null };
               return (
@@ -740,6 +800,11 @@ export default function VideoGenerator() {
           {mode === 'avatar' && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)', fontSize: 11, color: 'rgba(16,185,129,0.7)' }}>
               🎙️ Upload a portrait photo and audio file to generate a lip-synced talking avatar video. Uses 12 credits.
+            </div>
+          )}
+          {mode === 'hunyuan-avatar' && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
+              🎙️ HunyuanVideo Avatar — high-res lip-synced video up to 1280px. Supports audio up to 120s. Uses 15 credits.
             </div>
           )}
 
@@ -819,7 +884,7 @@ export default function VideoGenerator() {
           {/* Portrait + Audio upload (Avatar) */}
           <input ref={portraitInputRef} type="file" accept="image/*" onChange={handlePortraitUpload} style={{ display: 'none' }} />
           <input ref={audioInputRef} type="file" accept="audio/*,video/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
-          {mode === 'avatar' && (
+          {(mode === 'avatar' || mode === 'hunyuan-avatar') && (
             <div className="grid grid-cols-2 gap-2.5" style={{ marginBottom: 16 }}>
               {/* Portrait upload */}
               {!portraitImage ? (
@@ -835,7 +900,7 @@ export default function VideoGenerator() {
                 <div style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.2)', background: '#0a0a14' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={portraitImage} alt="Portrait" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-                  {generating && mode === 'avatar' && (
+                  {generating && (mode === 'avatar' || mode === 'hunyuan-avatar') && (
                     <div style={{ position: 'absolute', left: 0, right: 0, height: 6, top: `${avatarScanLine}%`, background: 'linear-gradient(90deg, transparent, rgba(255,79,216,0.15), rgba(255,79,216,0.9), rgba(157,78,255,0.85), transparent)', boxShadow: '0 0 18px 4px rgba(255,79,216,0.8), 0 0 36px 6px rgba(157,78,255,0.5)', pointerEvents: 'none', transition: 'top 0.12s ease', borderRadius: 3 }} />
                   )}
                   <button onClick={removePortrait} style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 5, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -851,7 +916,7 @@ export default function VideoGenerator() {
                 >
                   <Mic size={24} color="rgba(16,185,129,0.5)" style={{ marginBottom: 6 }} />
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Audio file</p>
-                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Any Audio/Max 30MB</small>
+                  <small style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{model === 'hunyuan-avatar' ? 'WAV/MP3, 0.5–120s' : 'Any Audio/Max 30MB'}</small>
                 </div>
               ) : (
                 <div style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, padding: 16, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -864,7 +929,7 @@ export default function VideoGenerator() {
               )}
             </div>
           )}
-          {mode === 'avatar' && (
+          {(mode === 'avatar' || mode === 'hunyuan-avatar') && (
             <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
               <style>{`@keyframes neonPulse { 0%, 100% { box-shadow: 0 0 8px rgba(255,110,180,0.3), 0 0 16px rgba(255,110,180,0.15); text-shadow: 0 0 6px rgba(255,110,180,0.5); } 50% { box-shadow: 0 0 18px rgba(255,110,180,0.7), 0 0 36px rgba(255,110,180,0.3); text-shadow: 0 0 14px rgba(255,110,180,0.9); } }`}</style>
               <span style={{ fontSize: 11, color: '#ff6eb4', fontWeight: 600, textShadow: '0 0 8px rgba(255,110,180,0.5)' }}>Need audio?</span>
@@ -893,14 +958,14 @@ export default function VideoGenerator() {
                     <div className="video-rainbow-glow" />
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.75)' }}>
-                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : mode === 'v2v' ? 'DESCRIBE THE REMIX' : mode === 'ref2video' ? 'DESCRIBE THE SCENE' : mode === 'avatar' ? 'DESCRIBE THE PERSON / SCENE' : 'DESCRIBE YOUR VIDEO'}
+                    {mode === 'i2v' ? 'DESCRIBE THE MOTION' : mode === 'v2v' ? 'DESCRIBE THE REMIX' : mode === 'ref2video' ? 'DESCRIBE THE SCENE' : (mode === 'avatar' || mode === 'hunyuan-avatar') ? 'DESCRIBE THE PERSON / SCENE' : 'DESCRIBE YOUR VIDEO'}
                   </span>
                 </div>
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); } }}
-                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : mode === 'v2v' ? 'Transform the scene into a cyberpunk city at night...' : mode === 'ref2video' ? 'The person walks through a sunlit forest, looking around in wonder...' : mode === 'avatar' ? 'A professional news anchor delivering a report in a studio...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
+                  placeholder={mode === 'i2v' ? 'The person turns their head slowly and smiles...' : mode === 'v2v' ? 'Transform the scene into a cyberpunk city at night...' : mode === 'ref2video' ? 'The person walks through a sunlit forest, looking around in wonder...' : (mode === 'avatar' || mode === 'hunyuan-avatar') ? 'A professional news anchor delivering a report in a studio...' : 'A majestic eagle soaring through mountain peaks at golden hour, cinematic drone shot...'}
                   rows={3}
                   style={{ width: '100%', resize: 'none', background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 1.7, fontFamily: 'inherit', caretColor: '#22d3ee' }}
                 />
@@ -917,16 +982,17 @@ export default function VideoGenerator() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 14, marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.15)', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{modelCfg.name}</span>
-                    {model !== 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>}
+                    {model !== 'avatar' && model !== 'hunyuan-avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{duration}</span>}
                     {model === 'ltx' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{resolution}</span>}
                     {model === 'skyreel' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{skyreelResolution}</span>}
                     {model === 'avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{avatarResolution}</span>}
+                    {model === 'hunyuan-avatar' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.05)' }}>{hunyuanImageSize}px</span>}
                     <button onClick={() => setSettings(!settings)} style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: settings ? '#22d3ee' : 'rgba(255,255,255,0.62)' }}>
                       <Settings2 size={14} />
                     </button>
                   </div>
                   {(() => {
-                    const canGenerate = prompt.trim() && !generating && !(mode === 'i2v' && !uploadedImage) && !(mode === 'v2v' && !uploadedVideo) && !(mode === 'ref2video' && refImages.length === 0) && !(mode === 'avatar' && (!portraitImage || !audioFile));
+                    const canGenerate = prompt.trim() && !generating && !(mode === 'i2v' && !uploadedImage) && !(mode === 'v2v' && !uploadedVideo) && !(mode === 'ref2video' && refImages.length === 0) && !(mode === 'avatar' && (!portraitImage || !audioFile)) && !(mode === 'hunyuan-avatar' && (!portraitImage || !audioFile));
                     return (
                   <button
                     data-generate-btn
@@ -1033,6 +1099,10 @@ export default function VideoGenerator() {
                     </button>
                   ))}
                 </div>
+                ) : model === 'hunyuan-avatar' ? (
+                <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.10)', fontSize: 11, color: 'rgba(251,191,36,0.72)' }}>
+                  {hunyuanImageSize}px (set in settings below)
+                </div>
                 ) : (
                   <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>
                     1280 × 704 (landscape)
@@ -1102,7 +1172,49 @@ export default function VideoGenerator() {
                   </div>
                 </>
               )}
-              {model !== 'avatar' && (
+              {/* HunyuanVideo Avatar settings */}
+              {model === 'hunyuan-avatar' && (
+                <>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>INFERENCE STEPS ({hunyuanInferSteps})</label>
+                      <input
+                        type="range" min={10} max={100} step={5}
+                        value={hunyuanInferSteps}
+                        onChange={e => setHunyuanInferSteps(parseInt(e.target.value))}
+                        style={{ width: '100%', accentColor: '#fbbf24', marginTop: 4 }}
+                      />
+                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>30 = draft, 50 = balanced, 70+ = high quality</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>CFG SCALE ({hunyuanCfgScale.toFixed(1)})</label>
+                      <input
+                        type="range" min={1} max={20} step={0.5}
+                        value={hunyuanCfgScale}
+                        onChange={e => setHunyuanCfgScale(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#fbbf24', marginTop: 4 }}
+                      />
+                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Prompt adherence (3–5 creative, 10–15 strict)</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 4 }}>IMAGE SIZE</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {HUNYUAN_IMAGE_SIZES.map(s => (
+                          <button key={s.id} onClick={() => setHunyuanImageSize(s.size)} style={{
+                            padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            border: hunyuanImageSize === s.size ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.10)',
+                            background: hunyuanImageSize === s.size ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.04)',
+                            color: hunyuanImageSize === s.size ? '#fbbf24' : 'rgba(255,255,255,0.65)',
+                          }}>{s.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {model !== 'avatar' && model !== 'hunyuan-avatar' && (
                 <>
               <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.62)', marginBottom: 6 }}>DURATION</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -1230,8 +1342,8 @@ export default function VideoGenerator() {
                     <div style={{ padding: '9px 11px' }}>
                       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vid.prompt}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                        <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : vid.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : vid.model === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : vid.model === 'skyreel' ? '#ec4899' : vid.model === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : vid.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : vid.mode === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : vid.mode === 'ref2video' ? '#ec4899' : vid.mode === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{vid.mode}{vid.mode === 'smart' && ' ✨'}{vid.mode === 'avatar' && ' 🎙️'}</span>
+                        <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: vid.model === 'ltx' ? 'rgba(6,182,212,0.08)' : vid.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : vid.model === 'avatar' ? 'rgba(16,185,129,0.08)' : vid.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.06)', color: vid.model === 'ltx' ? '#22d3ee' : vid.model === 'skyreel' ? '#ec4899' : vid.model === 'avatar' ? '#34d399' : vid.model === 'hunyuan-avatar' ? '#fbbf24' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[vid.model].name}</span>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: vid.mode === 'smart' ? 'rgba(251,191,36,0.08)' : vid.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : (vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.06)', color: vid.mode === 'smart' ? '#fbbf24' : vid.mode === 'ref2video' ? '#ec4899' : (vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{vid.mode === 'hunyuan-avatar' ? 'hunyuan' : vid.mode}{vid.mode === 'smart' && ' ✨'}{(vid.mode === 'avatar' || vid.mode === 'hunyuan-avatar') && ' 🎙️'}</span>
                         {vid.time != null && (
                           <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.58)', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={9} />{vid.time}</span>
                         )}
@@ -1251,27 +1363,6 @@ export default function VideoGenerator() {
         {/* ────── RIGHT: Info Panel ────── */}
         <div className="p-4 sm:p-5" style={{ background: 'rgba(5,5,12,0.5)' }}>
 
-          {/* Stats */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
-              <Video size={14} color="#a78bfa" />
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.75)' }}>GENERATION STATS</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { l: 'Videos', v: videos.length },
-                { l: 'Avg time', v: '~2m' },
-                { l: 'Credits', v: creditCost },
-                { l: 'Model', v: modelCfg.name },
-              ].map(s => (
-                <div key={s.l} style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{s.v}</div>
-                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.58)', marginTop: 2 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Queue status */}
           <div style={{ marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
@@ -1281,12 +1372,12 @@ export default function VideoGenerator() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)' }}>
               {activeJobs > 0 ? (
                 <>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 4px rgba(167,139,250,0.4)' }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#39ff14', boxShadow: '0 0 4px rgba(57,255,20,0.4)', animation: 'indicator-blink 1.4s ease-in-out infinite' }} />
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>{activeJobs} job{activeJobs > 1 ? 's' : ''} processing</span>
                 </>
               ) : (
                 <>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 4px rgba(52,211,153,0.4)' }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#faff00', boxShadow: '0 0 4px rgba(250,255,0,0.4)', animation: 'indicator-blink 1.4s ease-in-out infinite' }} />
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>No jobs in queue</span>
                 </>
               )}
@@ -1359,8 +1450,8 @@ export default function VideoGenerator() {
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.15)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : expanded.model === 'skyreel' ? '#ec4899' : expanded.model === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
-                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : expanded.mode === 'avatar' ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.15)' : expanded.mode === 'avatar' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : expanded.mode === 'ref2video' ? '#ec4899' : expanded.mode === 'avatar' ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{expanded.mode}{expanded.mode === 'smart' && ' ✨'}{expanded.mode === 'avatar' && ' 🎙️'}</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.model === 'ltx' ? 'rgba(6,182,212,0.08)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.08)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.08)' : expanded.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.model === 'ltx' ? 'rgba(6,182,212,0.15)' : expanded.model === 'skyreel' ? 'rgba(236,72,153,0.15)' : expanded.model === 'avatar' ? 'rgba(16,185,129,0.15)' : expanded.model === 'hunyuan-avatar' ? 'rgba(251,191,36,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.model === 'ltx' ? '#22d3ee' : expanded.model === 'skyreel' ? '#ec4899' : expanded.model === 'avatar' ? '#34d399' : expanded.model === 'hunyuan-avatar' ? '#fbbf24' : 'rgba(139,92,246,0.5)', fontWeight: 600 }}>{MODEL_CONFIG[expanded.model].name}</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: expanded.mode === 'smart' ? 'rgba(251,191,36,0.08)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.08)' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${expanded.mode === 'smart' ? 'rgba(251,191,36,0.15)' : expanded.mode === 'ref2video' ? 'rgba(236,72,153,0.15)' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)'}`, color: expanded.mode === 'smart' ? '#fbbf24' : expanded.mode === 'ref2video' ? '#ec4899' : (expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') ? '#34d399' : 'rgba(139,92,246,0.5)' }}>{expanded.mode === 'hunyuan-avatar' ? 'hunyuan' : expanded.mode}{expanded.mode === 'smart' && ' ✨'}{(expanded.mode === 'avatar' || expanded.mode === 'hunyuan-avatar') && ' 🎙️'}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)' }}>{expanded.duration}</span>
                   {expanded.time != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{expanded.time}</span>}
                   <div style={{ flex: 1 }} />

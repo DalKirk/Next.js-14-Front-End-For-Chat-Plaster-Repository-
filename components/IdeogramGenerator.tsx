@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
   Settings2, ChevronDown, RefreshCw, X, Maximize2, Copy, ArrowLeft,
-  Trash2, Check, RotateCcw, Type,
+  Trash2, Check, RotateCcw, Type, Grid,
 } from 'lucide-react';
+import { useBackgroundRemoval } from '@/hooks/useBackgroundRemoval';
 import {
   generateIdeogramImage,
   pollIdeogramJob,
@@ -83,6 +84,14 @@ export default function IdeogramGenerator() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSubmitRef = useRef(0);
 
+  /* ─── Background removal ─── */
+  const { removeBg, isProcessing: isRemovingBg, progress: bgProgress, error: bgError, reset: resetBg } = useBackgroundRemoval();
+  const [transparentUrls, setTransparentUrls] = useState<Record<string, string>>({});
+  const [bgRemovalActive, setBgRemovalActive] = useState<Record<string, boolean>>({});
+  const [bgSelectedId, setBgSelectedId] = useState<string | null>(null);
+
+  const bgSelectedImg = bgSelectedId ? images.find(i => i.id === bgSelectedId) ?? null : null;
+
   const curStyle = ideogramStyles.find(s => s.id === styleType);
   const curRatio = aspectRatios.find(r => r.id === aspectRatio) || aspectRatios[0];
 
@@ -151,6 +160,22 @@ export default function IdeogramGenerator() {
             if (pollRef.current) clearInterval(pollRef.current);
             setActiveJobs(prev => Math.max(0, prev - 1));
             setTimeout(() => setGenerating(false), 3000);
+
+            // Auto-save to gallery on completion
+            if (status.status === 'complete') {
+              try {
+                const raw = StorageUtils.safeGetItem('chat-user');
+                if (raw) {
+                  const user = JSON.parse(raw);
+                  if (user.id && user.username) {
+                    const resultUrl = getIdeogramResultUrl(jobId);
+                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'image', prompt.trim().slice(0, 100))
+                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
+                      .catch(() => {});
+                  }
+                }
+              } catch {}
+            }
           }
         } catch {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -176,13 +201,16 @@ export default function IdeogramGenerator() {
   const handleDownload = async (img: GeneratedImage, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!img.imageUrl) return;
+    const useTransparent = bgRemovalActive[img.id] && transparentUrls[img.id];
+    const srcUrl = useTransparent ? transparentUrls[img.id] : img.imageUrl;
+    const suffix = useTransparent ? '-transparent' : '';
     try {
-      const res = await fetch(img.imageUrl);
+      const res = await fetch(srcUrl);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `starcyeed-ideogram-${img.id}.png`;
+      a.download = `starcyeed-ideogram-${img.id}${suffix}.png`;
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
@@ -191,7 +219,7 @@ export default function IdeogramGenerator() {
       if (isIOS) window.open(url, '_blank');
       else setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch {
-      if (img.imageUrl) window.open(img.imageUrl, '_blank');
+      if (srcUrl) window.open(srcUrl, '_blank');
     }
   };
 
@@ -247,6 +275,36 @@ export default function IdeogramGenerator() {
     }, 100);
   };
 
+  /* ─── Toggle transparent background ─── */
+  const handleToggleTransparent = async (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!img.imageUrl) return;
+
+    // Always select this image in the side panel
+    setBgSelectedId(img.id);
+
+    // If already processed, just toggle the view
+    if (transparentUrls[img.id]) {
+      setBgRemovalActive(prev => ({ ...prev, [img.id]: !prev[img.id] }));
+      return;
+    }
+
+    // Process background removal
+    const blob = await removeBg(img.imageUrl);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      setTransparentUrls(prev => ({ ...prev, [img.id]: url }));
+      setBgRemovalActive(prev => ({ ...prev, [img.id]: true }));
+    }
+  };
+
+  /* ─── Select image for transparency panel (without processing) ─── */
+  const handleSelectForTransparency = (img: GeneratedImage, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!img.imageUrl) return;
+    setBgSelectedId(img.id);
+  };
+
   /* ─── Storage ─── */
   useEffect(() => {
     try {
@@ -270,6 +328,13 @@ export default function IdeogramGenerator() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
     } catch { /* storage full */ }
   }, [images]);
+
+  /* ─── Revoke transparent blob URLs on unmount ─── */
+  useEffect(() => {
+    return () => {
+      Object.values(transparentUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [transparentUrls]);
 
   /* ─── Render ─── */
   return (
@@ -320,7 +385,7 @@ export default function IdeogramGenerator() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#39ff14', boxShadow: '0 0 6px rgba(57,255,20,0.5)', animation: 'indicator-blink 1.4s ease-in-out infinite' }} />
           <span style={{ fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.68)' }}>LOGEX</span>
         </div>
       </div>
@@ -483,6 +548,118 @@ export default function IdeogramGenerator() {
             </div>
           )}
 
+          {/* Background removal progress */}
+          {isRemovingBg && (
+            <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', fontSize: 11, color: 'rgba(192,132,252,0.8)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+              {bgProgress || 'Removing background...'}
+            </div>
+          )}
+
+          {/* Background removal error */}
+          {bgError && (
+            <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{bgError}</span>
+              <button onClick={resetBg} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: 2, display: 'flex' }}><X size={13} /></button>
+            </div>
+          )}
+
+          {/* ─── Transparency Tool (Left Panel) ─── */}
+          {images.some(i => i.status === 'complete' && i.imageUrl) && (
+            <div style={{ marginBottom: 16, borderRadius: 12, overflow: 'hidden', background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.18)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid rgba(168,85,247,0.10)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Grid size={14} color="#c084fc" />
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.75)' }}>TRANSPARENCY</span>
+                  {bgSelectedImg && (
+                    <span style={{ fontSize: 9, color: 'rgba(168,85,247,0.6)', padding: '1px 6px', borderRadius: 4, background: 'rgba(168,85,247,0.08)' }}>
+                      {bgRemovalActive[bgSelectedImg.id] ? 'Transparent' : transparentUrls[bgSelectedImg.id] ? 'Original' : 'Ready'}
+                    </span>
+                  )}
+                </div>
+                {bgSelectedImg && (
+                  <button onClick={() => setBgSelectedId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', padding: 2 }}><X size={13} /></button>
+                )}
+              </div>
+
+              {!bgSelectedImg ? (
+                /* Empty state — no image selected yet */
+                <div style={{ padding: '14px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-conic-gradient(#282828 0% 25%, #1a1a1a 0% 50%)', backgroundSize: '10px 10px', border: '1px dashed rgba(168,85,247,0.25)' }}>
+                    <Grid size={18} color="rgba(168,85,247,0.35)" />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '0 0 3px' }}>Select an image to remove its background</p>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Hover any image → click the <span style={{ color: '#c084fc' }}>⊞</span> grid icon</p>
+                  </div>
+                </div>
+              ) : (
+                /* Image selected — show tool */
+                <div style={{ display: 'flex', gap: 0 }}>
+                  {/* Mini preview */}
+                  <div style={{
+                    width: 100, minHeight: 72, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                    background: bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id]
+                      ? 'repeating-conic-gradient(#282828 0% 25%, #1a1a1a 0% 50%)'
+                      : `linear-gradient(135deg,${bgSelectedImg.c1}12,${bgSelectedImg.c2}08)`,
+                    backgroundSize: bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id] ? '12px 12px' : 'auto',
+                  }}>
+                    {bgSelectedImg.imageUrl && (
+                      <img
+                        src={bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id] ? transparentUrls[bgSelectedImg.id] : bgSelectedImg.imageUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div style={{ flex: 1, padding: '10px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bgSelectedImg.prompt}</p>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {!transparentUrls[bgSelectedImg.id] ? (
+                        <button
+                          onClick={() => handleToggleTransparent(bgSelectedImg)}
+                          disabled={isRemovingBg}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 7, border: 'none',
+                            fontSize: 10, fontWeight: 600, color: '#fff', cursor: isRemovingBg ? 'wait' : 'pointer',
+                            background: isRemovingBg ? 'rgba(168,85,247,0.12)' : 'linear-gradient(135deg,#a855f7,#7c3aed)',
+                            opacity: isRemovingBg ? 0.7 : 1, transition: 'all 0.3s',
+                          }}
+                        >
+                          {isRemovingBg ? <><RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />Processing...</> : <><Grid size={11} />Remove BG</>}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setBgRemovalActive(prev => ({ ...prev, [bgSelectedImg.id]: !prev[bgSelectedImg.id] }))}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 7, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                              background: bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.06)',
+                              border: `1px solid ${bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                              color: bgRemovalActive[bgSelectedImg.id] ? '#c084fc' : 'rgba(255,255,255,0.65)',
+                            }}
+                          >
+                            {bgRemovalActive[bgSelectedImg.id] ? <><ImageIcon size={10} />Original</> : <><Grid size={10} />Transparent</>}
+                          </button>
+                          <button
+                            onClick={() => handleDownload(bgSelectedImg)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 7, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                              background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.18)', color: '#22d3ee',
+                            }}
+                          >
+                            <Download size={10} />Download
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Cold-start banner */}
           {generating && images[0]?.status === 'queued' && (
             <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.12)', fontSize: 11, color: 'rgba(251,191,36,0.7)' }}>
@@ -516,7 +693,18 @@ export default function IdeogramGenerator() {
                   <div style={{ borderRadius: 11, overflow: 'hidden', background: 'rgba(8,8,15,0.9)' }}>
                     <div style={{ position: 'relative', aspectRatio: '4/3', background: `linear-gradient(135deg,${img.c1}15,${img.c2}10)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       {img.imageUrl ? (
-                        <img src={img.imageUrl} alt={img.prompt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img
+                          src={bgRemovalActive[img.id] && transparentUrls[img.id] ? transparentUrls[img.id] : img.imageUrl}
+                          alt={img.prompt}
+                          style={{
+                            width: '100%', height: '100%', objectFit: 'cover',
+                            ...(bgRemovalActive[img.id] && transparentUrls[img.id] ? {
+                              objectFit: 'contain' as const,
+                              backgroundImage: 'repeating-conic-gradient(#282828 0% 25%, #1a1a1a 0% 50%)',
+                              backgroundSize: '16px 16px',
+                            } : {}),
+                          }}
+                        />
                       ) : (
                         <>
                           <div style={{ position: 'absolute', inset: 0, opacity: 0.3, background: `radial-gradient(ellipse at 30% 40%,${img.c1}28,transparent 55%),radial-gradient(ellipse at 70% 60%,${img.c2}22,transparent 50%)` }} />
@@ -539,6 +727,7 @@ export default function IdeogramGenerator() {
                           <button onClick={(e) => handleRegenerate(img, e)} title="Regenerate" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><RotateCcw size={14} /></button>
                           <button onClick={(e) => handleTrash(img, e)} title="Trash" style={{ padding: 7, borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Trash2 size={14} /></button>
                           <button onClick={(e) => handleDownload(img, e)} title="Download" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Download size={14} /></button>
+                          <button onClick={(e) => handleSelectForTransparency(img, e)} title={bgRemovalActive[img.id] ? 'Show original' : 'Remove background'} style={{ padding: 7, borderRadius: 7, background: bgRemovalActive[img.id] ? 'rgba(168,85,247,0.15)' : bgSelectedId === img.id ? 'rgba(168,85,247,0.10)' : 'rgba(255,255,255,0.08)', border: `1px solid ${bgRemovalActive[img.id] || bgSelectedId === img.id ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.08)'}`, color: bgRemovalActive[img.id] || bgSelectedId === img.id ? '#c084fc' : '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Grid size={14} /></button>
                           <button onClick={(e) => { e.stopPropagation(); handleSaveToProfile(img, e); }} title={savedToProfile[img.id] ? 'Saved' : 'Save to Profile'} style={{ padding: 7, borderRadius: 7, background: savedToProfile[img.id] ? 'rgba(16,185,129,0.15)' : 'rgba(236,72,153,0.08)', border: `1px solid ${savedToProfile[img.id] ? 'rgba(16,185,129,0.3)' : 'rgba(236,72,153,0.15)'}`, color: savedToProfile[img.id] ? '#10b981' : '#f472b6', cursor: savingToProfile[img.id] ? 'wait' : 'pointer', display: 'flex', pointerEvents: 'auto', opacity: savingToProfile[img.id] ? 0.6 : 1 }}>{savedToProfile[img.id] ? <Check size={14} /> : <Layers size={14} />}</button>
                           <button onClick={(e) => { e.stopPropagation(); setExpanded(img); }} title="Expand" style={{ padding: 7, borderRadius: 7, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', display: 'flex', pointerEvents: 'auto' }}><Maximize2 size={14} /></button>
                         </div>
@@ -605,24 +794,122 @@ export default function IdeogramGenerator() {
 
           <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '18px 0' }} />
 
+          {/* ─── Transparency Tool ─── */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <Grid size={15} color="#c084fc" />
+                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.75)' }}>TRANSPARENCY</span>
+              </div>
+              {bgSelectedImg && (
+                <button onClick={() => { setBgSelectedId(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', padding: 2 }}><X size={13} /></button>
+              )}
+            </div>
+
+            {!bgSelectedImg ? (
+              /* No image selected */
+              <div style={{ borderRadius: 10, padding: 14, background: 'rgba(168,85,247,0.04)', border: '1px dashed rgba(168,85,247,0.18)', textAlign: 'center' }}>
+                <Grid size={20} color="rgba(168,85,247,0.3)" style={{ margin: '0 auto 8px' }} />
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '0 0 4px' }}>Select an image to remove its background</p>
+                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Click the <span style={{ color: '#c084fc' }}>grid icon</span> on any generated image</p>
+              </div>
+            ) : (
+              /* Image selected — show tool */
+              <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.18)' }}>
+                {/* Preview */}
+                <div style={{ position: 'relative', aspectRatio: '16/10', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id] ? 'repeating-conic-gradient(#282828 0% 25%, #1a1a1a 0% 50%)' : `linear-gradient(135deg,${bgSelectedImg.c1}12,${bgSelectedImg.c2}08)`, backgroundSize: bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id] ? '16px 16px' : 'auto' }}>
+                  {bgSelectedImg.imageUrl && (
+                    <img
+                      src={bgRemovalActive[bgSelectedImg.id] && transparentUrls[bgSelectedImg.id] ? transparentUrls[bgSelectedImg.id] : bgSelectedImg.imageUrl}
+                      alt={bgSelectedImg.prompt}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  )}
+                  {/* Original / Transparent badge */}
+                  <div style={{ position: 'absolute', top: 6, left: 6, padding: '2px 7px', borderRadius: 5, fontSize: 9, fontWeight: 600, letterSpacing: '0.06em', background: bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.25)' : 'rgba(0,0,0,0.5)', color: bgRemovalActive[bgSelectedImg.id] ? '#c084fc' : 'rgba(255,255,255,0.6)', border: `1px solid ${bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.1)'}` }}>
+                    {bgRemovalActive[bgSelectedImg.id] ? 'TRANSPARENT' : 'ORIGINAL'}
+                  </div>
+                </div>
+
+                {/* Prompt snippet */}
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(168,85,247,0.10)' }}>
+                  <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bgSelectedImg.prompt}</p>
+                </div>
+
+                {/* Progress bar */}
+                {isRemovingBg && (
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(168,85,247,0.10)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <RefreshCw size={11} color="#c084fc" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: 'rgba(192,132,252,0.8)' }}>{bgProgress || 'Processing...'}</span>
+                  </div>
+                )}
+
+                {/* Error */}
+                {bgError && (
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 10, color: '#f87171' }}>{bgError}</span>
+                    <button onClick={resetBg} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', display: 'flex', padding: 2 }}><X size={11} /></button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ padding: '10px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {!transparentUrls[bgSelectedImg.id] ? (
+                    /* Remove BG button */
+                    <button
+                      onClick={() => handleToggleTransparent(bgSelectedImg)}
+                      disabled={isRemovingBg}
+                      style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '9px 0', borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 600,
+                        letterSpacing: '0.04em', color: '#fff', cursor: isRemovingBg ? 'wait' : 'pointer',
+                        background: isRemovingBg ? 'rgba(168,85,247,0.12)' : 'linear-gradient(135deg,#a855f7,#7c3aed)',
+                        boxShadow: !isRemovingBg ? '0 0 20px rgba(168,85,247,0.2)' : 'none',
+                        opacity: isRemovingBg ? 0.7 : 1, transition: 'all 0.3s',
+                      }}
+                    >
+                      {isRemovingBg ? <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />Processing...</> : <><Grid size={12} />Remove Background</>}
+                    </button>
+                  ) : (
+                    /* Toggle + Download */
+                    <>
+                      <button
+                        onClick={() => setBgRemovalActive(prev => ({ ...prev, [bgSelectedImg.id]: !prev[bgSelectedImg.id] }))}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          padding: '8px 0', borderRadius: 8, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                          background: bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${bgRemovalActive[bgSelectedImg.id] ? 'rgba(168,85,247,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                          color: bgRemovalActive[bgSelectedImg.id] ? '#c084fc' : 'rgba(255,255,255,0.65)',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {bgRemovalActive[bgSelectedImg.id] ? <><ImageIcon size={11} />Original</> : <><Grid size={11} />Transparent</>}
+                      </button>
+                      <button
+                        onClick={() => handleDownload(bgSelectedImg)}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          padding: '8px 0', borderRadius: 8, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                          background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.18)',
+                          color: '#22d3ee', transition: 'all 0.2s',
+                        }}
+                      >
+                        <Download size={11} />Download {bgRemovalActive[bgSelectedImg.id] ? 'PNG' : ''}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '18px 0' }} />
+
           {/* Branding */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 18, padding: '10px 0' }}>
             <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7 }} />
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.85)' }}>starcyeed</span>
-          </div>
-
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, textAlign: 'center', marginBottom: 18 }}>
-            {[
-              { l: 'Generated', v: images.length, i: <ImageIcon size={13} /> },
-              { l: 'Avg Time', v: images.filter(i => i.time).length ? `${(images.filter(i => i.time).reduce((a, b) => a + (b.time || 0), 0) / images.filter(i => i.time).length).toFixed(1)}s` : '—', i: <Clock size={13} /> },
-            ].map(s => (
-              <div key={s.l}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3, color: 'rgba(255,255,255,0.35)' }}>{s.i}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{s.v}</div>
-                <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.58)' }}>{s.l}</div>
-              </div>
-            ))}
           </div>
 
           {/* Tips */}
@@ -648,7 +935,17 @@ export default function IdeogramGenerator() {
             <div style={{ borderRadius: 13, background: '#08080f', overflow: 'hidden' }}>
               <div style={{ aspectRatio: '1/1', maxHeight: '50vh', background: `linear-gradient(135deg,${expanded.c1}12,${expanded.c2}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {expanded.imageUrl ? (
-                  <img src={expanded.imageUrl} alt={expanded.prompt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img
+                    src={bgRemovalActive[expanded.id] && transparentUrls[expanded.id] ? transparentUrls[expanded.id] : expanded.imageUrl}
+                    alt={expanded.prompt}
+                    style={{
+                      width: '100%', height: '100%', objectFit: 'contain',
+                      ...(bgRemovalActive[expanded.id] && transparentUrls[expanded.id] ? {
+                        backgroundImage: 'repeating-conic-gradient(#282828 0% 25%, #1a1a1a 0% 50%)',
+                        backgroundSize: '16px 16px',
+                      } : {}),
+                    }}
+                  />
                 ) : (
                   <ImageIcon size={36} color="rgba(255,255,255,0.05)" />
                 )}
@@ -682,6 +979,12 @@ export default function IdeogramGenerator() {
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.12)', color: '#22d3ee', cursor: 'pointer' }}
                   >
                     <Download size={12} />Download
+                  </button>
+                  <button
+                    onClick={() => handleToggleTransparent(expanded)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 7, fontSize: 11, background: bgRemovalActive[expanded.id] ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.06)', border: `1px solid ${bgRemovalActive[expanded.id] ? 'rgba(168,85,247,0.3)' : 'rgba(168,85,247,0.12)'}`, color: bgRemovalActive[expanded.id] ? '#c084fc' : 'rgba(192,132,252,0.7)', cursor: isRemovingBg ? 'wait' : 'pointer', opacity: isRemovingBg ? 0.6 : 1 }}
+                  >
+                    <Grid size={12} />{bgRemovalActive[expanded.id] ? 'Show Original' : 'Transparent'}
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleSaveToProfile(expanded); }}

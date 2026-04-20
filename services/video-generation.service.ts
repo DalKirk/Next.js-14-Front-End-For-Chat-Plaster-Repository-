@@ -1,12 +1,13 @@
 const API_BASE = 'https://web-production-3ba7e.up.railway.app';
 
-export type VideoModel = 'wan' | 'ltx' | 'skyreel' | 'avatar';
+export type VideoModel = 'wan' | 'ltx' | 'skyreel' | 'avatar' | 'hunyuan-avatar';
 
 const ENDPOINTS: Record<VideoModel, string> = {
   wan: '/video',
   ltx: '/ltx-video',
   skyreel: '/skyreel',
   avatar: '/avatar',
+  'hunyuan-avatar': '/hunyuan-avatar',
 };
 
 export interface VideoJobResponse {
@@ -194,6 +195,49 @@ export async function generateAvatarVideo({
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || `Avatar generation failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ─── HunyuanVideo Avatar ─── */
+export async function generateHunyuanAvatarVideo({
+  prompt,
+  portraitImage,
+  audio,
+  inferSteps = 50,
+  cfgScale = 7.5,
+  imageSize = 704,
+  seed = null,
+}: {
+  prompt: string;
+  portraitImage: string;
+  audio: string;
+  inferSteps?: number;
+  cfgScale?: number;
+  imageSize?: number;
+  seed?: number | null;
+}): Promise<VideoJobResponse> {
+  const res = await fetch(`${API_BASE}/hunyuan-avatar/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      portrait_image: portraitImage,
+      audio,
+      infer_steps: inferSteps,
+      cfg_scale: cfgScale,
+      image_size: imageSize,
+      seed,
+    }),
+  });
+
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Too many requests. Please wait for your current videos to finish.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `HunyuanVideo Avatar generation failed: ${res.status}`);
   }
   return res.json();
 }
