@@ -1,12 +1,17 @@
-'use client';
-
 import type { Metadata } from 'next';
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { BackButton } from './BackButton';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | Starcyeed',
+  description: 'Read the complete Terms of Service for Starcyeed. Learn about our policies, content guidelines, AI-generated content rules, and legal terms.',
+  openGraph: {
+    title: 'Terms of Service | Starcyeed',
+    description: 'Read the complete Terms of Service for Starcyeed',
+    type: 'website',
+  },
+};
 
 function TermsContent() {
-  const searchParams = useSearchParams();
-  const fromSignup = searchParams.get('from') === 'signup';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black text-[rgba(230,247,255,0.92)]">
@@ -255,21 +260,7 @@ function TermsContent() {
 
           {/* Back Button */}
           <div className="pt-8 border-t border-cyan-500/20">
-            {fromSignup ? (
-              <button
-                onClick={() => window.history.back()}
-                className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
-              >
-                Back to Sign Up
-              </button>
-            ) : (
-              <a
-                href="/"
-                className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
-              >
-                Back to Home
-              </a>
-            )}
+            <BackButton />
           </div>
         </div>
       </div>
@@ -288,3 +279,4 @@ export default function TermsPage() {
     </Suspense>
   );
 }
+<TermsContent />
