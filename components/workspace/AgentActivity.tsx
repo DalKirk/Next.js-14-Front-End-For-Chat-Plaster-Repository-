@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { sendAgentMessage } from '@/services/agent-api';
-import type { GalleryItem } from '@/app/workspace/page';
+import type { GalleryItem } from '@/app/(app)/workspace/page';
 import type {
   ToolStartPayload,
   ToolDonePayload,

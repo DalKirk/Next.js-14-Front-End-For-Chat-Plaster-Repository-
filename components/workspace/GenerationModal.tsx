@@ -2,7 +2,7 @@
 
 import React, { useEffect, Suspense } from 'react';
 import { X } from 'lucide-react';
-import type { GenerationTool, GalleryItem } from '@/app/workspace/page';
+import type { GenerationTool, GalleryItem } from '@/app/(app)/workspace/page';
 import dynamic from 'next/dynamic';
 
 /* Lazy-load generators — they are large components.

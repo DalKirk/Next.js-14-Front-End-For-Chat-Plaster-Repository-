@@ -2,8 +2,8 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import * as PIXI from 'pixi.js';
-import PixiCanvas from '../../components/PixiCanvas';
-import { SpriteManager } from '../../lib/SpriteManager';
+import PixiCanvas from '@/components/PixiCanvas';
+import { SpriteManager } from '@/lib/SpriteManager';
 
 /**
  * PixiJS Test Page

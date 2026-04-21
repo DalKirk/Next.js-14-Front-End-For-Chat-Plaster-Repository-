@@ -1,14 +1,6 @@
 import { Inter, Orbitron } from 'next/font/google';
 import '../globals.css';
 import { Providers } from '../providers';
-import { Inter, Orbitron } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
-const orbitron = Orbitron({ 
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  variable: '--font-orbitron'
-});
 import Starfield from '@/components/Starfield';
 import CanvasTrail from '@/components/CanvasTrail';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -26,7 +18,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <body 
+    <div
       className={`${inter.className} ${orbitron.variable}`}
       style={{
         backgroundColor: 'transparent',
@@ -50,6 +42,6 @@ export default function AppLayout({
           </ErrorBoundary>
         </div>
       </Providers>
-    </body>
+    </div>
   );
 }

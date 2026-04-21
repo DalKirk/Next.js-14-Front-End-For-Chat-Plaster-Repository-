@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 
 // Dynamic import to avoid SSR issues with PixiJS
 const PlutoEditor = dynamic(
-  () => import('../../components/editor/PlutoEditor'),
+  () => import('@/components/editor/PlutoEditor'),
   { 
     ssr: false,
     loading: () => (

@@ -12,7 +12,7 @@ import {
   RotateCcw,
   MessageSquare,
 } from 'lucide-react';
-import type { ChatMessage } from '@/app/workspace/page';
+import type { ChatMessage } from '@/app/(app)/workspace/page';
 
 /* ─── ChatBubble (memoized) ─────────────────────────────────────────────── */
 

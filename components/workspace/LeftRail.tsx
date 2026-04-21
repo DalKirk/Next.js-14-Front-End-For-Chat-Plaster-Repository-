@@ -20,7 +20,7 @@ import {
   Settings,
   Home,
 } from 'lucide-react';
-import type { GenerationTool, CenterTab } from '@/app/workspace/page';
+import type { GenerationTool, CenterTab } from '@/app/(app)/workspace/page';
 import type { User } from '@/lib/types';
 
 interface LeftRailProps {

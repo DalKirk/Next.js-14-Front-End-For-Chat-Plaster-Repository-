@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { BackButton } from './BackButton';
 
 export const metadata: Metadata = {
@@ -260,7 +261,18 @@ function TermsContent() {
 
           {/* Back Button */}
           <div className="pt-8 border-t border-cyan-500/20">
-            <BackButton />
+            <Suspense
+              fallback={
+                <a
+                  href="/"
+                  className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all duration-300 hover:scale-105"
+                >
+                  Back to Home
+                </a>
+              }
+            >
+              <BackButton />
+            </Suspense>
           </div>
         </div>
       </div>
@@ -269,14 +281,5 @@ function TermsContent() {
 }
 
 export default function TermsPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black flex items-center justify-center">
-        <div className="text-cyan-300">Loading...</div>
-      </div>
-    }>
-      <TermsContent />
-    </Suspense>
-  );
+  return <TermsContent />;
 }
-<TermsContent />

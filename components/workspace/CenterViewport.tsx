@@ -17,7 +17,7 @@ import {
   Layers,
   MessageSquare,
 } from 'lucide-react';
-import type { CenterTab, GalleryItem, GenerationTool, ChatMessage } from '@/app/workspace/page';
+import type { CenterTab, GalleryItem, GenerationTool, ChatMessage } from '@/app/(app)/workspace/page';
 import { WorkspaceAgentActivity } from './AgentActivity';
 import type { AgentActivityHandle } from './AgentActivity';
 import { WorkspaceChatTab } from './ChatTab';
