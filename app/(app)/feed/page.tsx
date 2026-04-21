@@ -94,6 +94,11 @@ export default function FeedPage() {
     enabled: !!currentUser, // Only fetch when we have a user
     staleTime: 60_000, // Cache for 1 minute
     refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false;
+      return error instanceof Error && /timed out|network|503|502/i.test(error.message);
+    },
+    retryDelay: 1500,
   });
 
   // Flatten all pages into a single posts array

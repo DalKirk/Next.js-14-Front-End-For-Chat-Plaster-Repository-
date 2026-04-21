@@ -1,16 +1,5 @@
-import { Inter, Orbitron } from 'next/font/google';
 import './globals.css';
-import { Providers } from './providers';
-import Starfield from '@/components/Starfield';
-import CanvasTrail from '@/components/CanvasTrail';
-import { ErrorBoundary } from '@/components/ui/error-boundary';
 
-const inter = Inter({ subsets: ['latin'] });
-const orbitron = Orbitron({ 
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  variable: '--font-orbitron'
-});
 
 // Optional X/Twitter handle (set via NEXT_PUBLIC_TWITTER_HANDLE, e.g., "starcyeed")
 const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE?.replace(/^@/, '');
@@ -119,30 +108,8 @@ export default function RootLayout({
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Double+Ink:wght@100..900&family=Bungee&display=swap" rel="stylesheet" />
       </head>
-      <body 
-        className={`${inter.className} ${orbitron.variable}`}
-        style={{
-          backgroundColor: 'transparent',
-          backdropFilter: 'none'
-        }}
-      >
-        <Providers>
-          <div 
-            className="min-h-screen relative"
-            style={{
-              background: 'transparent'
-            }}
-          >
-            {/* Performant CSS starfield + canvas particle trail */}
-            <Starfield />
-            <CanvasTrail />
-            <ErrorBoundary>
-              <div className="relative z-10">
-                {children}
-              </div>
-            </ErrorBoundary>
-          </div>
-        </Providers>
+      <body style={{ backgroundColor: 'transparent', backdropFilter: 'none' }}>
+        {children}
       </body>
     </html>
   );

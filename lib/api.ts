@@ -55,6 +55,8 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const FEED_REQUEST_TIMEOUT_MS = 45000;
+
 function extractMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     return err.response?.data?.message || err.response?.data?.detail || err.message || String(err);
@@ -66,6 +68,9 @@ function handleApiError(error: unknown, operation: string): never {
   // eslint-disable-next-line no-console
   console.error(`❌ ${operation} failed:`, error);
   if (axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED' || error.message.toLowerCase().includes('timeout')) {
+      throw new Error(`⏱️ ${operation} timed out after waiting for ${Math.round((error.config?.timeout ?? 0) / 1000)}s. The backend is responding too slowly.`);
+    }
     if (!error.response && error.request) {
       throw new Error(`🌐 Network/CORS error contacting ${API_BASE_URL}. Check backend and CORS. See browser DevTools Network tab.`);
     }
@@ -1077,7 +1082,8 @@ export const apiClient = {
   ): Promise<any[]> => {
     try {
       const response = await api.get('/feed', {
-        params: { type, user_id: userId, page, limit }
+        params: { type, user_id: userId, page, limit },
+        timeout: FEED_REQUEST_TIMEOUT_MS,
       });
       return response.data;
     } catch (e) {
