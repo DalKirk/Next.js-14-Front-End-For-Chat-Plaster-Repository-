@@ -419,6 +419,13 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     setNewItemName('');
   };
 
+  const isSandboxTimeout = (e: unknown) =>
+    String(e).toLowerCase().includes('sandbox') && String(e).toLowerCase().includes('not found');
+
+  const ensureSandbox = async () => {
+    await createSandbox();
+  };
+
   const runFile = async () => {
     if (running) return;
     setRunning(true);
@@ -429,21 +436,30 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     const lang    = ext === 'js' || ext === 'ts' ? 'javascript' : 'python';
     const display = active.includes('test') ? `pytest ${active} -v` : `${lang === 'javascript' ? 'node' : 'python'} ${active}`;
     setTLines(p => [...p, { t: 'cmd', text: `$ ${display}` }]);
-    try {
-      // Ensure sandbox exists (idempotent)
-      await createSandbox().catch(() => {});
-      // Sync all workspace files to the sandbox so imports work
+
+    const execute = async () => {
       setTLines(p => [...p, { t: 'sys', text: `Syncing ${Object.keys(currentFiles).length} file(s)…` }]);
       await Promise.all(
         Object.entries(currentFiles).map(([path, content]) =>
           writeFile(`/home/user/${path}`, content).catch(() => {})
         )
       );
+      return lang === 'javascript'
+        ? runCommand(`cd /home/user && node ${active}`)
+        : runCommand(`cd /home/user && python ${active}`);
+    };
+
+    try {
+      await ensureSandbox();
       let result: Awaited<ReturnType<typeof runCode>>;
-      if (lang === 'javascript') {
-        result = await runCommand(`cd /home/user && node ${active}`);
-      } else {
-        result = await runCommand(`cd /home/user && python ${active}`);
+      try {
+        result = await execute();
+      } catch (e) {
+        if (isSandboxTimeout(e)) {
+          setTLines(p => [...p, { t: 'sys', text: 'Sandbox timed out — restarting…' }]);
+          await ensureSandbox();
+          result = await execute();
+        } else throw e;
       }
       if (result.stdout) result.stdout.split('\n').forEach(text => setTLines(p => [...p, { t: 'out', text }]));
       if (result.stderr) result.stderr.split('\n').forEach(text => setTLines(p => [...p, { t: 'err', text }]));
@@ -462,9 +478,19 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     if (!cmd.trim()) return;
     setTermInput('');
     setTLines(p => [...p, { t: 'cmd', text: `$ ${cmd}` }]);
+    const doRun = () => runCommand(cmd);
     try {
-      await createSandbox().catch(() => {});
-      const result = await runCommand(cmd);
+      await ensureSandbox();
+      let result: Awaited<ReturnType<typeof runCommand>>;
+      try {
+        result = await doRun();
+      } catch (e) {
+        if (isSandboxTimeout(e)) {
+          setTLines(p => [...p, { t: 'sys', text: 'Sandbox timed out — restarting…' }]);
+          await ensureSandbox();
+          result = await doRun();
+        } else throw e;
+      }
       if (result.stdout) result.stdout.split('\n').forEach(text => setTLines(p => [...p, { t: 'out', text }]));
       if (result.stderr) result.stderr.split('\n').forEach(text => setTLines(p => [...p, { t: 'err', text }]));
       if (!result.stdout && !result.stderr) setTLines(p => [...p, { t: 'ok', text: `✓  exit ${result.exit_code}` }]);

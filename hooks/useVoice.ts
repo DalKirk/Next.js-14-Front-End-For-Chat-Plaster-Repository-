@@ -238,8 +238,8 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
 
     r.onerror = (e: SpeechRecognitionErrorEvent) => {
-      // no-speech and aborted are completely normal — ignore them
-      if (e.error === "no-speech" || e.error === "aborted") return
+      // no-speech, aborted, and network are normal transient errors — ignore them
+      if (e.error === "no-speech" || e.error === "aborted" || e.error === "network") return
       console.error("[useVoice] recognition error:", e.error)
     }
 
