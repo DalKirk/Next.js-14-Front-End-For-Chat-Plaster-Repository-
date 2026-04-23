@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import dynamic from 'next/dynamic';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { Monaco } from '@monaco-editor/react';
-import { createSandbox, runCode, runCommand } from '@/services/ideApi';
+import { createSandbox, runCode, runCommand, writeFile } from '@/services/ideApi';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -91,6 +91,10 @@ const ic = {
   refresh: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15',
   chevR:   'M9 18l6-6-6-6',
   chevD:   'M6 9l6 6 6-6',
+  save:    'M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8M7 3v5h8',
+  newFile: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM12 18v-6M9 15h6',
+  newDir:  'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2zM12 11v6M9 14h6',
+  trash:   'M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2',
 };
 
 function Ic({ d, size = 16, color = C.muted }: { d: string; size?: number; color?: string }) {
@@ -106,35 +110,51 @@ function Ic({ d, size = 16, color = C.muted }: { d: string; size?: number; color
 
 // ─── tree node ────────────────────────────────────────────────────────────────
 function TreeItem({
-  name, node, depth, active, onPick, exp, toggle, pfx,
+  name, node, depth, active, onPick, exp, toggle, pfx, onDelete,
 }: {
   name: string; node: TreeNode; depth: number; active: string;
   onPick: (p: string) => void; exp: Record<string, boolean>;
   toggle: (k: string) => void; pfx: string;
+  onDelete?: (path: string) => void;
 }) {
   const path   = pfx ? `${pfx}/${name}` : name;
   const isFile = !!(node as Record<string, unknown>)._f;
   const isOpen = exp[path] !== false;
   const isA    = isFile && active === path;
+  const [rowHover, setRowHover] = useState(false);
 
   if (isFile) {
     return (
       <div
         onClick={() => onPick(path)}
+        onMouseEnter={() => setRowHover(true)}
+        onMouseLeave={() => setRowHover(false)}
         style={{
           display: 'flex', alignItems: 'center', gap: 5,
           padding: `3px 8px 3px ${10 + depth * 14}px`,
           cursor: 'pointer', fontSize: 12.5, userSelect: 'none',
           color: isA ? C.text : C.muted, fontFamily: UI,
-          background: isA ? C.active : 'transparent',
+          background: isA ? C.active : rowHover ? C.hover : 'transparent',
           borderLeft: isA ? `2px solid ${C.accent}` : '2px solid transparent',
           transition: 'background .07s',
         }}
-        onMouseEnter={e => { if (!isA) e.currentTarget.style.background = C.hover; }}
-        onMouseLeave={e => { if (!isA) e.currentTarget.style.background = 'transparent'; }}
       >
         <Ic d={ic.file} size={13} color={getCol(name)} />
-        <span>{name}</span>
+        <span style={{ flex: 1 }}>{name}</span>
+        {onDelete && (
+          <span
+            onClick={e => { e.stopPropagation(); onDelete(path); }}
+            title="Delete file"
+            style={{
+              padding: '1px 3px', borderRadius: 2, display: 'flex',
+              opacity: rowHover ? 0.6 : 0, transition: 'opacity .1s', cursor: 'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; (e.currentTarget as HTMLElement).style.background = C.red + '22'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = rowHover ? '0.6' : '0'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <Ic d={ic.trash} size={11} color={C.red} />
+          </span>
+        )}
       </div>
     );
   }
@@ -162,7 +182,7 @@ function TreeItem({
           ((a as TreeNode)._f === (b as TreeNode)._f ? 0 : (a as TreeNode)._f ? 1 : -1))
         .map(([k, v]) => (
           <TreeItem key={k} name={k} node={v as TreeNode} depth={depth + 1}
-            active={active} onPick={onPick} exp={exp} toggle={toggle} pfx={path} />
+            active={active} onPick={onPick} exp={exp} toggle={toggle} pfx={path} onDelete={onDelete} />
         ))}
     </>
   );
@@ -313,15 +333,29 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
   ]);
   const [running, setRunning] = useState(false);
   const [termInput, setTermInput] = useState('');
+  const [newItemState, setNewItemState] = useState<{ type: 'file' | 'folder'; parent: string } | null>(null);
+  const [newItemName,  setNewItemName]  = useState('');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
   const termRef   = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(active);
+  activeRef.current = active;   // always points to latest active path
   const tree      = buildTree(files);
 
   useEffect(() => {
     termRef.current?.scrollTo(0, termRef.current.scrollHeight);
   }, [tLines]);
+
+  // Ctrl+S / Cmd+S save (works when editor is not focused)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Imperative handle: let parent load code from Star agent ──────────────
   useImperativeHandle(ref, () => ({
@@ -348,11 +382,49 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     if (active === p) setActive(next[next.length - 1] ?? '');
   };
 
+  const saveFile = async () => {
+    const content = editorRef.current?.getValue() ?? '';
+    const path = activeRef.current;
+    if (!path) return;
+    setFiles(p => ({ ...p, [path]: content }));
+    setMod(p => { const n = new Set(p); n.delete(path); return n; });
+    try { await writeFile(`/home/user/${path}`, content); } catch { /* ignore */ }
+  };
+
+  const deleteFile = (path: string) => {
+    if (!window.confirm(`Delete "${path}"?`)) return;
+    setFiles(p => { const n = { ...p }; delete n[path]; return n; });
+    setTabs(prev => {
+      const next = prev.filter(t => t !== path);
+      if (activeRef.current === path) setActive(next[next.length - 1] ?? '');
+      return next;
+    });
+    setMod(p => { const n = new Set(p); n.delete(path); return n; });
+  };
+
+  const createNewItem = (name: string) => {
+    if (!newItemState || !name.trim()) { setNewItemState(null); setNewItemName(''); return; }
+    const raw    = name.trim().replace(/^\/+/, '');
+    const prefix = newItemState.parent ? `${newItemState.parent}/` : '';
+    if (newItemState.type === 'file') {
+      const path = `${prefix}${raw}`;
+      setFiles(p => ({ ...p, [path]: '' }));
+      openFile(path);
+    } else {
+      const path = `${prefix}${raw}/.gitkeep`;
+      setFiles(p => ({ ...p, [path]: '' }));
+      setExp(p => ({ ...p, [`${prefix}${raw}`]: true }));
+    }
+    setNewItemState(null);
+    setNewItemName('');
+  };
+
   const runFile = async () => {
     if (running) return;
     setRunning(true);
     setTermOpen(true);
-    const code    = editorRef.current?.getValue() ?? files[active] ?? '';
+    const currentFiles = { ...files };
+    if (editorRef.current) currentFiles[active] = editorRef.current.getValue();
     const ext     = active.split('.').pop() ?? '';
     const lang    = ext === 'js' || ext === 'ts' ? 'javascript' : 'python';
     const display = active.includes('test') ? `pytest ${active} -v` : `${lang === 'javascript' ? 'node' : 'python'} ${active}`;
@@ -360,12 +432,18 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     try {
       // Ensure sandbox exists (idempotent)
       await createSandbox().catch(() => {});
+      // Sync all workspace files to the sandbox so imports work
+      setTLines(p => [...p, { t: 'sys', text: `Syncing ${Object.keys(currentFiles).length} file(s)…` }]);
+      await Promise.all(
+        Object.entries(currentFiles).map(([path, content]) =>
+          writeFile(`/home/user/${path}`, content).catch(() => {})
+        )
+      );
       let result: Awaited<ReturnType<typeof runCode>>;
       if (lang === 'javascript') {
-        // E2B CodeInterpreter only has a Python kernel — shell out to Node instead
-        result = await runCommand(`node -e ${JSON.stringify(code)}`);
+        result = await runCommand(`cd /home/user && node ${active}`);
       } else {
-        result = await runCode(code, lang);
+        result = await runCommand(`cd /home/user && python ${active}`);
       }
       if (result.stdout) result.stdout.split('\n').forEach(text => setTLines(p => [...p, { t: 'out', text }]));
       if (result.stderr) result.stderr.split('\n').forEach(text => setTLines(p => [...p, { t: 'err', text }]));
@@ -459,6 +537,23 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', flexShrink: 0 }}>
+          {mod.has(active) && (
+            <button
+              onClick={saveFile}
+              title="Save (Ctrl+S)"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'transparent', border: `1px solid ${C.border}`,
+                borderRadius: 4, color: C.muted, cursor: 'pointer',
+                fontSize: 11, padding: '2px 9px', fontFamily: MONO,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
+            >
+              <Ic d={ic.save} size={11} color={C.muted} />
+              save
+            </button>
+          )}
           <button
             onClick={handleCopy}
             title="Copy file"
@@ -559,15 +654,60 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                 style={{ background: C.surface, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
               >
                 <div style={{
-                  padding: '8px 12px 5px',
-                  fontSize: 10.5, fontWeight: 700, color: C.dim,
-                  letterSpacing: 1.3, textTransform: 'uppercase', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 6px 4px 12px', flexShrink: 0,
                 }}>
-                  {sideView === 'files' ? 'Explorer' : 'Search'}
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: C.dim, letterSpacing: 1.3, textTransform: 'uppercase' }}>
+                    {sideView === 'files' ? 'Explorer' : 'Search'}
+                  </span>
+                  {sideView === 'files' && (
+                    <div style={{ display: 'flex', gap: 1 }}>
+                      <button
+                        onClick={() => { setNewItemState({ type: 'file', parent: '' }); setNewItemName(''); }}
+                        title="New File"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <Ic d={ic.newFile} size={14} color={C.dim} />
+                      </button>
+                      <button
+                        onClick={() => { setNewItemState({ type: 'folder', parent: '' }); setNewItemName(''); }}
+                        title="New Folder"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <Ic d={ic.newDir} size={14} color={C.dim} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {sideView === 'files' && (
                   <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
+                    {newItemState && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px' }}>
+                        <Ic d={newItemState.type === 'file' ? ic.newFile : ic.newDir} size={12}
+                          color={newItemState.type === 'file' ? C.accent : C.orange} />
+                        <input
+                          autoFocus
+                          value={newItemName}
+                          onChange={e => setNewItemName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter')  createNewItem(newItemName);
+                            if (e.key === 'Escape') { setNewItemState(null); setNewItemName(''); }
+                          }}
+                          onBlur={() => { setNewItemState(null); setNewItemName(''); }}
+                          placeholder={newItemState.type === 'file' ? 'filename.py' : 'folder-name'}
+                          style={{
+                            flex: 1, background: C.raised, border: `1px solid ${C.accent}55`,
+                            color: C.text, fontFamily: MONO, fontSize: 12, borderRadius: 3,
+                            padding: '2px 6px', outline: 'none',
+                          }}
+                        />
+                      </div>
+                    )}
                     {Object.entries(tree)
                       .sort(([, a], [, b]) =>
                         ((a as TreeNode)._f === (b as TreeNode)._f ? 0 : (a as TreeNode)._f ? 1 : -1))
@@ -578,6 +718,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                           exp={exp}
                           toggle={k => setExp(p => ({ ...p, [k]: p[k] !== false ? false : true }))}
                           pfx=""
+                          onDelete={deleteFile}
                         />
                       ))}
                   </div>
@@ -602,7 +743,10 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                   value={files[active] ?? ''}
                   theme="just-black"
                   beforeMount={defineJustBlack}
-                  onMount={editor => { editorRef.current = editor; }}
+                  onMount={(editor, monaco) => {
+                    editorRef.current = editor;
+                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => { saveFile(); });
+                  }}
                   onChange={v => {
                     setFiles(p => ({ ...p, [active]: v ?? '' }));
                     setMod(p => new Set(Array.from(p).concat(active)));
