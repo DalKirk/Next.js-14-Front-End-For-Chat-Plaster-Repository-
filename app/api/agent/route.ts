@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       prompt:               body.prompt.trim(),
       conversation_history: body.conversation_history ?? [],
       enable_search:        body.enable_search ?? true,
+      enable_ide_tools:     body.enable_ide_tools ?? false,
       max_steps:            body.max_steps     ?? 8,
       conversation_id:      body.conversation_id,
       preferred_image_model: body.preferred_image_model ?? "sd35",

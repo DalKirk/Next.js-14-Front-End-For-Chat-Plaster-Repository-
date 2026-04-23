@@ -40,6 +40,7 @@ export interface AgentCallbacks {
 
 export interface AgentOptions {
   enableSearch?: boolean;
+  enableIdeTools?: boolean;
   maxSteps?: number;
   imageData?: string;
   imageMediaType?: string;
@@ -71,6 +72,7 @@ export function sendAgentMessage(
           prompt,
           conversation_history: conversationHistory,
           enable_search: options.enableSearch ?? true,
+          enable_ide_tools: options.enableIdeTools ?? false,
           max_steps: options.maxSteps ?? 8,
           ...(options.conversationId ? { conversation_id: options.conversationId } : {}),
           ...(options.imageData ? { image_data: options.imageData, image_media_type: options.imageMediaType } : {}),

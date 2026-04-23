@@ -3,6 +3,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { X } from 'lucide-react';
 import type { GenerationTool, GalleryItem } from '@/app/(app)/workspace/page';
+import type { StarIDEHandle } from '@/components/workspace/StarIDE';
 import dynamic from 'next/dynamic';
 
 /* Lazy-load generators — they are large components.
@@ -13,6 +14,7 @@ const IdeogramGenerator = dynamic(() => import('@/components/IdeogramGenerator')
 const ImageTo3DGenerator = dynamic(() => import('@/components/3d/ImageTo3DGenerator'), { ssr: false });
 const ImageAnalyzer = dynamic(() => import('@/components/ImageAnalyzer'), { ssr: false });
 const TransparencyTool = dynamic(() => import('@/components/TransparencyTool'), { ssr: false });
+const StarIDE = dynamic(() => import('@/components/workspace/StarIDE'), { ssr: false });
 
 const TITLE: Record<Exclude<GenerationTool, null>, string> = {
   video: 'Video Generator',
@@ -21,15 +23,17 @@ const TITLE: Record<Exclude<GenerationTool, null>, string> = {
   '3d': '3D Model Generator',
   'image-analysis': 'Image Analysis',
   'transparency': 'Background Removal',
+  'ide': 'IDE',
 };
 
 interface Props {
   tool: Exclude<GenerationTool, null>;
   onClose: () => void;
   addToGallery: (item: GalleryItem) => void;
+  ideRef?: React.Ref<StarIDEHandle>;
 }
 
-export function GenerationModal({ tool, onClose, addToGallery }: Props) {
+export function GenerationModal({ tool, onClose, addToGallery, ideRef }: Props) {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -59,6 +63,8 @@ export function GenerationModal({ tool, onClose, addToGallery }: Props) {
         return <ImageAnalyzer />;
       case 'transparency':
         return <TransparencyTool />;
+      case 'ide':
+        return null; // rendered separately below
       default:
         return null;
     }
@@ -66,7 +72,7 @@ export function GenerationModal({ tool, onClose, addToGallery }: Props) {
 
   return (
     <div className="ws-modal-backdrop" onClick={onClose}>
-      <div className="ws-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="ws-modal" style={tool === 'ide' ? { height: '85vh' } : undefined} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="ws-modal-header">
           <span className="ws-modal-title">{TITLE[tool]}</span>
@@ -75,25 +81,33 @@ export function GenerationModal({ tool, onClose, addToGallery }: Props) {
           </button>
         </div>
 
-        {/* Body — renders the existing full generator component */}
-        <div className="ws-modal-body">
-          <Suspense
-            fallback={
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 60,
-                color: 'var(--ws-text-muted)',
-                fontSize: 13,
-              }}>
-                Loading...
-              </div>
-            }
-          >
-            {renderTool()}
-          </Suspense>
-        </div>
+        {/* Body */}
+        {tool === 'ide' ? (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--ws-text-muted)', fontSize: 13 }}>Loading IDE…</div>}>
+              <StarIDE ref={ideRef} />
+            </Suspense>
+          </div>
+        ) : (
+          <div className="ws-modal-body">
+            <Suspense
+              fallback={
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 60,
+                  color: 'var(--ws-text-muted)',
+                  fontSize: 13,
+                }}>
+                  Loading...
+                </div>
+              }
+            >
+              {renderTool()}
+            </Suspense>
+          </div>
+        )}
       </div>
     </div>
   );

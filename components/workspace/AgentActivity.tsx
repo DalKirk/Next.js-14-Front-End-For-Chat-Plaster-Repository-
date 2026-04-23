@@ -15,9 +15,11 @@ import {
   Sparkles,
   Paperclip,
   X,
+  Terminal,
 } from 'lucide-react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { sendAgentMessage } from '@/services/agent-api';
+import { createSandbox } from '@/services/ideApi';
 import type { GalleryItem } from '@/app/(app)/workspace/page';
 import type {
   ToolStartPayload,
@@ -36,6 +38,7 @@ const TOOL_META: Record<string, { label: string; icon: React.ReactNode; color: s
   generate_skyreel:   { label: 'SkyReels video',       icon: <Video className="w-3.5 h-3.5" />,     color: '#f43f5e' },
   generate_3d:        { label: 'Generating 3D model',  icon: <Box className="w-3.5 h-3.5" />,       color: '#67e8f9' },
   web_search:         { label: 'Searching the web',    icon: <Search className="w-3.5 h-3.5" />,    color: '#34d399' },
+  execute_code:       { label: 'Executing code',        icon: <Terminal className="w-3.5 h-3.5" />,  color: '#a78bfa' },
 };
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
@@ -76,12 +79,14 @@ interface Props {
   addToGallery: (item: GalleryItem) => void;
   onRunningChange?: (running: boolean) => void;
   onContentChange?: (content: string) => void;
+  onExecuteCode?: (code: string, lang: string) => void;
 }
 
 export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
-  function WorkspaceAgentActivity({ addToGallery, onRunningChange, onContentChange }, ref) {
+  function WorkspaceAgentActivity({ addToGallery, onRunningChange, onContentChange, onExecuteCode }, ref) {
   const [prompt, setPrompt] = useState('');
   const [running, setRunning] = useState(false);
+  const [ideMode, setIdeMode] = useState(false);
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState<SummaryPayload | null>(null);
@@ -162,8 +167,12 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       {
         onStatus: (t) => pushEventCb({ id: uid(), type: 'status', text: t }),
         onPlan: (t) => pushEventCb({ id: uid(), type: 'plan', text: t }),
-        onToolStart: (p: ToolStartPayload) =>
-          pushEventCb({ id: uid(), type: 'tool_start', tool: p.tool, input: p.input, cost: p.cost }),
+        onToolStart: (p: ToolStartPayload) => {
+          pushEventCb({ id: uid(), type: 'tool_start', tool: p.tool, input: p.input, cost: p.cost });
+          if (p.tool === 'execute_code' && p.input?.code) {
+            onExecuteCode?.(p.input.code as string, (p.input.language as string | undefined) ?? 'python');
+          }
+        },
         onToolDone: (p: ToolDonePayload) => replaceToolDone(p),
         onToolError: (e) => pushEventCb({ id: uid(), type: 'tool_error', error: e }),
         onContent: (t) => {
@@ -194,7 +203,8 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       },
       {
         enableSearch: true,
-        maxSteps: 8,
+        enableIdeTools: ideMode,
+        maxSteps: ideMode ? 12 : 8,
         conversationId: agentConvId,
         ...(capturedImage ? {
           imageData: capturedImage.replace(/^data:[^;]+;base64,/, ''),
@@ -203,7 +213,7 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       },
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, history, addToGallery]);
+  }, [running, history, addToGallery, ideMode]);
 
   useImperativeHandle(ref, () => ({
     runPrompt: runFromExternal,
@@ -257,8 +267,12 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       {
         onStatus: (t) => pushEventCb({ id: uid(), type: 'status', text: t }),
         onPlan: (t) => pushEventCb({ id: uid(), type: 'plan', text: t }),
-        onToolStart: (p: ToolStartPayload) =>
-          pushEventCb({ id: uid(), type: 'tool_start', tool: p.tool, input: p.input, cost: p.cost }),
+        onToolStart: (p: ToolStartPayload) => {
+          pushEventCb({ id: uid(), type: 'tool_start', tool: p.tool, input: p.input, cost: p.cost });
+          if (p.tool === 'execute_code' && p.input?.code) {
+            onExecuteCode?.(p.input.code as string, (p.input.language as string | undefined) ?? 'python');
+          }
+        },
         onToolDone: (p: ToolDonePayload) => replaceToolDone(p),
         onToolError: (e) => pushEventCb({ id: uid(), type: 'tool_error', error: e }),
         onContent: (t) => {
@@ -289,7 +303,8 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
       },
       {
         enableSearch: true,
-        maxSteps: 8,
+        enableIdeTools: ideMode,
+        maxSteps: ideMode ? 12 : 8,
         conversationId: agentConvId,
         ...(capturedImage ? {
           imageData: capturedImage.replace(/^data:[^;]+;base64,/, ''),
@@ -388,34 +403,72 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
             }
 
             if (ev.type === 'tool_start') {
+              const isExec = ev.tool === 'execute_code';
+              const execCode = isExec ? (ev.input?.code as string | undefined) : undefined;
+              const execLang = isExec ? ((ev.input?.language as string | undefined) ?? 'python') : undefined;
               return (
-                <div key={ev.id} className="ws-agent-event">
-                  <div className="ws-agent-event-icon running">
-                    {meta?.icon || <Loader2 size={12} className="ws-spinner" />}
+                <div key={ev.id} className="ws-agent-event" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="ws-agent-event-icon running">
+                      {meta?.icon || <Loader2 size={12} className="ws-spinner" />}
+                    </div>
+                    <div className="ws-agent-text">
+                      <span className="ws-agent-text-label">
+                        {meta?.label || ev.tool}{execLang ? ` · ${execLang}` : ''}
+                      </span>
+                    </div>
+                    {ev.cost != null && (
+                      <span className="ws-agent-cost">{ev.cost} cr</span>
+                    )}
                   </div>
-                  <div className="ws-agent-text">
-                    <span className="ws-agent-text-label">
-                      {meta?.label || ev.tool}
-                    </span>
-                  </div>
-                  {ev.cost != null && (
-                    <span className="ws-agent-cost">{ev.cost} cr</span>
+                  {execCode && (
+                    <pre style={{
+                      margin: '2px 0 0 22px', padding: '6px 8px', borderRadius: 5,
+                      background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(167,139,250,0.2)',
+                      fontSize: 11, lineHeight: 1.5, color: '#e2e8f0',
+                      overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                      maxHeight: 160, overflowY: 'auto',
+                    }}>{execCode}</pre>
                   )}
                 </div>
               );
             }
 
             if (ev.type === 'tool_done') {
+              const isExec = ev.tool === 'execute_code';
+              const stdout = isExec ? (ev.result?.stdout as string | undefined) : undefined;
+              const stderr = isExec ? (ev.result?.stderr as string | undefined) : undefined;
+              const exitCode = isExec ? (ev.result?.exit_code as number | undefined) : undefined;
+              const hasOutput = !!(stdout?.trim() || stderr?.trim());
+              const execOk = exitCode === 0 || exitCode == null;
               return (
-                <div key={ev.id} className="ws-agent-event">
-                  <div className="ws-agent-event-icon done">✓</div>
-                  <div className="ws-agent-text">
-                    <span className="ws-agent-text-label">
-                      {meta?.label?.replace('Generating ', '') || ev.tool} complete
-                    </span>
+                <div key={ev.id} className="ws-agent-event" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="ws-agent-event-icon done" style={isExec && !execOk ? { background: 'rgba(239,68,68,0.15)', color: '#f87171' } : undefined}>
+                      {isExec && !execOk ? '✕' : '✓'}
+                    </div>
+                    <div className="ws-agent-text">
+                      <span className="ws-agent-text-label">
+                        {isExec
+                          ? `Code ran · exit ${exitCode ?? 0}`
+                          : `${meta?.label?.replace('Generating ', '') || ev.tool} complete`}
+                      </span>
+                    </div>
+                    {ev.cost != null && (
+                      <span className="ws-agent-cost">-{ev.cost} cr</span>
+                    )}
                   </div>
-                  {ev.cost != null && (
-                    <span className="ws-agent-cost">-{ev.cost} cr</span>
+                  {isExec && hasOutput && (
+                    <pre style={{
+                      margin: '2px 0 0 22px', padding: '6px 8px', borderRadius: 5,
+                      background: 'rgba(0,0,0,0.4)', border: `1px solid ${execOk ? 'rgba(52,211,153,0.2)' : 'rgba(239,68,68,0.25)'}`,
+                      fontSize: 11, lineHeight: 1.5,
+                      color: execOk ? '#86efac' : '#fca5a5',
+                      overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                      maxHeight: 200, overflowY: 'auto',
+                    }}>
+                      {[stdout?.trim(), stderr?.trim()].filter(Boolean).join('\n')}
+                    </pre>
                   )}
                 </div>
               );
@@ -575,6 +628,34 @@ export const WorkspaceAgentActivity = forwardRef<AgentActivityHandle, Props>(
             />
             <Paperclip size={16} />
           </label>
+          <button
+            onClick={() => {
+              const next = !ideMode;
+              setIdeMode(next);
+              // Pre-warm sandbox so it's ready when Star needs it
+              if (next) createSandbox().catch(() => {});
+            }}
+            title={ideMode ? 'IDE mode on — Star can execute code' : 'Enable IDE mode'}
+            style={{
+              background: ideMode ? 'rgba(139,92,246,0.18)' : 'transparent',
+              border: ideMode ? '1px solid rgba(139,92,246,0.45)' : '1px solid transparent',
+              borderRadius: 6,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: 11,
+              fontWeight: 600,
+              color: ideMode ? 'rgb(167,139,250)' : 'var(--ws-text-dim)',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            <Zap size={13} />
+            {ideMode ? 'IDE on' : 'IDE'}
+          </button>
           <input
             className="ws-agent-input"
             value={prompt}

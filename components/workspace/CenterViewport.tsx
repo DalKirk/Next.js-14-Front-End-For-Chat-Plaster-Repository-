@@ -43,6 +43,7 @@ interface Props {
   agentRef: React.Ref<AgentActivityHandle>;
   onAgentRunningChange?: (running: boolean) => void;
   onAgentContentChange?: (content: string) => void;
+  onExecuteCode?: (code: string, lang: string) => void;
 }
 
 export function WorkspaceCenterViewport({
@@ -60,6 +61,7 @@ export function WorkspaceCenterViewport({
   agentRef,
   onAgentRunningChange,
   onAgentContentChange,
+  onExecuteCode,
 }: Props) {
   return (
     <main className="ws-center">
@@ -112,6 +114,7 @@ export function WorkspaceCenterViewport({
             addToGallery={addToGallery}
             onRunningChange={onAgentRunningChange}
             onContentChange={onAgentContentChange}
+            onExecuteCode={onExecuteCode}
           />
         )}
       </div>

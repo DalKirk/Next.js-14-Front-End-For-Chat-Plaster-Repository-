@@ -19,6 +19,7 @@ import {
   User as UserIcon,
   Settings,
   Home,
+  Code2,
 } from 'lucide-react';
 import type { GenerationTool, CenterTab } from '@/app/(app)/workspace/page';
 import type { User } from '@/lib/types';
@@ -65,6 +66,26 @@ export function WorkspaceLeftRail({ activeTab, onTabChange, onOpenTool, currentU
         </button>
         <button className="ws-nav-item" onClick={() => onOpenTool('transparency')}>
           <Grid /> <span>Remove BG</span>
+        </button>
+        <button className="ws-nav-item" onClick={() => onOpenTool('ide')}>
+          <Code2 /> <span>IDE</span>
+          <span style={{
+            marginLeft: 4,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            color: '#aaff00',
+            textShadow: '0 0 6px #aaff00, 0 0 12px #aaff0088',
+            animation: 'ide-beta-blink 1.2s ease-in-out infinite',
+            lineHeight: 1,
+            fontFamily: 'system-ui',
+          }}>BETA</span>
+          <style>{`
+            @keyframes ide-beta-blink {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.15; }
+            }
+          `}</style>
         </button>
         <button
           className={`ws-nav-item ${activeTab === 'agent' ? 'active' : ''}`}

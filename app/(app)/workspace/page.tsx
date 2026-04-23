@@ -9,9 +9,11 @@ import { WorkspaceRightRail } from '@/components/workspace/RightRail';
 import type { VoiceExposedState } from '@/components/workspace/RightRail';
 import { MobileVoiceFAB } from '@/components/workspace/MobileVoiceFAB';
 import { GenerationModal } from '@/components/workspace/GenerationModal';
+import { FloatingIDEPanel } from '@/components/workspace/FloatingIDEPanel';
 import type { AgentActivityHandle } from '@/components/workspace/AgentActivity';
+import type { StarIDEHandle } from '@/components/workspace/StarIDE';
 
-export type GenerationTool = 'video' | 'image' | 'ideogram' | '3d' | 'image-analysis' | 'transparency' | null;
+export type GenerationTool = 'video' | 'image' | 'ideogram' | '3d' | 'image-analysis' | 'transparency' | 'ide' | null;
 export type CenterTab = 'gallery' | 'agent' | 'chat';
 
 export interface GalleryItem {
@@ -184,8 +186,39 @@ export default function WorkspacePage() {
 
   // ─── Agent refs ───────────────────────────────────────
   const agentRef = useRef<AgentActivityHandle | null>(null);
+  const ideRef = useRef<StarIDEHandle | null>(null);
+  const pendingCodeRef = useRef<{ code: string; lang: string } | null>(null);
+  const [ideOpen, setIdeOpen] = useState(false);
   const [agentRunning, setAgentRunning] = useState(false);
   const [agentContent, setAgentContent] = useState('');
+
+  // ─── IDE execute_code handler ──────────────────────────────
+  const handleExecuteCode = useCallback((code: string, lang: string) => {
+    if (ideRef.current) {
+      ideRef.current.loadCode(code, lang);
+    } else {
+      // IDE not mounted yet — open it first, then load once mounted
+      pendingCodeRef.current = { code, lang };
+      setIdeOpen(true);
+    }
+  }, []);
+
+  // When IDE opens, flush any pending code
+  useEffect(() => {
+    if (ideOpen && pendingCodeRef.current && ideRef.current) {
+      const { code, lang } = pendingCodeRef.current;
+      pendingCodeRef.current = null;
+      setTimeout(() => ideRef.current?.loadCode(code, lang), 300);
+    }
+  }, [ideOpen]);
+
+  // Opening the 'ide' tool from LeftRail also opens FloatingIDEPanel
+  useEffect(() => {
+    if (openTool === 'ide') {
+      setOpenTool(null);
+      setIdeOpen(true);
+    }
+  }, [openTool]);
   const voiceTriggeredRef = useRef(false);
   const voiceErrSeq = useRef(0);
   const activeTabRef = useRef<CenterTab>(activeTab);
@@ -476,6 +509,7 @@ export default function WorkspacePage() {
         agentRef={agentRef}
         onAgentRunningChange={handleAgentRunningChange}
         onAgentContentChange={setAgentContent}
+        onExecuteCode={handleExecuteCode}
       />
 
       <WorkspaceRightRail
@@ -502,11 +536,18 @@ export default function WorkspacePage() {
         />
       )}
 
-      {openTool && (
+      {openTool && openTool !== 'ide' && (
         <GenerationModal
           tool={openTool}
           onClose={() => setOpenTool(null)}
           addToGallery={addToGallery}
+        />
+      )}
+
+      {ideOpen && (
+        <FloatingIDEPanel
+          ideRef={ideRef}
+          onClose={() => setIdeOpen(false)}
         />
       )}
     </div>
