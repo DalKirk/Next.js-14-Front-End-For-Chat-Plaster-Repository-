@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import dynamic from 'next/dynamic';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { Monaco } from '@monaco-editor/react';
+import { loader } from '@monaco-editor/react';
 import { createSandbox, runCode, runCommand, writeFile } from '@/services/ideApi';
+
+// Pin Monaco to the exact installed version to avoid CDN version mismatches
+loader.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs' } });
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -27,19 +31,6 @@ const C = {
 };
 const MONO = `'JetBrains Mono','Fira Code',Consolas,monospace`;
 const UI   = `'IBM Plex Sans',system-ui,sans-serif`;
-
-// ─── sample files ─────────────────────────────────────────────────────────────
-const FILES: Record<string, string> = {
-  'src/main.py': `from utils import greet, add\n\ndef main():\n    print(greet("World"))\n    result = add(2, 3)\n    print(f"2 + 3 = {result}")\n\nif __name__ == "__main__":\n    main()\n`,
-  'src/utils.py': `def greet(name: str) -> str:\n    """Return a greeting."""\n    return f"Hello, {name}!"\n\ndef add(a: int, b: int) -> int:\n    """Add two numbers."""\n    return a + b\n`,
-  'tests/test_main.py': `import pytest\nfrom src.utils import greet, add\n\ndef test_greet():\n    assert greet("World") == "Hello, World!"\n\ndef test_add():\n    assert add(2, 3) == 5\n    assert add(-1, 1) == 0\n`,
-  'README.md': `# Project\n\nA simple Python project.\n\n## Usage\n\n\`\`\`bash\npython src/main.py\n\`\`\`\n`,
-};
-
-const SIM: Record<string, { out: string; ok: boolean }> = {
-  'src/main.py':        { out: 'Hello, World!\n2 + 3 = 5', ok: true },
-  'tests/test_main.py': { out: '===== test session starts =====\ncollected 2 items\n\ntests/test_main.py .. [100%]\n\n====== 2 passed in 0.12s ======', ok: true },
-};
 
 // ─── language / colour helpers ────────────────────────────────────────────────
 const EXT_LANG: Record<string, string> = {
@@ -95,6 +86,7 @@ const ic = {
   newFile: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM12 18v-6M9 15h6',
   newDir:  'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2zM12 11v6M9 14h6',
   trash:   'M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2',
+  newProj: 'M3 3h7v4H3zM14 3h7v4h-7zM3 11h7v4H3zM14 11h7v4h-7zM8 19h8M12 16v6',
 };
 
 function Ic({ d, size = 16, color = C.muted }: { d: string; size?: number; color?: string }) {
@@ -236,7 +228,7 @@ function SearchPanel({ files, onOpen }: { files: Record<string, string>; onOpen:
 function defineJustBlack(monaco: Monaco) {
   monaco.editor.defineTheme('just-black', {
     base: 'vs-dark',
-    inherit: false,
+    inherit: true,
     rules: [
       { token: '',                      foreground: '8f93a2' },
       { token: 'comment',               foreground: '666666' },
@@ -321,11 +313,11 @@ export interface StarIDEHandle {
 
 // ─── main component ───────────────────────────────────────────────────────────
 const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
-  const [files,    setFiles]    = useState<Record<string, string>>(FILES);
-  const [active,   setActive]   = useState('src/main.py');
-  const [tabs,     setTabs]     = useState(['src/main.py']);
+  const [files,    setFiles]    = useState<Record<string, string>>({});
+  const [active,   setActive]   = useState('');
+  const [tabs,     setTabs]     = useState<string[]>([]);
   const [mod,      setMod]      = useState(new Set<string>());
-  const [exp,      setExp]      = useState<Record<string, boolean>>({ src: true, tests: false });
+  const [exp,      setExp]      = useState<Record<string, boolean>>({});
   const [sideView, setSideView] = useState('files');   // '' = collapsed
   const [termOpen, setTermOpen] = useState(true);
   const [tLines,   setTLines]   = useState<{ t: string; text: string }[]>([
@@ -417,6 +409,16 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     }
     setNewItemState(null);
     setNewItemName('');
+  };
+
+  const newProject = () => {
+    if (Object.keys(files).length > 0 && !window.confirm('Start a new project? Unsaved changes will be lost.')) return;
+    setFiles({});
+    setTabs([]);
+    setActive('');
+    setMod(new Set());
+    setExp({});
+    setTLines([{ t: 'sys', text: 'New project — E2B Sandbox ready.' }]);
   };
 
   const isSandboxTimeout = (e: unknown) =>
@@ -561,14 +563,29 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
           })}
         </div>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', flexShrink: 0 }}>
-          {mod.has(active) && (
+          {/* Action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', flexShrink: 0 }}>
+            {mod.has(active) && (
+              <button
+                onClick={saveFile}
+                title="Save (Ctrl+S)"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'transparent', border: `1px solid ${C.border}`,
+                  borderRadius: 4, color: C.muted, cursor: 'pointer',
+                  fontSize: 11, padding: '2px 9px', fontFamily: MONO,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
+              >
+                <Ic d={ic.save} size={11} color={C.muted} />
+                save
+              </button>
+            )}
             <button
-              onClick={saveFile}
-              title="Save (Ctrl+S)"
+              onClick={handleCopy}
+              title="Copy file"
               style={{
-                display: 'flex', alignItems: 'center', gap: 4,
                 background: 'transparent', border: `1px solid ${C.border}`,
                 borderRadius: 4, color: C.muted, cursor: 'pointer',
                 fontSize: 11, padding: '2px 9px', fontFamily: MONO,
@@ -576,39 +593,39 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
               onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
               onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
             >
-              <Ic d={ic.save} size={11} color={C.muted} />
-              save
+              copy
             </button>
-          )}
-          <button
-            onClick={handleCopy}
-            title="Copy file"
-            style={{
-              background: 'transparent', border: `1px solid ${C.border}`,
-              borderRadius: 4, color: C.muted, cursor: 'pointer',
-              fontSize: 11, padding: '2px 9px', fontFamily: MONO,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
-          >
-            copy
-          </button>
-          <button
-            onClick={runFile}
-            title="Run file"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: running ? C.red + '20' : C.green + '18',
-              border: `1px solid ${running ? C.red + '40' : C.green + '35'}`,
-              color: running ? C.red : C.green,
-              padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
-              fontSize: 11, fontFamily: UI, fontWeight: 600,
-            }}
-          >
-            <Ic d={running ? ic.stop : ic.play} size={10} color={running ? C.red : C.green} />
-            {running ? 'Stop' : 'Run'}
-          </button>
-        </div>
+            <button
+              onClick={newProject}
+              title="New Project"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'transparent', border: `1px solid ${C.border}`,
+                borderRadius: 4, color: C.muted, cursor: 'pointer',
+                fontSize: 11, padding: '2px 9px', fontFamily: MONO,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.orange; e.currentTarget.style.borderColor = C.orange + '55'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
+            >
+              <Ic d={ic.newDir} size={11} color={C.muted} />
+              new project
+            </button>
+            <button
+              onClick={runFile}
+              title="Run file"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: running ? C.red + '20' : C.green + '18',
+                border: `1px solid ${running ? C.red + '40' : C.green + '35'}`,
+                color: running ? C.red : C.green,
+                padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
+                fontSize: 11, fontFamily: UI, fontWeight: 600,
+              }}
+            >
+              <Ic d={running ? ic.stop : ic.play} size={10} color={running ? C.red : C.green} />
+              {running ? 'Stop' : 'Run'}
+            </button>
+          </div>
       </div>
 
       {/* ══ Body ════════════════════════════════════════════════════════════ */}
@@ -762,15 +779,28 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
             <PanelGroup orientation="vertical" style={{ flex: 1, overflow: 'hidden' }}>
 
               {/* Monaco editor */}
-              <Panel id="editor" style={{ overflow: 'hidden' }}>
+              <Panel id="editor" style={{ overflow: 'hidden', position: 'relative' }}>
+                {!active ? (
+                  <div style={{
+                    height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: 12, color: C.dim, fontFamily: UI, userSelect: 'none',
+                  }}>
+                    <Ic d={ic.file} size={40} color={C.dim} />
+                    <span style={{ fontSize: 13 }}>Open a file from the explorer</span>
+                    <span style={{ fontSize: 11 }}>or create a new file to start editing</span>
+                  </div>
+                ) : (
                 <MonacoEditor
                   height="100%"
                   language={getLang(active.split('/').pop() ?? '')}
                   value={files[active] ?? ''}
                   theme="just-black"
                   beforeMount={defineJustBlack}
+                  loading={<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, fontFamily: UI, fontSize: 13 }}>Loading editor…</div>}
                   onMount={(editor, monaco) => {
                     editorRef.current = editor;
+                    defineJustBlack(monaco);
+                    monaco.editor.setTheme('just-black');
                     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => { saveFile(); });
                   }}
                   onChange={v => {
@@ -791,6 +821,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                     automaticLayout: true,
                   }}
                 />
+                )}
               </Panel>
 
               {/* Terminal */}

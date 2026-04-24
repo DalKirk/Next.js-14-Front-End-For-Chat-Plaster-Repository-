@@ -36,6 +36,19 @@ interface GeneratedItem {
   liked: boolean
 }
 
+interface StoreItem {
+  id: string
+  name: string
+  description: string
+  price: number
+  category: string
+  tags: string[]
+  imageUrls?: string[]
+  videoUrl?: string
+  condition: string
+  createdAt: string
+}
+
 interface UserProfileData {
   id: string
   username: string
@@ -309,7 +322,7 @@ function ProfilePageContent() {
   const [isViewOnly, setIsViewOnly] = useState(false)
   const [profile, setProfile] = useState<UserProfileData | null>(null)
   const [editMode, setEditMode] = useState(false)
-  const [activeTab, setActiveTab] = useState<'gallery' | 'posts' | 'stats' | 'about'>('posts')
+  const [activeTab, setActiveTab] = useState<'gallery' | 'posts' | 'store' | 'about'>('posts')
   const [filterType, setFilterType] = useState<'all' | GenerationType>('all')
   const bioRef = useRef<HTMLInputElement>(null)
   const aboutRef = useRef<HTMLTextAreaElement>(null)
@@ -348,6 +361,17 @@ function ProfilePageContent() {
   const [followLoading, setFollowLoading] = useState(false)
   const [followersCount, setFollowersCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
+  // Store
+  const [storeItems, setStoreItems] = useState<StoreItem[]>([])
+  const [showItemForm, setShowItemForm] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null)
+  const [itemFormData, setItemFormData] = useState({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [] as string[], videoUrl: '' })
+  const [uploadingItemImage, setUploadingItemImage] = useState(false)
+  const [uploadingItemVideo, setUploadingItemVideo] = useState(false)
+  const [modalImageIdx, setModalImageIdx] = useState(0)
+  useEffect(() => { setModalImageIdx(0) }, [selectedItem])
+  const itemImageInputRef = useRef<HTMLInputElement>(null)
+  const itemVideoInputRef = useRef<HTMLInputElement>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [currentUserAvatarUrls, setCurrentUserAvatarUrls] = useState<any>(null)
@@ -604,6 +628,15 @@ function ProfilePageContent() {
       loadUserPosts(profile.id)
     }
   }, [profile?.id, loadUserPosts])
+
+  // Load/persist store items via localStorage
+  useEffect(() => {
+    if (!profile?.id) return
+    try {
+      const saved = localStorage.getItem(`storeItems:${profile.id}`)
+      if (saved) setStoreItems(JSON.parse(saved))
+    } catch { /* empty */ }
+  }, [profile?.id])
 
   const handlePostCreated = useCallback((newPost: any) => {
     setMyPosts(prev => [newPost, ...prev])
@@ -907,6 +940,101 @@ function ProfilePageContent() {
     }
   }
 
+  // ─── Store handlers ────────────────────────────────────────────────
+  const addStoreItem = () => {
+    if (!profile || !itemFormData.name.trim() || !itemFormData.price) return
+    const item: StoreItem = {
+      id: Date.now().toString(),
+      name: itemFormData.name.trim(),
+      description: itemFormData.description.trim(),
+      price: parseFloat(itemFormData.price) || 0,
+      category: itemFormData.category,
+      tags: itemFormData.tags.split(',').map(t => t.trim()).filter(Boolean),
+      imageUrls: itemFormData.imageUrls.length > 0 ? itemFormData.imageUrls : undefined,
+      videoUrl: itemFormData.videoUrl || undefined,
+      condition: itemFormData.condition.trim() || 'Digital download',
+      createdAt: new Date().toISOString(),
+    }
+    setStoreItems(prev => {
+      const next = [item, ...prev]
+      try { localStorage.setItem(`storeItems:${profile.id}`, JSON.stringify(next)) } catch { /* empty */ }
+      return next
+    })
+    setItemFormData({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [], videoUrl: '' })
+    setShowItemForm(false)
+    toast.success('Item listed!')
+  }
+
+  const deleteStoreItem = (id: string) => {
+    if (!profile) return
+    if (!window.confirm('Remove this listing?')) return
+    setStoreItems(prev => {
+      const next = prev.filter(i => i.id !== id)
+      try { localStorage.setItem(`storeItems:${profile.id}`, JSON.stringify(next)) } catch { /* empty */ }
+      return next
+    })
+    toast.success('Listing removed')
+  }
+
+  const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length || !profile) return
+    const remaining = 8 - itemFormData.imageUrls.length
+    if (remaining <= 0) { toast.error('Maximum 8 images reached'); return }
+    const toUpload = files.slice(0, remaining)
+    if (files.length > remaining) toast.error(`Only ${remaining} slot${remaining !== 1 ? 's' : ''} left — uploading first ${remaining}`)
+    setUploadingItemImage(true)
+    let uploaded = 0
+    for (const file of toUpload) {
+      if (!file.type.startsWith('image/')) { toast.error(`${file.name} is not an image`); continue }
+      if (file.size > 20 * 1024 * 1024) { toast.error(`${file.name} must be under 20 MB`); continue }
+      try {
+        const formData = new FormData()
+        formData.append('files', file)
+        formData.append('userId', profile.id)
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'
+        const res = await fetch(`${backendUrl}/posts/upload-media`, { method: 'POST', body: formData })
+        if (!res.ok) throw new Error(`Upload failed (${res.status})`)
+        const data = await res.json()
+        const url = data.urls?.[0]
+        if (!url) throw new Error('No URL returned')
+        setItemFormData(p => ({ ...p, imageUrls: [...p.imageUrls, url] }))
+        uploaded++
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to upload image')
+      }
+    }
+    setUploadingItemImage(false)
+    if (e.target) e.target.value = ''
+    if (uploaded > 0) toast.success(`${uploaded} image${uploaded !== 1 ? 's' : ''} uploaded!`)
+  }
+
+  const handleItemVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    if (!file.type.startsWith('video/')) { toast.error('Please upload a video file'); return }
+    if (file.size > 500 * 1024 * 1024) { toast.error('Video must be under 500 MB'); return }
+    setUploadingItemVideo(true)
+    try {
+      const formData = new FormData()
+      formData.append('files', file)
+      formData.append('userId', profile.id)
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.starcyeed.com'
+      const res = await fetch(`${backendUrl}/posts/upload-media`, { method: 'POST', body: formData })
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`)
+      const data = await res.json()
+      const url = data.urls?.[0]
+      if (!url) throw new Error('No URL returned')
+      setItemFormData(p => ({ ...p, videoUrl: url }))
+      toast.success('Video uploaded!')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload video')
+    } finally {
+      setUploadingItemVideo(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
   // ─── Save all edits ────────────────────────────────────────────────
   const saveEdits = async () => {
     if (!profile) return
@@ -1024,11 +1152,14 @@ function ProfilePageContent() {
           font-size:10px;
           letter-spacing:0.12em;
           text-transform:uppercase;
-          color:rgba(255,255,255,0.3);
+          color:rgba(255,255,255,0.85);
           text-decoration:none;
           transition:color 0.15s;
+          display:inline-flex;
+          align-items:center;
+          gap:5px;
         }
-        .lp-back a:hover { color:rgba(255,255,255,0.6); }
+        .lp-back a:hover { color:#ffffff; }
 
         .lp-nav-btn {
           display:flex; align-items:center; gap:6px;
@@ -1154,18 +1285,19 @@ function ProfilePageContent() {
           top:14px; left:14px;
           width:30px; height:30px;
           border-radius:50%;
-          background:rgba(0,0,0,0.4);
-          border:0.5px solid rgba(255,255,255,0.12);
-          color:rgba(255,255,255,0.5);
+          background:rgba(0,0,0,0.55);
+          border:1px solid rgba(255,255,255,0.35);
+          color:rgba(255,255,255,0.9);
           display:flex; align-items:center; justify-content:center;
-          font-size:12px;
+          font-size:14px;
           cursor:pointer;
           transition:all 0.15s;
           backdrop-filter:blur(8px);
         }
         .lp-banner-edit:hover {
-          background:rgba(0,0,0,0.6);
-          color:rgba(255,255,255,0.9);
+          background:rgba(0,0,0,0.75);
+          color:#ffffff;
+          border-color:rgba(255,255,255,0.7);
         }
 
         .lp-body { padding:0 24px 28px; }
@@ -1737,6 +1869,136 @@ function ProfilePageContent() {
           animation:spin 0.6s linear infinite;
         }
         @keyframes spin { to { transform:rotate(360deg); } }
+
+        /* ── Store ── */
+        .lp-store-grid {
+          display:grid;
+          grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+          gap:12px;
+        }
+        @media(min-width:480px){ .lp-store-grid { grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); } }
+
+        .lp-store-card {
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.07);
+          border-radius:12px;
+          overflow:hidden;
+          cursor:pointer;
+          transition:border-color 0.15s,transform 0.15s,box-shadow 0.15s;
+          position:relative;
+        }
+        .lp-store-card:hover {
+          border-color:rgba(255,255,255,0.14);
+          transform:translateY(-2px);
+          box-shadow:0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .lp-store-preview {
+          position:relative;
+          width:100%;
+          aspect-ratio:4/3;
+          background:#0a0a0a;
+          overflow:hidden;
+        }
+
+        .lp-store-video-badge {
+          position:absolute;
+          top:8px; left:8px;
+          background:rgba(0,0,0,0.65);
+          color:#fff;
+          font-size:10px;
+          font-weight:500;
+          padding:3px 9px 3px 7px;
+          border-radius:20px;
+          display:flex;
+          align-items:center;
+          gap:5px;
+        }
+
+        .lp-store-delete-btn {
+          position:absolute;
+          top:6px; right:6px;
+          width:22px; height:22px;
+          border-radius:50%;
+          background:rgba(0,0,0,0.6);
+          border:0.5px solid rgba(255,255,255,0.15);
+          color:rgba(255,255,255,0.6);
+          display:flex; align-items:center; justify-content:center;
+          font-size:10px;
+          cursor:pointer;
+          opacity:0;
+          transition:opacity 0.15s;
+          z-index:2;
+        }
+        .lp-store-card:hover .lp-store-delete-btn { opacity:1; }
+
+        .lp-store-info { padding:10px 12px 12px; }
+        .lp-store-name {
+          font-size:13.5px;
+          font-weight:500;
+          color:rgba(240,237,232,0.85);
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          margin-bottom:8px;
+        }
+        .lp-store-footer {
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:6px;
+        }
+        .lp-store-price {
+          font-size:14px;
+          font-weight:700;
+          font-family:'Space Mono',monospace;
+        }
+        .lp-store-cat {
+          font-size:9px;
+          background:rgba(255,255,255,0.05);
+          color:rgba(255,255,255,0.35);
+          border-radius:20px;
+          padding:2px 7px;
+          border:0.5px solid rgba(255,255,255,0.08);
+          font-family:'Space Mono',monospace;
+          letter-spacing:0.04em;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          max-width:80px;
+        }
+
+        .lp-store-modal-backdrop {
+          position:fixed;
+          inset:0;
+          background:rgba(0,0,0,0.75);
+          z-index:999;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:1rem;
+          backdrop-filter:blur(4px);
+          -webkit-backdrop-filter:blur(4px);
+        }
+        .lp-store-modal {
+          background:#111;
+          border-radius:16px;
+          border:0.5px solid rgba(255,255,255,0.1);
+          width:100%;
+          max-width:520px;
+          overflow:hidden;
+          animation:lpIn 0.2s ease both;
+          max-height:90vh;
+          overflow-y:auto;
+        }
+        .lp-store-modal-media {
+          width:100%;
+          aspect-ratio:16/9;
+          background:#0a0a0a;
+          overflow:hidden;
+          flex-shrink:0;
+        }
+        .lp-store-modal-body { padding:1.25rem; }
       `}</style>
 
       <div
@@ -1745,7 +2007,7 @@ function ProfilePageContent() {
       >
         {/* Back nav */}
         <div className="lp-back">
-          <Link href="/">← BACK</Link>
+          <Link href="/"><span style={{fontSize:'13px',lineHeight:1}}>←</span> BACK</Link>
         </div>
 
         {/* Top-right navigation */}
@@ -2199,7 +2461,7 @@ function ProfilePageContent() {
 
               {/* Tabs */}
               <div className="lp-tabs">
-                {(['gallery', 'posts', 'stats', 'about'] as const).map(tab => (
+                {(['gallery', 'posts', 'store', 'about'] as const).map(tab => (
                   <button
                     key={tab}
                     className={`lp-tab ${activeTab === tab ? 'active' : ''}`}
@@ -2294,40 +2556,226 @@ function ProfilePageContent() {
                 </>
               )}
 
-              {/* Stats tab */}
-              {activeTab === 'stats' && (
+              {/* Store tab */}
+              {activeTab === 'store' && (
                 <>
-                  <div className="lp-stats-cards">
-                    {[
-                      { n: profile.stats.imagesCreated.toLocaleString(), l: 'Images' },
-                      { n: profile.stats.videosCreated.toLocaleString(), l: 'Videos' },
-                      { n: profile.stats.modelsCreated.toLocaleString(), l: '3D models' },
-                      { n: profile.stats.gifCreated.toLocaleString(), l: 'GIFs' },
-                    ].map(s => (
-                      <div key={s.l} className="lp-scard">
-                        <div className="lp-scard-n">{s.n}</div>
-                        <div className="lp-scard-l">{s.l}</div>
-                      </div>
-                    ))}
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)' }}>
+                      {storeItems.length} item{storeItems.length !== 1 ? 's' : ''}
+                    </div>
+                    {canEdit && (
+                      <button
+                        onClick={() => setShowItemForm(v => !v)}
+                        className="lp-video-btn"
+                        style={showItemForm ? { borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' } : {}}
+                      >
+                        {showItemForm ? '✕ Cancel' : '+ List an item'}
+                      </button>
+                    )}
                   </div>
-                  {profile.stats.totalGenerations > 0 && [
-                    { name: 'Images', val: profile.stats.imagesCreated },
-                    { name: 'Videos', val: profile.stats.videosCreated },
-                    { name: '3D models', val: profile.stats.modelsCreated },
-                    { name: 'GIFs', val: profile.stats.gifCreated },
-                  ].map(b => (
-                    <div key={b.name} className="lp-bar">
-                      <div className="lp-bar-row">
-                        <span className="lp-bar-name">{b.name}</span>
-                        <span className="lp-bar-val">
-                          {Math.round((b.val / profile.stats.totalGenerations) * 100)}%
-                        </span>
+
+                  {/* Add-item form */}
+                  {showItemForm && canEdit && (
+                    <div className="lp-edit-panel" style={{ marginBottom: 16 }}>
+                      <div className="lp-edit-title">New Listing</div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Item Name</label>
+                        <input className="lp-input" placeholder="What are you selling?" value={itemFormData.name} onChange={e => setItemFormData(p => ({ ...p, name: e.target.value }))} />
                       </div>
-                      <div className="lp-bar-track">
-                        <div className="lp-bar-fill" style={{ width: `${Math.round((b.val / profile.stats.totalGenerations) * 100)}%` }} />
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="lp-edit-row">
+                          <label className="lp-edit-label">Price ($)</label>
+                          <input className="lp-input" type="number" min="0" step="0.01" placeholder="0.00" value={itemFormData.price} onChange={e => setItemFormData(p => ({ ...p, price: e.target.value }))} />
+                        </div>
+                        <div className="lp-edit-row">
+                          <label className="lp-edit-label">Category</label>
+                          <select className="lp-input" style={{ color: '#f0ede8' }} value={itemFormData.category} onChange={e => setItemFormData(p => ({ ...p, category: e.target.value }))}>
+                            {['Digital Art', 'Music', 'Physical Art', 'Design', 'Commission', 'Photography', 'Software', 'Other'].map(c => <option key={c} style={{ background: '#111', color: '#f0ede8' }}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Condition / Delivery</label>
+                        <input className="lp-input" placeholder="Digital download, ships in 3 days…" value={itemFormData.condition} onChange={e => setItemFormData(p => ({ ...p, condition: e.target.value }))} />
+                      </div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Description</label>
+                        <textarea className="lp-textarea" placeholder="Describe your item…" value={itemFormData.description} onChange={e => setItemFormData(p => ({ ...p, description: e.target.value }))} />
+                      </div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Tags (comma-separated)</label>
+                        <input className="lp-input" placeholder="digital, art, neon…" value={itemFormData.tags} onChange={e => setItemFormData(p => ({ ...p, tags: e.target.value }))} />
+                      </div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Images ({itemFormData.imageUrls.length}/8)</label>
+                        {itemFormData.imageUrls.length > 0 && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
+                            {itemFormData.imageUrls.map((url, idx) => (
+                              <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: 6, overflow: 'hidden', background: '#0a0a0a', border: '0.5px solid rgba(255,255,255,0.1)' }}>
+                                <img src={url} alt={`img ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                                <button
+                                  onClick={() => setItemFormData(p => ({ ...p, imageUrls: p.imageUrls.filter((_, i) => i !== idx) }))}
+                                  style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.75)', border: '0.5px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {itemFormData.imageUrls.length < 8 && (
+                          <>
+                            <input ref={itemImageInputRef} type="file" accept="image/*" multiple onChange={handleItemImageUpload} style={{ display: 'none' }} />
+                            <button onClick={() => itemImageInputRef.current?.click()} disabled={uploadingItemImage} className="lp-video-btn">
+                              {uploadingItemImage ? <><div className="lp-spinner" /> Uploading…</> : <><ImageIcon style={{ width: 14, height: 14 }} /> {itemFormData.imageUrls.length === 0 ? 'Add Images' : 'Add More'}</>}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="lp-edit-row">
+                        <label className="lp-edit-label">Video Preview (optional)</label>
+                        {itemFormData.videoUrl ? (
+                          <div>
+                            <video src={itemFormData.videoUrl} controls muted style={{ width: '100%', maxHeight: 120, borderRadius: 8, background: '#000', objectFit: 'cover', marginBottom: 8 }} />
+                            <button onClick={() => setItemFormData(p => ({ ...p, videoUrl: '' }))} className="lp-video-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.7)' }}>
+                              <Trash2 style={{ width: 12, height: 12 }} /> Remove Video
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <input ref={itemVideoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleItemVideoUpload} style={{ display: 'none' }} />
+                            <button onClick={() => itemVideoInputRef.current?.click()} disabled={uploadingItemVideo} className="lp-video-btn">
+                              {uploadingItemVideo ? <><div className="lp-spinner" /> Uploading…</> : <><Video style={{ width: 14, height: 14 }} /> Upload Video Preview</>}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="lp-edit-actions">
+                        <button className="lp-save" onClick={addStoreItem} disabled={!itemFormData.name.trim() || !itemFormData.price}>
+                          List Item
+                        </button>
+                        <button className="lp-cancel" onClick={() => { setShowItemForm(false); setItemFormData({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [], videoUrl: '' }) }}>
+                          Cancel
+                        </button>
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Store grid */}
+                  {storeItems.length === 0 ? (
+                    <div className="lp-empty">
+                      {canEdit ? 'Your store is empty. List your first item above.' : 'No items listed yet.'}
+                    </div>
+                  ) : (
+                    <div className="lp-store-grid">
+                      {storeItems.map(item => (
+                        <div key={item.id} className="lp-store-card" onClick={() => setSelectedItem(item)}>
+                          <div className="lp-store-preview">
+                            {item.imageUrls?.[0] ? (
+                              <img src={item.imageUrls[0]} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                            ) : item.videoUrl ? (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a12', fontSize: 28, color: 'rgba(255,255,255,0.5)' }}>▶</div>
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb,${accent} 10%,#111)`, fontSize: 26 }}>🛍️</div>
+                            )}
+                            {(item.imageUrls?.length ?? 0) > 1 && (
+                              <div style={{ position: 'absolute', bottom: 7, right: 7, background: 'rgba(0,0,0,0.65)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: "'Space Mono',monospace" }}>
+                                1/{item.imageUrls!.length}
+                              </div>
+                            )}
+                            {item.videoUrl && (
+                              <div className="lp-store-video-badge">
+                                <span style={{ width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '7px solid #fff', display: 'inline-block' }} />
+                                Preview
+                              </div>
+                            )}
+                            {canEdit && (
+                              <button className="lp-store-delete-btn" onClick={e => { e.stopPropagation(); deleteStoreItem(item.id) }} title="Remove listing">✕</button>
+                            )}
+                          </div>
+                          <div className="lp-store-info">
+                            <div className="lp-store-name">{item.name}</div>
+                            <div className="lp-store-footer">
+                              <span className="lp-store-price" style={{ color: accent }}>${item.price.toFixed(2)}</span>
+                              <span className="lp-store-cat">{item.category}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Item detail modal */}
+                  {selectedItem && (
+                    <div className="lp-store-modal-backdrop" onClick={() => setSelectedItem(null)}>
+                      <div className="lp-store-modal" onClick={e => e.stopPropagation()}>
+                        <div className="lp-store-modal-media" style={{ position: 'relative' }}>
+                          {selectedItem.videoUrl ? (
+                            <video src={selectedItem.videoUrl} controls autoPlay muted loop style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                          ) : (selectedItem.imageUrls?.length ?? 0) > 0 ? (
+                            <>
+                              <img src={selectedItem.imageUrls![modalImageIdx]} alt={selectedItem.name} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                              {selectedItem.imageUrls!.length > 1 && (
+                                <>
+                                  <button onClick={() => setModalImageIdx(i => (i - 1 + selectedItem.imageUrls!.length) % selectedItem.imageUrls!.length)} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, cursor: 'pointer' }}>‹</button>
+                                  <button onClick={() => setModalImageIdx(i => (i + 1) % selectedItem.imageUrls!.length)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, cursor: 'pointer' }}>›</button>
+                                  <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+                                    {selectedItem.imageUrls!.map((_, i) => (
+                                      <button key={i} onClick={() => setModalImageIdx(i)} style={{ width: i === modalImageIdx ? 16 : 6, height: 6, borderRadius: 3, background: i === modalImageIdx ? accent : 'rgba(255,255,255,0.3)', border: 'none', padding: 0, cursor: 'pointer', transition: 'all 0.15s' }} />
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, background: `color-mix(in srgb,${accent} 10%,#111)` }}>🛍️</div>
+                          )}
+                          {(selectedItem.imageUrls?.length ?? 0) > 0 && selectedItem.imageUrls!.length > 1 && (
+                            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.65)', borderRadius: 20, padding: '2px 9px', fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: "'Space Mono',monospace" }}>
+                              {modalImageIdx + 1}/{selectedItem.imageUrls!.length}
+                            </div>
+                          )}
+                        </div>
+                        <div className="lp-store-modal-body">
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: '#f0ede8', lineHeight: 1.3 }}>{selectedItem.name}</div>
+                            <button onClick={() => setSelectedItem(null)} style={{ background: 'none', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: 30, height: 30, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'inherit' }}>✕</button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg,${accent},${banner})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 600, flexShrink: 0 }}>{profile.displayName[0]}</div>
+                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>{profile.displayName}</span>
+                          </div>
+                          {selectedItem.description && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 14 }}>{selectedItem.description}</p>}
+                          {selectedItem.tags.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                              {selectedItem.tags.map(t => <span key={t} style={{ fontSize: 12, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', borderRadius: 20, padding: '3px 10px', border: '0.5px solid rgba(255,255,255,0.08)' }}>{t}</span>)}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, borderTop: '0.5px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: accent, fontFamily: "'Space Mono',monospace" }}>${selectedItem.price.toFixed(2)}</div>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{selectedItem.condition}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              {isViewOnly && currentUserId && (
+                                <Link href={`/messages?userId=${profile.id}&username=${encodeURIComponent(profile.displayName)}`}>
+                                  <button style={{ background: 'none', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontFamily: "'DM Sans',sans-serif" }}>Message seller</button>
+                                </Link>
+                              )}
+                              <button style={{ background: accent, color: '#000', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }} onClick={() => toast.success('Checkout coming soon!')}>Buy now</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
