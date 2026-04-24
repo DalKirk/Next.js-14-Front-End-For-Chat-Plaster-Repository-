@@ -87,6 +87,7 @@ const ic = {
   newDir:  'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2zM12 11v6M9 14h6',
   trash:   'M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2',
   newProj: 'M3 3h7v4H3zM14 3h7v4h-7zM3 11h7v4H3zM14 11h7v4h-7zM8 19h8M12 16v6',
+  copy:    'M20 9H11a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-9a2 2 0 00-2-2zM5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1',
 };
 
 function Ic({ d, size = 16, color = C.muted }: { d: string; size?: number; color?: string }) {
@@ -349,6 +350,13 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mobile layout: collapse sidebar and terminal on small screens on first mount
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    if (mq.matches) { setSideView(''); setTermOpen(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Imperative handle: let parent load code from Star agent ──────────────
   useImperativeHandle(ref, () => ({
     loadCode: (code: string, lang: string) => {
@@ -511,7 +519,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     ({ cmd: C.accent, ok: C.green, err: C.red, sys: C.dim, out: C.muted }[t] ?? C.muted);
 
   return (
-    <div style={{
+    <div className="ws-ide-root" style={{
       display: 'flex', flexDirection: 'column',
       width: '100%', height: '100%',
       background: C.bg, color: C.text,
@@ -564,7 +572,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
         </div>
 
           {/* Action buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', flexShrink: 0 }}>
+          <div className="ws-ide-actions" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', flexShrink: 0 }}>
             {mod.has(active) && (
               <button
                 onClick={saveFile}
@@ -579,13 +587,14 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                 onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
               >
                 <Ic d={ic.save} size={11} color={C.muted} />
-                save
+                <span className="ws-ide-lbl">save</span>
               </button>
             )}
             <button
               onClick={handleCopy}
               title="Copy file"
               style={{
+                display: 'flex', alignItems: 'center', gap: 4,
                 background: 'transparent', border: `1px solid ${C.border}`,
                 borderRadius: 4, color: C.muted, cursor: 'pointer',
                 fontSize: 11, padding: '2px 9px', fontFamily: MONO,
@@ -593,7 +602,8 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
               onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
               onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
             >
-              copy
+              <Ic d={ic.copy} size={11} color={C.muted} />
+              <span className="ws-ide-lbl">copy</span>
             </button>
             <button
               onClick={newProject}
@@ -608,7 +618,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
               onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
             >
               <Ic d={ic.newDir} size={11} color={C.muted} />
-              new project
+              <span className="ws-ide-lbl">new project</span>
             </button>
             <button
               onClick={runFile}
@@ -632,7 +642,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
         {/* Activity bar — fixed 44px */}
-        <div style={{
+        <div className="ws-ide-actbar" style={{
           width: 44, background: C.surface, borderRight: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '6px 0', gap: 2, flexShrink: 0,
@@ -883,6 +893,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                         onChange={e => setTermInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleTermCommand(termInput); }}
                         placeholder="run a command…"
+                        className="ws-ide-terminput"
                         style={{
                           flex: 1, background: 'transparent', border: 'none',
                           color: C.text, fontFamily: MONO, fontSize: 12,
@@ -900,7 +911,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       </div>
 
       {/* ══ Status bar ══════════════════════════════════════════════════════ */}
-      <div style={{
+      <div className="ws-ide-status" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         height: 22, padding: '0 12px',
         background: C.surface, borderTop: `1px solid ${C.border}`,
@@ -923,6 +934,27 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
         *::-webkit-scrollbar { display: none; }
         * { scrollbar-width: none; -ms-overflow-style: none; }
+
+        /* ── Mobile layout: 320px and up ────────────────────── */
+        @media (max-width: 639px) {
+          /* Prevent iOS auto-zoom on focused inputs */
+          .ws-ide-root input { font-size: 16px !important; }
+
+          /* Buttons become icon-only — hide text labels */
+          .ws-ide-lbl { display: none !important; }
+
+          /* Tighter padding on icon-only action buttons */
+          .ws-ide-actions button { padding: 4px 7px !important; }
+
+          /* Larger touch targets in activity bar */
+          .ws-ide-actbar button {
+            width: 36px !important;
+            height: 36px !important;
+          }
+
+          /* Reclaim vertical space — status bar hidden on mobile */
+          .ws-ide-status { display: none !important; }
+        }
       `}</style>
     </div>
   );
