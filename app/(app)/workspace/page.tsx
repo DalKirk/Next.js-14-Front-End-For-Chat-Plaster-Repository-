@@ -145,21 +145,17 @@ export default function WorkspacePage() {
   const [openTool, setOpenTool] = useState<GenerationTool>(null);
 
   // ─── Gallery ──────────────────────────────────────────
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('ws-gallery');
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('ws-gallery');
-      if (raw) setGallery(JSON.parse(raw));
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    if (gallery.length > 0) {
-      try {
-        localStorage.setItem('ws-gallery', JSON.stringify(gallery.slice(0, 200)));
-      } catch { /* quota */ }
-    }
+      localStorage.setItem('ws-gallery', JSON.stringify(gallery.slice(0, 200)));
+    } catch { /* quota */ }
   }, [gallery]);
 
   const addToGallery = useCallback((item: GalleryItem) => {
