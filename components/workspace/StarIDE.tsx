@@ -527,7 +527,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     }}>
 
       {/* ══ Tab bar + actions ═══════════════════════════════════════════════ */}
-      <div style={{
+      <div className="ws-ide-tabbar" style={{
         display: 'flex', alignItems: 'center', height: 36,
         background: C.surface, borderBottom: `1px solid ${C.border}`,
         flexShrink: 0,
@@ -639,7 +639,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       </div>
 
       {/* ══ Body ════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0, minWidth: 0 }}>
 
         {/* Activity bar — fixed 44px */}
         <div className="ws-ide-actbar" style={{
@@ -695,7 +695,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
         </div>
 
         {/* ── Resizable panel layout ── */}
-        <PanelGroup orientation="horizontal" style={{ flex: 1, overflow: 'hidden' }}>
+        <PanelGroup orientation="horizontal" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
 
           {sideView !== '' && (
             <>
@@ -785,11 +785,11 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
             </>
           )}
 
-          <Panel id="main" style={{ display: 'flex', overflow: 'hidden' }}>
-            <PanelGroup orientation="vertical" style={{ flex: 1, overflow: 'hidden' }}>
+          <Panel id="main" style={{ display: 'flex', overflow: 'hidden', minWidth: 0 }}>
+            <PanelGroup orientation="vertical" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
 
               {/* Monaco editor */}
-              <Panel id="editor" style={{ overflow: 'hidden', position: 'relative' }}>
+              <Panel id="editor" style={{ overflow: 'hidden', position: 'relative', minWidth: 0 }}>
                 {!active ? (
                   <div style={{
                     height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -937,6 +937,30 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
 
         /* ── Mobile layout: 320px and up ────────────────────── */
         @media (max-width: 639px) {
+          /* Hard-clamp the IDE to the viewport */
+          .ws-ide-root {
+            max-width: 100vw !important;
+            overflow: hidden !important;
+          }
+
+          /* Every flex child must be allowed to shrink to 0 */
+          .ws-ide-root > *,
+          .ws-ide-root [data-panel-group],
+          .ws-ide-root [data-panel],
+          .ws-ide-root [data-panel-group] > * {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+
+          /* Monaco editor internal elements */
+          .ws-ide-root .monaco-editor,
+          .ws-ide-root .monaco-editor-background,
+          .ws-ide-root .overflow-guard {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
           /* Prevent iOS auto-zoom on focused inputs */
           .ws-ide-root input { font-size: 16px !important; }
 
@@ -954,6 +978,14 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
 
           /* Reclaim vertical space — status bar hidden on mobile */
           .ws-ide-status { display: none !important; }
+
+          /* Let tab bar grow to fit buttons — no hard 36px clip */
+          .ws-ide-tabbar {
+            height: auto !important;
+            min-height: 40px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+          }
         }
       `}</style>
     </div>

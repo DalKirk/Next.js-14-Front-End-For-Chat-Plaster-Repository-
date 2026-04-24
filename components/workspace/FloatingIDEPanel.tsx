@@ -45,12 +45,16 @@ export function FloatingIDEPanel({ ideRef, onClose }: Props) {
   posRef.current  = pos;
   sizeRef.current = size;
 
-  // Position bottom-right after mount
+  // Position bottom-right after mount; go fullscreen on mobile
   useEffect(() => {
-    setPos({
-      x: Math.max(16, window.innerWidth  - DEF_W - 16),
-      y: Math.max(60, window.innerHeight - DEF_H - 60),
-    });
+    if (window.innerWidth <= 639) {
+      setMaximized(true);
+    } else {
+      setPos({
+        x: Math.max(16, window.innerWidth  - DEF_W - 16),
+        y: Math.max(60, window.innerHeight - DEF_H - 60),
+      });
+    }
   }, []);
 
   useEffect(() => {
