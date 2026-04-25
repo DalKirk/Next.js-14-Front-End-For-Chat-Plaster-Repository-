@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-monaco.js",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-monaco.js",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

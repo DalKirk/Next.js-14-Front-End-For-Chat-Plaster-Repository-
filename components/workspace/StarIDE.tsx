@@ -7,8 +7,8 @@ import type { Monaco } from '@monaco-editor/react';
 import { loader } from '@monaco-editor/react';
 import { createSandbox, runCode, runCommand, writeFile } from '@/services/ideApi';
 
-// Pin Monaco to the exact installed version to avoid CDN version mismatches
-loader.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs' } });
+// Load Monaco from the self-hosted copy in public/monaco/vs (no external CDN)
+loader.config({ paths: { vs: '/monaco/vs' } });
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -931,7 +931,6 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
         *::-webkit-scrollbar { display: none; }
         * { scrollbar-width: none; -ms-overflow-style: none; }
 

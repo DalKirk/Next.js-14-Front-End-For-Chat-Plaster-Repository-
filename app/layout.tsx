@@ -1,4 +1,17 @@
 import './globals.css';
+import { JetBrains_Mono, IBM_Plex_Sans } from 'next/font/google';
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
 
 
 // Optional X/Twitter handle (set via NEXT_PUBLIC_TWITTER_HANDLE, e.g., "starcyeed")
@@ -66,7 +79,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${jetbrainsMono.className} ${ibmPlexSans.className}`}>
       <head>
                 <script
                   type="application/ld+json"

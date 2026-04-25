@@ -11,6 +11,9 @@
 /.next/
 /out/
 
+# Generated at build time — do not commit
+/public/monaco
+
 # Production
 /build
 
