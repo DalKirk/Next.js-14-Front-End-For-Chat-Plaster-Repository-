@@ -4,18 +4,12 @@
  * Auth: static Bearer token (NEXT_PUBLIC_STAR_TOKEN / STAR_API_TOKEN on Railway).
  */
 
-// Routes through the local Next.js proxy to avoid browser CORS restrictions.
 const IDE_BASE = '/api/ide';
-const TOKEN = process.env.NEXT_PUBLIC_STAR_TOKEN ?? '';
-
-if (!TOKEN) {
-  console.error('NEXT_PUBLIC_STAR_TOKEN is not set — API calls will fail');
-}
 
 function ideHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${TOKEN}`,
+    // Token is now added server-side in the proxy
   };
 }
 
