@@ -323,8 +323,12 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
   const [section,     setSection]     = useState<'changes'|'commits'|'remote'>('changes');
   const [loading,     setLoading]     = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [username,    setUsername]    = useState('');
-  const [email,       setEmail]       = useState('');
+  const [gitName,     setGitName]     = useState(
+    typeof window !== 'undefined' ? (localStorage.getItem('starIDE_git_name') ?? '') : ''
+  );
+  const [gitEmail,    setGitEmail]    = useState(
+    typeof window !== 'undefined' ? (localStorage.getItem('starIDE_git_email') ?? '') : ''
+  );
   const opRunning = useRef(false);
 
   useEffect(() => {
@@ -428,43 +432,34 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
     opRunning.current = true;
     setLoading(true);
     try {
-      const r = await gitOp('init', { path: PROJECT });
+      await gitOp('init', { path: PROJECT });
 
-      // Write a comprehensive .gitignore immediately after init
-      await writeFile(`${PROJECT}/.gitignore`, [
-        '.bash_logout',
-        '.bashrc',
-        '.profile',
-        '.bash_history',
-        '.sudo_as_admin_successful',
-        '.cache/',
-        '.config/',
-        '__pycache__/',
-        '*.pyc',
-        '*.log',
-        '.env',
-        'node_modules/',
-        'venv/',
-        '.venv/',
-        '*.egg-info/',
-        'nohup.out',
-        'server.log',
-        'server.pid',
-        'star_project/',
+      // Set user git identity
+      await runCommand([
+        `git -C /home/user config user.name "${gitName.trim()}"`,
+        `git -C /home/user config user.email "${gitEmail.trim()}"`,
+        'git -C /home/user config pull.rebase false',
+        'git -C /home/user branch -M main 2>/dev/null || true',
+      ].join(' && '));
+
+      // Save identity to localStorage
+      localStorage.setItem('starIDE_git_name',  gitName.trim());
+      localStorage.setItem('starIDE_git_email', gitEmail.trim());
+
+      // Write .gitignore
+      await writeFile('/home/user/.gitignore', [
+        '.bash_logout', '.bashrc', '.profile',
+        '.bash_history', '.sudo_as_admin_successful',
+        '.cache/', '.config/', '__pycache__/',
+        '*.pyc', '*.log', '.env', 'node_modules/',
+        'venv/', '.venv/', '*.egg-info/',
+        'nohup.out', 'server.log', 'star_project/',
       ].join('\n'));
 
-      // Stage the .gitignore so it's tracked
-      await runCommand(`cd ${PROJECT} && git add .gitignore`);
-
-      if (username) {
-        await safeCmd(`cd ${PROJECT} && git config user.name "${username}"`);
-        await safeCmd(`cd ${PROJECT} && git config user.email "${email || username + '@example.com'}"`);
-      }
-
+      await runCommand('git -C /home/user add .gitignore');
       onLog('ok', '\u2713 Git repository initialized');
-      setInitialized(true);
       await refresh();
-    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Git init failed'); }
+    } catch (e) { onLog('err', `Git init failed: ${e}`); }
     finally { opRunning.current = false; setLoading(false); }
   };
 
@@ -631,13 +626,19 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
         <span style={{ fontSize: 13, color: C.text }}>No git repository</span>
         <span style={{ fontSize: 11, color: C.dim, textAlign: 'center', lineHeight: 1.6 }}>Initialize a repository to start tracking changes</span>
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Git username (optional)"
-            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Git email (optional)"
-            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+          <input value={gitName} onChange={e => { setGitName(e.target.value); localStorage.setItem('starIDE_git_name', e.target.value); }}
+            placeholder="Your name (e.g. John Doe)"
+            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+            onFocus={e => e.currentTarget.style.borderColor = C.accent + '55'}
+            onBlur={e => e.currentTarget.style.borderColor = C.border} />
+          <input value={gitEmail} onChange={e => { setGitEmail(e.target.value); localStorage.setItem('starIDE_git_email', e.target.value); }}
+            placeholder="Your email (e.g. john@example.com)"
+            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+            onFocus={e => e.currentTarget.style.borderColor = C.accent + '55'}
+            onBlur={e => e.currentTarget.style.borderColor = C.border} />
         </div>
-        <button onClick={init} disabled={loading}
-          style={{ background: C.accentBg, border: `1px solid ${C.accent}55`, borderRadius: 4, color: C.accent, cursor: 'pointer', fontSize: 12, padding: '6px 20px', fontFamily: UI, fontWeight: 600 }}>
+        <button onClick={init} disabled={loading || !gitName.trim() || !gitEmail.trim()}
+          style={{ background: gitName.trim() && gitEmail.trim() ? C.accentBg : 'transparent', border: `1px solid ${gitName.trim() && gitEmail.trim() ? C.accent + '55' : C.border}`, borderRadius: 4, color: gitName.trim() && gitEmail.trim() ? C.accent : C.dim, cursor: gitName.trim() && gitEmail.trim() ? 'pointer' : 'not-allowed', fontSize: 12, padding: '6px 20px', fontFamily: UI, fontWeight: 600, width: '100%' }}>
           {loading ? 'Initializing\u2026' : 'Initialize Repository'}
         </button>
         <button onClick={reconnect} disabled={loading}
@@ -668,6 +669,14 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', opacity: loading ? 0.5 : 1 }}>
           <Ic d={ic.refresh} size={12} color={C.dim} />
         </button>
+      </div>
+
+      {/* Identity bar */}
+      <div style={{ padding: '4px 10px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <Ic d={ic.file} size={11} color={C.dim} />
+        <span style={{ fontSize: 10.5, color: C.dim, fontFamily: MONO, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {localStorage.getItem('starIDE_git_name') ?? 'Unknown'}{' \u00b7 '}{localStorage.getItem('starIDE_git_email') ?? 'no email'}
+        </span>
       </div>
 
       {/* Section tabs */}
@@ -1162,10 +1171,12 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
         await new Promise(r => setTimeout(r, 5000));
 
         try {
+          const gitIdentName  = localStorage.getItem('starIDE_git_name')  ?? 'StarIDE User';
+          const gitIdentEmail = localStorage.getItem('starIDE_git_email') ?? 'user@staride.dev';
           await runCommand([
             'git -C /home/user init 2>/dev/null || true',
-            'git -C /home/user config user.email "star@ide.dev"',
-            'git -C /home/user config user.name "StarIDE"',
+            `git -C /home/user config user.name "${gitIdentName}"`,
+            `git -C /home/user config user.email "${gitIdentEmail}"`,
             'git -C /home/user config pull.rebase false',
             'git -C /home/user branch -M main 2>/dev/null || true',
           ].join(' && '));
