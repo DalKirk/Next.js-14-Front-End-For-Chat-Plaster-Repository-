@@ -2090,15 +2090,22 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                       <input
                         ref={termInputRef}
                         value={termInput}
-                        onChange={e => setTermInput(e.target.value)}
+                        onChange={e => {
+                          console.log('[term] onChange:', e.target.value);
+                          setTermInput(e.target.value);
+                        }}
                         onKeyDown={e => {
+                          console.log('[term] onKeyDown:', e.key, 'target:', (e.target as HTMLElement).tagName, (e.target as HTMLElement).className);
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             e.stopPropagation();
                             const cmd = termInput.trim();
+                            console.log('[term] Enter → cmd:', cmd);
                             if (cmd) handleTermCommandRef.current(cmd);
                           }
                         }}
+                        onFocus={() => console.log('[term] FOCUSED')}
+                        onBlur={() => console.log('[term] BLURRED')}
                         placeholder="run a command…"
                         className="ws-ide-terminput"
                         style={{
