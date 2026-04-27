@@ -1,6 +1,10 @@
 const BACKEND  = process.env.RAILWAY_API_URL ?? 'https://api.starcyeed.com';
 const TOKEN    = process.env.STAR_API_TOKEN  ?? '';
 
+// TEMPORARY DEBUG — remove after fixing
+console.log('STAR_API_TOKEN set:', TOKEN ? 'YES' : 'NO — TOKEN IS EMPTY');
+console.log('RAILWAY_API_URL:', BACKEND);
+
 const headers = () => ({
   'Content-Type':  'application/json',
   'Authorization': `Bearer ${TOKEN}`,
