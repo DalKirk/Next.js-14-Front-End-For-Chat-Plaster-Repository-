@@ -363,36 +363,31 @@ function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: 
   const refresh = async () => {
     setLoading(true);
     try {
-      const s = await gitOp('status', { path: PROJECT });
+      // Use --porcelain for machine-readable file status
+      const [porcelain, branchCmd, allBranches] = await Promise.all([
+        safeCmd('git -C /home/user status --porcelain'),
+        safeCmd('git -C /home/user rev-parse --abbrev-ref HEAD 2>/dev/null || echo main'),
+        safeCmd('git -C /home/user branch 2>/dev/null || echo main'),
+      ]);
 
-      // Branch via terminal — gitOp('branch') requires a name param
-      const b = await safeCmd(
-        `cd ${PROJECT} && git branch 2>/dev/null || echo "main"`
-      );
+      // porcelain lines: "XY path"
+      const changed = (porcelain.stdout ?? '')
+        .split('\n')
+        .filter(l => l.length >= 3)
+        .map(l => ({ status: l.slice(0, 2).trim(), path: l.slice(3).trim() }))
+        .filter(f => f.path);
 
-      const statusOutput = s.stdout || s.output || '';
+      setStatus(changed);
 
-      // Only mark initialized if status returned something
-      if (statusOutput || s.success) {
-        // Parse status
-        if (statusOutput) {
-          setStatus(
-            statusOutput.split('\n').filter(line => line.length > 2)
-              .map(line => ({ status: line.slice(0, 2).trim(), path: line.slice(3).trim() }))
-              .filter(f => f.path)
-          );
-        }
+      const currentBranch = (branchCmd.stdout ?? '').trim();
+      if (currentBranch && currentBranch !== 'HEAD') setBranch(currentBranch);
 
-        // Parse current branch from status output
-        const branchLine = statusOutput.split('\n').find(line => line.startsWith('On branch'));
-        if (branchLine) setBranch(branchLine.replace('On branch ', '').trim());
+      const list = (allBranches.stdout ?? '')
+        .split('\n').map(l => l.replace('*', '').trim()).filter(Boolean);
+      if (list.length > 0) setBranches(list);
 
-        // Parse all branches from terminal output
-        if (b.stdout) {
-          const list = b.stdout.split('\n').map(line => line.replace('*', '').trim()).filter(Boolean);
-          setBranches(list.length > 0 ? list : ['main']);
-        }
-
+      // Mark initialized if git is present (even if working tree is clean)
+      if (porcelain.exit_code === 0 || porcelain.exit_code === 1) {
         setInitialized(true);
       }
 
@@ -484,11 +479,12 @@ function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: 
       }
       onLog('ok', '\u2713 Staged all changes');
 
-      // Verify something is staged
-      const statusCheck = await runCommand(
-        'git -C /home/user diff --cached --name-only'
-      );
-      if (!statusCheck.stdout?.trim()) {
+      // Verify something is staged via porcelain (index column ≠ space/untracked)
+      const statusCheck = await runCommand('git -C /home/user status --porcelain');
+      const staged = (statusCheck.stdout ?? '')
+        .split('\n')
+        .some(l => l.length >= 2 && l[0] !== ' ' && l[0] !== '?');
+      if (!staged) {
         onLog('sys', 'Nothing to commit \u2014 no changes staged');
         return;
       }
