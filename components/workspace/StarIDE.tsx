@@ -579,19 +579,20 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
       setLoading(true);
       try {
         await onEnsureSandbox();
-        await safeCmd(`mkdir -p ${PROJECT}`);
-        const r = await safeCmd(
-          `cd ${PROJECT} && git rev-parse --is-inside-work-tree 2>/dev/null`
+
+        const r = await runCommand(
+          'git -C /home/user rev-parse --is-inside-work-tree 2>/dev/null || echo "false"'
         );
-        if (r.stdout?.trim() === 'true' && r.exit_code === 0) {
+
+        if (r.stdout?.trim() === 'true') {
           await refresh();
         } else {
+          // No repo — show init screen, don't call git ops
           setInitialized(false);
+          setLoading(false);
         }
       } catch {
         setInitialized(false);
-        onLog('sys', 'Sandbox reconnecting — git panel ready');
-      } finally {
         setLoading(false);
       }
     };
