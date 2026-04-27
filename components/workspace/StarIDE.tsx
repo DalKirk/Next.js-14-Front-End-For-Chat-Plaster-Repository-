@@ -1528,6 +1528,9 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     }
   };
 
+  const handleTermCommandRef = useRef(handleTermCommand);
+  useEffect(() => { handleTermCommandRef.current = handleTermCommand; }, [handleTermCommand]);
+
   const handleCopy = () => {
     const v = editorRef.current?.getValue() ?? files[active] ?? '';
     navigator.clipboard.writeText(v).catch(() => {});
@@ -2040,13 +2043,23 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                       <input
                         value={termInput}
                         onChange={e => setTermInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleTermCommand(termInput); }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const cmd = termInput.trim();
+                            if (cmd) handleTermCommandRef.current(cmd);
+                          }
+                        }}
                         placeholder="run a command…"
                         className="ws-ide-terminput"
                         style={{
                           flex: 1, background: 'transparent', border: 'none',
                           color: C.text, fontFamily: MONO, fontSize: 12,
                           outline: 'none', caretColor: C.accent,
+                          pointerEvents: 'auto',
+                          zIndex: 10,
+                          position: 'relative',
                         }}
                         spellCheck={false}
                       />
