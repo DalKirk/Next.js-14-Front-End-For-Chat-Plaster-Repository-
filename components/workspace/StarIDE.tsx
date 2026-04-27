@@ -1159,7 +1159,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
           text: attempt === 1 ? 'Sandbox reconnecting\u2026' : `Sandbox reconnecting (attempt ${attempt}/3)\u2026`,
         }]);
         await createSandbox();
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 5000));
 
         try {
           await runCommand([
@@ -1356,6 +1356,23 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       : `${lang === 'javascript' ? 'node' : 'python'} ${active}`;
     setTLines(p => [...p, { t: 'cmd', text: `$ ${display}` }]);
 
+    const writeFileWithRetry = async (
+      path: string,
+      content: string,
+      retries = 3
+    ): Promise<void> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          await writeFile(path, content);
+          return;
+        } catch (e) {
+          if (i === retries - 1) throw e;
+          await new Promise(r => setTimeout(r, 2000));
+          setTLines(p => [...p, { t: 'sys', text: `File sync retry ${i + 1}/${retries}…` }]);
+        }
+      }
+    };
+
     const execute = async () => {
       // Kill any existing server before installing or syncing
       if (isServer) {
@@ -1369,11 +1386,9 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
         setTLines(p => [...p, { t: 'ok', text: '✓ Packages ready' }]);
       }
       setTLines(p => [...p, { t: 'sys', text: `Syncing ${Object.keys(currentFiles).length} file(s)…` }]);
-      await Promise.all(
-        Object.entries(currentFiles).map(([path, content]) =>
-          writeFile(`${PROJECT}/${path}`, content).catch(() => {})
-        )
-      );
+      for (const [path, content] of Object.entries(currentFiles)) {
+        await writeFileWithRetry(`${PROJECT}/${path}`, content);
+      }
       if (isServer) {
         // Run in background (port already cleared at top of execute)
         return runCommand(
