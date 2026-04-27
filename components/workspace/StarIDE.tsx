@@ -313,7 +313,7 @@ function VHandle() {
 // ─── git panel ────────────────────────────────────────────────────────────────
 const PROJECT = '/home/user';
 
-function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: string) => void; onEnsureSandbox: () => Promise<void>; files: Record<string, string> }) {
+function GitPanel({ onLog, onEnsureSandbox, files, onDone }: { onLog: (t: string, text: string) => void; onEnsureSandbox: () => Promise<void>; files: Record<string, string>; onDone: () => void }) {
   const [status,      setStatus]      = useState<GitFile[]>([]);
   const [commits,     setCommits]     = useState<GitCommit[]>([]);
   const [branch,      setBranch]      = useState('main');
@@ -508,6 +508,7 @@ function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: 
     } finally {
       opRunning.current = false;
       setLoading(false);
+      onDone();
     }
   };
 
@@ -525,7 +526,7 @@ function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: 
         onLog('err', r.stderr || r.stdout || 'Push failed');
       }
     } catch (e) { onLog('err', e instanceof Error ? e.message : 'Push failed'); }
-    finally { opRunning.current = false; setLoading(false); }
+    finally { opRunning.current = false; setLoading(false); onDone(); }
   };
 
   const pull = async () => {
@@ -1065,8 +1066,9 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
   const [viewportTab,   setViewportTab]   = useState<'terminal' | 'viewport' | 'python'>('terminal');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorRef = useRef<any>(null);
-  const termRef   = useRef<HTMLDivElement>(null);
+  const editorRef    = useRef<any>(null);
+  const termRef      = useRef<HTMLDivElement>(null);
+  const termInputRef = useRef<HTMLInputElement>(null);
   const activeRef = useRef(active);
   activeRef.current = active;   // always points to latest active path
   const tree      = buildTree(files);
@@ -1084,6 +1086,30 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     return () => window.removeEventListener('keydown', h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Global Enter handler for terminal — survives Git panel re-renders
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (viewportTab !== 'terminal') return;
+      const target = e.target as HTMLElement;
+      const isTermInput = target === termInputRef.current;
+      const isOtherInput = (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') && !isTermInput;
+      if (isOtherInput) return;
+      if (e.key === 'Enter' && isTermInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cmd = termInput.trim();
+        if (cmd) handleTermCommandRef.current(cmd);
+        return;
+      }
+      if (e.key === 'Enter' && !isTermInput) {
+        termInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewportTab, termInput]);
 
   // Mobile layout: collapse sidebar and terminal on small screens on first mount
   useEffect(() => {
@@ -1826,6 +1852,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                     onLog={(t, text) => setTLines(p => [...p, { t, text }])}
                     onEnsureSandbox={ensureSandbox}
                     files={files}
+                    onDone={() => setTimeout(() => termInputRef.current?.focus(), 100)}
                   />
                 )}
 
@@ -2061,6 +2088,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                     }}>
                       <span style={{ color: C.accent, fontFamily: MONO, fontSize: 12, userSelect: 'none' }}>$</span>
                       <input
+                        ref={termInputRef}
                         value={termInput}
                         onChange={e => setTermInput(e.target.value)}
                         onKeyDown={e => {
