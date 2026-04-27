@@ -6,7 +6,11 @@
 
 // Routes through the local Next.js proxy to avoid browser CORS restrictions.
 const IDE_BASE = '/api/ide';
-const TOKEN = process.env.NEXT_PUBLIC_STAR_TOKEN ?? '7571868d-ae26-45d1-af71-1819ed6b1c1d';
+const TOKEN = process.env.NEXT_PUBLIC_STAR_TOKEN ?? '';
+
+if (!TOKEN) {
+  console.error('NEXT_PUBLIC_STAR_TOKEN is not set — API calls will fail');
+}
 
 function ideHeaders(): Record<string, string> {
   return {
@@ -55,9 +59,29 @@ export interface FileEntry {
   size?: number;
 }
 
+export interface GitFile {
+  status: string;
+  path: string;
+}
+
+export interface GitCommit {
+  hash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
 export interface GitResult {
-  output: string;
-  success: boolean;
+  success:   boolean;
+  stdout:    string;
+  stderr:    string;
+  exit_code: number;
+  action:    string;
+  // legacy alias kept for compatibility
+  output:    string;
+  branch?:   string;
+  files?:    GitFile[];
+  commits?:  GitCommit[];
 }
 
 // ── Sandbox ───────────────────────────────────────────────────────────────────
@@ -95,8 +119,37 @@ export const deleteFile = (path: string) =>
 
 // ── Git ───────────────────────────────────────────────────────────────────────
 
-export type GitAction = 'init' | 'status' | 'commit' | 'log' | 'branch';
+export type GitAction =
+  | 'init'
+  | 'status'
+  | 'commit'
+  | 'log'
+  | 'branch'
+  | 'add'
+  | 'push'
+  | 'pull'
+  | 'clone'
+  | 'checkout'
+  | 'diff'
+  | 'remote';
 
 export const gitOp = (action: GitAction, extras: Record<string, unknown> = {}) =>
   ideRequest<GitResult>('POST', '/git', { action, ...extras });
+
+// ── Viewport ──────────────────────────────────────────────────────────────────
+
+export interface ViewportInfo {
+  url: string;
+  port: number;
+  ready: boolean;
+}
+
+export const exposePort = (port: number) =>
+  ideRequest<ViewportInfo>('POST', '/viewport', { port });
+
+export const getViewportUrl = (port: number) =>
+  ideRequest<ViewportInfo>('GET', `/viewport?port=${port}`);
+
+export const closeViewport = (port: number) =>
+  ideRequest<{ ok: boolean }>('DELETE', '/viewport', { port });
 

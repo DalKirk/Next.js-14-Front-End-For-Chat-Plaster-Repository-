@@ -36,7 +36,7 @@ async function handler(
 
   // Read body for mutating methods
   let body: string | undefined;
-  if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     body = await request.text();
   }
 

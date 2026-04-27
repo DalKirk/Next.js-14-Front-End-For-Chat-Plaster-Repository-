@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import type { Monaco } from '@monaco-editor/react';
 import { loader } from '@monaco-editor/react';
-import { createSandbox, runCode, runCommand, writeFile } from '@/services/ideApi';
+import { createSandbox, getSandboxStatus, runCode, runCommand, writeFile, exposePort, getViewportUrl, gitOp } from '@/services/ideApi';
+import type { GitAction, GitFile, GitCommit } from '@/services/ideApi';
+import { PyodideRunner } from './PyodideRunner';
 
 // Load Monaco from the self-hosted copy in public/monaco/vs (no external CDN)
 loader.config({ paths: { vs: '/monaco/vs' } });
@@ -88,6 +90,7 @@ const ic = {
   trash:   'M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2',
   newProj: 'M3 3h7v4H3zM14 3h7v4h-7zM3 11h7v4H3zM14 11h7v4h-7zM8 19h8M12 16v6',
   copy:    'M20 9H11a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-9a2 2 0 00-2-2zM5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1',
+  help:    'M12 22a10 10 0 100-20 10 10 0 000 20zM12 16v-4M12 8h.01',
 };
 
 function Ic({ d, size = 16, color = C.muted }: { d: string; size?: number; color?: string }) {
@@ -307,9 +310,703 @@ function VHandle() {
   );
 }
 
+// ─── git panel ────────────────────────────────────────────────────────────────
+const PROJECT = '/home/user';
+
+function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string) => void; onEnsureSandbox: () => Promise<void> }) {
+  const [status,      setStatus]      = useState<GitFile[]>([]);
+  const [commits,     setCommits]     = useState<GitCommit[]>([]);
+  const [branch,      setBranch]      = useState('main');
+  const [branches,    setBranches]    = useState<string[]>([]);
+  const [msg,         setMsg]         = useState('');
+  const [remote,      setRemote]      = useState('');
+  const [section,     setSection]     = useState<'changes'|'commits'|'remote'>('changes');
+  const [loading,     setLoading]     = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [username,    setUsername]    = useState('');
+  const [email,       setEmail]       = useState('');
+  const opRunning = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement ||
+          e.target instanceof HTMLInputElement) {
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
+
+  const run = (action: GitAction, extras: Record<string, unknown> = {}) =>
+    gitOp(action, { path: PROJECT, ...extras });
+
+  // Wrapper that auto-recovers from sandbox timeouts
+  const safeCmd = async (command: string): Promise<import('@/services/ideApi').ExecuteResult> => {
+    try {
+      return await runCommand(command);
+    } catch (e) {
+      const msg = String(e).toLowerCase();
+      if (msg.includes('sandbox') && msg.includes('not found')) {
+        onLog('sys', 'Sandbox timed out — restarting…');
+        await onEnsureSandbox();
+        return await runCommand(command);
+      }
+      throw e;
+    }
+  };
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const s = await gitOp('status', { path: PROJECT });
+
+      // Branch via terminal — gitOp('branch') requires a name param
+      const b = await safeCmd(
+        `cd ${PROJECT} && git branch 2>/dev/null || echo "main"`
+      );
+
+      const statusOutput = s.stdout || s.output || '';
+
+      // Only mark initialized if status returned something
+      if (statusOutput || s.success) {
+        // Parse status
+        if (statusOutput) {
+          setStatus(
+            statusOutput.split('\n').filter(line => line.length > 2)
+              .map(line => ({ status: line.slice(0, 2).trim(), path: line.slice(3).trim() }))
+              .filter(f => f.path)
+          );
+        }
+
+        // Parse current branch from status output
+        const branchLine = statusOutput.split('\n').find(line => line.startsWith('On branch'));
+        if (branchLine) setBranch(branchLine.replace('On branch ', '').trim());
+
+        // Parse all branches from terminal output
+        if (b.stdout) {
+          const list = b.stdout.split('\n').map(line => line.replace('*', '').trim()).filter(Boolean);
+          setBranches(list.length > 0 ? list : ['main']);
+        }
+
+        setInitialized(true);
+      }
+
+      // Fetch log separately so a failure (empty repo) doesn't block status
+      try {
+        const logResult = await gitOp('log', { limit: 20, path: PROJECT });
+
+        const logOutput = logResult.stdout || '';
+
+        if (logOutput.trim()) {
+          const parsed: import('@/services/ideApi').GitCommit[] = logOutput
+            .split(/\r?\n/)
+            .filter((line: string) => line.includes('|||'))
+            .map((line: string) => {
+              const parts   = line.split('|||');
+              const hash    = (parts[0] ?? '').trim();
+              const message = (parts[1] ?? '').trim();
+              const author  = (parts[2] ?? '').trim();
+              const date    = (parts[3] ?? '').trim();
+              return { hash: hash.slice(0, 7), message, author, date };
+            })
+            .filter((c: import('@/services/ideApi').GitCommit) => c.hash.length === 7);
+
+          setCommits(parsed);
+        }
+      } catch { /* empty repo — no commits yet */ }
+      // If no output, leave initialized state as-is
+    } catch {
+      // Don't change initialized state on error — just stop loading
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const init = async () => {
+    if (opRunning.current) return;
+    opRunning.current = true;
+    setLoading(true);
+    try {
+      const r = await gitOp('init', { path: PROJECT });
+
+      // Write a comprehensive .gitignore immediately after init
+      await writeFile(`${PROJECT}/.gitignore`, [
+        '.bash_logout',
+        '.bashrc',
+        '.profile',
+        '.bash_history',
+        '.sudo_as_admin_successful',
+        '.cache/',
+        '.config/',
+        '__pycache__/',
+        '*.pyc',
+        '*.log',
+        '.env',
+        'node_modules/',
+        'venv/',
+        '.venv/',
+        '*.egg-info/',
+        'nohup.out',
+        'server.log',
+        'server.pid',
+        'star_project/',
+      ].join('\n'));
+
+      // Stage the .gitignore so it's tracked
+      await runCommand(`cd ${PROJECT} && git add .gitignore`);
+
+      if (username) {
+        await safeCmd(`cd ${PROJECT} && git config user.name "${username}"`);
+        await safeCmd(`cd ${PROJECT} && git config user.email "${email || username + '@example.com'}"`);
+      }
+
+      onLog('ok', '\u2713 Git repository initialized');
+      setInitialized(true);
+      await refresh();
+    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Git init failed'); }
+    finally { opRunning.current = false; setLoading(false); }
+  };
+
+  const stageAll = async () => {
+    if (opRunning.current) return;
+    opRunning.current = true;
+    setLoading(true);
+    try {
+      const r = await safeCmd(`cd ${PROJECT} && git add .`);
+      if (r.exit_code === 0) {
+        onLog('ok', '✓ Staged all changes');
+      } else {
+        onLog('err', r.stderr || 'Stage failed');
+      }
+      await refresh();
+    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Stage failed'); }
+    finally { opRunning.current = false; setLoading(false); }
+  };
+
+  const commit = async () => {
+    if (!msg.trim()) return;
+    setLoading(true);
+    try {
+      const r = await run('commit', { message: msg.trim() });
+      onLog('ok', `\u2713 ${r.output || `Committed: ${msg}`}`);
+      setMsg('');
+      await refresh();
+    } catch (e) { onLog('err', `Commit failed: ${e}`); }
+    finally { setLoading(false); }
+  };
+
+  const push = async () => {
+    if (opRunning.current) return;
+    opRunning.current = true;
+    setLoading(true);
+    try {
+      const r = await safeCmd(`cd ${PROJECT} && git push origin ${branch}`);
+      if (r.exit_code === 0) {
+        onLog('ok', `\u2713 Pushed to origin/${branch}`);
+      } else {
+        onLog('err', r.stderr || r.stdout || 'Push failed');
+      }
+    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Push failed'); }
+    finally { opRunning.current = false; setLoading(false); }
+  };
+
+  const pull = async () => {
+    if (opRunning.current) return;
+    opRunning.current = true;
+    setLoading(true);
+    try {
+      const r = await safeCmd(`cd ${PROJECT} && git pull origin ${branch}`);
+      if (r.exit_code === 0) {
+        onLog('ok', `\u2713 Pulled from origin/${branch}`);
+        await refresh();
+      } else {
+        onLog('err', r.stderr || r.stdout || 'Pull failed');
+      }
+    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Pull failed'); }
+    finally { opRunning.current = false; setLoading(false); }
+  };
+
+  const addRemote = async () => {
+    if (!remote.trim()) return;
+    setLoading(true);
+    try {
+      // Remove existing origin first to avoid "already exists" error
+      await safeCmd(`cd ${PROJECT} && git remote remove origin 2>/dev/null || true`);
+      const r = await safeCmd(`cd ${PROJECT} && git remote add origin ${remote.trim()}`);
+      if (r.exit_code === 0) {
+        localStorage.setItem('starIDE_remote', remote.trim());
+        onLog('ok', `\u2713 Remote saved`);
+        setRemote('');
+      } else {
+        onLog('err', r.stderr || 'Failed to add remote');
+      }
+    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Remote failed'); }
+    finally { setLoading(false); }
+  };
+
+  const checkout = async (b: string) => {
+    setLoading(true);
+    try {
+      await run('checkout', { branch: b });
+      onLog('ok', `\u2713 Switched to ${b}`);
+      setBranch(b);
+      await refresh();
+    } catch (e) { onLog('err', `Checkout failed: ${e}`); }
+    finally { setLoading(false); }
+  };
+
+  const newBranch = async () => {
+    const name = prompt('Branch name:');
+    if (!name?.trim()) return;
+    setLoading(true);
+    try {
+      await run('branch', { name: name.trim(), create: true });
+      onLog('ok', `\u2713 Created branch: ${name}`);
+      await refresh();
+    } catch (e) { onLog('err', `Branch failed: ${e}`); }
+    finally { setLoading(false); }
+  };
+
+  const statusColor = (s: string) =>
+    ({ M: C.orange, A: C.green, D: C.red, '?': C.muted, R: C.accent }[s] ?? C.muted);
+  const statusLabel = (s: string) =>
+    ({ M: 'modified', A: 'added', D: 'deleted', '?': 'untracked', R: 'renamed' }[s] ?? s);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const checkRepo = async () => {
+      setLoading(true);
+      try {
+        await onEnsureSandbox();
+        await safeCmd(`mkdir -p ${PROJECT}`);
+        const r = await safeCmd(
+          `cd ${PROJECT} && git rev-parse --is-inside-work-tree 2>/dev/null`
+        );
+        if (r.stdout?.trim() === 'true' && r.exit_code === 0) {
+          await refresh();
+        } else {
+          setInitialized(false);
+        }
+      } catch {
+        setInitialized(false);
+        onLog('sys', 'Sandbox reconnecting — git panel ready');
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkRepo();
+  }, []);
+
+  const btn = (label: string, onClick: () => void, color = C.accent) => (
+    <button onClick={onClick} disabled={loading}
+      style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 11, padding: '3px 10px', fontFamily: MONO, display: 'flex', alignItems: 'center', gap: 4, opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto' }}
+      onMouseEnter={e => { if (!loading) { e.currentTarget.style.color = color; e.currentTarget.style.borderColor = color + '55'; } }}
+      onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}
+    >{label}</button>
+  );
+
+  if (!initialized) {
+    const reconnect = async () => {
+      setLoading(true);
+      try {
+        await onEnsureSandbox();
+        await safeCmd(`mkdir -p ${PROJECT}`);
+        const r = await safeCmd(
+          `cd ${PROJECT} && git rev-parse --is-inside-work-tree 2>/dev/null`
+        );
+        if (r.stdout?.trim() === 'true' && r.exit_code === 0) {
+          await refresh();
+        }
+      } catch { /* stay on init screen */ }
+      finally { setLoading(false); }
+    };
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 20 }}>
+        <Ic d={ic.newProj} size={36} color={C.dim} />
+        <span style={{ fontSize: 13, color: C.text }}>No git repository</span>
+        <span style={{ fontSize: 11, color: C.dim, textAlign: 'center', lineHeight: 1.6 }}>Initialize a repository to start tracking changes</span>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Git username (optional)"
+            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Git email (optional)"
+            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 12, padding: '5px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+        </div>
+        <button onClick={init} disabled={loading}
+          style={{ background: C.accentBg, border: `1px solid ${C.accent}55`, borderRadius: 4, color: C.accent, cursor: 'pointer', fontSize: 12, padding: '6px 20px', fontFamily: UI, fontWeight: 600 }}>
+          {loading ? 'Initializing\u2026' : 'Initialize Repository'}
+        </button>
+        <button onClick={reconnect} disabled={loading}
+          style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 11, padding: '4px 16px', fontFamily: MONO, opacity: loading ? 0.5 : 1 }}
+          onMouseEnter={e => { if (!loading) { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; } }}
+          onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}>
+          {loading ? 'Reconnecting\u2026' : 'Reconnect sandbox'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+
+      {/* Branch bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, flexWrap: 'wrap' }}>
+        <Ic d={ic.chevR} size={11} color={C.dim} />
+        <select value={branch} onChange={e => checkout(e.target.value)}
+          style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.accent, fontFamily: MONO, fontSize: 11, padding: '2px 6px', outline: 'none', cursor: 'pointer' }}>
+          {branches.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+        {btn('+ branch', newBranch, C.green)}
+        <div style={{ flex: 1 }} />
+        {btn('\u2191 push', push, C.green)}
+        {btn('\u2193 pull', pull, C.accent)}
+        <button onClick={refresh} disabled={loading}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', opacity: loading ? 0.5 : 1 }}>
+          <Ic d={ic.refresh} size={12} color={C.dim} />
+        </button>
+      </div>
+
+      {/* Section tabs */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        {(['changes', 'commits', 'remote'] as const).map(s => (
+          <button key={s} onClick={() => {
+            console.log('Tab clicked:', s);
+            if (s === 'commits') {
+              console.log('Current commits state:', commits);
+              refresh();
+            }
+            setSection(s);
+          }}
+            style={{ flex: 1, padding: '5px 0', fontSize: 10.5, fontFamily: UI, fontWeight: 600, cursor: 'pointer', border: 'none', background: section === s ? C.bg : 'transparent', color: section === s ? C.text : C.dim, borderTop: section === s ? `2px solid ${C.accent}` : '2px solid transparent', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {s}
+            {s === 'changes' && status.length > 0 && (
+              <span style={{ marginLeft: 5, fontSize: 9, background: C.accent, color: '#000', borderRadius: 8, padding: '0 5px', fontWeight: 700 }}>{status.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Changes */}
+      {section === 'changes' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '8px 10px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+            <textarea value={msg} onChange={e => setMsg(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) e.stopPropagation();
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit();
+              }}
+              onClick={e => e.stopPropagation()}
+              onFocus={e => { const len = e.target.value.length; e.target.setSelectionRange(len, len); }}
+              placeholder="Commit message (Ctrl+Enter to commit)" rows={2}
+              style={{ width: '100%', background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 11.5, padding: '6px 8px', outline: 'none', resize: 'none', marginBottom: 6, boxSizing: 'border-box', pointerEvents: 'auto', position: 'relative', zIndex: 10 }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              {btn('Stage all', stageAll, C.accent)}
+              <button onClick={commit} disabled={loading || !msg.trim()}
+                style={{ flex: 1, background: msg.trim() ? C.green + '18' : 'transparent', border: `1px solid ${msg.trim() ? C.green + '40' : C.border}`, borderRadius: 4, color: msg.trim() ? C.green : C.dim, cursor: msg.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontFamily: UI, fontWeight: 600, padding: '4px 0' }}>
+                {loading ? 'Committing\u2026' : '\u2713 Commit'}
+              </button>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {status.length === 0
+              ? <div style={{ padding: '20px 10px', fontSize: 12, color: C.dim, textAlign: 'center' }}>No changes</div>
+              : status.map((f, i) => (
+                <div key={i}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderBottom: `1px solid ${C.border}22` }}
+                  onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: statusColor(f.status), fontFamily: MONO, minWidth: 14, textTransform: 'uppercase' }}>{f.status}</span>
+                  <span style={{ fontSize: 12, color: C.text, fontFamily: MONO, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.path}</span>
+                  <span style={{ fontSize: 10, color: C.dim }}>{statusLabel(f.status)}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Commits */}
+      {section === 'commits' && (
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {commits.length === 0
+            ? <div style={{ padding: '20px 10px', fontSize: 12, color: C.dim, textAlign: 'center' }}>No commits yet</div>
+            : commits.map((c, i) => (
+              <div key={i}
+                style={{ padding: '8px 10px', borderBottom: `1px solid ${C.border}22` }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.accent, background: C.accentBg, padding: '1px 6px', borderRadius: 3 }}>{c.hash}</span>
+                  <span style={{ fontSize: 11, color: C.dim, fontFamily: MONO }}>{c.date}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.text, fontFamily: UI, marginBottom: 2 }}>{c.message}</div>
+                <div style={{ fontSize: 10, color: C.dim, fontFamily: MONO }}>{c.author}</div>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* Remote */}
+      {section === 'remote' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.7 }}>
+            Add a GitHub remote to push and pull your code. Use an HTTPS URL with a personal access token for auth.
+          </div>
+          <div style={{ fontSize: 10.5, color: C.dim, fontFamily: MONO, background: C.raised, padding: '6px 10px', borderRadius: 4, border: `1px solid ${C.border}`, lineHeight: 1.8 }}>
+            Format:<br />https://TOKEN@github.com/user/repo.git
+          </div>
+          <input value={remote} onChange={e => setRemote(e.target.value)}
+            placeholder="https://github.com/user/repo.git"
+            style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 11, padding: '6px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+            onFocus={e => (e.currentTarget.style.borderColor = C.accent + '55')}
+            onBlur={e => (e.currentTarget.style.borderColor = C.border)} />
+          <button onClick={addRemote} disabled={loading || !remote.trim()}
+            style={{ background: remote.trim() ? C.accentBg : 'transparent', border: `1px solid ${remote.trim() ? C.accent + '55' : C.border}`, borderRadius: 4, color: remote.trim() ? C.accent : C.dim, cursor: remote.trim() ? 'pointer' : 'not-allowed', fontSize: 12, fontFamily: UI, fontWeight: 600, padding: '6px 0' }}>
+            {loading ? 'Adding\u2026' : 'Add Remote'}
+          </button>
+          <div style={{ fontSize: 11, color: C.dim, borderTop: `1px solid ${C.border}`, paddingTop: 10, lineHeight: 1.7 }}>
+            After adding remote:<br />
+            <span style={{ color: C.accent, fontFamily: MONO }}>\u2191 push</span> to send your commits to GitHub
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── public handle ──────────────────────────────────────────────────────────
 export interface StarIDEHandle {
   loadCode: (code: string, lang: string) => void;
+}
+
+// ─── help panel ───────────────────────────────────────────────────────────────
+function HelpPanel() {
+  const [section, setSection] = useState<'start' | 'editor' | 'git' | 'viewport' | 'shortcuts'>('start');
+  const [storageUsed, setStorageUsed] = useState('0 KB');
+  const [storagePercent, setStoragePercent] = useState(0);
+
+  useEffect(() => {
+    try {
+      const files  = localStorage.getItem('starIDE_files')  ?? '';
+      const tabs   = localStorage.getItem('starIDE_tabs')   ?? '';
+      const remote = localStorage.getItem('starIDE_remote') ?? '';
+      const total  = files.length + tabs.length + remote.length;
+      const kb     = (total / 1024).toFixed(1);
+      setStorageUsed(`${kb} KB / 5,120 KB`);
+      setStoragePercent(Math.min((total / 1024 / 5120) * 100, 100));
+    } catch { /* ignore */ }
+  }, []);
+
+  const sections = [
+    { id: 'start',     label: 'Getting Started' },
+    { id: 'editor',    label: 'Editor'          },
+    { id: 'git',       label: 'Git & GitHub'    },
+    { id: 'viewport',  label: 'Viewport'        },
+    { id: 'shortcuts', label: 'Shortcuts'       },
+  ] as const;
+
+  const Block = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, fontFamily: UI }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const Item = ({ label, desc }: { label: string; desc: string }) => (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 12, color: C.text, fontFamily: MONO, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: C.dim, fontFamily: UI, lineHeight: 1.6 }}>{desc}</div>
+    </div>
+  );
+
+  const Code = ({ children }: { children: string }) => (
+    <div style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, padding: '6px 10px', fontFamily: MONO, fontSize: 11, color: C.accent, marginBottom: 8, lineHeight: 1.7 }}>
+      {children}
+    </div>
+  );
+
+  const Key = ({ k }: { k: string }) => (
+    <span style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 6px', fontFamily: MONO, fontSize: 10, color: C.text, whiteSpace: 'nowrap' as const }}>
+      {k}
+    </span>
+  );
+
+  const ShortcutRow = ({ keys, desc }: { keys: string[]; desc: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: `1px solid ${C.border}22` }}>
+      <div style={{ fontSize: 11, color: C.dim, fontFamily: UI }}>{desc}</div>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        {keys.map((k, i) => (
+          <React.Fragment key={i}>
+            <Key k={k} />
+            {i < keys.length - 1 && <span style={{ color: C.dim, fontSize: 10 }}>+</span>}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Section tabs */}
+      <div style={{ flexShrink: 0, borderBottom: `1px solid ${C.border}`, overflowX: 'auto' as const }}>
+        {sections.map(s => (
+          <button key={s.id} onClick={() => setSection(s.id)} style={{
+            padding: '6px 10px', fontSize: 10.5, fontFamily: UI, fontWeight: 600,
+            cursor: 'pointer', border: 'none',
+            background: section === s.id ? C.bg : 'transparent',
+            color: section === s.id ? C.text : C.dim,
+            borderTop: section === s.id ? `2px solid ${C.accent}` : '2px solid transparent',
+            textTransform: 'uppercase' as const, letterSpacing: '0.05em', whiteSpace: 'nowrap' as const,
+          }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: 'auto' as const, padding: '14px 12px' }}>
+
+        {section === 'start' && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4, fontFamily: UI }}>Welcome to StarIDE</div>
+            <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.7, marginBottom: 16, fontFamily: UI }}>
+              A cloud IDE powered by E2B sandboxes. Write, run, and deploy code directly in your browser.
+            </div>
+            <Block title="Quick Start">
+              <Item label="1. Create a file" desc="Click the + icon in the Explorer panel or right-click the file tree." />
+              <Item label="2. Write your code" desc="The editor supports Python, JavaScript, TypeScript, and more with syntax highlighting." />
+              <Item label="3. Run it" desc="Click the green Run button or press Ctrl+Enter. Output appears in the terminal below." />
+              <Item label="4. Save your work" desc="Use Ctrl+S to save. Files sync to the E2B sandbox automatically on run." />
+            </Block>
+            <Block title="Runtimes">
+              <Item label="E2B Sandbox" desc="Python and Node.js run in a secure cloud sandbox. Full filesystem access, package install, terminal commands." />
+              <Item label="Pyodide (Browser)" desc="Matplotlib, NumPy, and SciPy run directly in your browser via WebAssembly. No server needed." />
+              <Item label="Viewport" desc="Flask, FastAPI, and Streamlit apps get a live preview panel automatically when a server is detected." />
+            </Block>
+            <Block title="Need Help?">
+              <Item label="Use the tabs above" desc="Each tab covers a specific feature — Editor, Git, Viewport, and Shortcuts." />
+            </Block>
+            <Block title="Storage">
+              <Item label="Browser storage" desc="Your files are saved in your browser automatically. They survive page refreshes but not clearing browser data." />
+              <div style={{ background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, padding: '8px 10px', marginTop: 6 }}>
+                <div style={{ fontSize: 10, color: C.dim, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 4 }}>Storage used</div>
+                <div style={{ fontSize: 12, color: C.accent, fontFamily: MONO }}>{storageUsed}</div>
+                <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 6 }}>
+                  <div style={{ height: '100%', width: `${storagePercent}%`, background: C.accent, borderRadius: 2, transition: 'width 0.3s' }} />
+                </div>
+              </div>
+              <Item label="Push to GitHub" desc="For permanent storage use the Git panel to push to GitHub. Browser storage is limited to 5MB." />
+            </Block>
+          </div>
+        )}
+
+        {section === 'editor' && (
+          <div>
+            <Block title="Writing Code">
+              <Item label="Supported languages" desc="Python, JavaScript, TypeScript, HTML, CSS, JSON, Markdown, Rust, Go, C++, Java, SQL, Shell, YAML." />
+              <Item label="Syntax highlighting" desc="Automatic based on file extension. Create files with the correct extension (.py, .ts, .js, etc.)" />
+              <Item label="IntelliSense" desc="Monaco editor provides autocomplete, hover docs, and error detection for supported languages." />
+            </Block>
+            <Block title="Files">
+              <Item label="New file" desc="Click the document+ icon in the Explorer header. Type a name and press Enter." />
+              <Item label="New folder" desc="Click the folder+ icon. Use / in filenames to create nested paths e.g. src/components/Button.py" />
+              <Item label="Delete file" desc="Hover over a file in the Explorer and click the trash icon that appears." />
+              <Item label="Search files" desc="Click the search icon in the activity bar to search across all open files." />
+            </Block>
+            <Block title="Running Code">
+              <Item label="Run button" desc="Runs the currently active file. Python files run with python, JS files run with node." />
+              <Item label="Terminal" desc="Type any shell command in the terminal input at the bottom. Full bash access to the sandbox." />
+              <Item label="Package install" desc="Packages are installed automatically when detected in imports. Or run pip install in the terminal." />
+            </Block>
+          </div>
+        )}
+
+        {section === 'git' && (
+          <div>
+            <Block title="Setting Up Git">
+              <Item label="Initialize a repository" desc="Open the Git panel from the activity bar. Click Initialize Repository. A .gitignore is created automatically." />
+              <Item label="Connect to GitHub" desc="Go to the Remote tab in the Git panel. Add your GitHub URL with a personal access token." />
+            </Block>
+            <Block title="GitHub Token">
+              <Item label="Create a token" desc="GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (classic) → Generate new token. Select the repo scope." />
+              <Item label="Remote URL format" desc="Use your token directly in the URL:" />
+              <Code>{'https://TOKEN@github.com/USERNAME/REPO.git'}</Code>
+              <div style={{ fontSize: 10.5, color: C.red, fontFamily: UI, lineHeight: 1.6, marginBottom: 8 }}>
+                ⚠ Never share your token publicly. It gives full access to your GitHub repos.
+              </div>
+            </Block>
+            <Block title="Daily Workflow">
+              <Item label="1. Stage changes" desc="Click Stage all in the Changes tab to stage all modified files." />
+              <Item label="2. Commit" desc="Type a commit message and click Commit or press Ctrl+Enter." />
+              <Item label="3. Push" desc="Click ↑ push in the Git panel header to push to GitHub." />
+              <Item label="4. Pull" desc="Click ↓ pull to fetch the latest changes from GitHub." />
+            </Block>
+            <Block title="Important Notes">
+              <Item label="Sandbox resets" desc="The E2B sandbox resets after 1 hour of inactivity. Always push your work to GitHub before closing the IDE." />
+              <Item label="After a reset" desc="Re-initialize git and add your remote again. Your files on GitHub are always safe." />
+            </Block>
+          </div>
+        )}
+
+        {section === 'viewport' && (
+          <div>
+            <Block title="What is the Viewport?">
+              <Item label="Live preview" desc="When your code starts a web server, StarIDE automatically detects it and shows a live preview in the Viewport tab." />
+              <Item label="Supported frameworks" desc="Flask, FastAPI, Streamlit, Dash, Tornado, Bottle, aiohttp, and any other Python HTTP server." />
+            </Block>
+            <Block title="How it works">
+              <Item label="Automatic detection" desc="StarIDE scans your imports for server libraries. If detected, it runs your file as a background process." />
+              <Item label="Port detection" desc="The default port is 8080. Specify a different port with port=XXXX in your code." />
+              <Item label="Viewport tab" desc="A green dot appears on the Viewport tab when your server is live. Click it to see the preview." />
+            </Block>
+            <Block title="Example — Flask server">
+              <Code>{'from flask import Flask\napp = Flask(__name__)\n\n@app.route("/")\ndef index():\n    return "<h1>Hello</h1>"\n\napp.run(host="0.0.0.0", port=8080)'}</Code>
+            </Block>
+            <Block title="3D and WebGL">
+              <Item label="Three.js" desc="Serve a Three.js page from Flask for full 3D rendering in the viewport. Your browser GPU handles the rendering — no server GPU needed." />
+              <Item label="Matplotlib" desc="Static plots render automatically via Pyodide. No server needed for charts and graphs." />
+            </Block>
+            <Block title="Tips">
+              <Item label="Refresh button" desc="Use the refresh icon in the Viewport tab header to reload the preview after changes." />
+              <Item label="Open in new tab" desc="Click the open icon next to the URL to open your app in a full browser tab." />
+              <Item label="Stop server" desc="Type stop in the terminal to kill the running server." />
+            </Block>
+          </div>
+        )}
+
+        {section === 'shortcuts' && (
+          <div>
+            <Block title="Editor">
+              <ShortcutRow keys={['Ctrl', 'S']}          desc="Save file" />
+              <ShortcutRow keys={['Ctrl', 'Z']}          desc="Undo" />
+              <ShortcutRow keys={['Ctrl', 'Shift', 'Z']} desc="Redo" />
+              <ShortcutRow keys={['Ctrl', '/']}          desc="Toggle comment" />
+              <ShortcutRow keys={['Ctrl', 'D']}          desc="Select next occurrence" />
+              <ShortcutRow keys={['Alt', '↑']}           desc="Move line up" />
+              <ShortcutRow keys={['Alt', '↓']}           desc="Move line down" />
+              <ShortcutRow keys={['Ctrl', 'F']}          desc="Find in file" />
+              <ShortcutRow keys={['Ctrl', 'H']}          desc="Find and replace" />
+              <ShortcutRow keys={['Ctrl', 'G']}          desc="Go to line" />
+              <ShortcutRow keys={['Tab']}                desc="Indent / accept suggestion" />
+              <ShortcutRow keys={['Shift', 'Tab']}       desc="Outdent" />
+            </Block>
+            <Block title="IDE">
+              <ShortcutRow keys={['Ctrl', 'S']}          desc="Save current file" />
+              <ShortcutRow keys={['Ctrl', 'Enter']}      desc="Commit (in git message box)" />
+            </Block>
+            <Block title="Terminal">
+              <ShortcutRow keys={['Enter']}              desc="Run command" />
+              <ShortcutRow keys={['↑']}                  desc="Previous command (type logs)" />
+            </Block>
+            <Block title="Git Panel">
+              <ShortcutRow keys={['Ctrl', 'Enter']}      desc="Commit with current message" />
+            </Block>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -323,11 +1020,18 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
   const [termOpen, setTermOpen] = useState(true);
   const [tLines,   setTLines]   = useState<{ t: string; text: string }[]>([
     { t: 'sys', text: 'E2B Sandbox ready — Python 3.12 · Node 20' },
+    { t: 'sys', text: 'Pre-loading Python/Wasm runtime in background\u2026' },
   ]);
   const [running, setRunning] = useState(false);
   const [termInput, setTermInput] = useState('');
   const [newItemState, setNewItemState] = useState<{ type: 'file' | 'folder'; parent: string } | null>(null);
   const [newItemName,  setNewItemName]  = useState('');
+  const [bottomTab,     setBottomTab]     = useState<'terminal' | 'output'>('terminal');
+  const [pyodideCode,   setPyodideCode]   = useState('');
+  const [pyodideRunKey, setPyodideRunKey] = useState(0);
+  const [viewportUrl,   setViewportUrl]   = useState<string>('');
+  const [viewportReady, setViewportReady] = useState(false);
+  const [viewportTab,   setViewportTab]   = useState<'terminal' | 'viewport' | 'python'>('terminal');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -388,7 +1092,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     if (!path) return;
     setFiles(p => ({ ...p, [path]: content }));
     setMod(p => { const n = new Set(p); n.delete(path); return n; });
-    try { await writeFile(`/home/user/${path}`, content); } catch { /* ignore */ }
+    try { await writeFile(`${PROJECT}/${path}`, content); } catch { /* ignore */ }
   };
 
   const deleteFile = (path: string) => {
@@ -427,36 +1131,254 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     setMod(new Set());
     setExp({});
     setTLines([{ t: 'sys', text: 'New project — E2B Sandbox ready.' }]);
+    setViewportUrl('');
+    setViewportReady(false);
+    setViewportTab('terminal');
+    localStorage.removeItem('starIDE_files');
+    localStorage.removeItem('starIDE_tabs');
+    localStorage.removeItem('starIDE_active');
+    localStorage.removeItem('starIDE_remote');
   };
 
   const isSandboxTimeout = (e: unknown) =>
     String(e).toLowerCase().includes('sandbox') && String(e).toLowerCase().includes('not found');
 
-  const ensureSandbox = async () => {
-    await createSandbox();
+  const ensureSandbox = async (): Promise<void> => {
+    try {
+      const status = await getSandboxStatus();
+      if (status.active) return;
+    } catch { /* not alive */ }
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        setTLines(p => [...p, {
+          t: 'sys',
+          text: attempt === 1 ? 'Sandbox reconnecting\u2026' : `Sandbox reconnecting (attempt ${attempt}/3)\u2026`,
+        }]);
+        await createSandbox();
+        await new Promise(r => setTimeout(r, 3000));
+
+        try {
+          await runCommand([
+            'git -C /home/user init 2>/dev/null || true',
+            'git -C /home/user config user.email "star@ide.dev"',
+            'git -C /home/user config user.name "StarIDE"',
+            'git -C /home/user branch -M main 2>/dev/null || true',
+          ].join(' && '));
+          await runCommand(
+            `printf '.bash_logout\\n.bashrc\\n.profile\\n.bash_history\\n.sudo_as_admin_successful\\n.cache/\\n__pycache__/\\n*.pyc\\n*.log\\n.env\\nnohup.out\\n' > /home/user/.gitignore`
+          );
+        } catch { /* non-fatal */ }
+
+        try {
+          const savedRemote = localStorage.getItem('starIDE_remote');
+          if (savedRemote) {
+            await runCommand(
+              `git -C /home/user remote set-url origin ${savedRemote} 2>/dev/null || git -C /home/user remote add origin ${savedRemote}`
+            );
+          }
+        } catch { /* non-fatal */ }
+
+        try {
+          const savedFiles = localStorage.getItem('starIDE_files');
+          if (savedFiles) {
+            const parsed = JSON.parse(savedFiles) as Record<string, string>;
+            await Promise.all(
+              Object.entries(parsed).map(([path, content]) =>
+                writeFile(`/home/user/${path}`, content).catch(() => {})
+              )
+            );
+            setTLines(p => [...p, { t: 'ok', text: `\u2713 Sandbox ready \u2014 ${Object.keys(parsed).length} file(s) restored` }]);
+          } else {
+            setTLines(p => [...p, { t: 'ok', text: '\u2713 Sandbox ready' }]);
+          }
+        } catch {
+          setTLines(p => [...p, { t: 'ok', text: '\u2713 Sandbox ready' }]);
+        }
+
+        return;
+      } catch (e) {
+        if (attempt === 3) {
+          setTLines(p => [...p, { t: 'err', text: 'Could not reconnect sandbox. Please refresh the page.' }]);
+          throw e;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  };
+
+  // Save files/tabs/active to localStorage whenever they change
+  useEffect(() => {
+    if (Object.keys(files).length === 0) return;
+    try {
+      localStorage.setItem('starIDE_files',  JSON.stringify(files));
+      localStorage.setItem('starIDE_tabs',   JSON.stringify(tabs));
+      localStorage.setItem('starIDE_active', active);
+    } catch (e) {
+      console.warn('localStorage full:', e);
+    }
+  }, [files, tabs, active]);
+
+  // Restore files/tabs/active from localStorage on first load
+  useEffect(() => {
+    try {
+      const savedFiles  = localStorage.getItem('starIDE_files');
+      const savedTabs   = localStorage.getItem('starIDE_tabs');
+      const savedActive = localStorage.getItem('starIDE_active');
+      if (savedFiles) {
+        const parsed = JSON.parse(savedFiles) as Record<string, string>;
+        if (Object.keys(parsed).length > 0) {
+          setFiles(parsed);
+          setTLines(p => [...p, { t: 'sys', text: `Restored ${Object.keys(parsed).length} file(s) from last session` }]);
+        }
+      }
+      if (savedTabs)   setTabs(JSON.parse(savedTabs) as string[]);
+      if (savedActive) setActive(savedActive);
+    } catch (e) {
+      console.warn('Failed to restore session:', e);
+    }
+  }, []);
+
+  // Ping every 4 minutes to keep the E2B sandbox alive
+  useEffect(() => {
+    let keepAliveInterval: ReturnType<typeof setInterval>;
+    const startKeepAlive = () => {
+      keepAliveInterval = setInterval(async () => {
+        try {
+          await runCommand('echo alive');
+        } catch {
+          try {
+            await ensureSandbox();
+          } catch { /* will retry next interval */ }
+        }
+      }, 4 * 60 * 1000);
+    };
+    startKeepAlive();
+    return () => clearInterval(keepAliveInterval);
+  }, []);
+
+  const SERVER_LIBS = [
+    'flask', 'fastapi', 'uvicorn', 'streamlit', 'dash',
+    'tornado', 'aiohttp', 'http.server', 'socketio', 'bottle',
+  ];
+
+  const isServerCode = (src: string): boolean => {
+    const stripped = src.split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n');
+    return SERVER_LIBS.some(lib =>
+      stripped.includes(`import ${lib}`) ||
+      stripped.includes(`from ${lib}`)   ||
+      stripped.includes('app.run')       ||
+      stripped.includes('uvicorn.run')
+    );
+  };
+
+  const detectPort = (src: string): number => {
+    const match = src.match(/port\s*=\s*(\d{4,5})/);
+    return match ? parseInt(match[1]) : 8080;
+  };
+
+  const getRequiredPackages = (code: string): string[] => {
+    const packageMap: Record<string, string> = {
+      'flask':      'flask',
+      'fastapi':    'fastapi uvicorn',
+      'streamlit':  'streamlit',
+      'dash':       'dash',
+      'numpy':      'numpy',
+      'pandas':     'pandas',
+      'matplotlib': 'matplotlib',
+      'scipy':      'scipy',
+      'plotly':     'plotly',
+      'PIL':        'pillow',
+      'cv2':        'opencv-python',
+      'sklearn':    'scikit-learn',
+      'torch':      'torch',
+      'requests':   'requests',
+      'aiohttp':    'aiohttp',
+      'tornado':    'tornado',
+      'bottle':     'bottle',
+    };
+    const stripped = code.split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n');
+    const needed: string[] = [];
+    for (const [importName, packageName] of Object.entries(packageMap)) {
+      if (stripped.includes(`import ${importName}`) || stripped.includes(`from ${importName}`)) {
+        needed.push(packageName);
+      }
+    }
+    return needed;
+  };
+
+  const BROWSER_LIBS = ['matplotlib', 'seaborn', 'plotly', 'bokeh', 'numpy', 'scipy'];
+  const requiresBrowserRuntime = (src: string) => {
+    const stripped = src.split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n');
+    return BROWSER_LIBS.some(lib =>
+      stripped.includes(`import ${lib}`) || stripped.includes(`from ${lib}`));
   };
 
   const runFile = async () => {
     if (running) return;
+
+    setViewportUrl('');
+    setViewportReady(false);
+    setViewportTab('terminal');
+
+    const currentCode = editorRef.current?.getValue() ?? files[active] ?? '';
+
+    // Kill any running server immediately when user hits Run
+    if (isServerCode(currentCode)) {
+      try { await runCommand(`lsof -ti:8080 | xargs kill -9 2>/dev/null || true`); } catch { /* ignore */ }
+    }
+
+    /* ── Route visual/scientific code to the in-browser Wasm runtime ── */
+    if (requiresBrowserRuntime(currentCode)) {
+      setRunning(true);
+      setTermOpen(true);
+      setBottomTab('output');
+      setViewportTab('python');
+      setPyodideCode(currentCode);
+      setPyodideRunKey(k => k + 1);
+      setTLines(p => [...p, { t: 'sys', text: 'Routing to Python/Wasm runtime\u2026' }]);
+      return;
+    }
+
     setRunning(true);
     setTermOpen(true);
     const currentFiles = { ...files };
     if (editorRef.current) currentFiles[active] = editorRef.current.getValue();
-    const ext     = active.split('.').pop() ?? '';
-    const lang    = ext === 'js' || ext === 'ts' ? 'javascript' : 'python';
-    const display = active.includes('test') ? `pytest ${active} -v` : `${lang === 'javascript' ? 'node' : 'python'} ${active}`;
+    const ext  = active.split('.').pop() ?? '';
+    const lang = ext === 'js' || ext === 'ts' ? 'javascript' : 'python';
+    const isServer = isServerCode(currentCode);
+    const display = isServer
+      ? `python ${active}  (background)`
+      : `${lang === 'javascript' ? 'node' : 'python'} ${active}`;
     setTLines(p => [...p, { t: 'cmd', text: `$ ${display}` }]);
 
     const execute = async () => {
+      // Kill any existing server before installing or syncing
+      if (isServer) {
+        await runCommand(`lsof -ti:8080 | xargs kill -9 2>/dev/null || true`);
+        await new Promise(r => setTimeout(r, 500));
+      }
+      const packages = getRequiredPackages(currentCode);
+      if (packages.length > 0) {
+        setTLines(p => [...p, { t: 'sys', text: `Installing ${packages.join(', ')}…` }]);
+        await runCommand(`pip install ${packages.join(' ')} -q`);
+        setTLines(p => [...p, { t: 'ok', text: '✓ Packages ready' }]);
+      }
       setTLines(p => [...p, { t: 'sys', text: `Syncing ${Object.keys(currentFiles).length} file(s)…` }]);
       await Promise.all(
         Object.entries(currentFiles).map(([path, content]) =>
-          writeFile(`/home/user/${path}`, content).catch(() => {})
+          writeFile(`${PROJECT}/${path}`, content).catch(() => {})
         )
       );
+      if (isServer) {
+        // Run in background (port already cleared at top of execute)
+        return runCommand(
+          `cd ${PROJECT} && nohup python ${active} > /tmp/server.log 2>&1 & echo "PID:$!"`
+        );
+      }
       return lang === 'javascript'
-        ? runCommand(`cd /home/user && node ${active}`)
-        : runCommand(`cd /home/user && python ${active}`);
+        ? runCommand(`cd ${PROJECT} && node ${active}`)
+        : runCommand(`cd ${PROJECT} && python ${active}`);
     };
 
     try {
@@ -475,7 +1397,46 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       if (result.stderr) result.stderr.split('\n').forEach(text => setTLines(p => [...p, { t: 'err', text }]));
       if (result.error) setTLines(p => [...p, { t: 'err', text: result.error! }]);
       const ms = result.duration_ms ?? result.execution_time_ms ?? 0;
-      setTLines(p => [...p, { t: result.exit_code === 0 ? 'ok' : 'err', text: `${result.exit_code === 0 ? '✓' : '✗'}  exit ${result.exit_code}  (${ms}ms)` }]);
+      if (!isServer) {
+        setTLines(p => [...p, { t: result.exit_code === 0 ? 'ok' : 'err', text: `${result.exit_code === 0 ? '✓' : '✗'}  exit ${result.exit_code}  (${ms}ms)` }]);
+      }
+
+      if (isServer) {
+        const port = detectPort(currentCode);
+        setTLines(p => [...p, { t: 'sys', text: `Server starting on port ${port}…` }]);
+        await new Promise(r => setTimeout(r, 2000));
+        try { await exposePort(port); } catch { /* ignore */ }
+        // Show initial server log
+        try {
+          const log = await runCommand('cat /tmp/server.log');
+          if (log.stdout) log.stdout.split('\n').filter(l => l.trim()).forEach(text => setTLines(p => [...p, { t: 'out', text }]));
+        } catch { /* ignore */ }
+        // Poll for viewport ready
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          try {
+            const info = await getViewportUrl(port);
+            if (info.ready) {
+              clearInterval(poll);
+              setViewportUrl(info.url);
+              setViewportReady(true);
+              setViewportTab('viewport');
+              setTLines(p => [...p, { t: 'ok', text: `✓ Viewport ready → ${info.url}` }]);
+            }
+          } catch { /* not up yet */ }
+          if (attempts >= 15) {
+            clearInterval(poll);
+            try {
+              const log = await runCommand('cat /tmp/server.log');
+              if (log.stdout) log.stdout.split('\n').filter(l => l.trim()).forEach(text => setTLines(p => [...p, { t: 'err', text }]));
+            } catch { /* ignore */ }
+            setTLines(p => [...p, { t: 'err', text: 'Viewport timed out — check terminal for server errors' }]);
+          }
+        }, 1000);
+      } else if (result.exit_code !== 0) {
+        setViewportTab('terminal');
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setTLines(p => [...p, { t: 'err', text: `Error: ${msg}` }]);
@@ -488,6 +1449,33 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
     if (!cmd.trim()) return;
     setTermInput('');
     setTLines(p => [...p, { t: 'cmd', text: `$ ${cmd}` }]);
+
+    if (cmd.trim() === 'logs') {
+      try {
+        await ensureSandbox();
+        const result = await runCommand('tail -50 /tmp/server.log');
+        if (result.stdout) result.stdout.split('\n').filter(l => l.trim()).forEach(text => setTLines(p => [...p, { t: 'out', text }]));
+        else setTLines(p => [...p, { t: 'sys', text: '(no server log yet)' }]);
+      } catch (e: unknown) {
+        setTLines(p => [...p, { t: 'err', text: e instanceof Error ? e.message : String(e) }]);
+      }
+      return;
+    }
+
+    if (cmd.trim() === 'stop') {
+      try {
+        await ensureSandbox();
+        await runCommand('lsof -ti:8080 | xargs kill -9 2>/dev/null || true');
+        setViewportReady(false);
+        setViewportUrl('');
+        setViewportTab('terminal');
+        setTLines(p => [...p, { t: 'sys', text: 'Server stopped.' }]);
+      } catch (e: unknown) {
+        setTLines(p => [...p, { t: 'err', text: e instanceof Error ? e.message : String(e) }]);
+      }
+      return;
+    }
+
     const doRun = () => runCommand(cmd);
     try {
       await ensureSandbox();
@@ -647,11 +1635,11 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '6px 0', gap: 2, flexShrink: 0,
         }}>
-          {(['files', 'search'] as const).map(id => (
+          {(['files', 'search', 'git', 'help'] as const).map(id => (
             <button
               key={id}
               onClick={() => setSideView(v => v === id ? '' : id)}
-              title={id === 'files' ? 'Explorer' : 'Search'}
+              title={id === 'files' ? 'Explorer' : id === 'search' ? 'Search' : id === 'git' ? 'Git' : 'Help'}
               style={{
                 width: 32, height: 32, display: 'flex', alignItems: 'center',
                 justifyContent: 'center', border: 'none', borderRadius: 4,
@@ -660,7 +1648,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                 borderLeft: sideView === id ? `2px solid ${C.accent}` : '2px solid transparent',
               }}
             >
-              <Ic d={id === 'files' ? ic.file : ic.search} size={17}
+              <Ic d={id === 'files' ? ic.file : id === 'search' ? ic.search : id === 'git' ? ic.newProj : ic.help} size={17}
                 color={sideView === id ? C.text : C.dim} />
             </button>
           ))}
@@ -711,7 +1699,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                   padding: '6px 6px 4px 12px', flexShrink: 0,
                 }}>
                   <span style={{ fontSize: 10.5, fontWeight: 700, color: C.dim, letterSpacing: 1.3, textTransform: 'uppercase' }}>
-                    {sideView === 'files' ? 'Explorer' : 'Search'}
+                    {sideView === 'files' ? 'Explorer' : sideView === 'search' ? 'Search' : sideView === 'git' ? 'Git' : 'Help'}
                   </span>
                   {sideView === 'files' && (
                     <div style={{ display: 'flex', gap: 1 }}>
@@ -780,6 +1768,17 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                 {sideView === 'search' && (
                   <SearchPanel files={files} onOpen={openFile} />
                 )}
+
+                {sideView === 'git' && (
+                  <GitPanel
+                    onLog={(t, text) => setTLines(p => [...p, { t, text }])}
+                    onEnsureSandbox={ensureSandbox}
+                  />
+                )}
+
+                {sideView === 'help' && (
+                  <HelpPanel />
+                )}
               </Panel>
               <HHandle />
             </>
@@ -834,57 +1833,177 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                 )}
               </Panel>
 
-              {/* Terminal */}
+              {/* Terminal + Viewport + Python Output */}
               {termOpen && (
                 <>
                   <VHandle />
                   <Panel
                     id="terminal"
-                    defaultSize="28%"
+                    defaultSize="35%"
                     minSize="10%"
                     style={{ background: C.surface, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                   >
+                    {/* ── Tab bar ── */}
                     <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '4px 10px', borderBottom: `1px solid ${C.border}`, flexShrink: 0,
+                      display: 'flex', alignItems: 'center',
+                      borderBottom: `1px solid ${C.border}`, flexShrink: 0,
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: C.dim, letterSpacing: 0.6, textTransform: 'uppercase' }}>Terminal</span>
-                        <span style={{ fontSize: 10, color: C.dim, background: C.hover, padding: '1px 6px', borderRadius: 3, fontFamily: MONO }}>zsh</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 2 }}>
+                      {(['terminal', 'viewport', 'output'] as const).map(tab => (
                         <button
-                          onClick={() => setTLines([{ t: 'sys', text: 'Cleared.' }])}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
-                          onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          key={tab}
+                          onClick={() => { if (tab === 'terminal') setViewportTab('terminal'); else if (tab === 'viewport') setViewportTab('viewport'); else setViewportTab('python'); }}
+                          style={{
+                            padding: '5px 14px', fontSize: 10.5, fontFamily: MONO,
+                            fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+                            cursor: 'pointer', border: 'none',
+                            background: 'transparent',
+                            color: tab === viewportTab ? C.text : C.dim,
+                            borderBottom: tab === viewportTab ? `2px solid ${C.accent}` : '2px solid transparent',
+                          }}
                         >
-                          <Ic d={ic.refresh} size={12} color={C.dim} />
+                          {tab === 'viewport' && viewportReady && (
+                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: C.green, marginRight: 5, verticalAlign: 'middle' }} />
+                          )}
+                          {tab === 'terminal' ? 'Terminal' : tab === 'viewport' ? 'Viewport' : 'Python Output'}
                         </button>
+                      ))}
+
+                      <div style={{ flex: 1 }} />
+
+                      {/* Viewport URL + controls */}
+                      {viewportTab === 'viewport' && viewportReady && (
+                        <div style={{ display: 'flex', gap: 4, padding: '0 8px', alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: 10, fontFamily: MONO, color: C.dim,
+                            background: C.hover, padding: '2px 8px', borderRadius: 3,
+                            maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{viewportUrl}</span>
+                          <button
+                            onClick={() => window.open(viewportUrl, '_blank')}
+                            title="Open in new tab"
+                            style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.muted, fontFamily: MONO }}
+                            onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + '55'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = C.muted;  e.currentTarget.style.borderColor = C.border; }}
+                          >
+                            <Ic d={ic.chevR} size={10} color={C.muted} /> open
+                          </button>
+                          <button
+                            onClick={() => { const f = document.querySelector<HTMLIFrameElement>('#viewport-frame'); if (f) f.src = f.src; }}
+                            title="Refresh viewport"
+                            style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = C.accent + '55')}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                          >
+                            <Ic d={ic.refresh} size={11} color={C.dim} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Terminal controls */}
+                      {viewportTab === 'terminal' && (
+                        <div style={{ display: 'flex', gap: 2, padding: '0 4px' }}>
+                          <button
+                            onClick={() => setTLines([{ t: 'sys', text: 'Cleared.' }])}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
+                            onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <Ic d={ic.refresh} size={12} color={C.dim} />
+                          </button>
+                          <button
+                            onClick={() => setTermOpen(false)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
+                            onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <Ic d={ic.x} size={12} color={C.dim} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Close button for other tabs */}
+                      {viewportTab !== 'terminal' && (
                         <button
                           onClick={() => setTermOpen(false)}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3 }}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 3, marginRight: 4 }}
                           onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >
                           <Ic d={ic.x} size={12} color={C.dim} />
                         </button>
+                      )}
+                    </div>
+
+                    {/* ── Content area: all panes sit here, absolutely positioned ── */}
+                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
+
+                      {/* Terminal pane */}
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        display: viewportTab === 'terminal' ? 'flex' : 'none',
+                        flexDirection: 'column', overflow: 'hidden',
+                      }}>
+                        <div
+                          ref={termRef}
+                          style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', fontFamily: MONO, fontSize: 12, lineHeight: '18px', minHeight: 0 }}
+                        >
+                          {tLines.map((l, i) => (
+                            <div key={i} style={{ color: tCol(l.t), fontWeight: l.t === 'cmd' ? 600 : 400 }}>{l.text}</div>
+                          ))}
+                        </div>
                       </div>
+
+                      {/* Viewport pane */}
+                      <div style={{ position: 'absolute', inset: 0, display: viewportTab === 'viewport' ? 'block' : 'none', overflow: 'hidden' }}>
+                        {!viewportReady ? (
+                          <div style={{
+                            height: '100%', display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            gap: 12, color: C.dim, fontFamily: UI,
+                          }}>
+                            <Ic d={ic.term} size={32} color={C.dim} />
+                            <span style={{ fontSize: 13 }}>No viewport running</span>
+                            <span style={{ fontSize: 11, textAlign: 'center', maxWidth: 280, lineHeight: '1.6' }}>
+                              Run a Python server (Flask, FastAPI, Streamlit, Dash) and the viewport will appear here automatically.
+                            </span>
+                          </div>
+                        ) : (
+                          <iframe
+                            id="viewport-frame"
+                            src={viewportUrl}
+                            style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
+                            allow="accelerometer; camera; fullscreen; gyroscope; microphone; webgl; xr-spatial-tracking"
+                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                            title="Viewport"
+                          />
+                        )}
+                      </div>
+
+                      {/* Python Output pane */}
+                      <div style={{ position: 'absolute', inset: 0, display: viewportTab === 'python' ? 'flex' : 'none', overflow: 'hidden' }}>
+                        <PyodideRunner
+                          code={pyodideCode}
+                          runKey={pyodideRunKey}
+                          onDone={exit => {
+                            setTLines(p => [...p, {
+                              t: exit === 0 ? 'ok' : 'err',
+                              text: `${exit === 0 ? '✓' : '✗'}  Python  exit ${exit}`,
+                            }]);
+                            setRunning(false);
+                          }}
+                          onReady={() => setTLines(p => [...p, { t: 'sys', text: '✓ Python runtime ready (Wasm)' }])}
+                          onStatus={msg => setTLines(p => [...p, { t: 'sys', text: `  ${msg}` }])}
+                          onStderr={line => setTLines(p => [...p, { t: 'err', text: line }])}
+                        />
+                      </div>
+
                     </div>
 
-                    <div
-                      ref={termRef}
-                      style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', fontFamily: MONO, fontSize: 12, lineHeight: '18px' }}
-                    >
-                      {tLines.map((l, i) => (
-                        <div key={i} style={{ color: tCol(l.t), fontWeight: l.t === 'cmd' ? 600 : 400 }}>{l.text}</div>
-                      ))}
-                    </div>
-
-                    {/* Terminal input */}
+                    {/* ── Terminal input — always anchored to bottom of panel ── */}
                     <div style={{
                       display: 'flex', alignItems: 'center',
                       borderTop: `1px solid ${C.border}`,
+                      background: C.surface,
                       padding: '4px 10px', gap: 6, flexShrink: 0,
                     }}>
                       <span style={{ color: C.accent, fontFamily: MONO, fontSize: 12, userSelect: 'none' }}>$</span>
@@ -919,7 +2038,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 6, height: 6, borderRadius: 3, background: C.green }} />
+            <div style={{ width: 6, height: 6, borderRadius: 3, background: C.green, animation: 'pulse 4s infinite' }} />
             E2B
           </span>
           <span>main</span>
@@ -933,6 +2052,11 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
       <style>{`
         *::-webkit-scrollbar { display: none; }
         * { scrollbar-width: none; -ms-overflow-style: none; }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.3; }
+        }
 
         /* ── Mobile layout: 320px and up ────────────────────── */
         @media (max-width: 639px) {

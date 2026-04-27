@@ -184,7 +184,14 @@ export default function WorkspacePage() {
   const agentRef = useRef<AgentActivityHandle | null>(null);
   const ideRef = useRef<StarIDEHandle | null>(null);
   const pendingCodeRef = useRef<{ code: string; lang: string } | null>(null);
-  const [ideOpen, setIdeOpen] = useState(false);
+  const [ideOpen, setIdeOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('starIdeOpen') === 'true';
+  });
+  const setIdeOpenPersist = (v: boolean) => {
+    localStorage.setItem('starIdeOpen', String(v));
+    setIdeOpen(v);
+  };
   const [agentRunning, setAgentRunning] = useState(false);
   const [agentContent, setAgentContent] = useState('');
 
@@ -195,7 +202,7 @@ export default function WorkspacePage() {
     } else {
       // IDE not mounted yet — open it first, then load once mounted
       pendingCodeRef.current = { code, lang };
-      setIdeOpen(true);
+      setIdeOpenPersist(true);
     }
   }, []);
 
@@ -212,7 +219,7 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (openTool === 'ide') {
       setOpenTool(null);
-      setIdeOpen(true);
+      setIdeOpenPersist(true);
     }
   }, [openTool]);
   const voiceTriggeredRef = useRef(false);
@@ -543,7 +550,7 @@ export default function WorkspacePage() {
       {ideOpen && (
         <FloatingIDEPanel
           ideRef={ideRef}
-          onClose={() => setIdeOpen(false)}
+          onClose={() => setIdeOpenPersist(false)}
         />
       )}
     </div>
