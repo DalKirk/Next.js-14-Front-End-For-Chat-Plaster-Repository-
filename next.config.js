@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow large file uploads (videos up to 100MB) through API routes
-  serverActions: {
-    bodySizeLimit: '100mb',
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: '100mb',

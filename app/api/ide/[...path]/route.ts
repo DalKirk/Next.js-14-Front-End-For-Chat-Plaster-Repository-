@@ -8,11 +8,11 @@ const headers = () => ({
 
 export async function GET(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const path = params.path.join('/');
+  const { path } = await params;
   const qs   = new URL(request.url).searchParams.toString();
-  const url  = `${BACKEND}/api/ide/${path}${qs ? `?${qs}` : ''}`;
+  const url  = `${BACKEND}/api/ide/${path.join('/')}${qs ? `?${qs}` : ''}`;
 
   const res  = await fetch(url, { method: 'GET', headers: headers() });
   const data = await res.json().catch(() => ({}));
@@ -21,11 +21,11 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const path = params.path.join('/');
+  const { path } = await params;
   const body = await request.json().catch(() => ({}));
-  const url  = `${BACKEND}/api/ide/${path}`;
+  const url  = `${BACKEND}/api/ide/${path.join('/')}`;
 
   const res  = await fetch(url, {
     method:  'POST',
@@ -38,11 +38,11 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const path = params.path.join('/');
+  const { path } = await params;
   const body = await request.json().catch(() => ({}));
-  const url  = `${BACKEND}/api/ide/${path}`;
+  const url  = `${BACKEND}/api/ide/${path.join('/')}`;
 
   const res  = await fetch(url, {
     method:  'DELETE',
