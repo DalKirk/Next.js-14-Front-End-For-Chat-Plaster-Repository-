@@ -463,32 +463,48 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
     finally { opRunning.current = false; setLoading(false); }
   };
 
-  const stageAll = async () => {
+  const stageAndCommit = async () => {
     if (opRunning.current) return;
     opRunning.current = true;
     setLoading(true);
     try {
-      const r = await safeCmd(`cd ${PROJECT} && git add .`);
-      if (r.exit_code === 0) {
-        onLog('ok', '✓ Staged all changes');
-      } else {
-        onLog('err', r.stderr || 'Stage failed');
+      // Stage first — wait for completion
+      const stageResult = await runCommand('git -C /home/user add .');
+      if (stageResult.exit_code !== 0) {
+        onLog('err', 'Stage failed: ' + stageResult.stderr);
+        return;
       }
-      await refresh();
-    } catch (e) { onLog('err', e instanceof Error ? e.message : 'Stage failed'); }
-    finally { opRunning.current = false; setLoading(false); }
-  };
+      onLog('ok', '\u2713 Staged all changes');
 
-  const commit = async () => {
-    if (!msg.trim()) return;
-    setLoading(true);
-    try {
-      const r = await run('commit', { message: msg.trim() });
-      onLog('ok', `\u2713 ${r.output || `Committed: ${msg}`}`);
-      setMsg('');
-      await refresh();
-    } catch (e) { onLog('err', `Commit failed: ${e}`); }
-    finally { setLoading(false); }
+      // Verify something is staged
+      const statusCheck = await runCommand(
+        'git -C /home/user diff --cached --name-only'
+      );
+      if (!statusCheck.stdout?.trim()) {
+        onLog('sys', 'Nothing to commit \u2014 no changes staged');
+        return;
+      }
+
+      // Now commit
+      const commitResult = await gitOp('commit', {
+        message: msg.trim(),
+        path: '/home/user',
+      });
+      console.log('commit result:', JSON.stringify(commitResult));
+
+      if (commitResult.exit_code === 0 || commitResult.success) {
+        onLog('ok', `\u2713 Committed: ${msg.trim()}`);
+        setMsg('');
+        await refresh();
+      } else {
+        onLog('err', commitResult.stderr || 'Commit failed');
+      }
+    } catch (e) {
+      onLog('err', e instanceof Error ? e.message : 'Failed');
+    } finally {
+      opRunning.current = false;
+      setLoading(false);
+    }
   };
 
   const push = async () => {
@@ -706,17 +722,16 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
             <textarea value={msg} onChange={e => setMsg(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) e.stopPropagation();
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit();
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) stageAndCommit();
               }}
               onClick={e => e.stopPropagation()}
               onFocus={e => { const len = e.target.value.length; e.target.setSelectionRange(len, len); }}
               placeholder="Commit message (Ctrl+Enter to commit)" rows={2}
               style={{ width: '100%', background: C.raised, border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: MONO, fontSize: 11.5, padding: '6px 8px', outline: 'none', resize: 'none', marginBottom: 6, boxSizing: 'border-box', pointerEvents: 'auto', position: 'relative', zIndex: 10 }} />
             <div style={{ display: 'flex', gap: 6 }}>
-              {btn('Stage all', stageAll, C.accent)}
-              <button onClick={commit} disabled={loading || !msg.trim()}
+              <button onClick={stageAndCommit} disabled={loading || !msg.trim()}
                 style={{ flex: 1, background: msg.trim() ? C.green + '18' : 'transparent', border: `1px solid ${msg.trim() ? C.green + '40' : C.border}`, borderRadius: 4, color: msg.trim() ? C.green : C.dim, cursor: msg.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontFamily: UI, fontWeight: 600, padding: '4px 0' }}>
-                {loading ? 'Committing\u2026' : '\u2713 Commit'}
+                {loading ? 'Committing\u2026' : '\u2713 Stage & Commit'}
               </button>
             </div>
           </div>
