@@ -313,7 +313,7 @@ function VHandle() {
 // ─── git panel ────────────────────────────────────────────────────────────────
 const PROJECT = '/home/user';
 
-function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string) => void; onEnsureSandbox: () => Promise<void> }) {
+function GitPanel({ onLog, onEnsureSandbox, files }: { onLog: (t: string, text: string) => void; onEnsureSandbox: () => Promise<void>; files: Record<string, string> }) {
   const [status,      setStatus]      = useState<GitFile[]>([]);
   const [commits,     setCommits]     = useState<GitCommit[]>([]);
   const [branch,      setBranch]      = useState('main');
@@ -468,7 +468,15 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
     opRunning.current = true;
     setLoading(true);
     try {
-      // Stage first — wait for completion
+      // Sync all editor files to sandbox before staging
+      onLog('sys', 'Syncing files…');
+      await Promise.all(
+        Object.entries(files).map(([path, content]) =>
+          writeFile(`/home/user/${path}`, content).catch(() => {})
+        )
+      );
+
+      // Stage
       const stageResult = await runCommand('git -C /home/user add .');
       if (stageResult.exit_code !== 0) {
         onLog('err', 'Stage failed: ' + stageResult.stderr);
@@ -1821,6 +1829,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
                   <GitPanel
                     onLog={(t, text) => setTLines(p => [...p, { t, text }])}
                     onEnsureSandbox={ensureSandbox}
+                    files={files}
                   />
                 )}
 
