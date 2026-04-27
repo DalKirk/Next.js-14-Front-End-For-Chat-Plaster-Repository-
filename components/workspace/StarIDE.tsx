@@ -501,7 +501,9 @@ function GitPanel({ onLog, onEnsureSandbox }: { onLog: (t: string, text: string)
     opRunning.current = true;
     setLoading(true);
     try {
-      const r = await safeCmd(`cd ${PROJECT} && git push origin ${branch}`);
+      const r = await runCommand(
+        `git -C /home/user push origin ${branch} --force`
+      );
       if (r.exit_code === 0) {
         onLog('ok', `\u2713 Pushed to origin/${branch}`);
       } else {
@@ -1164,6 +1166,7 @@ const StarIDE = forwardRef<StarIDEHandle>(function StarIDE(_, ref) {
             'git -C /home/user init 2>/dev/null || true',
             'git -C /home/user config user.email "star@ide.dev"',
             'git -C /home/user config user.name "StarIDE"',
+            'git -C /home/user config pull.rebase false',
             'git -C /home/user branch -M main 2>/dev/null || true',
           ].join(' && '));
           await runCommand(
