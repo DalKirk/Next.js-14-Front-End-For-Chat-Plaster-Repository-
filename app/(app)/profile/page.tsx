@@ -1283,7 +1283,10 @@ function ProfilePageContent() {
           overflow:hidden;
           background:#0a0a12;
         }
-        @media(min-width:768px){ .lp-banner { height:auto; aspect-ratio:16/6; } }
+        @media(min-width:768px){
+          .lp-banner { height:auto; overflow:visible; }
+          .lp-banner-media { position:static !important; width:100% !important; height:auto !important; display:block; object-fit:unset !important; }
+        }
 
         .lp-banner-orb {
           position:absolute;
@@ -2083,12 +2086,14 @@ function ProfilePageContent() {
                   <video
                     src={profile.bannerMediaUrl}
                     autoPlay muted loop playsInline
+                    className="lp-banner-media"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
                   <img
                     src={profile.bannerMediaUrl}
                     alt="Banner"
+                    className="lp-banner-media"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 )
@@ -2096,6 +2101,7 @@ function ProfilePageContent() {
                 <video
                   src={profile.profile_video_url}
                   autoPlay muted loop playsInline
+                  className="lp-banner-media"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               ) : (
