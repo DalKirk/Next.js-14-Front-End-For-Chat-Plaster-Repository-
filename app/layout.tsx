@@ -1,5 +1,6 @@
 import './globals.css';
 import { JetBrains_Mono, IBM_Plex_Sans } from 'next/font/google';
+import PushNotificationProvider from '@/components/PushNotificationProvider';
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
@@ -122,7 +123,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Bitcount+Prop+Double+Ink:wght@100..900&family=Bungee&display=swap" rel="stylesheet" />
       </head>
       <body style={{ backgroundColor: 'transparent', backdropFilter: 'none' }}>
-        {children}
+        <PushNotificationProvider authToken={null}>
+          {children}
+        </PushNotificationProvider>
       </body>
     </html>
   );
