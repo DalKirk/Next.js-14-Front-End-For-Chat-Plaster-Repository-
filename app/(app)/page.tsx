@@ -606,7 +606,7 @@ export default function HomePage() {
 
               {showMenu && (
                 <div
-                  className="absolute right-0 mt-2 w-48 rounded-lg overflow-hidden shadow-2xl"
+                  className="absolute right-0 top-full mt-2 w-48 rounded-lg overflow-hidden shadow-2xl"
                   style={{ background: "rgba(10,10,20,0.95)", border: "1px solid rgba(139,92,246,0.12)", backdropFilter: "blur(20px)" }}
                 >
                   <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>

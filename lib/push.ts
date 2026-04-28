@@ -31,7 +31,8 @@ export function isPushSupported(): boolean {
 
 /** Register (or retrieve an already-registered) service worker. */
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
-  // navigator.serviceWorker.ready waits for the active SW regardless of scope URL
+  // Register (no-op if already registered), then wait for it to be active
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   return navigator.serviceWorker.ready;
 }
 
