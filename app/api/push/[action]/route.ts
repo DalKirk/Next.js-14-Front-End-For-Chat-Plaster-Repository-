@@ -17,9 +17,9 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 async function handler(
   req: NextRequest,
-  { params }: { params: { action: string } }
+  { params }: { params: Promise<{ action: string }> }
 ) {
-  const { action } = params;
+  const { action } = await params;
   const allowed = ["subscribe", "unsubscribe", "status", "send-test", "resubscribe"];
 
   if (!allowed.includes(action)) {
