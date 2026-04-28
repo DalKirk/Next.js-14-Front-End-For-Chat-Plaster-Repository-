@@ -13,6 +13,7 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { NotificationBellButton } from "@/components/PushNotificationProvider";
 import { apiClient } from "@/lib/api";
 import {
   ChevronRight,
@@ -579,7 +580,8 @@ export default function HomePage() {
               </button>
             </>
           ) : (
-            <div className="relative">
+            <div className="flex items-center gap-2 relative">
+              <NotificationBellButton className="text-slate-400 hover:text-white" />
               <button
                 onClick={() => setShowMenu(!showMenu)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded transition-colors hover:bg-white/5"
