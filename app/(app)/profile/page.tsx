@@ -1278,11 +1278,13 @@ function ProfilePageContent() {
         }
 
         .lp-banner {
-          height:220px;
+          width:100%;
+          aspect-ratio:16/7;
           position:relative;
           overflow:hidden;
+          background:#0a0a12;
         }
-        @media(min-width:768px){ .lp-banner { height:260px; } }
+        @media(min-width:768px){ .lp-banner { aspect-ratio:16/6; } }
 
         .lp-banner-orb {
           position:absolute;
@@ -1951,23 +1953,21 @@ function ProfilePageContent() {
         .lp-store-edit-btn, .lp-store-delete-btn {
           position:absolute;
           top:6px;
-          width:22px; height:22px;
+          width:26px; height:26px;
           border-radius:50%;
-          background:rgba(0,0,0,0.6);
-          border:0.5px solid rgba(255,255,255,0.15);
-          color:rgba(255,255,255,0.6);
+          background:rgba(0,0,0,0.7);
+          border:0.5px solid rgba(255,255,255,0.2);
+          color:rgba(255,255,255,0.8);
           display:flex; align-items:center; justify-content:center;
-          font-size:10px;
+          font-size:11px;
           cursor:pointer;
-          opacity:0;
-          transition:opacity 0.15s;
+          transition:background 0.15s,color 0.15s;
           z-index:2;
         }
-        .lp-store-edit-btn { right:34px; }
+        .lp-store-edit-btn { right:36px; }
         .lp-store-delete-btn { right:6px; }
-        .lp-store-delete-btn:hover { background:rgba(239,68,68,0.7); color:#fff; border-color:transparent; }
-        .lp-store-card:hover .lp-store-edit-btn,
-        .lp-store-card:hover .lp-store-delete-btn { opacity:1; }
+        .lp-store-edit-btn:hover { background:rgba(99,102,241,0.8); color:#fff; border-color:transparent; }
+        .lp-store-delete-btn:hover { background:rgba(239,68,68,0.8); color:#fff; border-color:transparent; }
 
         .lp-store-info { padding:10px 12px 12px; }
         .lp-store-name {
@@ -2084,20 +2084,20 @@ function ProfilePageContent() {
                   <video
                     src={profile.bannerMediaUrl}
                     autoPlay muted loop playsInline
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
                   <img
                     src={profile.bannerMediaUrl}
                     alt="Banner"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 )
               ) : profile.profile_video_url ? (
                 <video
                   src={profile.profile_video_url}
                   autoPlay muted loop playsInline
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               ) : (
                 <>
@@ -2718,7 +2718,7 @@ function ProfilePageContent() {
                             {item.imageUrls?.[0] ? (
                               <>
                                 <img src={item.imageUrls[0]} alt={item.name}
-                                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                                   onError={e => {
                                     const img = e.currentTarget as HTMLImageElement;
                                     img.style.display = 'none';
@@ -2815,12 +2815,20 @@ function ProfilePageContent() {
                               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{selectedItem.condition}</div>
                             </div>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              {isViewOnly && currentUserId && (
+                            {isViewOnly && currentUserId && (
                                 <Link href={`/messages?userId=${profile.id}&username=${encodeURIComponent(profile.displayName)}`}>
                                   <button style={{ background: 'none', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontFamily: "'DM Sans',sans-serif" }}>Message seller</button>
                                 </Link>
                               )}
-                              <button style={{ background: accent, color: '#000', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }} onClick={() => toast.success('Checkout coming soon!')}>Buy now</button>
+                              {isViewOnly && (
+                                <button style={{ background: accent, color: '#000', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }} onClick={() => toast.success('Checkout coming soon!')}>Buy now</button>
+                              )}
+                              {canEdit && (
+                                <>
+                                  <button style={{ background: 'none', border: '0.5px solid rgba(99,102,241,0.4)', borderRadius: 8, padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: 'rgba(99,102,241,0.9)', fontFamily: "'DM Sans',sans-serif" }} onClick={() => { editStoreItem(selectedItem!); }}>Edit listing</button>
+                                  <button style={{ background: 'none', border: '0.5px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: 'rgba(239,68,68,0.8)', fontFamily: "'DM Sans',sans-serif" }} onClick={() => { deleteStoreItem(selectedItem!.id); setSelectedItem(null); }}>Delete</button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
