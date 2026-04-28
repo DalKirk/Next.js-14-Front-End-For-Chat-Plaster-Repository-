@@ -31,9 +31,8 @@ export function isPushSupported(): boolean {
 
 /** Register (or retrieve an already-registered) service worker. */
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
-  const existing = await navigator.serviceWorker.getRegistration("/sw.js");
-  if (existing) return existing;
-  return navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  // navigator.serviceWorker.ready waits for the active SW regardless of scope URL
+  return navigator.serviceWorker.ready;
 }
 
 /**
@@ -85,7 +84,7 @@ export async function subscribeToPush(authToken: string): Promise<boolean> {
 export async function unsubscribeFromPush(authToken: string): Promise<boolean> {
   if (!isPushSupported()) return false;
 
-  const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+  const registration = await navigator.serviceWorker.ready;
   if (!registration) return false;
 
   const subscription = await registration.pushManager.getSubscription();
