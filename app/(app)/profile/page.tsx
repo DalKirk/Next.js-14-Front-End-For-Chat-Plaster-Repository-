@@ -364,6 +364,7 @@ function ProfilePageContent() {
   // Store
   const [storeItems, setStoreItems] = useState<StoreItem[]>([])
   const [showItemForm, setShowItemForm] = useState(false)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null)
   const [itemFormData, setItemFormData] = useState({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [] as string[], videoUrl: '' })
   const [uploadingItemImage, setUploadingItemImage] = useState(false)
@@ -941,10 +942,31 @@ function ProfilePageContent() {
   }
 
   // ─── Store handlers ────────────────────────────────────────────────
+  const resetItemForm = () => {
+    setItemFormData({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [], videoUrl: '' })
+    setEditingItemId(null)
+    setShowItemForm(false)
+  }
+
+  const editStoreItem = (item: StoreItem) => {
+    setItemFormData({
+      name: item.name,
+      description: item.description,
+      price: String(item.price),
+      category: item.category,
+      tags: item.tags.join(', '),
+      condition: item.condition,
+      imageUrls: item.imageUrls ?? [],
+      videoUrl: item.videoUrl ?? '',
+    })
+    setEditingItemId(item.id)
+    setShowItemForm(true)
+    setSelectedItem(null)
+  }
+
   const addStoreItem = () => {
     if (!profile || !itemFormData.name.trim() || !itemFormData.price) return
-    const item: StoreItem = {
-      id: Date.now().toString(),
+    const baseFields = {
       name: itemFormData.name.trim(),
       description: itemFormData.description.trim(),
       price: parseFloat(itemFormData.price) || 0,
@@ -953,16 +975,27 @@ function ProfilePageContent() {
       imageUrls: itemFormData.imageUrls.length > 0 ? itemFormData.imageUrls : undefined,
       videoUrl: itemFormData.videoUrl || undefined,
       condition: itemFormData.condition.trim() || 'Digital download',
-      createdAt: new Date().toISOString(),
     }
-    setStoreItems(prev => {
-      const next = [item, ...prev]
-      try { localStorage.setItem(`storeItems:${profile.id}`, JSON.stringify(next)) } catch { /* empty */ }
-      return next
-    })
-    setItemFormData({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [], videoUrl: '' })
-    setShowItemForm(false)
-    toast.success('Item listed!')
+    if (editingItemId) {
+      // Update existing item
+      setStoreItems(prev => {
+        const next = prev.map(i => i.id === editingItemId ? { ...i, ...baseFields } : i)
+        try { localStorage.setItem(`storeItems:${profile.id}`, JSON.stringify(next)) } catch { /* empty */ }
+        return next
+      })
+      resetItemForm()
+      toast.success('Listing updated!')
+    } else {
+      // Create new item
+      const item: StoreItem = { id: Date.now().toString(), ...baseFields, createdAt: new Date().toISOString() }
+      setStoreItems(prev => {
+        const next = [item, ...prev]
+        try { localStorage.setItem(`storeItems:${profile.id}`, JSON.stringify(next)) } catch { /* empty */ }
+        return next
+      })
+      resetItemForm()
+      toast.success('Item listed!')
+    }
   }
 
   const deleteStoreItem = (id: string) => {
@@ -1915,9 +1948,9 @@ function ProfilePageContent() {
           gap:5px;
         }
 
-        .lp-store-delete-btn {
+        .lp-store-edit-btn, .lp-store-delete-btn {
           position:absolute;
-          top:6px; right:6px;
+          top:6px;
           width:22px; height:22px;
           border-radius:50%;
           background:rgba(0,0,0,0.6);
@@ -1930,6 +1963,10 @@ function ProfilePageContent() {
           transition:opacity 0.15s;
           z-index:2;
         }
+        .lp-store-edit-btn { right:34px; }
+        .lp-store-delete-btn { right:6px; }
+        .lp-store-delete-btn:hover { background:rgba(239,68,68,0.7); color:#fff; border-color:transparent; }
+        .lp-store-card:hover .lp-store-edit-btn,
         .lp-store-card:hover .lp-store-delete-btn { opacity:1; }
 
         .lp-store-info { padding:10px 12px 12px; }
@@ -2578,7 +2615,7 @@ function ProfilePageContent() {
                   {/* Add-item form */}
                   {showItemForm && canEdit && (
                     <div className="lp-edit-panel" style={{ marginBottom: 16 }}>
-                      <div className="lp-edit-title">New Listing</div>
+                      <div className="lp-edit-title">{editingItemId ? 'Edit Listing' : 'New Listing'}</div>
 
                       <div className="lp-edit-row">
                         <label className="lp-edit-label">Item Name</label>
@@ -2659,9 +2696,9 @@ function ProfilePageContent() {
 
                       <div className="lp-edit-actions">
                         <button className="lp-save" onClick={addStoreItem} disabled={!itemFormData.name.trim() || !itemFormData.price}>
-                          List Item
+                          {editingItemId ? 'Save Changes' : 'List Item'}
                         </button>
-                        <button className="lp-cancel" onClick={() => { setShowItemForm(false); setItemFormData({ name: '', description: '', price: '', category: 'Digital Art', tags: '', condition: 'Digital download', imageUrls: [], videoUrl: '' }) }}>
+                        <button className="lp-cancel" onClick={resetItemForm}>
                           Cancel
                         </button>
                       </div>
@@ -2679,7 +2716,18 @@ function ProfilePageContent() {
                         <div key={item.id} className="lp-store-card" onClick={() => setSelectedItem(item)}>
                           <div className="lp-store-preview">
                             {item.imageUrls?.[0] ? (
-                              <img src={item.imageUrls[0]} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                              <>
+                                <img src={item.imageUrls[0]} alt={item.name}
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                  onError={e => {
+                                    const img = e.currentTarget as HTMLImageElement;
+                                    img.style.display = 'none';
+                                    const fb = img.nextElementSibling as HTMLElement | null;
+                                    if (fb) fb.style.display = 'flex';
+                                  }}
+                                />
+                                <div style={{ width: '100%', height: '100%', display: 'none', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb,${accent} 10%,#111)`, fontSize: 26 }}>🛍️</div>
+                              </>
                             ) : item.videoUrl ? (
                               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a12', fontSize: 28, color: 'rgba(255,255,255,0.5)' }}>▶</div>
                             ) : (
@@ -2697,7 +2745,10 @@ function ProfilePageContent() {
                               </div>
                             )}
                             {canEdit && (
-                              <button className="lp-store-delete-btn" onClick={e => { e.stopPropagation(); deleteStoreItem(item.id) }} title="Remove listing">✕</button>
+                              <>
+                                <button className="lp-store-edit-btn" onClick={e => { e.stopPropagation(); editStoreItem(item) }} title="Edit listing">✎</button>
+                                <button className="lp-store-delete-btn" onClick={e => { e.stopPropagation(); deleteStoreItem(item.id) }} title="Remove listing">✕</button>
+                              </>
                             )}
                           </div>
                           <div className="lp-store-info">
