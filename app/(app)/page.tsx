@@ -554,7 +554,7 @@ export default function HomePage() {
       </nav>
 
       {/* ═══ HEADER ═══ */}
-      <header className="fixed top-0 left-0 right-0 px-4 py-3 flex items-center justify-between" style={{ zIndex: 50, background: "linear-gradient(180deg, rgba(3,3,8,0.9) 0%, transparent 100%)" }}>
+      <header className="fixed top-0 left-0 right-0 px-4 py-3 flex items-center justify-between" style={{ zIndex: 50, background: "linear-gradient(180deg, rgba(3,3,8,0.9) 0%, transparent 100%)", paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}>
         <Link href="/" className="flex items-center gap-2.5">
           <div className="relative h-[50px] w-[130px] sm:h-[70px] sm:w-[180px] overflow-hidden">
             <Image

@@ -49,6 +49,10 @@
     -webkit-overflow-scrolling: touch;
     /* Hide browser scrollbar on desktop */
     scrollbar-width: none;
+    /* iOS notch / Dynamic Island — push body content below the status bar
+       and above the home indicator (works with viewport-fit=cover) */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   body::-webkit-scrollbar {

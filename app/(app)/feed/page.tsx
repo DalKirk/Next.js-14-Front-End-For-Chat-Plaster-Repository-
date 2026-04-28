@@ -308,7 +308,7 @@ export default function FeedPage() {
         }
       `}</style>
       {/* Navigation Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md sm:backdrop-blur-xl bg-black/70 sm:bg-black/50 border-b border-slate-800">
+      <div className="sticky top-0 z-40 backdrop-blur-md sm:backdrop-blur-xl bg-black/70 sm:bg-black/50 border-b border-slate-800" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-3">
           {/* Top row: title + nav buttons */}
           <div className="flex items-center justify-between mb-1.5 xs:mb-2 sm:mb-0">

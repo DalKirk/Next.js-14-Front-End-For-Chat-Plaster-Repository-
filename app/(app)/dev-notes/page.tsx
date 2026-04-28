@@ -43,6 +43,7 @@ export default function DevNotesPage() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 mx-2 sm:mx-4 mb-2 sm:mb-4 p-2 sm:p-4 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 backdrop-blur-xl border border-slate-700/50 rounded-b-lg shadow-[0_4px_30px_rgba(0,0,0,0.9)] flex items-center gap-2 sm:gap-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
       >
         <Button
           onClick={() => router.push('/')}

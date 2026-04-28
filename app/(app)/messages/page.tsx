@@ -63,7 +63,7 @@ function MessagesContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
