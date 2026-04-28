@@ -1278,13 +1278,12 @@ function ProfilePageContent() {
         }
 
         .lp-banner {
-          width:100%;
-          aspect-ratio:16/7;
+          height:220px;
           position:relative;
           overflow:hidden;
           background:#0a0a12;
         }
-        @media(min-width:768px){ .lp-banner { aspect-ratio:16/6; } }
+        @media(min-width:768px){ .lp-banner { height:auto; aspect-ratio:16/6; } }
 
         .lp-banner-orb {
           position:absolute;
