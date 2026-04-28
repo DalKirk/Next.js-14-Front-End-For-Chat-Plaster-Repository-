@@ -2087,14 +2087,14 @@ function ProfilePageContent() {
                     src={profile.bannerMediaUrl}
                     autoPlay muted loop playsInline
                     className="lp-banner-media"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
                   <img
                     src={profile.bannerMediaUrl}
                     alt="Banner"
                     className="lp-banner-media"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 )
               ) : profile.profile_video_url ? (
@@ -2102,7 +2102,7 @@ function ProfilePageContent() {
                   src={profile.profile_video_url}
                   autoPlay muted loop playsInline
                   className="lp-banner-media"
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
                 <>
