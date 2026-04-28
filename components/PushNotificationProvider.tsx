@@ -70,37 +70,70 @@ interface Props {
   children: React.ReactNode;
 }
 
-export default function PushNotificationProvider({ authToken, children }: Props) {
+export default function PushNotificationProvider({ authToken: authTokenProp, children }: Props) {
   const [isSupported] = useState(() => isPushSupported());
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Resolved token: prop takes priority, then localStorage (with a retry for
+  // iOS Safari where localStorage may not be readable on the first tick).
+  const [resolvedToken, setResolvedToken] = useState<string | null>(authTokenProp);
+
+  // Sync prop changes immediately
+  useEffect(() => {
+    if (authTokenProp) setResolvedToken(authTokenProp);
+  }, [authTokenProp]);
+
+  // On mount, if the prop is absent try localStorage — and retry once after
+  // 500 ms for iOS Safari where storage access can be deferred.
+  useEffect(() => {
+    if (authTokenProp) return; // prop already provided, nothing to do
+
+    const readStorage = () =>
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth-token") ??
+          localStorage.getItem("token") ??
+          null
+        : null;
+
+    const immediate = readStorage();
+    if (immediate) {
+      setResolvedToken(immediate);
+      return;
+    }
+
+    // Retry after a short delay (iOS Safari may not expose storage immediately)
+    const timer = setTimeout(() => {
+      const delayed = readStorage();
+      if (delayed) setResolvedToken(delayed);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [authTokenProp]);
 
   // On mount: read actual browser permission + check if we already subscribed
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported || !resolvedToken) return;
 
     setPermission(getNotificationPermission());
 
     // Check backend subscription status
-    if (authToken) {
-      fetch("/api/push/status", {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-        .then((r) => r.json())
-        .then((data) => setIsSubscribed(data.subscribed ?? false))
-        .catch(() => {}); // non-fatal
-    }
-  }, [isSupported, authToken]);
+    fetch("/api/push/status", {
+      headers: { Authorization: `Bearer ${resolvedToken}` },
+    })
+      .then((r) => r.json())
+      .then((data) => setIsSubscribed(data.subscribed ?? false))
+      .catch(() => {}); // non-fatal
+  }, [isSupported, resolvedToken]);
 
   const subscribe = useCallback(async () => {
-    if (!authToken) {
+    if (!resolvedToken) {
       setError("You must be logged in to enable notifications.");
       return;
     }
     setError(null);
     try {
-      const ok = await subscribeToPush(authToken);
+      const ok = await subscribeToPush(resolvedToken);
       if (ok) {
         setIsSubscribed(true);
         setPermission("granted");
@@ -116,19 +149,19 @@ export default function PushNotificationProvider({ authToken, children }: Props)
       setError("Failed to enable notifications. Please try again.");
       console.error("[Push] subscribe error:", err);
     }
-  }, [authToken]);
+  }, [resolvedToken]);
 
   const unsubscribe = useCallback(async () => {
-    if (!authToken) return;
+    if (!resolvedToken) return;
     setError(null);
     try {
-      await unsubscribeFromPush(authToken);
+      await unsubscribeFromPush(resolvedToken);
       setIsSubscribed(false);
     } catch (err) {
       setError("Failed to disable notifications.");
       console.error("[Push] unsubscribe error:", err);
     }
-  }, [authToken]);
+  }, [resolvedToken]);
 
   return (
     <PushContext.Provider
