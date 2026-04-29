@@ -187,35 +187,21 @@ export function NotificationBellButton({ className = "" }: { className?: string 
   const { isSupported, permission, isSubscribed, subscribe, unsubscribe, error } =
     usePushNotifications();
   const [showIosHint, setShowIosHint] = React.useState(false);
+  // Computed client-side only to avoid SSR/hydration mismatch
+  const [iosMode, setIosMode] = React.useState(false);
 
-  // iOS Safari browser tab — push not supported, show "Add to Home Screen" hint
-  if (isIosBrowser()) {
-    return (
-      <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-        <button
-          onClick={() => setShowIosHint((v) => !v)}
-          aria-label="Enable notifications"
-          title="Enable notifications on iOS"
-          className={className}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: "0.4rem", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-        </button>
-        {showIosHint && (
-          <span role="tooltip" style={{ position: "absolute", top: "110%", right: 0, background: "#1e293b", color: "#fff", fontSize: "12px", padding: "8px 12px", borderRadius: "8px", zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.2)", maxWidth: "220px", lineHeight: 1.5 }}>
-            To get notifications on iPhone: tap <strong>Share ↑</strong> then <strong>Add to Home Screen</strong>, and open the app from there.
-          </span>
-        )}
-      </div>
-    );
-  }
+  React.useEffect(() => {
+    setIosMode(isIosBrowser());
+  }, []);
 
-  if (!isSupported) return null;
+  // Don't render on unsupported non-iOS browsers
+  if (!isSupported && !iosMode) return null;
 
   const handleClick = () => {
+    if (iosMode) {
+      setShowIosHint((v) => !v);
+      return;
+    }
     if (isSubscribed) {
       unsubscribe();
     } else {
@@ -225,48 +211,61 @@ export function NotificationBellButton({ className = "" }: { className?: string 
 
   const label = isSubscribed
     ? "Disable notifications"
+    : iosMode
+    ? "Enable notifications on iOS"
     : permission === "denied"
     ? "Notifications blocked"
     : "Enable notifications";
+
+  const isDisabled = !iosMode && permission === "denied";
+
+  // Bell colour: neon fuchsia (filled) when subscribed, white outline when not
+  const bellColor = isSubscribed ? "#c026d3" : "#ffffff";
 
   return (
     <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
       <button
         onClick={handleClick}
-        disabled={permission === "denied"}
+        disabled={isDisabled}
         aria-label={label}
         title={label}
         className={className}
         style={{
           background: "none",
           border: "none",
-          cursor: permission === "denied" ? "not-allowed" : "pointer",
+          cursor: isDisabled ? "not-allowed" : "pointer",
           padding: "0.4rem",
           borderRadius: "50%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          opacity: permission === "denied" ? 0.4 : 1,
+          opacity: isDisabled ? 0.4 : iosMode && !isSubscribed ? 0.6 : 1,
           transition: "opacity 0.2s",
         }}
       >
         {isSubscribed ? (
-          // Bell-on SVG
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          // Bell filled neon lime green
+          <svg width="22" height="22" viewBox="0 0 24 24" fill={bellColor} stroke={bellColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            <circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" />
           </svg>
         ) : (
-          // Bell-off SVG
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          // Bell white outline, no fill
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={bellColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
         )}
       </button>
 
-      {/* Inline error toast (auto-dismiss handled by parent if needed) */}
+      {/* iOS "Add to Home Screen" hint */}
+      {iosMode && showIosHint && (
+        <span role="tooltip" style={{ position: "absolute", top: "110%", right: 0, background: "#1e293b", color: "#fff", fontSize: "12px", padding: "8px 12px", borderRadius: "8px", zIndex: 50, boxShadow: "0 2px 8px rgba(0,0,0,0.2)", maxWidth: "220px", lineHeight: 1.5 }}>
+          To get notifications on iPhone: tap <strong>Share ↑</strong> then <strong>Add to Home Screen</strong>, and open the app from there.
+        </span>
+      )}
+
+      {/* Inline error toast */}
       {error && (
         <span
           role="alert"
