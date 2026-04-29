@@ -855,11 +855,29 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         currentUserId={currentUser.id}
       />
 
-      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-black md:rounded-xl border-0 md:border border-white/5 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto">
+      {/* iOS-safe positioning: fixed below page header on mobile, relative on desktop */}
+      <style>{`
+        .dm-section-root {
+          position: fixed;
+          top: calc(env(safe-area-inset-top, 0px) + 72px);
+          right: 0;
+          bottom: 0;
+          left: 0;
+        }
+        @media (min-width: 768px) {
+          .dm-section-root {
+            position: relative;
+            top: auto; right: auto; bottom: auto; left: auto;
+          }
+        }
+      `}</style>
+      <div
+        className="dm-section-root flex flex-col md:flex-row md:h-[600px] w-full bg-black md:rounded-xl border-0 md:border border-white/5 overflow-hidden z-20 md:z-auto"
+      >
         {/* Sidebar - Contact List */}
         <div className={`w-full md:w-80 md:min-w-[280px] bg-zinc-950 md:bg-black border-r-0 md:border-r border-white/5 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 pt-[108px] md:p-4 md:pt-4 border-b border-white/5 flex-shrink-0">
+          <div className="p-3 md:p-4 border-b border-white/5 flex-shrink-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />

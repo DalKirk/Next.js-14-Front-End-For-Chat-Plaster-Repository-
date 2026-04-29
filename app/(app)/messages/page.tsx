@@ -62,8 +62,16 @@ function MessagesContent() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/5" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* Header — fixed so it never moves during iOS pull-to-refresh */}
+      <header
+        className="fixed left-0 right-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/5"
+        style={{
+          top: 0,
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -100,6 +108,9 @@ function MessagesContent() {
           </div>
         </div>
       </header>
+
+      {/* Spacer that matches header height (safe-area + 72px inner height) */}
+      <div style={{ height: 'calc(env(safe-area-inset-top, 0px) + 72px)' }} aria-hidden="true" />
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-4">
