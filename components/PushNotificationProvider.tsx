@@ -88,31 +88,44 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
     if (authTokenProp) setResolvedToken(authTokenProp);
   }, [authTokenProp]);
 
-  // On mount, if the prop is absent try localStorage — and retry once after
-  // 500 ms for iOS Safari where storage access can be deferred.
+  // On mount, if the prop is absent try localStorage — retry at 500ms, 1.5s
+  // and 3s to handle slow login flows on iOS Safari.
   useEffect(() => {
     if (authTokenProp) return; // prop already provided, nothing to do
 
-    const readStorage = () =>
+    const read = () =>
       typeof window !== "undefined"
         ? localStorage.getItem("auth-token") ??
           localStorage.getItem("token") ??
           null
         : null;
 
-    const immediate = readStorage();
+    const immediate = read();
     if (immediate) {
       setResolvedToken(immediate);
       return;
     }
 
-    // Retry after a short delay (iOS Safari may not expose storage immediately)
-    const timer = setTimeout(() => {
-      const delayed = readStorage();
-      if (delayed) setResolvedToken(delayed);
-    }, 500);
+    const t1 = setTimeout(() => { const t = read(); if (t) setResolvedToken(t); }, 500);
+    const t2 = setTimeout(() => { const t = read(); if (t) setResolvedToken(t); }, 1500);
+    const t3 = setTimeout(() => { const t = read(); if (t) setResolvedToken(t); }, 3000);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [authTokenProp]);
+
+  // Pick up the token the moment login writes it to localStorage (cross-tab
+  // and same-tab via StorageEvent polyfill in modern browsers).
+  useEffect(() => {
+    if (authTokenProp) return;
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "auth-token" && e.newValue) {
+        setResolvedToken(e.newValue);
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [authTokenProp]);
 
   // On mount: read actual browser permission + check if we already subscribed
@@ -164,8 +177,8 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg === "SESSION_EXPIRED") {
-        setError("Session expired — please sign in again to enable notifications.");
+      if (msg === "SESSION_EXPIRED" || msg.includes("401")) {
+        setError("Session expired. Please log in again to enable notifications.");
       } else {
         setError("Failed to enable notifications. Please try again.");
       }
