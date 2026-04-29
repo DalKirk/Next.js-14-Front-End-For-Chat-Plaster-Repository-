@@ -1188,9 +1188,10 @@ function ProfilePageContent() {
           background:#0a0a0a;
           min-height:100vh;
           padding:24px 16px 80px;
+          padding-top:calc(env(safe-area-inset-top, 0px) + 24px);
           position:relative;
         }
-        @media(min-width:768px){ .lp-root { padding:40px 32px 80px; } }
+        @media(min-width:768px){ .lp-root { padding:40px 32px 80px; padding-top:calc(env(safe-area-inset-top, 0px) + 40px); } }
 
         .lp-root::before {
           content:'';
@@ -2082,7 +2083,10 @@ function ProfilePageContent() {
 
         {/* Top-right navigation */}
         <div style={{
-          position: 'fixed', top: 16, right: 16, zIndex: 50,
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 16px)',
+          zIndex: 50,
           display: 'flex', gap: 8,
         }}>
           <button
