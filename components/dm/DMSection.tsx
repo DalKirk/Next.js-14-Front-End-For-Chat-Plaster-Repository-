@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Send, Paperclip, Smile, MoreVertical, 
-  ArrowLeft, MessageCircle, Check, CheckCheck, Trash2, X 
+  ArrowLeft, MessageCircle, Check, CheckCheck, Trash2, X, Loader2, Image as ImageIcon, Film, Download
 } from 'lucide-react';
 import { ResponsiveAvatar } from '@/components/ResponsiveAvatar';
 import { User } from '@/lib/types';
@@ -189,7 +189,9 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
   const [deleteConversationTarget, setDeleteConversationTarget] = useState<DMContact | null>(null);
   const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
   const [deletingMessage, setDeletingMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const initialRecipientHandled = useRef(false);
 
   // Connect to DM WebSocket and load from localStorage
@@ -221,6 +223,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         
         if (data?.contacts && data.contacts.length > 0) {
           // Update contacts with server-side data: unread counts, conversation IDs, AND profile info
+          let updatedContacts: DMContact[] = [];
           setContacts(prev => {
             const updated = prev.map(contact => {
               const serverContact = data.contacts.find((c: any) => c.id === contact.id);
@@ -255,10 +258,59 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               }
               return contact;
             });
+            updatedContacts = updated;
             return updated;
           });
+
+          // Fetch full profiles for any contacts still missing avatar data
+          const missingAvatars = updatedContacts.filter(c => !c.avatar_url && !c.avatar_urls?.small);
+          if (missingAvatars.length > 0) {
+            await Promise.allSettled(
+              missingAvatars.map(async (contact) => {
+                try {
+                  const profile = await apiClient.getProfile(contact.id);
+                  if (profile?.avatar_url || profile?.avatar_urls) {
+                    const enriched: DMContact = {
+                      ...contact,
+                      avatar_url: profile.avatar_url || contact.avatar_url,
+                      avatar_urls: profile.avatar_urls || contact.avatar_urls,
+                      username: profile.username || contact.username,
+                    };
+                    StorageManager.saveContact(currentUser.id, enriched);
+                    setContacts(prev => prev.map(c => c.id === contact.id ? enriched : c));
+                  }
+                } catch {
+                  // silently skip — contact will show initials fallback
+                }
+              })
+            );
+          }
         } else {
           console.log('[DM] No contacts from API, keeping localStorage data');
+          // Still try to enrich any contacts missing avatars
+          const savedContacts = StorageManager.getContacts(currentUser.id);
+          const missingAvatars = savedContacts.filter(c => !c.avatar_url && !c.avatar_urls?.small);
+          if (missingAvatars.length > 0) {
+            await Promise.allSettled(
+              missingAvatars.map(async (contact) => {
+                try {
+                  const profile = await apiClient.getProfile(contact.id);
+                  if (profile?.avatar_url || profile?.avatar_urls) {
+                    const enriched: DMContact = {
+                      ...contact,
+                      avatar_url: profile.avatar_url || contact.avatar_url,
+                      avatar_urls: profile.avatar_urls || contact.avatar_urls,
+                      username: profile.username || contact.username,
+                    };
+                    StorageManager.saveContact(currentUser.id, enriched);
+                    setContacts(prev => prev.map(c => c.id === contact.id ? enriched : c));
+                  }
+                } catch {
+                  // silently skip
+                }
+              })
+            );
+          }
         }
       } catch (e) {
         console.warn('[DM] Failed to sync conversations from API:', e);
@@ -485,6 +537,77 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
     onUnreadCountChange?.(totalUnread);
   }, [contacts, onUnreadCountChange]);
 
+  // Core send logic — accepts any content string (text or media marker)
+  const sendMessageContent = (content: string) => {
+    if (!content || !activeConversation) return;
+    const activeContact = contacts.find(c => c.id === activeConversation);
+    if (!activeContact) return;
+
+    const newMessage: DMMessage = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      conversation_id: getConversationKey(currentUser.id, activeContact.id),
+      sender_id: currentUser.id,
+      sender_username: currentUser.username,
+      sender_avatar: currentUser.avatar_url || currentUser.avatar_urls?.medium,
+      receiver_id: activeContact.id,
+      content,
+      timestamp: new Date().toISOString(),
+      read: false,
+      from: 'me',
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [activeConversation]: [...(prev[activeConversation] || []), newMessage],
+    }));
+    StorageManager.saveContact(currentUser.id, activeContact);
+    StorageManager.saveMessage(currentUser.id, newMessage);
+
+    if (wsConnected && dmSocketManager.isConnected()) {
+      dmSocketManager.sendMessage(
+        activeContact.id,
+        content,
+        currentUser.avatar_url || currentUser.avatar_urls?.medium
+      );
+    }
+  };
+
+  // Handle file attachment upload
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !activeConversation) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isImage && !isVideo) return;
+
+    // 100 MB limit
+    if (file.size > 100 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 100 MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await apiClient.uploadGalleryFiles(
+        currentUser.id,
+        [file],
+        '__dm__',
+        currentUser.username,
+      );
+      const item = result.items[0];
+      if (!item?.url) throw new Error('Upload returned no URL');
+      const marker = isVideo ? `[media:video:${item.url}]` : `[media:image:${item.url}]`;
+      sendMessageContent(marker);
+    } catch (err) {
+      console.error('[DM] File upload failed:', err);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Send message - using WebSocket with localStorage as storage
   const handleSend = () => {
     const messageText = inputText.trim();
@@ -503,52 +626,9 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
       return;
     }
 
-    const newMessage: DMMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      conversation_id: getConversationKey(currentUser.id, activeContact.id),
-      sender_id: currentUser.id,
-      sender_username: currentUser.username,
-      sender_avatar: currentUser.avatar_url || currentUser.avatar_urls?.medium,
-      receiver_id: activeContact.id,
-      content: messageText,
-      timestamp: new Date().toISOString(),
-      read: false,
-      from: 'me',
-    };
-
-    console.log('[DM] Creating message:', newMessage);
-
-    // Clear input immediately
+    // Clear input and delegate to shared send logic
     setInputText('');
-
-    // Optimistically add message to UI
-    setMessages(prev => {
-      const updated = {
-        ...prev,
-        [activeConversation]: [...(prev[activeConversation] || []), newMessage],
-      };
-      console.log('[DM] Updated messages state');
-      return updated;
-    });
-
-    // Save contact and message to localStorage (ensures persistence)
-    StorageManager.saveContact(currentUser.id, activeContact);
-    StorageManager.saveMessage(currentUser.id, newMessage);
-    console.log('[DM] Saved to localStorage');
-
-    // Try to send via WebSocket (for real-time delivery to other user)
-    if (wsConnected && dmSocketManager.isConnected()) {
-      const sent = dmSocketManager.sendMessage(
-        activeContact.id,
-        messageText,
-        currentUser.avatar_url || currentUser.avatar_urls?.medium
-      );
-      if (sent) {
-        console.log('[DM] 📤 Message sent via WebSocket');
-      }
-    } else {
-      console.log('[DM] ⚠️ WebSocket not connected, message saved to localStorage only');
-    }
+    sendMessageContent(messageText);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -943,13 +1023,50 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                         >
                           <div className={`flex items-center gap-1 md:gap-2 max-w-[85%] md:max-w-[75%] ${isMe ? 'flex-row-reverse' : ''}`}>
                             <div
-                              className={`px-3 py-2 md:px-4 md:py-2.5 rounded-2xl ${
+                              className={`rounded-2xl overflow-hidden ${
                                 isMe
                                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
                                   : 'bg-zinc-900 border border-white/10 text-slate-200 rounded-bl-md'
                               }`}
                             >
-                              <p className="text-[13px] md:text-sm leading-relaxed break-words">{msg.content}</p>
+                              {(() => {
+                                const imgMatch = msg.content?.match(/^\[media:image:(.+)\]$/);
+                                const vidMatch = msg.content?.match(/^\[media:video:(.+)\]$/);
+                                if (imgMatch) {
+                                  return (
+                                    <div className="relative group/img">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={imgMatch[1]}
+                                        alt="attachment"
+                                        className="max-w-[220px] md:max-w-[280px] max-h-[320px] object-cover block cursor-pointer"
+                                        onClick={() => window.open(imgMatch[1], '_blank', 'noopener,noreferrer')}
+                                      />
+                                      <a
+                                        href={imgMatch[1]}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 flex items-center justify-center text-white opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-black/80"
+                                        title="Open / download"
+                                      >
+                                        <Download size={13} />
+                                      </a>
+                                    </div>
+                                  );
+                                }
+                                if (vidMatch) {
+                                  return (
+                                    <div className="relative">
+                                      <video
+                                        src={vidMatch[1]}
+                                        controls
+                                        className="max-w-[220px] md:max-w-[280px] max-h-[320px] block"
+                                      />
+                                    </div>
+                                  );
+                                }
+                                return <p className="px-3 py-2 md:px-4 md:py-2.5 text-[13px] md:text-sm leading-relaxed break-words">{msg.content}</p>;
+                              })()}
                             </div>
                             {/* Delete message button - only show for own messages */}
                             {isMe && (
@@ -983,9 +1100,21 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             {/* Input Area - Fixed at bottom */}
             <div className="flex-shrink-0 p-2 md:p-3 border-t border-white/5 bg-zinc-950">
               <div className="flex items-end gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
-                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-white/10 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
-                  <Paperclip size={18} />
+                <button
+                  className="hidden md:flex w-9 h-9 rounded-lg hover:bg-white/10 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Attach image or video"
+                  disabled={isUploading || !activeConversation}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
                 </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
                 <textarea
                   rows={1}
                   placeholder={`Message...`}

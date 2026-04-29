@@ -13,7 +13,7 @@ import { apiClient } from '@/lib/api'
 import { MediaPlaybackProvider } from '@/contexts/MediaPlaybackContext'
 import { StorageUtils } from '@/lib/storage-utils'
 import { updateUsernameEverywhere } from '@/lib/message-utils'
-import type { AvatarUrls } from '@/types/backend'
+import type { AvatarUrls, GalleryItem } from '@/types/backend'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -376,6 +376,11 @@ function ProfilePageContent() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [currentUserAvatarUrls, setCurrentUserAvatarUrls] = useState<any>(null)
+
+  // Gallery media (user-uploaded, excludes DM attachments)
+  const [mediaItems, setMediaItems] = useState<GalleryItem[]>([])
+  const [uploadingGallery, setUploadingGallery] = useState(false)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   // ─── Load profile from backend ──────────────────────────────────────
   useEffect(() => {
@@ -768,6 +773,31 @@ function ProfilePageContent() {
     // Clear from backend
     try { apiClient.updateProfile(profile.id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, '', '') } catch { /* empty */ }
     toast.success('Banner media removed')
+  }
+
+  // ─── Gallery media load ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!profile?.id) return
+    apiClient.listGallery(profile.id)
+      .then(items => setMediaItems(items.filter(i => i.caption !== '__dm__')))
+      .catch(() => {})
+  }, [profile?.id])
+
+  // ─── Gallery upload handler ─────────────────────────────────────────
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ''
+    if (!files.length || !profile) return
+    setUploadingGallery(true)
+    try {
+      const result = await apiClient.uploadGalleryFiles(profile.id, files, undefined, profile.username)
+      setMediaItems(prev => [...result.items, ...prev])
+      toast.success(`${result.items.length} photo${result.items.length > 1 ? 's' : ''} added to gallery!`)
+    } catch {
+      toast.error('Upload failed. Please try again.')
+    } finally {
+      setUploadingGallery(false)
+    }
   }
 
   // ─── Font upload handler ────────────────────────────────────────────
@@ -2255,6 +2285,33 @@ function ProfilePageContent() {
                     />
                   </div>
 
+                  {/* Gallery Upload */}
+                  <div className="lp-edit-row">
+                    <label className="lp-edit-label">Gallery Photos / Videos</label>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={handleGalleryUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      onClick={() => galleryInputRef.current?.click()}
+                      disabled={uploadingGallery}
+                      className="lp-video-btn"
+                    >
+                      {uploadingGallery ? (
+                        <><div className="lp-spinner" /> Uploading…</>
+                      ) : (
+                        <><ImageIcon style={{ width: 14, height: 14 }} /> Upload to Gallery</>
+                      )}
+                    </button>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                      Images or videos — select multiple at once
+                    </p>
+                  </div>
+
                   {/* Banner Media Upload */}
                   <div className="lp-edit-row">
                     <label className="lp-edit-label">Banner Media</label>
@@ -2520,6 +2577,42 @@ function ProfilePageContent() {
               {/* Gallery tab – mock items */}
               {activeTab === 'gallery' && (
                 <>
+                  {/* User-uploaded photos/videos */}
+                  {mediaItems.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 10 }}>Photos &amp; Videos</div>
+                      <div className="lp-gallery">
+                        {mediaItems.map(item => (
+                          <div key={item.id} className="group/media" style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+                            {item.media_type === 'video' ? (
+                              <video src={item.url} controls style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }} />
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.url} alt={item.caption || 'photo'} style={{ width: '100%', display: 'block', aspectRatio: '1', objectFit: 'cover' }} />
+                            )}
+                            {canEdit && (
+                              <button
+                                onClick={async () => {
+                                  if (!profile) return
+                                  try {
+                                    await apiClient.deleteGalleryItem(profile.id, item.id)
+                                    setMediaItems(prev => prev.filter(i => i.id !== item.id))
+                                    toast.success('Removed from gallery')
+                                  } catch {
+                                    toast.error('Could not delete item')
+                                  }
+                                }}
+                                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/70 flex items-center justify-center text-white opacity-0 group-hover/media:opacity-100 transition-opacity hover:bg-red-600/80"
+                                title="Delete"
+                              >
+                                <Trash2 style={{ width: 13, height: 13 }} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="lp-filters">
                     {(['all', 'image', 'video', '3d', 'gif'] as const).map(f => (
                       <button
