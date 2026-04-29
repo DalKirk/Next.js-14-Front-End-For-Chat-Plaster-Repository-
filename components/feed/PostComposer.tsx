@@ -197,7 +197,7 @@ export function PostComposer({
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="What's on your mind?"
+            placeholder="Any thoughts today?"
             className="w-full bg-white/5 border border-slate-700 rounded-xl px-2.5 py-2 xs:px-3 xs:py-2 sm:px-4 sm:py-3 text-[13px] xs:text-sm sm:text-base text-white placeholder:text-slate-500 min-h-[70px] xs:min-h-[80px] sm:min-h-[100px] resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
             maxLength={5000}
           />

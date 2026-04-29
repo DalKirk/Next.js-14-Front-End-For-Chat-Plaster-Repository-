@@ -29,17 +29,21 @@ async function handler(
   // Forward the Authorization header from the client
   const authHeader = req.headers.get("authorization") ?? "";
 
-  const backendRes = await fetch(`${BACKEND_URL}/push/${action}`, {
-    method: req.method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: authHeader,
-    },
-    body: req.method !== "GET" ? await req.text() : undefined,
-  });
+  try {
+    const backendRes = await fetch(`${BACKEND_URL}/push/${action}`, {
+      method: req.method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      body: req.method !== "GET" ? await req.text() : undefined,
+    });
 
-  const json = await backendRes.json().catch(() => ({}));
-  return NextResponse.json(json, { status: backendRes.status });
+    const json = await backendRes.json().catch(() => ({}));
+    return NextResponse.json(json, { status: backendRes.status });
+  } catch {
+    return NextResponse.json({ error: "Push service unavailable" }, { status: 503 });
+  }
 }
 
 export const GET = handler;

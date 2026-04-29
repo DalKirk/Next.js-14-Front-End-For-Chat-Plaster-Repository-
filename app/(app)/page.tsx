@@ -20,7 +20,7 @@ import {
   Image as ImageIcon, Box, Video, Bot,
   MessageSquare, ShoppingCart, Gamepad2,
   Camera, Palette, User as UserIcon, LogOut, Type,
-  Sparkles,
+  Sparkles, Mail,
 } from "lucide-react";
 const UnifiedAIPanel = dynamic(() => import("@/components/UnifiedAIPanel"), { ssr: false });
 
@@ -220,9 +220,26 @@ export default function HomePage() {
   const exploreRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const wakeRecRef = useRef<SpeechRecognition | null>(null);
   const wakeActiveRef = useRef(false);
   const panelWasOpenRef = useRef(false);
+
+  /* ── Close menu on outside click ── */
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showMenu]);
 
   /* ═══════════════════════════════════════════
      AUTH & AVATAR EFFECTS (preserved from v1)
@@ -580,7 +597,7 @@ export default function HomePage() {
               </button>
             </>
           ) : (
-            <div className="flex items-center gap-2 relative">
+            <div className="flex items-center gap-2 relative" ref={menuRef}>
               <NotificationBellButton className="text-slate-400 hover:text-white" />
               <button
                 onClick={() => setShowMenu(!showMenu)}
@@ -628,10 +645,9 @@ export default function HomePage() {
                   </div>
                   {[
                     { label: "Profile", icon: <UserIcon className="w-3.5 h-3.5" />, href: "/profile" },
-                    { label: "Edit Profile", icon: <UserCircleIcon className="w-3.5 h-3.5" />, href: "/profile?edit=true" },
+                    { label: "Messages", icon: <Mail className="w-3.5 h-3.5" />, href: "/messages" },
                     { label: "Rooms", icon: <MessageSquare className="w-3.5 h-3.5" />, href: "/chat" },
-                    { label: "Messages", icon: <MessageSquare className="w-3.5 h-3.5" />, href: "/messages" },
-                    { label: "Agent", icon: <Bot className="w-3.5 h-3.5" />, href: "/ai-chat" },
+                    { label: "Workspace", icon: <Bot className="w-3.5 h-3.5" />, href: "/workspace" },
                   ].map((item) => (
                     <button
                       key={item.label}

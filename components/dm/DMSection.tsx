@@ -775,11 +775,11 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         currentUserId={currentUser.id}
       />
 
-      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 md:rounded-xl border-0 md:border border-slate-700/50 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto">
+      <div className="flex flex-col md:flex-row h-[100dvh] md:h-[600px] w-full bg-black md:rounded-xl border-0 md:border border-white/5 overflow-hidden fixed md:relative inset-0 md:inset-auto z-20 md:z-auto">
         {/* Sidebar - Contact List */}
-        <div className={`w-full md:w-80 md:min-w-[280px] bg-slate-900/95 md:bg-slate-900/60 border-r-0 md:border-r border-slate-700/50 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
+        <div className={`w-full md:w-80 md:min-w-[280px] bg-zinc-950 md:bg-black border-r-0 md:border-r border-white/5 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 pt-[108px] md:p-4 md:pt-4 border-b border-slate-700/50 flex-shrink-0">
+          <div className="p-3 pt-[108px] md:p-4 md:pt-4 border-b border-white/5 flex-shrink-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -788,7 +788,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
+                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
               />
             </div>
           </div>
@@ -813,13 +813,13 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                   className={`group flex items-center gap-2 p-2 mx-1 my-0.5 rounded-lg cursor-pointer transition-all ${
                     activeConversation === contact.id
                       ? 'bg-cyan-400/10 border-l-2 border-cyan-400'
-                      : 'hover:bg-slate-800/50 active:bg-slate-800/70'
+                      : 'hover:bg-white/5 active:bg-white/10'
                   }`}
                   onClick={() => selectConversation(contact.id)}
                 >
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-600/50">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10">
                       <ResponsiveAvatar
                         avatarUrls={contact.avatar_urls || (contact.avatar_url ? { thumbnail: contact.avatar_url, small: contact.avatar_url, medium: contact.avatar_url, large: contact.avatar_url } : undefined)}
                         username={contact.username}
@@ -827,7 +827,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${statusColors[contact.status]}`} />
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black ${statusColors[contact.status]}`} />
                   </div>
 
                   {/* Info */}
@@ -867,20 +867,20 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col bg-slate-950/40 min-h-0 ${showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
+        <div className={`flex-1 flex flex-col bg-black min-h-0 ${showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
         {activeContact ? (
           <>
             {/* Chat Header - Fixed at top */}
-            <div className="flex-shrink-0 flex items-center gap-2 p-2 border-b border-slate-700/50 bg-slate-900/95">
+            <div className="flex-shrink-0 flex items-center gap-2 p-2 border-b border-white/5 bg-zinc-950">
               <button 
-                className="md:hidden w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:bg-slate-700 transition-colors flex-shrink-0"
+                className="md:hidden w-7 h-7 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white active:bg-white/20 transition-colors flex-shrink-0"
                 onClick={() => setShowMobileList(true)}
               >
                 <ArrowLeft size={14} />
               </button>
 
               <div className="relative flex-shrink-0">
-                <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-600/50">
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10">
                   <ResponsiveAvatar
                     avatarUrls={activeContact.avatar_urls || (activeContact.avatar_url ? { thumbnail: activeContact.avatar_url, small: activeContact.avatar_url, medium: activeContact.avatar_url, large: activeContact.avatar_url } : undefined)}
                     username={activeContact.username}
@@ -888,7 +888,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${statusColors[activeContact.status]}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black ${statusColors[activeContact.status]}`} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -899,7 +899,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 </p>
               </div>
 
-              <button className="w-7 h-7 rounded-lg hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="More options">
+              <button className="w-7 h-7 rounded-lg hover:bg-white/10 active:bg-white/20 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="More options">
                 <MoreVertical size={14} />
               </button>
             </div>
@@ -931,7 +931,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                       <div key={msg.id}>
                         {showDate && (
                           <div className="flex justify-center my-4">
-                            <span className="px-3 py-1 bg-slate-800/50 rounded-full text-xs text-slate-500 font-medium">
+                            <span className="px-3 py-1 bg-white/5 rounded-full text-xs text-slate-500 font-medium">
                               {formatDate(msg.timestamp)}
                             </span>
                           </div>
@@ -946,7 +946,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                               className={`px-3 py-2 md:px-4 md:py-2.5 rounded-2xl ${
                                 isMe
                                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
-                                  : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-md'
+                                  : 'bg-zinc-900 border border-white/10 text-slate-200 rounded-bl-md'
                               }`}
                             >
                               <p className="text-[13px] md:text-sm leading-relaxed break-words">{msg.content}</p>
@@ -981,9 +981,9 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             </div>
 
             {/* Input Area - Fixed at bottom */}
-            <div className="flex-shrink-0 p-2 md:p-3 border-t border-slate-700/50 bg-slate-900/95">
-              <div className="flex items-end gap-1.5 md:gap-2 bg-slate-800/80 border border-slate-700 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
-                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-slate-700 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
+            <div className="flex-shrink-0 p-2 md:p-3 border-t border-white/5 bg-zinc-950">
+              <div className="flex items-end gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
+                <button className="hidden md:flex w-9 h-9 rounded-lg hover:bg-white/10 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Attach file">
                   <Paperclip size={18} />
                 </button>
                 <textarea
@@ -1032,7 +1032,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="bg-zinc-950 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -1044,7 +1044,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 </div>
               </div>
               
-              <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl mb-4">
+              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl mb-4">
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600/50">
                   <ResponsiveAvatar
                     avatarUrls={deleteConversationTarget.avatar_urls || (deleteConversationTarget.avatar_url ? { thumbnail: deleteConversationTarget.avatar_url, small: deleteConversationTarget.avatar_url, medium: deleteConversationTarget.avatar_url, large: deleteConversationTarget.avatar_url } : undefined)}
@@ -1069,7 +1069,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteConversationModal(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors font-medium"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors font-medium"
                 >
                   Cancel
                 </button>

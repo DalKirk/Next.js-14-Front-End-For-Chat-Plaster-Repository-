@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Video } from 'lucide-react';
 import DMSection from '@/components/dm/DMSection';
 import { User } from '@/lib/types';
 
@@ -54,28 +54,25 @@ function MessagesContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black">
+    <div className="min-h-screen bg-black">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/5" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-slate-400" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-white" />
-              </div>
               <div>
                 <h1 className="text-xl font-bold text-white">Messages</h1>
                 {unreadCount > 0 && (
@@ -88,15 +85,17 @@ function MessagesContent() {
           <div className="flex items-center gap-3">
             <Link
               href="/profile"
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors"
+              className="p-2 sm:px-4 sm:py-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-sm font-medium transition-colors flex items-center gap-2"
             >
-              Profile
+              <UserIcon className="w-5 h-5 sm:hidden" />
+              <span className="hidden sm:inline">Profile</span>
             </Link>
             <Link
               href="/chat"
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-sm font-medium hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all"
+              className="p-2 sm:px-4 sm:py-2 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-sm font-medium hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all flex items-center gap-2"
             >
-              Rooms
+              <Video className="w-5 h-5 sm:hidden" />
+              <span className="hidden sm:inline">Rooms</span>
             </Link>
           </div>
         </div>
@@ -107,7 +106,7 @@ function MessagesContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50 overflow-hidden"
+          className="bg-zinc-950 rounded-xl border border-white/5 overflow-hidden"
         >
           <DMSection
             currentUser={{
@@ -128,7 +127,7 @@ function MessagesContent() {
 export default function MessagesPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
       </div>
     }>

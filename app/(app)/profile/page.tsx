@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Video, Trash2, ImageIcon, Newspaper, MessageSquare, Music, Lock } from 'lucide-react'
+import { Video, Trash2, ImageIcon, Newspaper, MessageSquare, Music, Lock, Mail } from 'lucide-react'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import { PostComposer } from '@/components/feed/PostComposer'
 import { PostCard } from '@/components/feed/PostCard'
@@ -1190,7 +1190,8 @@ function ProfilePageContent() {
           transition:color 0.15s;
           display:inline-flex;
           align-items:center;
-          gap:5px;
+          gap:4px;
+          line-height:1;
         }
         .lp-back a:hover { color:#ffffff; }
 
@@ -1284,7 +1285,7 @@ function ProfilePageContent() {
           background:#0a0a12;
         }
         @media(min-width:768px){
-          .lp-banner { height:auto; overflow:visible; }
+          .lp-banner { height:auto; overflow:visible; min-height:44px; }
           .lp-banner-media { position:static !important; width:100% !important; height:auto !important; display:block; object-fit:unset !important; }
         }
 
@@ -1421,7 +1422,7 @@ function ProfilePageContent() {
         .lp-handle {
           font-family:'Space Mono',monospace;
           font-size:10px;
-          color:rgba(240,237,232,0.35);
+          color:rgba(240,237,232,0.75);
           letter-spacing:0.1em;
           margin-bottom:14px;
         }
@@ -1502,7 +1503,7 @@ function ProfilePageContent() {
 
         .lp-stat-l {
           font-size:10px;
-          color:rgba(240,237,232,0.25);
+          color:rgba(240,237,232,0.75);
           font-weight:300;
           line-height:1.2;
         }
@@ -1565,7 +1566,7 @@ function ProfilePageContent() {
           padding:10px 16px;
           border:none;
           background:none;
-          color:rgba(255,255,255,0.25);
+          color:rgba(255,255,255,0.6);
           cursor:pointer;
           position:relative;
           transition:color 0.15s;
@@ -1579,7 +1580,7 @@ function ProfilePageContent() {
           background:var(--accent);
           border-radius:1px;
         }
-        .lp-tab:hover:not(.active) { color:rgba(255,255,255,0.5); }
+        .lp-tab:hover:not(.active) { color:rgba(255,255,255,0.8); }
 
         .lp-filters {
           display:flex;
@@ -2046,7 +2047,7 @@ function ProfilePageContent() {
       >
         {/* Back nav */}
         <div className="lp-back">
-          <Link href="/"><span style={{fontSize:'13px',lineHeight:1}}>←</span> BACK</Link>
+          <Link href="/"><span style={{fontSize:'11px',lineHeight:1}}>←</span><span style={{fontSize:'10px',lineHeight:1}}>BACK</span></Link>
         </div>
 
         {/* Top-right navigation */}
@@ -2061,6 +2062,14 @@ function ProfilePageContent() {
             <Newspaper style={{ width: 16, height: 16 }} />
             <span className="lp-nav-label">Social Feed</span>
             <span className="lp-nav-label-sm">Feed</span>
+          </button>
+          <button
+            onClick={() => router.push('/messages')}
+            className="lp-nav-btn"
+          >
+            <Mail style={{ width: 16, height: 16 }} />
+            <span className="lp-nav-label">Messages</span>
+            <span className="lp-nav-label-sm">DMs</span>
           </button>
           <button
             onClick={() => router.push('/chat')}
@@ -2119,12 +2128,6 @@ function ProfilePageContent() {
                     background: `radial-gradient(circle,color-mix(in srgb,${accent} 20%,transparent),transparent 65%)`,
                   }} />
                 </>
-              )}
-
-              {canEdit && (
-                <button className="lp-banner-edit" onClick={() => setEditMode(v => !v)}>
-                  {editMode ? '✕' : '✎'}
-                </button>
               )}
 
             </div>
