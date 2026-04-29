@@ -297,6 +297,17 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
               {errors.password && (
                 <p className="mt-1 text-xs text-red-400">{errors.password}</p>
               )}
+              {/* Forgot password — login mode only */}
+              {mode === 'login' && (
+                <div className="flex justify-end mt-1">
+                  <a
+                    href="/auth/magic-link?reason=forgot"
+                    className="text-xs text-slate-400 hover:text-fuchsia-400 transition-colors"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+              )}
 
             </div>
 
@@ -367,7 +378,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
 
             {/* Switch Mode - only show on credentials step */}
             {(mode === 'login' || signupStep === 'credentials') && (
-              <div className="text-center pt-4 border-t border-slate-700/50">
+              <div className="text-center pt-4 border-t border-slate-700/50 flex flex-col gap-2">
                 <p className="text-sm text-slate-400">
                   {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
                   <button
@@ -379,6 +390,17 @@ export function AuthModal({ isOpen, onClose, onLogin, onSignUp, isLoading = fals
                     {mode === 'login' ? 'Sign Up' : 'Sign In'}
                   </button>
                 </p>
+                {mode === 'login' && (
+                  <p className="text-sm text-slate-400">
+                    Or{' '}
+                    <a
+                      href="/auth/magic-link"
+                      className="text-fuchsia-400 hover:text-fuchsia-300 font-medium transition-colors"
+                    >
+                      sign in with a magic link
+                    </a>
+                  </p>
+                )}
               </div>
             )}
           </form>

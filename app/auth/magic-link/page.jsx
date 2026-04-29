@@ -1,8 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function MagicLinkPage() {
+function MagicLinkContent() {
+  const searchParams = useSearchParams();
+  const isForgot = searchParams.get("reason") === "forgot";
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -90,8 +94,13 @@ export default function MagicLinkPage() {
           >
             Starcyeed
           </div>
+          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "18px", fontWeight: 600, margin: "0 0 4px" }}>
+            {isForgot ? "Recover your account" : "Sign in with a magic link"}
+          </p>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", margin: 0 }}>
-            Sign in with a magic link
+            {isForgot
+              ? "Enter your email and we'll send you a link to get back in."
+              : "Enter your email and we'll send you a one-time login link."}
           </p>
         </div>
 
@@ -211,5 +220,18 @@ export default function MagicLinkPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MagicLinkPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, border: "3px solid rgba(167,139,250,0.2)", borderTop: "3px solid #a78bfa", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
+      </div>
+    }>
+      <MagicLinkContent />
+    </Suspense>
   );
 }
