@@ -76,6 +76,10 @@ export async function subscribeToPush(authToken: string): Promise<boolean> {
     }),
   });
 
+  if (res.status === 401) {
+    throw new Error("SESSION_EXPIRED");
+  }
+
   return res.ok;
 }
 

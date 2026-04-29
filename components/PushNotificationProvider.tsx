@@ -127,13 +127,19 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
   }, [isSupported, resolvedToken]);
 
   const subscribe = useCallback(async () => {
-    if (!resolvedToken) {
+    // Always read a fresh token in case resolvedToken is stale
+    const token =
+      resolvedToken ??
+      (typeof window !== "undefined"
+        ? localStorage.getItem("auth-token") ?? localStorage.getItem("token")
+        : null);
+    if (!token) {
       setError("You must be logged in to enable notifications.");
       return;
     }
     setError(null);
     try {
-      const ok = await subscribeToPush(resolvedToken);
+      const ok = await subscribeToPush(token);
       if (ok) {
         setIsSubscribed(true);
         setPermission("granted");
@@ -143,10 +149,17 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
           setError(
             "Notifications are blocked. Please allow them in your browser settings."
           );
+        } else {
+          setError("Failed to enable notifications. Please try again.");
         }
       }
-    } catch (err) {
-      setError("Failed to enable notifications. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SESSION_EXPIRED") {
+        setError("Session expired — please sign in again to enable notifications.");
+      } else {
+        setError("Failed to enable notifications. Please try again.");
+      }
       console.error("[Push] subscribe error:", err);
     }
   }, [resolvedToken]);
@@ -179,8 +192,11 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
 function isIosBrowser(): boolean {
   if (typeof window === "undefined") return false;
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  const isStandalone = (window.navigator as any).standalone === true;
-  return isIos && !isStandalone;
+  if (!isIos) return false;
+  if ((window.navigator as any).standalone === true) return false;
+  // iOS 16.4+ supports Web Push in the browser — let it go through normally
+  if ("PushManager" in window && "serviceWorker" in navigator && "Notification" in window) return false;
+  return true;
 }
 
 export function NotificationBellButton({ className = "" }: { className?: string }) {
