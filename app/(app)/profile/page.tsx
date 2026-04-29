@@ -2901,7 +2901,14 @@ function ProfilePageContent() {
                             <button onClick={() => setSelectedItem(null)} style={{ background: 'none', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: '50%', width: 30, height: 30, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'inherit' }}>✕</button>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg,${accent},${banner})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 600, flexShrink: 0 }}>{profile.displayName[0]}</div>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                              <ResponsiveAvatar
+                                avatarUrls={profile.avatar_urls ?? (profile.avatarUrl ? { thumbnail: profile.avatarUrl, small: profile.avatarUrl, medium: profile.avatarUrl, large: profile.avatarUrl } : undefined)}
+                                username={profile.displayName}
+                                size="thumbnail"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>{profile.displayName}</span>
                           </div>
                           {selectedItem.description && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 14 }}>{selectedItem.description}</p>}
