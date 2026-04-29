@@ -45,6 +45,8 @@ interface PushContextValue {
   subscribe: () => Promise<void>;
   /** Call this when the user disables notifications in settings */
   unsubscribe: () => Promise<void>;
+  /** True while a subscribe/unsubscribe request is in-flight */
+  isBusy: boolean;
   /** Any error message to surface in your UI */
   error: string | null;
 }
@@ -55,6 +57,7 @@ const PushContext = createContext<PushContextValue>({
   isSubscribed: false,
   subscribe: async () => {},
   unsubscribe: async () => {},
+  isBusy: false,
   error: null,
 });
 
@@ -74,6 +77,7 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
   const [isSupported] = useState(() => isPushSupported());
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Resolved token: prop takes priority, then localStorage (with a retry for
   // iOS Safari where localStorage may not be readable on the first tick).
@@ -117,16 +121,20 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
 
     setPermission(getNotificationPermission());
 
-    // Check backend subscription status
+    // Check backend subscription status — silently skip on 401 (expired token)
     fetch("/api/push/status", {
       headers: { Authorization: `Bearer ${resolvedToken}` },
     })
-      .then((r) => r.json())
-      .then((data) => setIsSubscribed(data.subscribed ?? false))
+      .then((r) => {
+        if (r.status === 401) return null;
+        return r.json();
+      })
+      .then((data) => { if (data) setIsSubscribed(data.subscribed ?? false); })
       .catch(() => {}); // non-fatal
   }, [isSupported, resolvedToken]);
 
   const subscribe = useCallback(async () => {
+    if (isBusy) return; // prevent double-clicks
     // Always read a fresh token in case resolvedToken is stale
     const token =
       resolvedToken ??
@@ -137,6 +145,7 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
       setError("You must be logged in to enable notifications.");
       return;
     }
+    setIsBusy(true);
     setError(null);
     try {
       const ok = await subscribeToPush(token);
@@ -161,11 +170,14 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
         setError("Failed to enable notifications. Please try again.");
       }
       console.error("[Push] subscribe error:", err);
+    } finally {
+      setIsBusy(false);
     }
-  }, [resolvedToken]);
+  }, [resolvedToken, isBusy]);
 
   const unsubscribe = useCallback(async () => {
-    if (!resolvedToken) return;
+    if (!resolvedToken || isBusy) return;
+    setIsBusy(true);
     setError(null);
     try {
       await unsubscribeFromPush(resolvedToken);
@@ -173,12 +185,14 @@ export default function PushNotificationProvider({ authToken: authTokenProp, chi
     } catch (err) {
       setError("Failed to disable notifications.");
       console.error("[Push] unsubscribe error:", err);
+    } finally {
+      setIsBusy(false);
     }
-  }, [resolvedToken]);
+  }, [resolvedToken, isBusy]);
 
   return (
     <PushContext.Provider
-      value={{ isSupported, permission, isSubscribed, subscribe, unsubscribe, error }}
+      value={{ isSupported, permission, isSubscribed, subscribe, unsubscribe, isBusy, error }}
     >
       {children}
     </PushContext.Provider>
@@ -200,7 +214,7 @@ function isIosBrowser(): boolean {
 }
 
 export function NotificationBellButton({ className = "" }: { className?: string }) {
-  const { isSupported, permission, isSubscribed, subscribe, unsubscribe, error } =
+  const { isSupported, permission, isSubscribed, subscribe, unsubscribe, isBusy, error } =
     usePushNotifications();
   const [showIosHint, setShowIosHint] = React.useState(false);
   // Computed client-side only to avoid SSR/hydration mismatch
@@ -233,7 +247,7 @@ export function NotificationBellButton({ className = "" }: { className?: string 
     ? "Notifications blocked"
     : "Enable notifications";
 
-  const isDisabled = !iosMode && permission === "denied";
+  const isDisabled = isBusy || (!iosMode && permission === "denied");
 
   // Bell colour: neon fuchsia (filled) when subscribed, white outline when not
   const bellColor = isSubscribed ? "#c026d3" : "#ffffff";
@@ -255,7 +269,7 @@ export function NotificationBellButton({ className = "" }: { className?: string 
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          opacity: isDisabled ? 0.4 : iosMode && !isSubscribed ? 0.6 : 1,
+          opacity: isDisabled ? 0.4 : isBusy ? 0.6 : iosMode && !isSubscribed ? 0.6 : 1,
           transition: "opacity 0.2s",
         }}
       >
