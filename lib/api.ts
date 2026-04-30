@@ -55,6 +55,30 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Attach the auth token to every request automatically
+api.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth-token") : null;
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// On 401 responses, clear a stale token and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      // Only redirect if we had a token — means it expired rather than a deliberate auth action
+      if (typeof window !== "undefined" && localStorage.getItem("auth-token")) {
+        localStorage.removeItem("auth-token");
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 const FEED_REQUEST_TIMEOUT_MS = 45000;
 
 function extractMessage(err: unknown): string {
