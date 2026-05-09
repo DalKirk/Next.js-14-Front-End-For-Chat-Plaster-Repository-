@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { GenerationStoreProvider } from '@/lib/generation-store';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <GenerationStoreProvider>
       {children}
+      </GenerationStoreProvider>
       <Toaster
         position="top-right"
         toastOptions={{

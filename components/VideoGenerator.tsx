@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Zap, Layers, Clock, Download, Cog, RefreshCw, X, Maximize2,
@@ -12,13 +12,12 @@ import {
   generateSkyReelVideo,
   generateAvatarVideo,
   generateHunyuanAvatarVideo,
-  pollVideoJob,
-  getVideoResultUrl,
   type VideoJobResponse,
   type VideoModel,
 } from '@/services/video-generation.service';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
+import { useGenerationStore } from '@/lib/generation-store';
 
 /* ─── Model definitions ─── */
 type WanMode = 't2v' | 'i2v' | 'smart';
@@ -170,9 +169,20 @@ export default function VideoGenerator() {
   const [resolution, setResolution] = useState('720p');
   const [negativePrompt, setNegativePrompt] = useState('');
   const [v2vStrength, setV2vStrength] = useState(0.7);
+  // ── Global generation store (polling lives here, survives navigation) ──────
+  const store = useGenerationStore();
+  const storeVideoJobs = useMemo(
+    () => store.jobs.filter(j => j.type === 'video'),
+    [store.jobs],
+  );
+  // Derived from store — no need for local useState
+  const generating  = storeVideoJobs.some(j => j.status === 'queued' || j.status === 'processing');
+  const activeJobs  = storeVideoJobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
+  const progress    = storeVideoJobs.find(j => j.status === 'processing')?.progress ?? 0;
+  const progressMsg = storeVideoJobs.find(j => j.status === 'processing')?.progressMsg ?? '';
+
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
   const [storageNotice, setStorageNotice] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(30);
   const [cfg, setCfg] = useState(6.5);
@@ -181,9 +191,6 @@ export default function VideoGenerator() {
   const [expanded, setExpanded] = useState<GeneratedVideo | null>(null);
   const [hCard, setHCard] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeJobs, setActiveJobs] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState('');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [coldStart, setColdStart] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -207,8 +214,9 @@ export default function VideoGenerator() {
   const [savedToProfile, setSavedToProfile] = useState<Record<string, boolean>>({});
   const videoElRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const lastSubmitRef = useRef(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const coldStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track which store-job completions we've already processed to avoid double-fire
+  const handledCompletionsRef = useRef<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const refImageInputRef = useRef<HTMLInputElement>(null);
@@ -260,8 +268,68 @@ export default function VideoGenerator() {
     }
   };
 
+  // ── Sync store video jobs → local videos gallery ─────────────────────────
+  useEffect(() => {
+    if (storeVideoJobs.length === 0) return;
+
+    setVideos(prev => {
+      let updated = [...prev];
+      storeVideoJobs.forEach(sj => {
+        const idx = updated.findIndex(v => v.id === sj.id);
+        const merged: GeneratedVideo = {
+          id: sj.id,
+          prompt: sj.prompt,
+          model: sj.model!,
+          mode: sj.mode!,
+          duration: sj.duration!,
+          resolution: sj.resolution!,
+          time: sj.time ?? null,
+          videoUrl: sj.resultUrl ?? null,
+          status: sj.status,
+          error: sj.error,
+          c1: sj.c1,
+          c2: sj.c2,
+          enhancedPrompt: sj.enhancedPrompt ?? null,
+          kept: idx !== -1 ? updated[idx].kept : undefined,
+        };
+        if (idx === -1) {
+          // Job was started while unmounted – prepend it
+          updated = [merged, ...updated];
+        } else {
+          updated[idx] = merged;
+        }
+      });
+      return updated;
+    });
+
+    // Clear cold-start timer when progress advances
+    const leadJob = storeVideoJobs.find(j => j.status === 'processing');
+    if (leadJob && leadJob.progress > 25 && coldStartTimerRef.current) {
+      clearTimeout(coldStartTimerRef.current);
+      coldStartTimerRef.current = null;
+      setColdStart(false);
+    }
+
+    // Handle completions: store already saved to localStorage & gallery.
+    // After a short delay, remove from store (item stays in videos via local state).
+    storeVideoJobs.forEach(sj => {
+      if (
+        (sj.status === 'complete' || sj.status === 'failed') &&
+        !handledCompletionsRef.current.has(sj.id)
+      ) {
+        handledCompletionsRef.current.add(sj.id);
+        if (coldStartTimerRef.current) {
+          clearTimeout(coldStartTimerRef.current);
+          coldStartTimerRef.current = null;
+        }
+        setColdStart(false);
+        setTimeout(() => store.removeJob(sj.id), 3000);
+      }
+    });
+  }, [storeVideoJobs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const generate = useCallback(async () => {
-    if (!prompt.trim() || generating) return;
+    if (!prompt.trim()) return;
     if (mode === 'i2v' && !uploadedImage) return;
     if (mode === 'v2v' && !uploadedVideo) return;
     if (mode === 'ref2video' && refImages.length === 0) return;
@@ -272,12 +340,16 @@ export default function VideoGenerator() {
     if (now - lastSubmitRef.current < 2000) return;
     lastSubmitRef.current = now;
 
-    setGenerating(true);
     setError(null);
-    setProgress(0);
+    setColdStart(false);
 
     const ci = Math.floor(Math.random() * colorPairs.length);
     const tempId = `temp-${Date.now()}`;
+    const jobResolution =
+      model === 'skyreel' ? skyreelResolution :
+      model === 'avatar' ? avatarResolution :
+      model === 'hunyuan-avatar' ? `${hunyuanImageSize}px` :
+      resolution;
 
     const newVid: GeneratedVideo = {
       id: tempId,
@@ -285,7 +357,7 @@ export default function VideoGenerator() {
       model,
       mode,
       duration,
-      resolution: model === 'skyreel' ? skyreelResolution : model === 'avatar' ? avatarResolution : model === 'hunyuan-avatar' ? `${hunyuanImageSize}px` : resolution,
+      resolution: jobResolution,
       time: null,
       videoUrl: null,
       status: 'queued',
@@ -293,8 +365,6 @@ export default function VideoGenerator() {
       c2: colorPairs[ci][1],
     };
     setVideos(prev => [newVid, ...prev]);
-    setActiveJobs(prev => prev + 1);
-    setColdStart(false);
 
     try {
       const parsedSeed = seed ? parseInt(seed, 10) : null;
@@ -367,99 +437,40 @@ export default function VideoGenerator() {
         });
       }
 
-      // Cold start detection: if progress stays 10-25% for >30s
-      coldStartTimerRef.current = setTimeout(() => {
-        setColdStart(true);
-      }, 30000);
+      // Cold-start detection: show warning if still <25% after 30 s
+      coldStartTimerRef.current = setTimeout(() => setColdStart(true), 30000);
 
-      /* Poll every 2s */
-      pollRef.current = setInterval(async () => {
-        try {
-          const status: VideoJobResponse = await pollVideoJob(model, job.job_id);
-
-          setProgress(status.progress);
-          setProgressMsg(status.message);
-
-          // Clear cold start timer once past 25%
-          if (status.progress > 25 && coldStartTimerRef.current) {
-            clearTimeout(coldStartTimerRef.current);
-            coldStartTimerRef.current = null;
-            setColdStart(false);
-          }
-
-          setVideos(prev =>
-            prev.map(v =>
-              v.id === tempId
-                ? {
-                    ...v,
-                    status: status.status,
-                    time: status.generation_time != null
-                      ? `${status.generation_time.toFixed(1)}s`
-                      : null,
-                    videoUrl: status.status === 'complete' && status.video_url
-                      ? getVideoResultUrl(model, job.job_id)
-                      : null,
-                    error: status.error ?? undefined,
-                    enhancedPrompt: status.enhanced_prompt ?? undefined,
-                  }
-                : v,
-            ),
-          );
-
-          if (status.status === 'complete' || status.status === 'failed') {
-            if (pollRef.current) clearInterval(pollRef.current);
-            if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
-            setActiveJobs(prev => Math.max(0, prev - 1));
-            setProgress(0);
-            setProgressMsg('');
-            setColdStart(false);
-            setTimeout(() => setGenerating(false), 3000);
-
-            // Auto-save to gallery on completion
-            if (status.status === 'complete' && status.video_url) {
-              try {
-                const raw = StorageUtils.safeGetItem('chat-user');
-                if (raw) {
-                  const user = JSON.parse(raw);
-                  if (user.id && user.username) {
-                    const resultUrl = getVideoResultUrl(model, job.job_id);
-                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'video', prompt.trim().slice(0, 100))
-                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
-                      .catch(() => {});
-                  }
-                }
-              } catch {}
-            }
-          }
-        } catch {
-          if (pollRef.current) clearInterval(pollRef.current);
-          if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
-          setVideos(prev =>
-            prev.map(v =>
-              v.id === tempId ? { ...v, status: 'failed', error: 'Polling error' } : v,
-            ),
-          );
-          setActiveJobs(prev => Math.max(0, prev - 1));
-          setProgress(0);
-          setProgressMsg('');
-          setColdStart(false);
-          setTimeout(() => setGenerating(false), 3000);
-        }
-      }, 2000);
+      // ── Hand off polling to the global store ──────────────────────────────
+      store.addJob({
+        id: tempId,
+        jobId: job.job_id,
+        type: 'video',
+        status: 'queued',
+        progress: 0,
+        progressMsg: '',
+        prompt: prompt.trim(),
+        model,
+        mode,
+        duration,
+        resolution: jobResolution,
+        c1: colorPairs[ci][0],
+        c2: colorPairs[ci][1],
+        startedAt: Date.now(),
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setError(msg);
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+        coldStartTimerRef.current = null;
+      }
       setVideos(prev =>
         prev.map(v =>
           v.id === tempId ? { ...v, status: 'failed', error: msg } : v,
         ),
       );
-      setActiveJobs(prev => Math.max(0, prev - 1));
-      setProgress(0);
-      setProgressMsg('');
-      setGenerating(false);
     }
-  }, [prompt, generating, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration, refImages, portraitImage, audioFile, skyreelResolution, avatarResolution, guidanceScaleImg, samplingSteps, textGuideScale, audioGuideScale, hunyuanInferSteps, hunyuanCfgScale, hunyuanImageSize]);
+  }, [prompt, model, mode, duration, resolution, uploadedImage, uploadedVideo, steps, cfg, seed, negativePrompt, v2vStrength, curDuration, refImages, portraitImage, audioFile, skyreelResolution, avatarResolution, guidanceScaleImg, samplingSteps, textGuideScale, audioGuideScale, hunyuanInferSteps, hunyuanCfgScale, hunyuanImageSize, store]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -690,12 +701,6 @@ export default function VideoGenerator() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0 }}
-          >
-            <ArrowLeft size={16} />
-          </button>
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
           <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>

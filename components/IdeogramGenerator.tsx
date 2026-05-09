@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
@@ -10,8 +10,6 @@ import {
 import { useBackgroundRemoval } from '@/hooks/useBackgroundRemoval';
 import {
   generateIdeogramImage,
-  pollIdeogramJob,
-  getIdeogramResultUrl,
   type IdeogramJobStatus,
   type IdeogramModel,
   type IdeogramStyle,
@@ -19,6 +17,7 @@ import {
 } from '@/services/ideogram.service';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
+import { useGenerationStore } from '@/lib/generation-store';
 
 /* ─── Logex style types ─── */
 const ideogramStyles: { id: IdeogramStyle | 'none'; name: string; desc: string; emoji: string; bg: string }[] = [
@@ -72,7 +71,6 @@ export default function IdeogramGenerator() {
   const [seed, setSeed] = useState('');
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [storageNotice, setStorageNotice] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [savingToProfile, setSavingToProfile] = useState<Record<string, boolean>>({});
   const [savedToProfile, setSavedToProfile] = useState<Record<string, boolean>>({});
@@ -80,8 +78,17 @@ export default function IdeogramGenerator() {
   const [hCard, setHCard] = useState<string | null>(null);
   const [hStyle, setHStyle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeJobs, setActiveJobs] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Global generation store (polling lives here, survives navigation) ──
+  const store = useGenerationStore();
+  const storeIdeoJobs = useMemo(
+    () => store.jobs.filter(j => j.type === 'ideogram'),
+    [store.jobs],
+  );
+  const generating = storeIdeoJobs.some(j => j.status === 'queued' || j.status === 'processing');
+  const activeJobs  = storeIdeoJobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
+
+  const handledCompletionsRef = useRef<Set<string>>(new Set());
   const lastSubmitRef = useRef(0);
 
   /* ─── Background removal ─── */
@@ -95,14 +102,50 @@ export default function IdeogramGenerator() {
   const curStyle = ideogramStyles.find(s => s.id === styleType);
   const curRatio = aspectRatios.find(r => r.id === aspectRatio) || aspectRatios[0];
 
+  /* ─── Sync store ideogram jobs → local images gallery ─── */
+  useEffect(() => {
+    if (storeIdeoJobs.length === 0) return;
+    setImages(prev => {
+      let updated = [...prev];
+      storeIdeoJobs.forEach(sj => {
+        const idx = updated.findIndex(img => img.id === sj.id);
+        const merged: GeneratedImage = {
+          id: sj.id,
+          jobId: sj.jobId,
+          prompt: sj.prompt,
+          style: sj.mode ?? 'Auto',
+          time: sj.time ? parseFloat(sj.time) : null,
+          imageUrl: sj.resultUrl ?? null,
+          status: sj.status,
+          error: sj.error,
+          c1: sj.c1,
+          c2: sj.c2,
+          kept: idx !== -1 ? updated[idx].kept : undefined,
+        };
+        if (idx === -1) updated = [merged, ...updated];
+        else updated[idx] = merged;
+      });
+      return updated;
+    });
+
+    storeIdeoJobs.forEach(sj => {
+      if (
+        (sj.status === 'complete' || sj.status === 'failed') &&
+        !handledCompletionsRef.current.has(sj.id)
+      ) {
+        handledCompletionsRef.current.add(sj.id);
+        setTimeout(() => store.removeJob(sj.id), 3000);
+      }
+    });
+  }, [storeIdeoJobs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ─── Generate ─── */
   const generate = useCallback(async () => {
-    if (!prompt.trim() || generating) return;
+    if (!prompt.trim()) return;
     const now = Date.now();
     if (now - lastSubmitRef.current < 2000) return;
     lastSubmitRef.current = now;
 
-    setGenerating(true);
     setError(null);
 
     const h1 = Math.floor(Math.random() * 360);
@@ -121,7 +164,6 @@ export default function IdeogramGenerator() {
       c2: `hsl(${h2},60%,45%)`,
     };
     setImages(prev => [newImg, ...prev]);
-    setActiveJobs(prev => prev + 1);
 
     try {
       const parsedSeed = seed ? parseInt(seed, 10) : null;
@@ -138,64 +180,28 @@ export default function IdeogramGenerator() {
       const jobId = job.job_id;
       setImages(prev => prev.map(img => img.id === tempId ? { ...img, jobId } : img));
 
-      pollRef.current = setInterval(async () => {
-        try {
-          const status: IdeogramJobStatus = await pollIdeogramJob(jobId);
-
-          setImages(prev =>
-            prev.map(img =>
-              img.id === tempId
-                ? {
-                    ...img,
-                    status: status.status,
-                    time: status.generation_time ?? null,
-                    imageUrl: status.status === 'complete' ? getIdeogramResultUrl(jobId) : null,
-                    error: status.error ?? undefined,
-                  }
-                : img,
-            ),
-          );
-
-          if (status.status === 'complete' || status.status === 'failed') {
-            if (pollRef.current) clearInterval(pollRef.current);
-            setActiveJobs(prev => Math.max(0, prev - 1));
-            setTimeout(() => setGenerating(false), 3000);
-
-            // Auto-save to gallery on completion
-            if (status.status === 'complete') {
-              try {
-                const raw = StorageUtils.safeGetItem('chat-user');
-                if (raw) {
-                  const user = JSON.parse(raw);
-                  if (user.id && user.username) {
-                    const resultUrl = getIdeogramResultUrl(jobId);
-                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'image', prompt.trim().slice(0, 100))
-                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
-                      .catch(() => {});
-                  }
-                }
-              } catch {}
-            }
-          }
-        } catch {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setImages(prev =>
-            prev.map(img => img.id === tempId ? { ...img, status: 'failed', error: 'Polling error' } : img),
-          );
-          setActiveJobs(prev => Math.max(0, prev - 1));
-          setTimeout(() => setGenerating(false), 3000);
-        }
-      }, 2000);
+      // ── Hand off polling to the global store ──
+      store.addJob({
+        id: tempId,
+        jobId,
+        type: 'ideogram',
+        status: 'queued',
+        progress: 0,
+        progressMsg: '',
+        prompt: prompt.trim(),
+        mode: styleType === 'none' ? 'Auto' : styleType,
+        c1: newImg.c1,
+        c2: newImg.c2,
+        startedAt: Date.now(),
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setError(msg);
       setImages(prev =>
         prev.map(img => img.id === tempId ? { ...img, status: 'failed', error: msg } : img),
       );
-      setActiveJobs(prev => Math.max(0, prev - 1));
-      setGenerating(false);
     }
-  }, [prompt, generating, styleType, aspectRatio, model, magicPrompt, negativePrompt, seed]);
+  }, [prompt, styleType, aspectRatio, model, magicPrompt, negativePrompt, seed, store]);
 
   /* ─── Actions ─── */
   const handleDownload = async (img: GeneratedImage, e?: React.MouseEvent) => {
@@ -374,9 +380,6 @@ export default function IdeogramGenerator() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0 }}>
-            <ArrowLeft size={16} />
-          </button>
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
           <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>

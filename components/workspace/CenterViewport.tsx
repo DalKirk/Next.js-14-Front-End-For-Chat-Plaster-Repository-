@@ -16,11 +16,13 @@ import {
   RotateCcw,
   Layers,
   MessageSquare,
+  RefreshCw,
 } from 'lucide-react';
 import type { CenterTab, GalleryItem, GenerationTool, ChatMessage } from '@/app/(app)/workspace/page';
 import { WorkspaceAgentActivity } from './AgentActivity';
 import type { AgentActivityHandle } from './AgentActivity';
 import { WorkspaceChatTab } from './ChatTab';
+import { useGenerationStore } from '@/lib/generation-store';
 
 /* ═══════════════════════════════════════════════════════
    Center Viewport — Gallery + Chat + Agent Activity tabs
@@ -136,6 +138,8 @@ interface GalleryViewProps {
 function GalleryView({ gallery, removeFromGallery, onOpenTool }: GalleryViewProps) {
   const [hCard, setHCard] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<GalleryItem | null>(null);
+  const { jobs, removeJob } = useGenerationStore();
+  const activeJobs = jobs.filter(j => j.status === 'queued' || j.status === 'processing');
 
   // Download — same pattern as VideoGenerator/ImageGenerator
   const handleDownload = useCallback(async (item: GalleryItem, e?: React.MouseEvent) => {
@@ -191,7 +195,62 @@ function GalleryView({ gallery, removeFromGallery, onOpenTool }: GalleryViewProp
 
   if (gallery.length === 0) {
     return (
-      <div className="ws-empty">
+      <div className="ws-empty" style={{ position: 'relative' }}>
+        {/* Active generation jobs — top-right corner */}
+        {activeJobs.length > 0 && (
+          <div style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            zIndex: 10,
+          }}>
+            {activeJobs.map(job => (
+              <div
+                key={job.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  background: 'rgba(8,8,15,0.92)',
+                  border: '1px solid rgba(139,92,246,0.35)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 30px rgba(139,92,246,0.12)',
+                  minWidth: 200,
+                  maxWidth: 260,
+                }}
+              >
+                <RefreshCw size={13} color="#a78bfa" style={{ flexShrink: 0, animation: 'ws-gen-spin 1s linear infinite' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {job.type === 'video' ? '🎬' : job.type === 'ideogram' ? '✏️' : '🖼️'}{' '}
+                    {job.progressMsg || 'Generating…'}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                    {job.prompt.length > 38 ? job.prompt.slice(0, 38) + '…' : job.prompt}
+                  </div>
+                  {job.progress > 0 && (
+                    <div style={{ marginTop: 4, height: 2, borderRadius: 2, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#7c3aed,#06b6d4)', width: `${job.progress}%`, transition: 'width 0.4s' }} />
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => removeJob(job.id)}
+                  title="Dismiss"
+                  style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <style>{`@keyframes ws-gen-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         <div className="ws-empty-icon">
           <LayoutGrid size={22} />
         </div>
@@ -236,7 +295,62 @@ function GalleryView({ gallery, removeFromGallery, onOpenTool }: GalleryViewProp
   }
 
   return (
-    <div className="ws-gallery">
+    <div className="ws-gallery" style={{ position: 'relative' }}>
+      {/* Active generation jobs — top-right corner */}
+      {activeJobs.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          zIndex: 10,
+        }}>
+          {activeJobs.map(job => (
+            <div
+              key={job.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 12px',
+                borderRadius: 10,
+                background: 'rgba(8,8,15,0.92)',
+                border: '1px solid rgba(139,92,246,0.35)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 30px rgba(139,92,246,0.12)',
+                minWidth: 200,
+                maxWidth: 260,
+              }}
+            >
+              <RefreshCw size={13} color="#a78bfa" style={{ flexShrink: 0, animation: 'ws-gen-spin 1s linear infinite' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {job.type === 'video' ? '🎬' : job.type === 'ideogram' ? '✏️' : '🖼️'}{' '}
+                  {job.progressMsg || 'Generating…'}
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                  {job.prompt.length > 38 ? job.prompt.slice(0, 38) + '…' : job.prompt}
+                </div>
+                {job.progress > 0 && (
+                  <div style={{ marginTop: 4, height: 2, borderRadius: 2, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#7c3aed,#06b6d4)', width: `${job.progress}%`, transition: 'width 0.4s' }} />
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => removeJob(job.id)}
+                title="Dismiss"
+                style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, display: 'flex', alignItems: 'center' }}
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <style>{`@keyframes ws-gen-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <div className="ws-gallery-grid">
         {gallery.map((item) => {
           const isHovered = hCard === item.id;

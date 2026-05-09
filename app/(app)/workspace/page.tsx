@@ -12,6 +12,7 @@ import { GenerationModal } from '@/components/workspace/GenerationModal';
 import { FloatingIDEPanel } from '@/components/workspace/FloatingIDEPanel';
 import type { AgentActivityHandle } from '@/components/workspace/AgentActivity';
 import type { StarIDEHandle } from '@/components/workspace/StarIDE';
+import { useGenerationStore } from '@/lib/generation-store';
 
 export type GenerationTool = 'video' | 'image' | 'ideogram' | '3d' | 'image-analysis' | 'transparency' | 'ide' | null;
 export type CenterTab = 'gallery' | 'agent' | 'chat';
@@ -165,6 +166,32 @@ export default function WorkspacePage() {
   const removeFromGallery = useCallback((id: string) => {
     setGallery(prev => prev.filter(g => g.id !== id));
   }, []);
+
+  // ─── Auto-add store completions to gallery ────────────
+  const { jobs: storeJobs } = useGenerationStore();
+  const addedJobIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    storeJobs.forEach(job => {
+      if (
+        job.status === 'complete' &&
+        job.resultUrl &&
+        !addedJobIdsRef.current.has(job.id)
+      ) {
+        addedJobIdsRef.current.add(job.id);
+        addToGallery({
+          id: job.id,
+          type: job.type === 'ideogram' ? 'image' : job.type === 'video' ? 'video' : 'image',
+          url: job.resultUrl,
+          prompt: job.prompt,
+          model: job.model,
+          duration: job.duration,
+          time: job.time ? parseFloat(job.time) : undefined,
+          createdAt: job.startedAt,
+        });
+      }
+    });
+  }, [storeJobs, addToGallery]);
 
   // ─── Shared conversation memory ──────────────────────
   const sharedHistory = useRef<SharedHistoryEntry[]>([]);

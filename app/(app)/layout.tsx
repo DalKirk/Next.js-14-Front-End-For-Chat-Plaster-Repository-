@@ -40,6 +40,7 @@ export default function AppLayout({
               {children}
             </div>
           </ErrorBoundary>
+          {/* GenerationActivityBar moved into workspace gallery */}
         </div>
       </Providers>
     </div>

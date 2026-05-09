@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles, Zap, Layers, Image as ImageIcon, Clock, Download, Wand2,
@@ -9,12 +9,11 @@ import {
 } from 'lucide-react';
 import {
   generateImage,
-  pollImageJob,
-  getImageResultUrl,
   type ImageJobResponse,
 } from '@/services/image-generation.service';
 import { apiClient } from '@/lib/api';
 import { StorageUtils } from '@/lib/storage-utils';
+import { useGenerationStore } from '@/lib/generation-store';
 
 /* ─── Style presets ─── */
 const allStyles = [
@@ -64,7 +63,6 @@ export default function ImageGenerator() {
   const [ratio, setRatio] = useState('1:1');
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [storageNotice, setStorageNotice] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState(false);
   const [steps, setSteps] = useState(28);
   const [guidance, setGuidance] = useState(4.5);
@@ -77,8 +75,17 @@ export default function ImageGenerator() {
   const [hCard, setHCard] = useState<string | null>(null);
   const [hStyle, setHStyle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeJobs, setActiveJobs] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Global generation store (polling lives here, survives navigation) ──
+  const store = useGenerationStore();
+  const storeImageJobs = useMemo(
+    () => store.jobs.filter(j => j.type === 'image'),
+    [store.jobs],
+  );
+  const generating = storeImageJobs.some(j => j.status === 'queued' || j.status === 'processing');
+  const activeJobs  = storeImageJobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
+
+  const handledCompletionsRef = useRef<Set<string>>(new Set());
   const lastSubmitRef = useRef(0);
 
   const cur = allStyles.find(s => s.id === style);
@@ -108,15 +115,50 @@ export default function ImageGenerator() {
     return `${s.promptPrefix} ${raw}${s.promptSuffix || ''}`;
   };
 
+  // ── Sync store image jobs → local images gallery ─────────────────────────
+  useEffect(() => {
+    if (storeImageJobs.length === 0) return;
+    setImages(prev => {
+      let updated = [...prev];
+      storeImageJobs.forEach(sj => {
+        const idx = updated.findIndex(img => img.id === sj.id);
+        const merged: GeneratedImage = {
+          id: sj.id,
+          prompt: sj.prompt,
+          style: sj.mode ?? 'none',
+          time: sj.time ? parseFloat(sj.time) : null,
+          imageUrl: sj.resultUrl ?? null,
+          status: sj.status,
+          error: sj.error,
+          c1: sj.c1,
+          c2: sj.c2,
+          kept: idx !== -1 ? updated[idx].kept : undefined,
+        };
+        if (idx === -1) updated = [merged, ...updated];
+        else updated[idx] = merged;
+      });
+      return updated;
+    });
+
+    storeImageJobs.forEach(sj => {
+      if (
+        (sj.status === 'complete' || sj.status === 'failed') &&
+        !handledCompletionsRef.current.has(sj.id)
+      ) {
+        handledCompletionsRef.current.add(sj.id);
+        setTimeout(() => store.removeJob(sj.id), 3000);
+      }
+    });
+  }, [storeImageJobs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const generate = useCallback(async () => {
-    if (!prompt.trim() || generating) return;
+    if (!prompt.trim()) return;
 
     // Debounce: ignore clicks within 2s of last submit
     const now = Date.now();
     if (now - lastSubmitRef.current < 2000) return;
     lastSubmitRef.current = now;
 
-    setGenerating(true);
     setError(null);
 
     const h1 = Math.floor(Math.random() * 360);
@@ -135,8 +177,6 @@ export default function ImageGenerator() {
     };
     setImages(prev => [newImg, ...prev]);
 
-    setActiveJobs(prev => prev + 1);
-
     try {
       const finalPrompt = buildPrompt(prompt.trim(), style);
       const parsedSeed = seed ? parseInt(seed, 10) : null;
@@ -151,58 +191,20 @@ export default function ImageGenerator() {
         negativePrompt: model === 'sd35' ? negativePrompt || null : null,
       });
 
-      /* Poll every 2s */
-      pollRef.current = setInterval(async () => {
-        try {
-          const job: ImageJobResponse = await pollImageJob(job_id);
-
-          setImages(prev =>
-            prev.map(img =>
-              img.id === tempId
-                ? {
-                    ...img,
-                    status: job.status,
-                    time: job.generation_time ?? null,
-                    imageUrl: job.status === 'complete' ? getImageResultUrl(job_id) : null,
-                    error: job.error,
-                  }
-                : img,
-            ),
-          );
-
-          if (job.status === 'complete' || job.status === 'failed') {
-            if (pollRef.current) clearInterval(pollRef.current);
-            setActiveJobs(prev => Math.max(0, prev - 1));
-            // 3-second cooldown before allowing another generation
-            setTimeout(() => setGenerating(false), 3000);
-
-            // Auto-save to gallery on completion
-            if (job.status === 'complete') {
-              try {
-                const raw = StorageUtils.safeGetItem('chat-user');
-                if (raw) {
-                  const user = JSON.parse(raw);
-                  if (user.id && user.username) {
-                    const resultUrl = getImageResultUrl(job_id);
-                    apiClient.saveToGallery(user.id, user.username, resultUrl, 'image', prompt.trim().slice(0, 100))
-                      .then(() => setSavedToProfile(prev => ({ ...prev, [tempId]: true })))
-                      .catch(() => {});
-                  }
-                }
-              } catch {}
-            }
-          }
-        } catch {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setImages(prev =>
-            prev.map(img =>
-              img.id === tempId ? { ...img, status: 'failed', error: 'Polling error' } : img,
-            ),
-          );
-          setActiveJobs(prev => Math.max(0, prev - 1));
-          setTimeout(() => setGenerating(false), 3000);
-        }
-      }, 2000);
+      // ── Hand off polling to the global store ──
+      store.addJob({
+        id: tempId,
+        jobId: job_id,
+        type: 'image',
+        status: 'queued',
+        progress: 0,
+        progressMsg: '',
+        prompt: prompt.trim(),
+        mode: style,          // reuse mode field for style
+        c1: newImg.c1,
+        c2: newImg.c2,
+        startedAt: Date.now(),
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setError(msg);
@@ -211,10 +213,8 @@ export default function ImageGenerator() {
           img.id === tempId ? { ...img, status: 'failed', error: msg } : img,
         ),
       );
-      setActiveJobs(prev => Math.max(0, prev - 1));
-      setGenerating(false);
     }
-  }, [prompt, generating, style, ratio, steps, guidance, model, seed, negativePrompt, curRatio]);
+  }, [prompt, style, ratio, steps, guidance, model, seed, negativePrompt, curRatio, store]);
 
   const handleDownload = async (img: GeneratedImage, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -359,12 +359,6 @@ export default function ImageGenerator() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 sm:px-5 py-3" style={{ position: 'relative', zIndex: 2, borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', padding: 0 }}
-          >
-            <ArrowLeft size={16} />
-          </button>
           <img src="/icon.png" alt="Starcyeed" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="hidden sm:inline" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>starcyeed</span>
           <span className="hidden sm:inline" style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)' }}>/</span>
