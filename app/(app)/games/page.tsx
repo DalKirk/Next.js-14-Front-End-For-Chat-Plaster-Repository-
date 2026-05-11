@@ -21,6 +21,7 @@ export default function GamesPage() {
 
   useEffect(() => {
     const raw = StorageUtils.safeGetItem('chat-user');
+    const token = localStorage.getItem('auth-token') ?? '';
     setIsLoggedIn(!!raw);
 
     if (raw) {
@@ -28,7 +29,7 @@ export default function GamesPage() {
         const user = JSON.parse(raw);
         const userId: string = user.id ?? user.user_id ?? '';
         if (userId) {
-          getGamesByUser(userId).then(data => {
+          getGamesByUser(userId, token).then(data => {
             console.log('[Browse Games] fetched', data.length, 'games');
             setGames(data);
           }).catch(console.error).finally(() => setLoading(false));

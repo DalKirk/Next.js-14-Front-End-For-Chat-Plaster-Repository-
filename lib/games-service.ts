@@ -62,10 +62,13 @@ export async function recordPlay(gameId: string): Promise<void> {
  * Get games uploaded by a specific user.
  * Uses the working endpoint: GET /api/games/user/{userId}
  */
-export async function getGamesByUser(userId: string): Promise<Game[]> {
+export async function getGamesByUser(userId: string, token?: string): Promise<Game[]> {
   try {
+    const headers: Record<string, string> = { 'X-User-Id': userId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_URL}/api/games/user/${encodeURIComponent(userId)}`, {
-      headers: { 'X-User-Id': userId },
+      headers,
       cache: 'no-store',
     });
     if (!response.ok) return [];
