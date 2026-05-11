@@ -213,7 +213,7 @@ export function GenerationStoreProvider({ children }: { children: React.ReactNod
               ...j,
               status: status.status,
               ...(resultUrl ? { resultUrl } : {}),
-              time: status.generation_time ?? j.time,
+              time: status.generation_time != null ? String(status.generation_time) : j.time,
               error: status.error,
             },
           ));
@@ -240,7 +240,7 @@ export function GenerationStoreProvider({ children }: { children: React.ReactNod
             j.id !== job.id ? j : {
               ...j,
               status: status.status,
-              time: status.generation_time ?? j.time,
+              time: status.generation_time != null ? String(status.generation_time) : j.time,
               ...(resultUrl ? { resultUrl } : {}),
               error: status.error ?? undefined,
             },
