@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Gamepad2, Upload, Search } from 'lucide-react';
 import Link from 'next/link';
-import { getRecentGames, type Game } from '@/lib/games-service';
+import { getGamesByUser, type Game } from '@/lib/games-service';
 import { getEngineLabel } from '@/lib/upload-utils';
 import { StorageUtils } from '@/lib/storage-utils';
 
@@ -23,11 +23,20 @@ export default function GamesPage() {
     const raw = StorageUtils.safeGetItem('chat-user');
     setIsLoggedIn(!!raw);
 
-    getRecentGames(60).then(data => {
-      console.log('[Browse Games] fetched', data.length, 'games', data[0] ?? '(none)');
-      setGames(data);
-      setLoading(false);
-    }).catch((err) => { console.error('[Browse Games] fetch error', err); setLoading(false); });
+    if (raw) {
+      try {
+        const user = JSON.parse(raw);
+        const userId: string = user.id ?? user.user_id ?? '';
+        if (userId) {
+          getGamesByUser(userId).then(data => {
+            console.log('[Browse Games] fetched', data.length, 'games');
+            setGames(data);
+          }).catch(console.error).finally(() => setLoading(false));
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    setLoading(false);
   }, []);
 
   const filtered = search.trim()
@@ -87,11 +96,11 @@ export default function GamesPage() {
           <div className="text-center py-24 space-y-4">
             <Gamepad2 className="w-12 h-12 mx-auto text-zinc-700" />
             <p className="text-zinc-400 font-medium">
-              {search ? 'No games matched your search.' : 'No games uploaded yet.'}
+              {search ? 'No games matched your search.' : isLoggedIn ? 'You haven\'t uploaded any games yet.' : 'Sign in to see your uploaded games.'}
             </p>
             {!search && isLoggedIn && (
               <Link href="/games/upload" className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-sm transition-colors">
-                <Upload className="w-4 h-4" /> Be the first to upload
+                <Upload className="w-4 h-4" /> Upload your first game
               </Link>
             )}
           </div>

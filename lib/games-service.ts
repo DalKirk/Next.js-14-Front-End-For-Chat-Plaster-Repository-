@@ -59,13 +59,13 @@ export async function recordPlay(gameId: string): Promise<void> {
 }
 
 /**
- * Get featured/recent games for the browse page.
- * Normalises both the flat format returned by the user endpoint
- * and the nested format with a creator object.
+ * Get games uploaded by a specific user.
+ * Uses the working endpoint: GET /api/games/user/{userId}
  */
-export async function getRecentGames(limit: number = 40): Promise<Game[]> {
+export async function getGamesByUser(userId: string): Promise<Game[]> {
   try {
-    const response = await fetch(`${API_URL}/api/games?limit=${limit}`, {
+    const response = await fetch(`${API_URL}/api/games/user/${encodeURIComponent(userId)}`, {
+      headers: { 'X-User-Id': userId },
       cache: 'no-store',
     });
     if (!response.ok) return [];
@@ -84,9 +84,9 @@ export async function getRecentGames(limit: number = 40): Promise<Game[]> {
       play_count:      g.play_count ?? 0,
       file_size_bytes: g.file_size_bytes ?? Math.round((g.file_size_mb ?? 0) * 1024 * 1024),
       creator: g.creator ?? {
-        id:         g.user_id ?? g.creator_id ?? '',
+        id:         g.user_id ?? userId,
         username:   g.username ?? g.creator_username ?? 'creator',
-        avatar_url: g.avatar_url ?? g.creator_avatar ?? undefined,
+        avatar_url: g.avatar_url ?? undefined,
       },
       created_at: g.created_at ?? new Date().toISOString(),
       updated_at: g.updated_at ?? g.created_at ?? new Date().toISOString(),
@@ -94,4 +94,9 @@ export async function getRecentGames(limit: number = 40): Promise<Game[]> {
   } catch {
     return [];
   }
+}
+
+/** @deprecated Use getGamesByUser instead */
+export async function getRecentGames(limit: number = 40): Promise<Game[]> {
+  return [];
 }
