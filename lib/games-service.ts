@@ -99,6 +99,26 @@ export async function getGamesByUser(userId: string, token?: string): Promise<Ga
   }
 }
 
+/**
+ * Delete a game by ID.
+ * Requires the user's ID and auth token.
+ * Endpoint: DELETE /api/games/{game_id}
+ */
+export async function deleteGame(gameId: string, userId: string, token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}/api/games/${encodeURIComponent(gameId)}`, {
+      method: 'DELETE',
+      headers: {
+        'X-User-Id': userId,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** @deprecated Use getGamesByUser instead */
 export async function getRecentGames(limit: number = 40): Promise<Game[]> {
   return [];

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gamepad2, Upload, Search } from 'lucide-react';
+import { Gamepad2, Upload, Search, Trash2, Home } from 'lucide-react';
 import Link from 'next/link';
-import { getGamesByUser, type Game } from '@/lib/games-service';
+import toast from 'react-hot-toast';
+import { getGamesByUser, deleteGame, type Game } from '@/lib/games-service';
 import { getEngineLabel } from '@/lib/upload-utils';
 import { StorageUtils } from '@/lib/storage-utils';
 
@@ -18,16 +19,22 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [userId, setUserId] = useState('');
+  const [userToken, setUserToken] = useState('');
 
   useEffect(() => {
     const raw = StorageUtils.safeGetItem('chat-user');
     const token = localStorage.getItem('auth-token') ?? '';
     setIsLoggedIn(!!raw);
+    setUserToken(token);
 
     if (raw) {
       try {
         const user = JSON.parse(raw);
-        const userId: string = user.id ?? user.user_id ?? '';
+        const uid: string = user.id ?? user.user_id ?? '';
+        setUserId(uid);
+        const userId = uid;
         if (userId) {
           getGamesByUser(userId, token).then(data => {
             console.log('[Browse Games] fetched', data.length, 'games');
@@ -61,7 +68,12 @@ export default function GamesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">Browse Games</h1>
+            <div className="flex items-center gap-3 mb-1">
+              <Link href="/" className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors" title="Home">
+                <Home className="w-4 h-4" />
+              </Link>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Browse Games</h1>
+            </div>
             <p className="text-zinc-400 text-sm">Discover and play games made by the community</p>
           </div>
           {isLoggedIn && (
@@ -108,11 +120,33 @@ export default function GamesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(game => (
-              <Link
-                key={game.id}
-                href={`/games/${game.slug}`}
-                className="group rounded-2xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all overflow-hidden"
-              >
+              <div key={game.id} className="group relative rounded-2xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all overflow-hidden">
+                {/* Delete button — top-right corner, only visible on hover */}
+                {isLoggedIn && (
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (!confirm(`Delete "${game.title}"? This cannot be undone.`)) return;
+                      setDeletingId(game.id);
+                      const ok = await deleteGame(game.id, userId, userToken);
+                      setDeletingId(null);
+                      if (ok) {
+                        setGames(prev => prev.filter(g => g.id !== game.id));
+                        toast.success(`"${game.title}" deleted`);
+                      } else {
+                        toast.error('Failed to delete game. Please try again.');
+                      }
+                    }}
+                    disabled={deletingId === game.id}
+                    className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-black/60 text-zinc-400 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all disabled:opacity-50"
+                    title="Delete game"
+                  >
+                    {deletingId === game.id
+                      ? <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                      : <Trash2 className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+                <Link href={`/games/${game.slug}`} className="block">
                 {/* Thumbnail or placeholder */}
                 <div className="relative aspect-video bg-gradient-to-br from-zinc-900 to-black overflow-hidden">
                   {game.thumbnail_url ? (
@@ -180,7 +214,8 @@ export default function GamesPage() {
                     <p className="text-xs text-zinc-500 mt-2 line-clamp-2 leading-relaxed">{game.description}</p>
                   )}
                 </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
         )}
