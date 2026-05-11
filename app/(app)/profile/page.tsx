@@ -2991,7 +2991,7 @@ function ProfilePageContent() {
                       <GameUpload
                         userId={profile.id}
                         onSuccess={(result) => {
-                          setUserGames(prev => [{ ...result, title: result.slug, created_at: new Date().toISOString() }, ...prev])
+                          setUserGames(prev => [{ ...result, title: result.slug, created_at: new Date().toISOString(), file_count: result.file_count ?? 0 }, ...prev])
                           toast.success('Game uploaded!')
                         }}
                       />
