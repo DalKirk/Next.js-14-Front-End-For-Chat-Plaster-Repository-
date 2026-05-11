@@ -59,15 +59,38 @@ export async function recordPlay(gameId: string): Promise<void> {
 }
 
 /**
- * Get featured/recent games for the browse page
+ * Get featured/recent games for the browse page.
+ * Normalises both the flat format returned by the user endpoint
+ * and the nested format with a creator object.
  */
 export async function getRecentGames(limit: number = 40): Promise<Game[]> {
   try {
     const response = await fetch(`${API_URL}/api/games?limit=${limit}`, {
-      next: { revalidate: 30 },
+      cache: 'no-store',
     });
     if (!response.ok) return [];
-    return await response.json();
+
+    const data = await response.json();
+    const raw: any[] = Array.isArray(data) ? data : (data?.games ?? data?.data ?? []);
+
+    return raw.map((g: any): Game => ({
+      id:              g.id ?? g.game_id ?? '',
+      slug:            g.slug ?? '',
+      title:           g.title ?? g.slug ?? '',
+      description:     g.description ?? '',
+      engine:          g.engine ?? 'unknown',
+      thumbnail_url:   g.thumbnail_url ?? g.thumbnail ?? undefined,
+      play_url:        g.play_url ?? '',
+      play_count:      g.play_count ?? 0,
+      file_size_bytes: g.file_size_bytes ?? Math.round((g.file_size_mb ?? 0) * 1024 * 1024),
+      creator: g.creator ?? {
+        id:         g.user_id ?? g.creator_id ?? '',
+        username:   g.username ?? g.creator_username ?? 'creator',
+        avatar_url: g.avatar_url ?? g.creator_avatar ?? undefined,
+      },
+      created_at: g.created_at ?? new Date().toISOString(),
+      updated_at: g.updated_at ?? g.created_at ?? new Date().toISOString(),
+    }));
   } catch {
     return [];
   }

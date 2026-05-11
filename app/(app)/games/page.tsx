@@ -24,9 +24,10 @@ export default function GamesPage() {
     setIsLoggedIn(!!raw);
 
     getRecentGames(60).then(data => {
+      console.log('[Browse Games] fetched', data.length, 'games', data[0] ?? '(none)');
       setGames(data);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => { console.error('[Browse Games] fetch error', err); setLoading(false); });
   }, []);
 
   const filtered = search.trim()
@@ -154,16 +155,16 @@ export default function GamesPage() {
                   </h3>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      {game.creator.avatar_url ? (
+                      {game.creator?.avatar_url ? (
                         <img src={game.creator.avatar_url} alt={game.creator.username} className="w-4 h-4 rounded-full" />
                       ) : (
                         <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-[8px] font-bold">
-                          {game.creator.username.charAt(0).toUpperCase()}
+                          {(game.creator?.username ?? '?').charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-xs text-zinc-400">{game.creator.username}</span>
+                      <span className="text-xs text-zinc-400">{game.creator?.username ?? 'creator'}</span>
                     </div>
-                    <span className="text-xs text-zinc-500">{game.play_count.toLocaleString()} plays</span>
+                    <span className="text-xs text-zinc-500">{(game.play_count ?? 0).toLocaleString()} plays</span>
                   </div>
                   {game.description && (
                     <p className="text-xs text-zinc-500 mt-2 line-clamp-2 leading-relaxed">{game.description}</p>
