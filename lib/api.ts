@@ -1511,6 +1511,118 @@ export const apiClient = {
     }
   },
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // Games API
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get all games uploaded by a user.
+   */
+  getUserGames: async (userId: string): Promise<{
+    game_id: string;
+    slug: string;
+    title: string;
+    description?: string;
+    play_url: string;
+    engine: string;
+    file_size_mb: number;
+    file_count: number;
+    created_at?: string;
+  }[]> => {
+    try {
+      const response = await api.get(`/api/games/user/${encodeURIComponent(userId)}`, {
+        headers: { 'X-User-Id': userId },
+      });
+      return Array.isArray(response.data) ? response.data : (response.data?.games ?? []);
+    } catch (e) {
+      console.warn('❌ Load user games failed:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Check if Bunny is configured for game uploads.
+   */
+  checkGamesHealth: async (): Promise<{ status: string; bunny_configured: boolean; max_size_mb: number; message: string }> => {
+    const response = await api.get('/api/games/health');
+    return response.data;
+  },
+
+  /**
+   * Upload a game ZIP with progress tracking.
+   *
+   * @param userId - The uploading user's ID
+   * @param title - Game title (2–255 chars)
+   * @param description - Optional description (max 5000 chars)
+   * @param zipFile - A .zip File object (max 100 MB)
+   * @param onProgress - Optional callback receiving 0-100 progress
+   */
+  uploadGame: (
+    userId: string,
+    title: string,
+    description: string,
+    zipFile: File,
+    onProgress?: (pct: number) => void,
+  ): Promise<{
+    game_id: string;
+    slug: string;
+    play_url: string;
+    engine: string;
+    file_size_mb: number;
+    file_count: number;
+  }> => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('game_file', zipFile);
+
+      const xhr = new XMLHttpRequest();
+
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        });
+      }
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            reject(new Error('Invalid response from server'));
+          }
+        } else {
+          let detail = 'Upload failed';
+          try {
+            detail = JSON.parse(xhr.responseText)?.detail || detail;
+          } catch { /* ignore */ }
+          reject(new Error(`${detail} (${xhr.status})`));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Network error during game upload')));
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      xhr.open('POST', `${API_BASE_URL}/api/games/upload/${encodeURIComponent(userId)}`);
+      xhr.setRequestHeader('X-User-Id', userId);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  },
+
+  /**
+   * Delete a game's files from Bunny CDN.
+   */
+  deleteGame: async (gameId: string, userId: string): Promise<{ success: boolean; game_id: string }> => {
+    const response = await api.delete(`/api/games/${encodeURIComponent(gameId)}`, {
+      headers: { 'X-User-Id': userId },
+    });
+    return response.data;
+  },
+
   /**
    * Save an AI-generated video/image to the user's gallery via the server-side proxy.
    * The proxy fetches the media from the generation server and uploads it to CDN.

@@ -23,6 +23,7 @@ import {
   Sparkles, Mail,
 } from "lucide-react";
 const UnifiedAIPanel = dynamic(() => import("@/components/UnifiedAIPanel"), { ssr: false });
+import { SiUnity, SiGodotengine, SiHtml5, SiGamemaker, SiConstruct3 } from 'react-icons/si';
 
 /* ─── Lazy Video (mounts <video> only when near viewport, unmounts when far away) ─── */
 function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
@@ -60,65 +61,7 @@ function LazyVideo({ src, className, style }: { src: string; className?: string;
   );
 }
 
-/* ─── Feature data ─── */
-const features = [
-  {
-    id: "image-gen",
-    tag: "AI IMAGE",
-    title: "Image Generation",
-    desc: "Create stunning visuals from text prompts. Photorealistic, artistic, or abstract.",
-    borderGradient: "linear-gradient(135deg, #7c3aed, #ec4899, #f43f5e)",
-    glowColor: "rgba(168,85,247,0.2)",
-    accentColor: "#c084fc",
-    icon: <ImageIcon className="w-5 h-5" />,
-    stat: "",
-    badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
-    href: "/image-gen",
-  },
-  {
-    id: "video-gen",
-    tag: "AI VIDEO",
-    title: "Video Generation",
-    desc: "Bring images to life. Generate cinematic video clips from text or images.",
-    borderGradient: "linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)",
-    glowColor: "rgba(245,158,11,0.2)",
-    accentColor: "#fbbf24",
-    icon: <Video className="w-5 h-5" />,
-    stat: "",
-    badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
-    href: "/video-gen",
-  },
-  {
-    id: "3d-gen",
-    tag: "AI 3D",
-    title: "3D Model Generation",
-    desc: "Transform any image into a fully textured 3D model. Export GLB for games, AR, and web.",
-    borderGradient: "linear-gradient(135deg, #06b6d4, #3b82f6, #6366f1)",
-    glowColor: "rgba(6,182,212,0.2)",
-    accentColor: "#67e8f9",
-    icon: <Box className="w-5 h-5" />,
-    stat: "",
-    badge: "TESTING" as string | null,
-    badgeStyle: { border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", background: "rgba(251,191,36,0.08)" },
-    href: "/3d-generator",
-  },
-  {
-    id: "ideogram-gen",
-    tag: "AI DESIGN",
-    title: "Logex",
-    desc: "Logos, typography & text-in-image. The best AI for graphic design and readable text.",
-    borderGradient: "linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)",
-    glowColor: "rgba(236,72,153,0.2)",
-    accentColor: "#f472b6",
-    icon: <Type className="w-5 h-5" />,
-    stat: "",
-    badge: "ONLINE" as string | null,
-    badgeStyle: { border: "1px solid rgba(57,255,20,0.4)", color: "#39ff14", background: "rgba(57,255,20,0.08)" },
-    href: "/ideogram-gen",
-  },
-];
+
 
 const secondaryFeatures = [
   { title: "Chat Rooms", desc: "Live video & text rooms", icon: <MessageSquare className="w-5 h-5" />, gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)", href: "/chat", requiresAuth: true },
@@ -136,6 +79,17 @@ const sideMenuItems = [
   { id: "profile", label: "Profile", icon: "◎", href: "/profile", requiresAuth: true },
   { id: "terms", label: "Terms", icon: "◇", href: "/terms", requiresAuth: false },
 ];
+
+const heroVideos = [
+  { src: "/previews/Tiger.mp4",         label: "Tiger" },
+  { src: "/previews/Ninja.mp4",         label: "Ninja" },
+  { src: "/previews/Ocean.mp4",         label: "Ocean" },
+  { src: "/previews/Neon%20bear.mp4",   label: "Neon Bear" },
+  { src: "/previews/StatueGuy.mp4",     label: "Statue" },
+];
+
+const HERO_H1 = 'Create Without Limits';
+const HERO_BODY_WORDS = "An AI-powered creative studio, browser-based gaming, Cloud development IDE, and digital marketplace designed for the next generation of creators. Build, generate, code, collaborate, and sell your creations — All built on top of a social platform.".split(' ');
 
 /* ─── Gradient border wrapper ─── */
 function GradientBorderCard({
@@ -204,11 +158,17 @@ export default function HomePage() {
   const [showMenu, setShowMenu] = useState(false);
 
   /* ── UI state ── */
-  const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
+  const [heroVideoIndex, setHeroVideoIndex] = useState(0);
   const [hoveredSecondary, setHoveredSecondary] = useState<string | null>(null);
   const [activeSideItem, setActiveSideItem] = useState<string | null>(null);
   const [visibleSections, setVisibleSections] = useState(new Set<string>());
   const [heroVisible, setHeroVisible] = useState(false);
+  const [heroTransitioning, setHeroTransitioning] = useState(false);
+
+  /* ── Hero text streaming ── */
+  const [streamedH1, setStreamedH1] = useState('');
+  const [streamedWords, setStreamedWords] = useState(0);
+  const [streamDone, setStreamDone] = useState(false);
 
   /* ── AI Panel state ── */
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -219,11 +179,13 @@ export default function HomePage() {
   const showcaseRef = useRef<HTMLElement>(null);
   const exploreRef = useRef<HTMLElement>(null);
   const ctaRef = useRef<HTMLElement>(null);
-  const bannerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const wakeRecRef = useRef<SpeechRecognition | null>(null);
   const wakeActiveRef = useRef(false);
   const panelWasOpenRef = useRef(false);
+  const sharpVideoRef = useRef<HTMLVideoElement>(null);
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const isFirstVideoRender = useRef(true);
 
   /* ── Close menu on outside click ── */
   useEffect(() => {
@@ -434,6 +396,52 @@ export default function HomePage() {
     return () => stopWake();
   }, [isAIOpen]);
 
+  /* ── Reload video when index changes (crossfade — no key remount) ── */
+  useEffect(() => {
+    if (isFirstVideoRender.current) {
+      isFirstVideoRender.current = false;
+      return;
+    }
+    if (bgVideoRef.current) {
+      bgVideoRef.current.load();
+      bgVideoRef.current.play().catch(() => {});
+    }
+    if (sharpVideoRef.current) {
+      sharpVideoRef.current.load();
+      sharpVideoRef.current.play().catch(() => {});
+    }
+  }, [heroVideoIndex]);
+
+  /* ── Stream hero headline then body text ── */
+  useEffect(() => {
+    if (!heroVisible) return;
+    let bodyTimer: ReturnType<typeof setInterval> | null = null;
+    let h1i = 0;
+    const h1Timer = setInterval(() => {
+      h1i++;
+      setStreamedH1(HERO_H1.slice(0, h1i));
+      if (h1i >= HERO_H1.length) {
+        clearInterval(h1Timer);
+        // Short pause then stream body word by word
+        setTimeout(() => {
+          let wi = 0;
+          bodyTimer = setInterval(() => {
+            wi++;
+            setStreamedWords(wi);
+            if (wi >= HERO_BODY_WORDS.length) {
+              if (bodyTimer) clearInterval(bodyTimer);
+              setStreamDone(true);
+            }
+          }, 160);
+        }, 700);
+      }
+    }, 130);
+    return () => {
+      clearInterval(h1Timer);
+      if (bodyTimer) clearInterval(bodyTimer);
+    };
+  }, [heroVisible]);
+
   /* ═══════════════════════════════════════════
      AUTH HANDLERS (preserved)
      ═══════════════════════════════════════════ */
@@ -515,7 +523,7 @@ export default function HomePage() {
      RENDER
      ═══════════════════════════════════════════ */
   return (
-    <div className="relative min-h-screen text-white overflow-x-hidden" style={{ background: "#030308" }}>
+    <div className="relative min-h-screen text-white overflow-x-hidden" style={{ background: "#030308", fontFamily: "'Exo 2', 'Exo', sans-serif" }}>
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -672,67 +680,114 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ═══ HERO ═══ */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center pt-12 sm:pt-20 overflow-hidden" style={{ justifyContent: 'flex-start', paddingTop: 'clamp(60px, 12vh, 120px)' }}>
+      {/* ═══ HERO — Cinematic Billboard ═══ */}
+      <section className="relative" style={{ height: '100dvh', minHeight: 640, overflow: 'hidden' }}>
+
+        {/* Blurred backdrop — fills black bars without cropping the content */}
+        <video
+          ref={bgVideoRef}
+          src={heroVideos[heroVideoIndex].src}
+          autoPlay
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit: 'cover', filter: 'blur(28px) brightness(0.45) saturate(1.4)', transform: 'scale(1.08)', opacity: heroTransitioning ? 0 : 1, transition: 'opacity 0.4s ease' }}
+        />
+
+        {/* Full-bleed sharp video — crossfades on end */}
+        <video
+          ref={sharpVideoRef}
+          src={heroVideos[heroVideoIndex].src}
+          autoPlay
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit: 'contain', objectPosition: 'center center', opacity: heroTransitioning ? 0 : 1, transition: 'opacity 0.4s ease' }}
+          onEnded={() => {
+            setHeroTransitioning(true);
+            setTimeout(() => {
+              setHeroVideoIndex(i => (i + 1) % heroVideos.length);
+              setTimeout(() => setHeroTransitioning(false), 150);
+            }, 400);
+          }}
+        />
+
+        {/* Left vignette — keeps text legible over the video */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(3,3,8,0.96) 0%, rgba(3,3,8,0.82) 28%, rgba(3,3,8,0.35) 60%, rgba(3,3,8,0.0) 80%)' }} />
+        {/* Bottom vignette — bleed into page background */}
+        <div className="absolute inset-x-0 bottom-0" style={{ height: '45%', background: 'linear-gradient(to bottom, transparent 0%, rgba(3,3,8,0.7) 55%, #030308 100%)' }} />
+        {/* Top vignette — softens header overlap */}
+        <div className="absolute inset-x-0 top-0" style={{ height: '22%', background: 'linear-gradient(to bottom, rgba(3,3,8,0.72) 0%, transparent 100%)' }} />
+
+        {/* Content — left-aligned, cinematic placement */}
         <div
-          className="text-center transition-all duration-1000 w-full"
-          style={{ opacity: heroVisible ? 1 : 0, transform: heroVisible ? "translateY(0)" : "translateY(40px)" }}
+          className="absolute inset-0 flex flex-col justify-between sm:justify-center"
+          style={{ paddingLeft: 'max(5vw, 24px)', paddingRight: '5vw', paddingBottom: 'max(9vh, 72px)', paddingTop: 'max(13vh, 96px)' }}
         >
-          {/* Scrolling Preview Bar — pure CSS auto-scroll, click to navigate */}
+          {/* Headline + description */}
           <div
-            ref={bannerRef}
-            className="w-full relative mb-8 mt-6 overflow-hidden"
-            style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}
+            style={{
+              maxWidth: 500,
+              opacity: heroVisible ? 1 : 0,
+              transform: heroVisible ? 'translateY(0)' : 'translateY(32px)',
+              transition: 'opacity 1s ease, transform 1s ease',
+            }}
           >
-            <div className="banner-scroll-track flex gap-5 py-4 px-4" style={{ width: "max-content", willChange: "transform" }}>
-              {[
-                { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
-                { src: "/previews/StatueGuy.mp4", alt: "Statue Guy", href: "/image-gen" },
-                { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
-                { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
-                { src: "/previews/Ocean.mp4", alt: "Ocean", href: "/sprite-editor" },
-                { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
-                { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
-                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
-                // duplicate set for seamless scroll loop
-                { src: "/previews/Tiger.mp4", alt: "Tiger", href: "/video-gen" },
-                { src: "/previews/StatueGuy.mp4", alt: "Statue Guy", href: "/image-gen" },
-                { src: "/previews/Santafrog1.mp4", alt: "Santafrog 1", href: "/video-gen" },
-                { src: "/previews/Smile%20moon.mp4", alt: "Smile Moon", href: "/game-builder" },
-                { src: "/previews/Ocean.mp4", alt: "Ocean", href: "/sprite-editor" },
-                { src: "/previews/Neon%20bear.mp4", alt: "Neon Bear", href: "/chat-rooms" },
-                { src: "/previews/Ninja.mp4", alt: "Ninja", href: "/chat" },
-                { src: "/previews/Neon%20woman1.png", alt: "Neon Woman 1", href: "/3d-generator" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex-shrink-0 rounded-xl overflow-hidden"
-                  style={{ width: 'clamp(300px, 50vw, 340px)', height: 'clamp(200px, 40vw, 380px)', boxShadow: "0 0 20px rgba(139,92,246,0.08)", position: "relative", transform: "translateZ(0)" }}
+            <div className="flex items-center gap-2 mb-5">
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#39ff14', display: 'inline-block', boxShadow: '0 0 6px #39ff14', animation: 'blink 1s step-end infinite' }} />
+              <span className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(255,255,255,0.5)' }}>Public Beta</span>
+            </div>
+            <h1
+              className="font-extralight mb-4 leading-[1.12] uppercase"
+              style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.9rem)', letterSpacing: '0.22em' }}
+            >
+              {streamedH1}
+              {streamedH1.length < HERO_H1.length && (
+                <span style={{ color: '#39ff14', animation: 'blink 0.6s step-end infinite' }}>_</span>
+              )}
+            </h1>
+            <p
+              className="mb-8 leading-relaxed"
+              style={{ fontSize: 'clamp(0.8rem, 1.4vw, 0.95rem)', color: 'rgba(255,255,255,0.72)', maxWidth: 400, minHeight: '6em' }}
+            >
+              {HERO_BODY_WORDS.slice(0, streamedWords).join(' ')}
+              {!streamDone && streamedWords > 0 && (
+                <span style={{ color: '#39ff14', animation: 'blink 0.6s step-end infinite' }}>{' '}▋</span>
+              )}
+            </p>
+            {/* Buttons — desktop only (shown inline with text) */}
+            <div className="hidden sm:flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  try {
+                    const a = new Audio('/previews/audiopapkin-mechanical-sound-design-elements-robot-ps-005-295036.mp3');
+                    a.play().catch(() => {});
+                    (window as any).__wsLoadingAudio = a;
+                  } catch { /* ignore */ }
+                  router.push('/workspace');
+                }}
+                className="group px-7 py-3 rounded-lg text-sm font-semibold tracking-wider transition-all duration-500 flex items-center gap-2 hover:shadow-[0_0_50px_rgba(0,255,100,0.4),0_0_100px_rgba(0,255,100,0.15)]"
+                style={{ background: '#39ff14', color: '#000', boxShadow: '0 0 25px rgba(57,255,20,0.3)' }}
+              >
+                LAUNCH <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+              {!currentUser && (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="px-7 py-3 rounded-lg text-sm tracking-wider transition-all duration-300 hover:text-white hover:border-[rgba(139,92,246,0.4)] hover:bg-[rgba(139,92,246,0.05)]"
+                  style={{ border: '1px solid rgba(139,92,246,0.2)', color: 'rgba(255,255,255,0.7)' }}
                 >
-                  {item.src.endsWith('.mp4') ? (
-                    <LazyVideo
-                      src={item.src}
-                      className="w-full h-full object-cover"
-                      style={{ position: "relative", zIndex: 0 }}
-                    />
-                  ) : (
-                    <img
-                      src={item.src}
-                      alt={item.alt}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      draggable={false}
-                      style={{ position: "relative", zIndex: 0 }}
-                    />
-                  )}
-                </div>
-              ))}
+                  GET STARTED
+                </button>
+              )}
             </div>
           </div>
-          <p className="text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-8 sm:mb-16" style={{ color: "rgba(255,255,255,0.6)" }}>
-            Generate images, 3D models, and videos with AI. Build games, chat in real-time, and explore a creative universe.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+
+          {/* Buttons — mobile only (pushed to bottom by justify-between) */}
+          <div
+            className="flex sm:hidden flex-wrap gap-3"
+            style={{ opacity: heroVisible ? 1 : 0, transition: 'opacity 1s ease 0.3s' }}
+          >
             <button
               onClick={() => {
                 try {
@@ -742,82 +797,94 @@ export default function HomePage() {
                 } catch { /* ignore */ }
                 router.push('/workspace');
               }}
-              className="group px-8 py-3.5 rounded-lg text-sm font-semibold tracking-wider transition-all duration-500 flex items-center gap-2 hover:shadow-[0_0_50px_rgba(0,255,100,0.4),0_0_100px_rgba(0,255,100,0.15)]"
-              style={{ background: "#39ff14", color: "#000", boxShadow: "0 0 25px rgba(57,255,20,0.3)" }}
+              className="group px-7 py-3 rounded-lg text-sm font-semibold tracking-wider transition-all duration-500 flex items-center gap-2"
+              style={{ background: '#39ff14', color: '#000', boxShadow: '0 0 25px rgba(57,255,20,0.3)' }}
             >
               LAUNCH <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
             {!currentUser && (
-            <button
-              onClick={() => {
-                if (currentUser) router.push("/chat");
-                else setShowAuthModal(true);
-              }}
-              className="px-8 py-3.5 rounded-lg text-sm tracking-wider transition-all duration-300 hover:text-white hover:border-[rgba(139,92,246,0.4)] hover:bg-[rgba(139,92,246,0.05)]"
-              style={{ border: "1px solid rgba(139,92,246,0.2)", color: "rgba(255,255,255,0.7)" }}
-            >
-              GET STARTED
-            </button>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-7 py-3 rounded-lg text-sm tracking-wider transition-all duration-300 hover:text-white"
+                style={{ border: '1px solid rgba(139,92,246,0.2)', color: 'rgba(255,255,255,0.7)' }}
+              >
+                GET STARTED
+              </button>
             )}
           </div>
         </div>
+
       </section>
 
-      {/* ═══ AI FEATURE SHOWCASE ═══ */}
+
+
+      {/* ═══ GAME PLATFORM ═══ */}
       <section id="showcase" ref={showcaseRef} className="relative py-10 sm:py-16 px-3 sm:px-4" style={{ zIndex: 1 }}>
         <div className="max-w-6xl mx-auto">
           <div
-            className="mb-8 sm:mb-16 transition-all duration-700"
+            className="mb-8 sm:mb-12 transition-all duration-700"
             style={{ opacity: visibleSections.has("showcase") ? 1 : 0, transform: visibleSections.has("showcase") ? "translateY(0)" : "translateY(20px)" }}
           >
-            <div className="text-[10px] tracking-[0.5em] mb-2 sm:mb-3" style={{ color: "rgba(139,92,246,0.5)" }}>GENERATION SUITE</div>
-            <h2 className="text-2xl sm:text-5xl font-bold" style={{ letterSpacing: "-0.03em" }}>AI Creation Tools</h2>
+            <div className="text-[10px] tracking-[0.5em] mb-2 sm:mb-3" style={{ color: "rgba(139,92,246,0.5)" }}>GAME PLATFORM</div>
+            <h2 className="text-2xl sm:text-5xl font-bold" style={{ letterSpacing: "-0.03em" }}>Share, Buy & Sell Games</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
-            {features.map((f, i) => (
-              <GradientBorderCard
-                key={f.id}
-                gradient={f.borderGradient}
-                glowColor={f.glowColor}
-                isHovered={hoveredFeature === f.id}
-                onMouseEnter={() => setHoveredFeature(f.id)}
-                onMouseLeave={() => setHoveredFeature(null)}
-                onClick={() => { if (f.href !== "#") router.push(f.href); }}
-                className="cursor-pointer"
-              >
-                <div
-                  className="p-4 sm:p-8"
-                  style={{
-                    opacity: visibleSections.has("showcase") ? 1 : 0,
-                    transform: visibleSections.has("showcase") ? "translateY(0)" : "translateY(40px)",
-                    transition: `all 0.6s ease ${i * 0.12}s`,
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3 sm:mb-5 gap-2 flex-nowrap">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="shrink-0" style={{ color: hoveredFeature === f.id ? f.accentColor : "rgba(255,255,255,0.35)", transition: "color 0.3s" }}>{f.icon}</span>
-                      <span className="text-[10px] tracking-[0.3em] truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{f.tag}</span>
-                    </div>
-                    {f.badge && <span className="text-[9px] tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1.5 whitespace-nowrap shrink-0" style={f.badgeStyle}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.badge === "ONLINE" ? "#39ff14" : "#fbbf24", boxShadow: f.badge === "ONLINE" ? "0 0 6px rgba(57,255,20,0.5)" : "none", animation: f.badge === "ONLINE" ? "none" : "blink 1.4s ease-in-out infinite" }} />{f.badge}</span>}
+          <div
+            className="rounded-2xl p-8 sm:p-12 transition-all duration-700"
+            style={{
+              opacity: visibleSections.has("showcase") ? 1 : 0,
+              transform: visibleSections.has("showcase") ? "translateY(0)" : "translateY(30px)",
+            }}
+          >
+              <div className="grid sm:grid-cols-2 gap-8 sm:gap-16 items-center">
+
+                {/* Text side */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Gamepad2 className="w-5 h-5" style={{ color: "#a78bfa" }} />
+                    <span className="text-[10px] tracking-[0.3em]" style={{ color: "rgba(255,255,255,0.45)" }}>GAME UPLOADS</span>
                   </div>
-                  <h3
-                    className="text-lg sm:text-2xl font-bold mb-1.5 sm:mb-2.5 transition-colors duration-300"
-                    style={{ color: hoveredFeature === f.id ? "white" : "rgba(255,255,255,0.85)" }}
-                  >
-                    {f.title}
+                  <h3 className="text-xl sm:text-3xl font-bold mb-4 leading-tight" style={{ letterSpacing: "-0.02em" }}>
+                    Upload games from your favorite engines
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed mb-4 sm:mb-7 transition-colors duration-300" style={{ color: hoveredFeature === f.id ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)" }}>
-                    {f.desc}
+                  <p className="text-sm sm:text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.6)", maxWidth: 380 }}>
+                    Share your creations with the community, list them on the marketplace, or sell directly to players — all from one place.
                   </p>
-                  <div className="flex items-center justify-end">
-                    <span className="text-xs tracking-wider flex items-center gap-1 transition-all duration-300" style={{ opacity: hoveredFeature === f.id ? 1 : 0, color: f.accentColor }}>
-                      Launch <ChevronRight className="w-3 h-3" />
-                    </span>
-                  </div>
+                  <button
+                    onClick={() => router.push('/games')}
+                    className="group px-7 py-3 rounded-lg text-sm font-semibold tracking-wider flex items-center gap-2 transition-all duration-300 hover:text-white hover:border-[rgba(139,92,246,0.4)]"
+                    style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', background: 'transparent' }}
+                  >
+                    Browse Games <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
                 </div>
-              </GradientBorderCard>
-            ))}
+
+                {/* Engine icons grid */}
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  {[
+                    { label: "Unity",     color: "#CCCCCC", icon: <SiUnity size={28} /> },
+                    { label: "Godot",     color: "#478CBF", icon: <SiGodotengine size={28} /> },
+                    { label: "HTML5",     color: "#E34F26", icon: <SiHtml5 size={28} /> },
+                    { label: "Phaser",    color: "#2CCA8F", icon: (
+                      <svg width={28} height={28} viewBox="0 0 24 24" fill="currentColor">
+                        <path fillRule="evenodd" clipRule="evenodd" d="M3 2h11a6 6 0 010 12H7v8H3V2zm4 2v8h7a4 4 0 000-8H7z" />
+                      </svg>
+                    )},
+                    { label: "GameMaker", color: "#FAAF17", icon: <SiGamemaker size={28} /> },
+                    { label: "Construct", color: "#00FFDA", icon: <SiConstruct3 size={28} /> },
+                  ].map((eng) => (
+                    <div
+                      key={eng.label}
+                      className="flex flex-col items-center gap-2 rounded-xl p-4 transition-all duration-300"
+                      style={{ background: "transparent" }}
+                    >
+                      <span style={{ color: eng.color }}>{eng.icon}</span>
+                      <span className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>{eng.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
           </div>
         </div>
       </section>
@@ -938,13 +1005,8 @@ export default function HomePage() {
 
       {/* Shimmer animation */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap');
         @keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .banner-scroll-track {
-          animation: marquee 40s linear infinite;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
         .banner-placeholder {
           background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(6,182,212,0.06) 100%);
         }

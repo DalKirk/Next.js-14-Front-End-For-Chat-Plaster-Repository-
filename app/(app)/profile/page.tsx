@@ -4,7 +4,9 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Video, Trash2, ImageIcon, Newspaper, MessageSquare, Music, Lock, Mail } from 'lucide-react'
+import { Video, Trash2, ImageIcon, Newspaper, MessageSquare, Music, Lock, Mail, Gamepad2, Play, X } from 'lucide-react'
+import { GameUpload } from '@/components/GameUpload'
+import { GamePlayer } from '@/components/GamePlayer'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import { PostComposer } from '@/components/feed/PostComposer'
 import { PostCard } from '@/components/feed/PostCard'
@@ -322,7 +324,7 @@ function ProfilePageContent() {
   const [isViewOnly, setIsViewOnly] = useState(false)
   const [profile, setProfile] = useState<UserProfileData | null>(null)
   const [editMode, setEditMode] = useState(false)
-  const [activeTab, setActiveTab] = useState<'gallery' | 'posts' | 'store' | 'about'>('posts')
+  const [activeTab, setActiveTab] = useState<'gallery' | 'posts' | 'store' | 'games' | 'about'>('posts')
   const [filterType, setFilterType] = useState<'all' | GenerationType>('all')
   const bioRef = useRef<HTMLInputElement>(null)
   const aboutRef = useRef<HTMLTextAreaElement>(null)
@@ -376,6 +378,12 @@ function ProfilePageContent() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [currentUserAvatarUrls, setCurrentUserAvatarUrls] = useState<any>(null)
+
+  // Games
+  type UserGame = { game_id: string; slug: string; title: string; description?: string; play_url: string; engine: string; file_size_mb: number; file_count: number; created_at?: string }
+  const [userGames, setUserGames] = useState<UserGame[]>([])
+  const [playingGameUrl, setPlayingGameUrl] = useState<string | null>(null)
+  const [playingGameTitle, setPlayingGameTitle] = useState<string>('')
 
   // Gallery media (user-uploaded, excludes DM attachments)
   const [mediaItems, setMediaItems] = useState<GalleryItem[]>([])
@@ -634,6 +642,12 @@ function ProfilePageContent() {
       loadUserPosts(profile.id)
     }
   }, [profile?.id, loadUserPosts])
+
+  useEffect(() => {
+    if (profile?.id && profile.id !== 'unknown') {
+      apiClient.getUserGames(profile.id).then(setUserGames).catch(() => {})
+    }
+  }, [profile?.id])
 
   // Load/persist store items via localStorage
   useEffect(() => {
@@ -2567,7 +2581,7 @@ function ProfilePageContent() {
 
               {/* Tabs */}
               <div className="lp-tabs">
-                {(['gallery', 'posts', 'store', 'about'] as const).map(tab => (
+                {(['gallery', 'posts', 'store', 'games', 'about'] as const).map(tab => (
                   <button
                     key={tab}
                     className={`lp-tab ${activeTab === tab ? 'active' : ''}`}
@@ -2948,6 +2962,91 @@ function ProfilePageContent() {
                     </div>
                   )}
                 </>
+              )}
+
+              {/* Games tab */}
+              {activeTab === 'games' && (
+                <div style={{ paddingTop: 8 }}>
+                  {/* Active game player */}
+                  {playingGameUrl && (
+                    <div style={{ marginBottom: 24 }}>
+                      <GamePlayer
+                        playUrl={playingGameUrl}
+                        title={playingGameTitle}
+                        className=""
+                      />
+                      <button
+                        onClick={() => { setPlayingGameUrl(null); setPlayingGameTitle('') }}
+                        style={{ marginTop: 8, background: 'none', border: '0.5px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: 'rgba(239,68,68,0.8)', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <X style={{ width: 12, height: 12 }} /> Close game
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Upload form (own profile only) */}
+                  {!isViewOnly && !playingGameUrl && (
+                    <div style={{ marginBottom: 28 }}>
+                      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 12 }}>Upload a game</div>
+                      <GameUpload
+                        userId={profile.id}
+                        onSuccess={(result) => {
+                          setUserGames(prev => [{ ...result, title: result.slug, created_at: new Date().toISOString() }, ...prev])
+                          toast.success('Game uploaded!')
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Games list */}
+                  {userGames.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
+                      {isViewOnly ? 'No games yet.' : 'No games uploaded yet.'}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 4 }}>{userGames.length} game{userGames.length !== 1 ? 's' : ''}</div>
+                      {userGames.map(game => (
+                        <div key={game.game_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 8, background: `color-mix(in srgb, ${accent} 20%, #1a1a1a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Gamepad2 style={{ width: 16, height: 16, color: accent }} />
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.title}</div>
+                              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2, fontFamily: "'Space Mono',monospace" }}>{game.engine} · {game.file_size_mb.toFixed(1)} MB</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                            <button
+                              onClick={() => { setPlayingGameUrl(game.play_url); setPlayingGameTitle(game.title) }}
+                              style={{ background: accent, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 11, cursor: 'pointer', color: '#000', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}
+                            >
+                              <Play style={{ width: 11, height: 11 }} /> Play
+                            </button>
+                            {!isViewOnly && (
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Delete this game?')) return
+                                  try {
+                                    await apiClient.deleteGame(game.game_id, profile.id)
+                                    setUserGames(prev => prev.filter(g => g.game_id !== game.game_id))
+                                    if (playingGameUrl === game.play_url) { setPlayingGameUrl(null); setPlayingGameTitle('') }
+                                    toast.success('Game deleted')
+                                  } catch { toast.error('Could not delete game') }
+                                }}
+                                style={{ background: 'none', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 7, padding: '6px 10px', fontSize: 11, cursor: 'pointer', color: 'rgba(239,68,68,0.7)' }}
+                                title="Delete game"
+                              >
+                                <Trash2 style={{ width: 11, height: 11 }} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* About tab */}

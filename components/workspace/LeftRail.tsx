@@ -131,6 +131,9 @@ export function WorkspaceLeftRail({ activeTab, onTabChange, onOpenTool, currentU
         <Link href="/game-builder" className="ws-nav-item">
           <Gamepad2 /> <span>Game Builder</span>
         </Link>
+        <Link href="/games" className="ws-nav-item">
+          <Gamepad2 /> <span>Browse Games</span>
+        </Link>
       </nav>
 
       <div className="ws-nav-divider" />
