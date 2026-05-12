@@ -21,15 +21,15 @@ const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE?.replace(/^@/, '');
 export const metadata = {
   metadataBase: new URL('https://starcyeed.com'),
   title: {
-    default: 'Starcyeed',
+    default: 'Starcyeed — AI Creative Studio, Gaming & Cloud IDE',
     template: '%s | Starcyeed',
   },
-  description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
+  description: 'AI-powered creative studio with browser gaming, cloud IDE, and digital marketplace. Build, generate, code, collaborate, and sell on a social platform.',
   openGraph: {
     type: 'website',
     siteName: 'Starcyeed',
-    title: 'Starcyeed — Live Video Rooms & AI Creative Tools',
-    description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
+    title: 'Starcyeed — AI Creative Studio, Gaming & Cloud IDE',
+    description: 'AI-powered creative studio with browser gaming, cloud IDE, and digital marketplace. Build, generate, code, collaborate, and sell on a social platform.',
     url: '/',
     images: [
       { url: '/og-image.png', width: 1200, height: 630, alt: 'Starcyeed' },
@@ -37,8 +37,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Starcyeed — Live Video Rooms & AI Creative Tools',
-    description: 'Live video rooms, AI video and image generation, and a creative community. Create, connect, and build with AI-powered tools.',
+    title: 'Starcyeed — AI Creative Studio, Gaming & Cloud IDE',
+    description: 'AI-powered creative studio with browser gaming, cloud IDE, and digital marketplace. Build, generate, code, collaborate, and sell on a social platform.',
     images: ['/og-image.png'],
     site: twitterHandle ? `@${twitterHandle}` : undefined,
     creator: twitterHandle ? `@${twitterHandle}` : undefined,

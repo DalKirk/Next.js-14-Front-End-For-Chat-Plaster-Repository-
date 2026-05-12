@@ -89,7 +89,7 @@ const heroVideos = [
 ];
 
 const HERO_H1 = 'Create Without Limits';
-const HERO_BODY_WORDS = "An AI-powered creative studio, browser-based gaming, Cloud development IDE, and digital marketplace designed for the next generation of creators. Build, generate, code, collaborate, and sell your creations — All built on top of a social platform.".split(' ');
+const HERO_BODY_WORDS = "An AI-powered creative studio with browser-based gaming, cloud development IDE, and digital marketplace. Build, generate, code, collaborate, and sell your creations — all on a social platform.".split(' ');
 
 /* ─── Gradient border wrapper ─── */
 function GradientBorderCard({
