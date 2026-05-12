@@ -109,10 +109,10 @@ export function FloatingIDEPanel({ ideRef, onClose }: Props) {
       display: 'flex',
       flexDirection: 'column',
       background: '#000000',
-      border: '1px solid #1a1a2e',
+      border: '1px solid rgba(210,218,232,0.65)',
       borderRadius: maximized ? 4 : 8,
       overflow: 'hidden',
-      boxShadow: '0 16px 48px rgba(0,0,0,0.72), 0 0 0 1px rgba(128,203,196,0.07)',
+      boxShadow: '0 16px 48px rgba(0,0,0,0.72), 0 0 0 1px rgba(210,218,232,0.18)',
     }}>
 
       {/* ── Title bar ─────────────────────────────────────── */}
@@ -121,8 +121,8 @@ export function FloatingIDEPanel({ ideRef, onClose }: Props) {
         style={{
           height: 36,
           flexShrink: 0,
-          background: '#0a0a0f',
-          borderBottom: minimized ? 'none' : '1px solid #1a1a2e',
+          background: '#000000',
+          borderBottom: minimized ? 'none' : '1px solid rgba(210,218,232,0.65)',
           display: 'flex',
           alignItems: 'center',
           padding: '0 8px 0 12px',

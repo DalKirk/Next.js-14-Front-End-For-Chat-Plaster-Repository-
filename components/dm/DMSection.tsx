@@ -872,12 +872,12 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         }
       `}</style>
       <div
-        className="dm-section-root flex flex-col md:flex-row md:h-[600px] w-full bg-black md:rounded-xl border-0 md:border border-white/5 overflow-hidden z-20 md:z-auto"
+        className="dm-section-root flex flex-col md:flex-row md:h-[600px] w-full bg-black md:rounded-xl border-0 md:border border-white/60 overflow-hidden z-20 md:z-auto"
       >
         {/* Sidebar - Contact List */}
-        <div className={`w-full md:w-80 md:min-w-[280px] bg-zinc-950 md:bg-black border-r-0 md:border-r border-white/5 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
+        <div className={`w-full md:w-80 md:min-w-[280px] bg-black border-r-0 md:border-r border-white/60 flex flex-col ${!showMobileList ? 'hidden md:flex' : 'flex h-full'}`}>
           {/* Header */}
-          <div className="p-3 md:p-4 border-b border-white/5 flex-shrink-0">
+          <div className="p-3 md:p-4 border-b border-white/60 flex-shrink-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -886,7 +886,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
+                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-white/5 border border-white/60 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all text-sm"
               />
             </div>
           </div>
@@ -917,7 +917,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                 >
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/60">
                       <ResponsiveAvatar
                         avatarUrls={contact.avatar_urls || (contact.avatar_url ? { thumbnail: contact.avatar_url, small: contact.avatar_url, medium: contact.avatar_url, large: contact.avatar_url } : undefined)}
                         username={contact.username}
@@ -969,16 +969,16 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
         {activeContact ? (
           <>
             {/* Chat Header - Fixed at top */}
-            <div className="flex-shrink-0 flex items-center gap-2 p-2 border-b border-white/5 bg-zinc-950">
+            <div className="flex-shrink-0 flex items-center gap-2 p-2 border-b border-white/60 bg-black">
               <button 
-                className="md:hidden w-7 h-7 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white active:bg-white/20 transition-colors flex-shrink-0"
+                className="md:hidden w-7 h-7 rounded-lg bg-white/10 border border-white/60 flex items-center justify-center text-slate-400 hover:text-white active:bg-white/20 transition-colors flex-shrink-0"
                 onClick={() => setShowMobileList(true)}
               >
                 <ArrowLeft size={14} />
               </button>
 
               <div className="relative flex-shrink-0">
-                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10">
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/60">
                   <ResponsiveAvatar
                     avatarUrls={activeContact.avatar_urls || (activeContact.avatar_url ? { thumbnail: activeContact.avatar_url, small: activeContact.avatar_url, medium: activeContact.avatar_url, large: activeContact.avatar_url } : undefined)}
                     username={activeContact.username}
@@ -1044,7 +1044,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
                               className={`rounded-2xl overflow-hidden ${
                                 isMe
                                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-br-md'
-                                  : 'bg-zinc-900 border border-white/10 text-slate-200 rounded-bl-md'
+                                  : 'bg-black border border-white/60 text-slate-200 rounded-bl-md'
                               }`}
                             >
                               {(() => {
@@ -1116,8 +1116,8 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
             </div>
 
             {/* Input Area - Fixed at bottom */}
-            <div className="flex-shrink-0 p-2 md:p-3 border-t border-white/5 bg-zinc-950">
-              <div className="flex items-end gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
+            <div className="flex-shrink-0 p-2 md:p-3 border-t border-white/60 bg-black">
+              <div className="flex items-end gap-1.5 md:gap-2 bg-white/5 border border-white/60 rounded-xl p-1.5 md:p-2 focus-within:border-cyan-400/60 transition-all">
                 <button
                   className="hidden md:flex w-9 h-9 rounded-lg hover:bg-white/10 items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Attach image or video"
@@ -1179,7 +1179,7 @@ export default function DMSection({ currentUser, onUnreadCountChange, initialRec
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-zinc-950 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="bg-black border border-white/60 rounded-2xl p-6 max-w-md w-full shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">

@@ -64,7 +64,7 @@ function MessagesContent() {
     <div className="min-h-screen bg-black">
       {/* Header — fixed so it never moves during iOS pull-to-refresh */}
       <header
-        className="fixed left-0 right-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/5"
+        className="fixed left-0 right-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/60"
         style={{
           top: 0,
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -117,7 +117,7 @@ function MessagesContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-zinc-950 rounded-xl border border-white/5 overflow-hidden"
+          className="bg-black rounded-xl border border-white/60 overflow-hidden"
         >
           <DMSection
             currentUser={{

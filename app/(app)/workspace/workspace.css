@@ -5,11 +5,11 @@
 :root {
   /* ── Surfaces ── */
   --ws-bg:           #000000;
-  --ws-surface:      #111118;
-  --ws-surface-2:    #16161f;
-  --ws-surface-3:    #1c1c28;
-  --ws-border:       rgba(255, 255, 255, 0.06);
-  --ws-border-hover: rgba(255, 255, 255, 0.12);
+  --ws-surface:      #000000;
+  --ws-surface-2:    #000000;
+  --ws-surface-3:    #000000;
+  --ws-border:       rgba(210, 218, 232, 0.65);
+  --ws-border-hover: rgba(235, 240, 250, 0.9);
 
   /* ── Accent ── */
   --ws-accent:       #6366f1;

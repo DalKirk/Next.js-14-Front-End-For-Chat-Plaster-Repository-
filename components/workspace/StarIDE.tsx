@@ -17,9 +17,9 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false 
 // ─── palette ──────────────────────────────────────────────────────────────────
 const C = {
   bg:       '#000000',
-  surface:  '#0a0a0f',
-  raised:   '#0f111a',
-  border:   '#1a1a2e',
+  surface:  '#000000',
+  raised:   '#000000',
+  border:   'rgba(210,218,232,0.65)',
   hover:    '#ffffff08',
   active:   '#ffffff12',
   text:     '#8f93a2',
