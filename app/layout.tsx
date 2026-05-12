@@ -19,7 +19,7 @@ const ibmPlexSans = IBM_Plex_Sans({
 const twitterHandle = process.env.NEXT_PUBLIC_TWITTER_HANDLE?.replace(/^@/, '');
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL('https://starcyeed.com'),
   title: {
     default: 'Starcyeed',
     template: '%s | Starcyeed',
@@ -88,7 +88,7 @@ export default function RootLayout({
                     __html: JSON.stringify({
                       '@context': 'https://schema.org',
                       '@type': 'WebSite',
-                      url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+                      url: 'https://starcyeed.com',
                       name: 'Starcyeed',
                     }),
                   }}
@@ -100,7 +100,7 @@ export default function RootLayout({
                       '@context': 'https://schema.org',
                       '@type': 'Organization',
                       name: 'Starcyeed',
-                      url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+                      url: 'https://starcyeed.com',
                       logo: '/og-image.png',
                     }),
                   }}
