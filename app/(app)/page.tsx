@@ -166,9 +166,12 @@ export default function HomePage() {
   const [heroTransitioning, setHeroTransitioning] = useState(false);
 
   /* ── Hero text streaming ── */
-  const [streamedH1, setStreamedH1] = useState('');
-  const [streamedWords, setStreamedWords] = useState(0);
-  const [streamDone, setStreamDone] = useState(false);
+  // SSR: initialize with full text so crawlers/scrapers see real content.
+  // On client mount we reset and run the typewriter animation.
+  const [streamedH1, setStreamedH1] = useState(HERO_H1);
+  const [streamedWords, setStreamedWords] = useState(HERO_BODY_WORDS.length);
+  const [streamDone, setStreamDone] = useState(true);
+  const [hasMounted, setHasMounted] = useState(false);
 
   /* ── AI Panel state ── */
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -412,9 +415,17 @@ export default function HomePage() {
     }
   }, [heroVideoIndex]);
 
+  /* ── Reset to empty on first client mount so animation can run ── */
+  useEffect(() => {
+    setHasMounted(true);
+    setStreamedH1('');
+    setStreamedWords(0);
+    setStreamDone(false);
+  }, []);
+
   /* ── Stream hero headline then body text ── */
   useEffect(() => {
-    if (!heroVisible) return;
+    if (!heroVisible || !hasMounted) return;
     let bodyTimer: ReturnType<typeof setInterval> | null = null;
     let h1i = 0;
     const h1Timer = setInterval(() => {
@@ -440,7 +451,7 @@ export default function HomePage() {
       clearInterval(h1Timer);
       if (bodyTimer) clearInterval(bodyTimer);
     };
-  }, [heroVisible]);
+  }, [heroVisible, hasMounted]);
 
   /* ═══════════════════════════════════════════
      AUTH HANDLERS (preserved)
