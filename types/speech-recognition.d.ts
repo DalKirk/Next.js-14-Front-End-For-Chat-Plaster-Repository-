@@ -48,6 +48,9 @@ declare var SpeechRecognition: {
   new (): SpeechRecognition
 }
 
+// CSS module declarations (side-effect and default imports)
+declare module '*.css';
+
 declare var webkitSpeechRecognition: {
   prototype: SpeechRecognition
   new (): SpeechRecognition
