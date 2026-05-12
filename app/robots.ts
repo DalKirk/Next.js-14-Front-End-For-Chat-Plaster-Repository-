@@ -1,19 +1,26 @@
 import type { MetadataRoute } from 'next';
 
+const CANONICAL = 'https://starcyeed.com';
+
 export default function robots(): MetadataRoute.Robots {
-	const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-	const isProd = process.env.VERCEL_ENV === 'production';
+	const isLocal =
+		(process.env.NEXT_PUBLIC_SITE_URL || '').includes('localhost') ||
+		process.env.NODE_ENV !== 'production';
+
+	if (isLocal) {
+		// Block all crawlers in local/dev — never expose localhost to search engines
+		return { rules: [{ userAgent: '*', disallow: ['/'] }] };
+	}
+
 	return {
 		rules: [
-			isProd
-				? {
-						userAgent: '*',
-						allow: '/',
-						disallow: ['/login', '/signup', '/profile'],
-					}
-				: { userAgent: '*', allow: [], disallow: ['/'] },
+			{
+				userAgent: '*',
+				allow: '/',
+				disallow: ['/login', '/signup', '/profile', '/workspace'],
+			},
 		],
-		sitemap: isProd ? `${base}/sitemap.xml` : undefined,
-		host: isProd ? base : undefined,
+		sitemap: `${CANONICAL}/sitemap.xml`,
+		host: CANONICAL,
 	};
 }
