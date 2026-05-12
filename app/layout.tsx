@@ -101,7 +101,7 @@ export default function RootLayout({
                       '@type': 'Organization',
                       name: 'Starcyeed',
                       url: 'https://starcyeed.com',
-                      logo: '/og-image.png',
+                      logo: 'https://starcyeed.com/og-image.png',
                     }),
                   }}
                 />
